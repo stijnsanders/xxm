@@ -1,0 +1,136 @@
+<html>
+<head>
+<title>xxm - install</title>
+<link rel="stylesheet" type="text/css" href="xxm.css" />
+</head>
+<body>
+<p><img src="xxm.png" alt="xxm" /></p>
+<p class="nav">
+<a href="index.html">about</a> |
+<a href="download.html">download</a> |
+<b>install</b> |
+<a href="ref.html">reference</a> |
+<a href="faq.html">faq</a> |
+<a href="tips.html">tips&amp;tricks</a>
+</p>
+
+<p>xxm provides a number of libraries and executables. This is a description of their purpose and how to install them.<br />
+Depending on what you require some library or executable may be better than the other options. Please review all options to carefully select which option suits your needs best.</p>
+<p class="title">xxmLocal (Internet Explorer)</p>
+<p>The xxmLocal libraries enable Internet Explorer to load xxm projects directly using the &quot;xxm:&quot; URL scheme.<br />
+This is the most direct way to run an xxm project, since the project runs inside of the iexplore.exe process.</p>
+<dl>
+<dt>xxmLocal.dll</dt>
+<dd>
+Use <code>%SystemRoot%\system32\regsvr32.exe</code> to register the xxmLocal.dll file. This will add the &quot;xxm:&quot; URL scheme to the registry. This will also define the xxm file types (xxm,xxmi,xxmp,xxl).</dd>
+<dt>xxmLocalDev.dll</dt>
+<dd>xxmLocalDev checks the project's xxmp file if any files have changed. If so, it unloads the project, generates source code where needed, compiles the project and reloads it. If files ware added or removed, they are added to the xxmp file.<br />
+<b>Please don't use xxmLocalDev.dll in a live environment.</b></dd>
+<dt>xxmLocalAU.dll</dt>
+<dd>xxmLocalAU checks if there is a .xxu file in the directory of the .xxl file, and if so, unloads the project, replaces the xxl file and reloads the project.</dd>
+</dl>
+<p>xxmLocal libraries resolve project by name using the registry. Project definitions are stored here:<br />
+<code>HKEY_LOCAL_MACHINE\SOFTWARE\xxm\local</code><br />
+Each project has a key with the default value containing the full path to the xxl file.<br />
+When a xxmLocal library is registered, the xxl file type registry also includes a context-menu item to add the project to the registry.</p>
+<p class="title">xxmIsapi (IIS)</p>
+<p>Use an xxm ISAPI extension to load xxm projects with IIS. An ISAPI extension can be loaded in several ways, see below for a list of options.</p>
+<dl>
+<dt>xxmIsapiEx.dll</dt>
+<dd>The default ISAPI extension, loads xxm projects.</dd>
+<dt>xxmIsapiDev.dll</dt>
+<dd>xxmIsapiDev checks the project's xxmp file if any files have changed. If so, it unloads the project, generates source code where needed, compiles the project and reloads it. If files ware added or removed, they are added to the xxmp file.<br />
+<b>Attention:</b> to compile a project, the current user may require access to common libraries and source files. Check as which user IIS runs, or which credentials are used to run the ISAPI extension (COM+).<br />
+<b>Please don't use xxmIsapiDev.dll in a live environment.</b></dd>
+<dt>xxmIsapiAU.dll</dt>
+<dd>xxmIsapiAU checks if there is a .xxu file in the directory of the .xxl file, and if so, unloads the project, replaces the xxl file and reloads the project.</dd>
+</dl>
+<p>There are a few options to configure IIS to use the xxmISAPI dll's</p>
+<dl>
+<dt>call directly</dt>
+<dd>
+if the directory security settings allow scripting and running executables, an ISAPI extension can be called by a URL that maps to the dll file location, which may look like this:<br />
+<code>http://localhost/xxm/xxmIsapiEx.dll/demo/test.xxm</code><br />
+</dd>
+<dt>extension mapping</dt>
+<dd>
+IIS configuration allows to route files of a certain file-extension to an ISAPI extension. You could map &quot;.xxm&quot; to one of the xxmIsapi dlls, but this will not make any other requests go through the xxm project, which may form a security risk. This is the mail reason why the following option is preferred over this one.</dd>
+<dt>wildcard application mapping</dt>
+<dd>IIS 6 and above supports a mapping of &quot;.*&quot; to an ISAPI extension, and even provides an option to skip checking if the file exists the URL maps to. This enables all requests to pass through the xxm ISAPI extension, so the project may perform authentication, optionally based on user sessions.</dd>
+</dl>
+<p>IIS 7 requires ISAPI dll's to be added to the list of accepted plugins in the security administration</p>
+<p>xxm ISAPI extensions resolve project by name using the projects definition file <code>xxm.xml</code>, in the same directory as the xxm ISAPI extension library. An example xxm.xml with a single project definition may look like this:<br />
+</p><pre>&lt;ProjectRegistry&gt;
+  &lt;Project Name=&quot;demo&quot;&gt;
+    &lt;ModulePath&gt;C:\xxm\demo\demo.xxl&lt;/ModulePath&gt;
+  &lt;/Project&gt;
+&lt;/ProjectRegistry&gt;
+</pre>
+<p>A project entry may have an <code>Alias</code> attribute to have a project name map to the same library as another project.</p>
+<p>If you want to host only one single xxm project, add a <code>SingleProject</code> attribute to the ProjectRegistry document element, to refer to a project definition.</p>
+<p class="title">xxmHttp (stand-alone)</p>
+<p>Use one of the xxmHttp installations to run xxm projects from a process that handles HTTP requests directly</p>
+<dl>
+<dt>xxmHttp</dt>
+<dd>handles HTTP requests on a TCP port (80 by default) using xxm projects</dd>
+<dt>xxmHttpDev</dt>
+<dd>xxmIsapiDev checks the project's xxmp file if any files have changed. If so, it unloads the project, generates source code where needed, compiles the project and reloads it. If files ware added or removed, they are added to the xxmp file.<br />
+<b>Please don't use xxmHttpDev.exe in a live environment.</b></dd>
+<dt>xxmHttpAU</dt>
+<dd>xxmHttpAU checks if there is a .xxu file in the directory of the .xxl file, and if so, unloads the project, replaces the xxl file and reloads the project.</dd>
+<dt>xxmHttpSvc</dt>
+<dd>similar to xxmHttp, but runs as an NT-service. call "<code>xxmHttpSvc /install</code>" to install the service ("</code>/uninstall</code>" to uninstall)</dd>
+<dt>xxmHttpSvcAU</dt>
+<dd>similar to xxmHttpAU, but runs as an NT-service. call "<code>xxmHttpSvcAU /install</code>" to install the service ("</code>/uninstall</code>" to uninstall)</dd>
+</dl>
+<p>specify following command line parameters to alter default behaviour (for services, define values in registry key <code>HKEY_LOCAL_MACHINE\Software\xxm\service</code>)</p>
+<dl>
+<dt>Port=<i>&lt;TcpPort&gt;</i></dt>
+<dd>set the TCP port to listen on for requests (default 80)</dd>
+</dl>
+<p>xxmHttp resolves projects by name using the projects definition file <code>xxm.xml</code>, in the same directory as the xxmHttp executable. An example xxm.xml with a single project definition may look like this:<br />
+</p><pre>&lt;ProjectRegistry&gt;
+  &lt;Project Name=&quot;demo&quot;&gt;
+    &lt;ModulePath&gt;C:\xxm\demo\demo.xxl&lt;/ModulePath&gt;
+  &lt;/Project&gt;
+&lt;/ProjectRegistry&gt;
+</pre>
+<p>A project entry may have an <code>Alias</code> attribute to have a project name map to the same library as another project.</p>
+<p>If you want to host only one single xxm project, add a <code>SingleProject</code> attribute to the ProjectRegistry document element, to refer to a project definition.</p>
+<p class="title">xxmProject</p>
+<p>xxmProject provides a basic interface to create a new project, or edit an existing project.</p>
+<p class="title">xxmConv</p>
+<p>xxmConv is a minimal wrapper around the xxm parser engine that generates the compilable source code. Pass it a directory, the location of a xxmp or xxl file, and it will generate the project source code.</p>
+<p class="title">xxmRun</p>
+<p>use xxmRun to register xxmLocal, optionally other COM libraries and one or more xxm projects, only for the time of one browser session.</p>
+<p>when xxmRun starts, the lines of xxmRun.ini in the same directory is parsed, if any processes are started (e.g. Internet Explorer), xxmRun waits silently until it ends, and then rolls back the definitions in xxmRun.ini in reverse order</p>
+<p>lines in xxmRun.ini are of one of these forms:</p>
+<dl>
+<dt>{<i>CLSID</i>}<i>PathToLibrary</i></dt>
+<dd>Checks the registry if an object is defined with the CLSID, if not, calls DllRegisterServer on the library pointed to by <i>PathToLibrary</i>. On rollback, if the library was registered, DllUnregisterServer is called.</dd>
+<dt>"<i>ProjectName</i>"<i>PathToLibrary</i></dt>
+<dd>Registers the library in the local xxm project registry. On rollback, removes the registration, or restores it if another library was registered with the project name</dd>
+<dt>@<i>URL</i></dt>
+<dd>Opens Internet Explorer (expressly, even if another browser is configured as default) to open the URL. When all configuration lines are processed, xxmRun waits for the process to end.</dd>
+<dt><span style="background-color:#CCFFFF;">&nbsp;</span><i>CommandLine</i></dt>
+<dd>(Line starts with a space.) Executes the command line. When all configuration lines are processed, xxmRun waits for the process to end.</dd>
+<dt>!<i>CommandLine</i></dt>
+<dd>Executes the command line and waits for the process to end before processing following configuration lines. Does nothing on rollback. Use this to perform tasks to prepare for other processes that xxmRun will wait on.</dd>
+<dt>_<i>CommandLine</i></dt>
+<dd>Does nothing on reading the configuration lines. On rollback executes the command line and waits for the process to end before continuing the rollback. Use this to perform tasks to clean up. Pay attention to defining them in reverse order, since they act on rollback. Also, configuration lines that started a process to wait on later, will wait on their process to end on rollback.</dd>
+</dl>
+<p>example xxmRun.ini:</p>
+<p><code>{78786D00-0000-0001-C000-000000000001}xxmLocal.dll<br />
+{A20016A7-685B-4554-A8B6-7A06E71D22FB}WikiEngine.dll<br />
+"demo"demo.xxl<br />
+!unpack.exe demomdb.zip %tmp%\<br />
+_pack.exe %tmp%\demo.mdb demomdb.zip<br />
+@xxm://demo<br />
+</code></p>
+<p class="title">remarks</p>
+<p><b>About installing side-by-side:</b></p>
+<p>
+Though it is possible to install several of above options at once, it is strongly advised not to use more than one of them to run a certain xxm project simultaneously. Doing so may interfere normal operation when more than one process has a file-lock on the project library file (e.g. when compiling or updating).
+</p>
+</body>
+</html>

@@ -1,0 +1,61 @@
+#------------------------------------------------------------------------------
+VERSION = BWS.01
+#------------------------------------------------------------------------------
+!ifndef ROOT
+ROOT = $(MAKEDIR)\..
+!endif
+#------------------------------------------------------------------------------
+MAKE = $(ROOT)\bin\make.exe -$(MAKEFLAGS) -f$**
+DCC = $(ROOT)\bin\dcc32.exe $**
+BRCC = $(ROOT)\bin\brcc32.exe $**
+#------------------------------------------------------------------------------
+PROJECTS = xxmConv.exe xxmProto.xxl xxmRun.exe xxmLocal.dll xxmLocalAU.dll \
+  xxmLocalDev.dll xxmIsapiEx.dll xxmIsapiAU.dll xxmIsapiDev.dll xxmHttp.exe \
+  xxmHttpAU.exe xxmHttpDev.exe xxmHttpSvc.exe xxmHttpSvcAU.exe
+#------------------------------------------------------------------------------
+default: $(PROJECTS)
+#------------------------------------------------------------------------------
+
+xxmConv.exe: conv\xxmConv.dpr
+  $(DCC)
+
+xxmProto.xxl: proto\xxmProto.dpr
+  $(DCC)
+
+xxmLocal.dll: local\xxmLocal.dpr
+  $(DCC)
+
+xxmLocalDev.dll: local\xxmLocalDev.dpr
+  $(DCC)
+
+xxmIsapiEx.dll: isapi\xxmIsapiEx.dpr
+  $(DCC)
+
+xxmIsapiDev.dll: isapi\xxmIsapiDev.dpr
+  $(DCC)
+
+xxmHttp.exe: http\xxmHttp.dpr
+  $(DCC)
+
+xxmLocalAU.dll: local\xxmLocalAU.dpr
+  $(DCC)
+
+xxmIsapiAU.dll: isapi\xxmIsapiAU.dpr
+  $(DCC)
+
+xxmHttpAU.exe: http\xxmHttpAU.dpr
+  $(DCC)
+
+xxmHttpDev.exe: http\xxmHttpDev.dpr
+  $(DCC)
+
+xxmHttpSvc.exe: http\xxmHttpSvc.dpr
+  $(DCC)
+
+xxmHttpSvcAU.exe: http\xxmHttpSvcAU.dpr
+  $(DCC)
+
+xxmRun.exe: run\xxmRun.dpr
+  $(DCC)
+
+

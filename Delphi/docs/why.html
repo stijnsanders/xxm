@@ -1,0 +1,53 @@
+<html>
+<head>
+<title>xxm - why</title>
+<link rel="stylesheet" type="text/css" href="xxm.css" />
+</head>
+<body>
+<p><img src="xxm.png" alt="xxm" /></p>
+<p class="nav">
+<a href="index.html">about</a> |
+<a href="download.html">download</a> |
+<a href="install.html">install</a> |
+<a href="ref.html">reference</a> |
+<a href="faq.html">faq</a> |
+<a href="tips.html">tips&amp;tricks</a>
+</p>
+
+<p>Why</p>
+
+<p>People always ask me 'why?'. So here is a little explanation how I came to develop xxm.</p>
+
+<p>Before I learned ASP, I had done PHP and ColdFusion, and a bit of client-side JavaScript. Those did what they needed to do and the platforms I was working on supported them.</p>
+
+<p>It was only when I needed to program for hosting that didn't support anything else than ASP that I made some time to get a hang of ASP.</p>
+
+<p>Soon I learned that ASP is based on the script manager much like Internet Explorer and Windows Scripting Host uses for running script in any language of choice. All I needed to do was learn about Request and Response objects.</p>
+
+<p>So I have preferred ASP/JScript ever since, though it generally is harder to read and get the syntax right. Back then I also wondered what it would be like to have something similar in Delphi. Pascal is a nice langauge to code in, but embedding it in HTML would take some effort.</p>
+
+<p>Ever since then I dreamed about making xxm, but I only got around to doing it a few years later.</p>
+
+<p>The advantages are numerous:</p>
+
+<dl>
+<dt>compile over parsing</dt>
+<dd>HTML and embedded code are re-parsed into a Delphi project, which is compiled and run. This beats parsing the same code over and over again, even with cached parse-data. Light-weight libraries can get loaded by the web-server and even shared by instances on the same server. Also, Delphi's compiler is already known to be one of the fastest around.</dd>
+
+<dt>speed</dt>
+<dd>Not only will a compiled module perform better than scripting, the Delphi compiler is really fast, and only compiles changed source-files, which makes it as painless to code for xxm as any parsed platform.</dd>
+
+<dt>portability</dt>
+<dd>In a develop-release-environment, only the compiled module needs to get published to the live server(s) for the web-application to run. This adds to security.</dd>
+
+<dt>extensibility</dt>
+<dd>Since the embedded code is re-worked for the Delphi compiler to build, any code that would work in Delphi works. Which enables easy access to existing projects or platforms and re-use of code.</dd>
+
+<dt>more percs</dt>
+<dd>xxm churns out a Delphi project. Open it, and use the local handler to debug it!</dd>
+</dl>
+
+<p>And, important to me personally, I know Delphi best. Yes, I could look into existing solutions like ASP.Net, Python or Ruby, but to obtain an equally high level of knowledge of these languages new to me, would take far longer than to develop xxm.</p>
+
+</body>
+</html>
