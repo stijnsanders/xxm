@@ -1,0 +1,72 @@
+<html>
+<head>
+<title>xxm - faq</title>
+<link rel="stylesheet" type="text/css" href="xxm.css" />
+</head>
+<body>
+<p><img src="xxm.png" alt="xxm" /></p>
+<p class="nav">
+<a href="index.html">about</a> |
+<a href="download.html">download</a> |
+<a href="install.html">install</a> |
+<a href="ref.html">reference</a> |
+<b>faq</b> |
+<a href="tips.html">tips&amp;tricks</a>
+</p>
+
+<dl>
+<dt>what is xxm</dt>
+<dd>xxm is an interface written with and based on Delphi that compiles
+HTML with embedded Delphi code into a library, ready to use either locally,
+in the xxm ISAPI extension or other configurations.</dd>
+
+<dt>what does xxm stand for</dt>
+<dd>extensible expandable modules... or transportable transformation modules... anyway something fancy like that.</dd>
+
+<dt>how do I get started</dt>
+<dd>use xxmProject.exe to start a new project in a directory. register the project with xxmLocalDev.dll to use Internet Explorer to browse to it. add pages by creating extra .xxm (and .xxmi) files to the directory.
+</dd>
+
+<dt>does an xxl module need to be an ActiveX/COM/OLE library</dt>
+<dd>no, an xxl library doesn't have to contain a Type Library and
+export the default procedures that a ActiveX/COM/OLE library would.</dd>
+
+<dt>has CoInitialize been called for the thread the page is built in</dt>
+<dd>yes</dd>
+
+<dt>why does Context.SessionID generate an EXxmResponseHeaderAlreadySent exception</dt>
+<dd>Context.SessionID was inteded to use in XxmProject.LoadPage,
+when a new session is started, a session cookie is set. When you don't use
+Context.SessionID from LoadPage, and use it later on, the SetCookie can't
+add to the response headers.</dd>
+
+<dt>is it better/faster/... to use Context.SendHTML whereever possible?</dt>
+<dd>No. HTML is parsed into Context.SendHTML calls for you, and doesn't take as much time extra as it would take you to type the HTML in Delphi string  syntax. By far. The compile time of both is virtually equal. The execution time is equal.</dd>
+
+<dt>how do I debug an xxm project</dt>
+<dd>an xxm project is still a Delphi project, so you can open the project's dpr in Delphi, just remember to edit the xxm and xxmi files, and not the pas files directly (unless for temporary debugging behaviour).<br />
+When you're using xxmLocal (or xxmLocalDev), set the host application to Internet Explorer (typically <code>C:\Program Files\Internet Explorer\iexplore.exe</code>), optionally with an "xxm://" URL to open your project.<br />
+When you're using xxmIsapiEx (or xxmIsapiDev) on your local IIS, switch IIS into stand-alone mode and use inetinfo.exe as host application, or create a virtual directory with high isolation (IIS 7: in an application pool of it's own), and use <code>%SystemRoot%\system32\dllhost.exe /ProcessID:<i>{AppID}</i></code> with the AppID you can pick up from the properties of the COM+ application in the 'Component Services' administrative tool</dd>
+
+<dt>why is it not possible to pass extra parameters with the directory delimiter<br />
+(e.g.: http://localhost/xxm/test/test.xxm/a/1/b/2 )</dt>
+<dd>The URL is parsed only to get a project name and a fragment address.
+no forward directory checking is done, since xxm files and directories may not be present,
+it's up to the project to provide a fragment or not for a fragment address.</dd>
+
+<dt>why can't IE download files directly, I get this error:<br />
+Internet Explorer cannot download <i>somefile.ext</i> from <i>site</i>.<br />
+Internet Explorer was not able to open this Internet site.  The requested site is either unavailable or cannot be found.  Please try again later.<br />
+</dt>
+<dd>the registry is used to determine which MIME-type to declare for the file. Look under HKEY_CLASSES_ROOT for a ContentType value under the key with the extension (e.g.: [HKEY_CLASSES_ROOT\.txt] @ContentType="text/plain")</dd>
+
+<dt>why did you make another website development platform? think you could do better than the tried and tested ones out there?</dt>
+<dd><i>*sigh*</i> please read this: <a href="why.html">why</a></dd>
+
+<dt>I'm a Delphi programmer myself, could I have a peek into the source code.</dt>
+<dd>I'm thinking about <i>open-sourcing</i> this project, as soon as I get around to finding out how, where and under which license. If you want to view certain sections, mail me at <i>devel&nbsp;at yoy dot&nbsp;be</i></dd>
+
+</dl>
+
+</body>
+</html>
