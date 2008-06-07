@@ -1,0 +1,5 @@
+<html>
+<body>
+<p><a href="Hello1.xxm">[[
+Context.Send('Hello world!');
+]]</a></p>

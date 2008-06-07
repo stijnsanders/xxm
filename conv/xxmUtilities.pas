@@ -7,6 +7,7 @@ uses Windows, SysUtils, Classes;
 procedure ListFilesInPath(FileList:TStringList;Path:string);
 function IsReservedWord(x:string):boolean;
 function Signature(Path:string):string;
+function GetFileSize(Path:string):integer;
 function GetSelfPath:string;
 
 const
@@ -182,6 +183,20 @@ begin
       IntToHex(fd.ftLastWriteTime.dwHighDateTime,8)+
       IntToHex(fd.ftLastWriteTime.dwLowDateTime,8)+'_'+
       IntToStr(fd.nFileSizeLow);
+    Windows.FindClose(fh);
+   end;
+end;
+
+function GetFileSize(Path:string):integer;
+var
+  fh:THandle;
+  fd:TWin32FindData;
+begin
+  fh:=FindFirstFile(PChar(Path),fd);
+  if fh=INVALID_HANDLE_VALUE then Result:=-1 else
+   begin
+    //assert(fd.nFileSizeHigh=0
+    Result:=fd.nFileSizeLow;
     Windows.FindClose(fh);
    end;
 end;

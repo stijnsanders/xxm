@@ -1,0 +1,10 @@
+<XxmWebProject>
+	<ProjectName>demo2</ProjectName>
+	<CompileCommand>dcc32 -U..\..\..\public -Q [[ProjectName]].dpr</CompileCommand>
+
+<UUID>{E1E084FD-7391-4EF0-8BA4-5D009216871D}</UUID>
+<Files>
+<File ID="chunk_xxmi" UnitName="chunk_xxmi1" UnitPath=""><Path>Chunk.xxmi</Path></File>
+<File ID="default_xxm" UnitName="default_xxm1" UnitPath=""><Path>Default.xxm</Path></File>
+<File ID="hello1_xxm" UnitName="hello1_xxm1" UnitPath=""><Path>Hello1.xxm</Path></File></Files>
+<LastModified>2008-06-05T20:02:57</LastModified></XxmWebProject>
