@@ -118,7 +118,7 @@ begin
 
   if Result then
    begin
-    fe:=FileExists(fn);
+    fe:=GetFileSize(fn)>0;
     if fe then
      begin
       if not(ProjectData.load(fn)) then

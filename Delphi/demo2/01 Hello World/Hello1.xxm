@@ -1,0 +1,11 @@
+<html>
+<body>
+[[!var
+i,c:integer;
+]][[
+c:=Context.Parameter['count'].AsInteger;
+if c=0 then c:=10;
+for i:=1 to c do Context.Include('Chunk.xxmi',[i]);
+]]
+</body>
+</html>
