@@ -1,0 +1,28 @@
+[[@Windows,]][[!var
+fh:THandle;
+fd:TWin32FindData;
+fn:string;
+]][[
+
+Context.Include('iHead.xxmi');
+
+fh:=FindFirstFile('files\*.*',fd);
+if not(fh=INVALID_HANDLE_VALUE) then
+ begin
+  repeat
+	fn:=fd.cFileName;
+    if ((fd.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY)=0) and not(LowerCase(fn)='default.xxm') then
+	 begin
+      ]]
+	  <p><a href="files/[[=fn]]">[[=fn]]</a></p>
+	  [[
+	 end;
+  until not(FindNextFile(fh,fd));
+  Windows.FindClose(fh);
+ end;
+ 
+]]
+<p><i><a href="fAdd.xxm">[add file]</a></i></p>
+[[
+Context.Include('iFoot.xxmi');
+]]
