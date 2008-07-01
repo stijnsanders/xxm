@@ -407,6 +407,7 @@ begin
             FPostTempFile:=FPostTempFile+'xxm_'+IntToHex(ecb.ConnID,8)+'.dat';
             FPostData:=TFileStream.Create(FPostTempFile,fmCreate);
             FPostData.Write(ecb.lpbData^,c);
+            dec(l,c);
             c:=$10000;
             SetLength(x,c);
             while l>0 do
@@ -417,7 +418,7 @@ begin
               dec(l,c);
              end;
            end;
-          FPostData.Seek(0,soFromBeginning); 
+          FPostData.Seek(0,soFromBeginning);
          end;
 
         //build page
