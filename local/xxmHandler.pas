@@ -464,6 +464,12 @@ begin
       SimpleAdd('xxlfile\Shell\RegLocal','Register for local handler');
       SimpleAdd('xxlfile\Shell\RegLocal\command','rundll32.exe "'+fn+'",XxmProjectRegister %l');
 
+      SimpleAdd('.xxu','xxufile');
+      SimpleAdd('xxufile','xxm Library Update');
+      SimpleAdd('xxufile\DefaultIcon',fn+',6');
+      //SimpleAdd('xxufile\CLSID',);
+      SimpleAdd('xxufile\shell','');
+
       //Security Zone: Local Intranet
       r.RootKey:=HKEY_CURRENT_USER;
       r.OpenKey('\Software\Microsoft\Windows\CurrentVersion\Internet Settings\ZoneMap\ProtocolDefaults',true);
