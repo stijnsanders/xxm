@@ -1,0 +1,42 @@
+[[@Graphics,JPEG,xxmStream,]][[!var
+b:TBitmap;
+j:TJPEGImage;
+x:TxxmOutputStream;
+]][[
+b:=TBitmap.Create;
+j:=TJPEGImage.Create;
+x:=TxxmOutputStream.Create(Context);
+try
+  b.Width:=500;
+  b.Height:=100;
+  b.PixelFormat:=pf32Bit;
+  with b.Canvas do
+   begin
+    Pen.Color:=clRed;
+    Pen.Width:=1;
+    Brush.Style:=bsClear;
+	Rectangle(0,0,500,100);
+	Font.Name:='Verdana';
+	Font.Color:=clGreen;
+	Font.Style:=[fsBold];
+	Font.Size:=20;
+	TextOut(4,4,'Hello World');
+	Font.Color:=clBlue;
+	Font.Style:=[fsItalic];
+	Font.Size:=14;
+	TextOut(200,12,FormatDateTime('yyyy-mm-dd',Now));
+	TextOut(200,52,FormatDateTime('hh:nn:ss.zzz',Now));
+   end;
+  Context.ContentType:='image/jpeg';
+  with j do
+   begin
+    Assign(b);
+    CompressionQuality:=90;  
+	SaveToStream(x);
+  end;
+finally
+  b.Free;
+  j.Free;
+  x.Free;
+end;
+]]
