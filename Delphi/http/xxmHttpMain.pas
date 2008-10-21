@@ -29,7 +29,7 @@ type
     FParams: TXxmReqPars;
     FIncludeDepth:integer;
     FStatusCode:integer;
-    FStatusText,FExtraHeaders:string;
+    FStatusText,FProjectName,FFragmentName,FExtraHeaders:string;
     FContentType: WideString;
     FAutoEncoding: TXxmAutoEncoding;
     FCookieParsed: boolean;
@@ -267,6 +267,8 @@ begin
   FParams:=nil;//see GetParameter
   FContentType:='text/html';//default (setting?)
   FAutoEncoding:=aeUtf8;//default (setting?)
+  FProjectName:='';//parsed from URL later
+  FFragmentName:='';//parsed from URL later
   FPage:=nil;
   FCookieParsed:=false;
   FStatusCode:=200;
@@ -307,7 +309,7 @@ end;
 procedure TXxmHttpContext.Execute;
 var
   i,j,l:integer;
-  ProjectName,FragmentName,x,y:string;
+  x,y:string;
   p:IxxmPage;
 begin
   try
@@ -321,23 +323,23 @@ begin
       if XxmProjectCache.SingleProject='' then
        begin
         while (i<=l) and not(URI[i] in ['/','?','&','$','#']) do inc(i);
-        ProjectName:=Copy(URI,2,i-2);
-        if ProjectName='' then
+        FProjectName:=Copy(URI,2,i-2);
+        if FProjectName='' then
          begin
           if (i<=l) and (URI[i]='/') then x:='' else x:='/';
           Redirect('/'+XxmProjectCache.DefaultProject+x+Copy(URI,i,l-i+1),true);
          end;
-        FPageClass:='['+ProjectName+']';
+        FPageClass:='['+FProjectName+']';
         if (i<=l) then inc(i) else if l>1 then Redirect(URI+'/',true);
        end
       else
        begin
-        ProjectName:=XxmProjectCache.SingleProject;
+        FProjectName:=XxmProjectCache.SingleProject;
         FPageClass:='[SingleProject]';
        end;
       j:=i;
       while (i<=l) and not(URI[i] in ['?','&','$','#']) do inc(i);
-      FragmentName:=Copy(URI,j,i-j);
+      FFragmentName:=Copy(URI,j,i-j);
       if (i<=l) then inc(i);
       FQueryStringIndex:=i;
      end
@@ -345,8 +347,8 @@ begin
      begin
       FStatusCode:=400;
       FStatusText:='Bad Request';
-      ProjectName:='';
-      FragmentName:='';
+      FProjectName:='';
+      FFragmentName:='';
       SendError('error',[
         'URL',HTMLEncode(URI),
         'CLASS','',
@@ -367,19 +369,19 @@ begin
     if not(x='') then FPostData:=THandlerReadStreamAdapter.Create(
       FContext.Connection.IOHandler,StrToInt(x));
 
-    FProjectEntry:=XxmProjectCache.GetProject(ProjectName);
+    FProjectEntry:=XxmProjectCache.GetProject(FProjectName);
     if not(@XxmAutoBuildHandler=nil) then
-      if not(XxmAutoBuildHandler(FProjectEntry,Self,ProjectName)) then
-        raise EXxmAutoBuildFailed.Create(ProjectName);
+      if not(XxmAutoBuildHandler(FProjectEntry,Self,FProjectName)) then
+        raise EXxmAutoBuildFailed.Create(FProjectName);
     FProjectEntry.OpenContext;
-    FPage:=FProjectEntry.Project.LoadPage(Self,FragmentName);
+    FPage:=FProjectEntry.Project.LoadPage(Self,FFragmentName);
 
     if FPage=nil then
      begin
       //find a file
       //ask project to translate? project should have given a fragment!
-      FPageClass:='['+ProjectName+']GetFilePath';
-      FProjectEntry.GetFilePath(FragmentName,x,y);
+      FPageClass:='['+FProjectName+']GetFilePath';
+      FProjectEntry.GetFilePath(FFragmentName,x,y);
       if FileExists(x) then
        begin
         //TODO: Last Modified
@@ -389,13 +391,13 @@ begin
        end
       else
        begin
-        FPageClass:='['+ProjectName+']404:'+FragmentName;
+        FPageClass:='['+FProjectName+']404:'+FFragmentName;
         FPage:=FProjectEntry.Project.LoadPage(Self,'404.xxm');
         if FPage=nil then
           SendError('fnf',[
             'URL',HTMLEncode(ContextString(csURL)),
-            'PROJECT',ProjectName,
-            'ADDRESS',FragmentName,
+            'PROJECT',FProjectName,
+            'ADDRESS',FFragmentName,
             'PATH',HTMLEncode(x),
             'VERSION',ContextString(csVersion)
           ])
@@ -403,7 +405,7 @@ begin
           try
             FPageClass:=FPage.ClassNameEx;
             FBuilding:=FPage;
-            FPage.Build(Self,nil,[FragmentName,x,y],[]);//any parameters?
+            FPage.Build(Self,nil,[FFragmentName,x,y],[]);//any parameters?
           finally
             FBuilding:=nil;
             //let project free, cache or recycle
@@ -480,6 +482,8 @@ begin
     csAcceptedMimeTypes:Result:=FReqHeaders.Values['Accept'];//TODO:
     csPostMimeType:Result:=FReqHeaders.Values['Post-Mime'];//TODO:
     csURL:Result:=GetURL;
+    csProjectName:Result:=FProjectName;
+    csLocalURL:Result:=FFragmentName;
     csReferer:Result:=FReqHeaders.Values['Referer'];//TODO:
     csLanguage:Result:=FReqHeaders.Values['Language'];//TODO:
     csRemoteAddress:Result:=FContext.Connection.Socket.BoundIP;

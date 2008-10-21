@@ -5,8 +5,8 @@ interface
 uses SysUtils, Classes;
 
 const
-  //$Date: 2008-03-11 23:44:29 +0100 (di, 11 mrt 2008) $
-  XxmRevision='$Rev: 201 $';
+  //$Date$
+  XxmRevision='$Rev$';
   
 type
   IXxmContext=interface;//forward
@@ -37,7 +37,9 @@ type
     csRemoteAddress,
     csRemoteHost,
     csAuthUser,
-    csAuthPassword
+    csAuthPassword,
+    csProjectName,
+    csLocalURL
   );
 
   TXxmVersion=record

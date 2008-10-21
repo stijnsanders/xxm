@@ -21,7 +21,7 @@ type
     FPage, FBuilding: IXxmFragment;
     FHeaderSent:boolean;
     FStatusCode:integer;
-    FStatusText,FExtraHeaders,FRedirectPrefix,FSessionID:string;
+    FStatusText,FProjectName,FFragmentName,FExtraHeaders,FRedirectPrefix,FSessionID:string;
     FIncludeDepth:integer;
     ecb:PEXTENSION_CONTROL_BLOCK;
     FPostData: TStream;
@@ -225,6 +225,8 @@ begin
   FStatusCode:=200;
   FStatusText:='OK';
   FExtraHeaders:='';
+  FProjectName:='';//parsed from URL later
+  FFragmentName:='';//parsed from URL later
   FPostData:=nil;
   FPostTempFile:='';
   FIncludeDepth:=0;
@@ -269,7 +271,7 @@ end;
 procedure TXxmIsapiContext.Execute;
 var
   c,l:cardinal;
-  ProjectName,FragmentName,x,y:string;
+  x,y:string;
   i,j:integer;
   p:IXxmPage;//for directinclude check
   d:TDateTime;
@@ -300,16 +302,16 @@ begin
     if XxmProjectCache.SingleProject='' then
      begin
       while (i<=Length(x)) and not(Char(x[i]) in ['/','?','&','$','#']) do inc(i);
-      ProjectName:=Copy(x,2,i-2);
-      if ProjectName='' then
+      FProjectName:=Copy(x,2,i-2);
+      if FProjectName='' then
        begin
-        //ProjectName:=XxmProjectCache.DefaultProject;
+        //FProjectName:=XxmProjectCache.DefaultProject;
         if (i<=Length(x)) and (x[i]='/') then y:='' else y:='/';
         Redirect('/'+XxmProjectCache.DefaultProject+y+Copy(x,i,Length(x)-i+1),true)
         //redirect raises EXxmPageRedirected
        end;
-      FPageClass:='['+ProjectName+']';
-      FRedirectPrefix:=FRedirectPrefix+'/'+ProjectName;
+      FPageClass:='['+FProjectName+']';
+      FRedirectPrefix:=FRedirectPrefix+'/'+FProjectName;
       if i>Length(x) then Redirect('/',true) else
         if not(x[i]='/') then Redirect('/'+Copy(x,i,Length(x)-i+1),true);
       //redirect raises EXxmPageRedirected
@@ -317,28 +319,28 @@ begin
      end
     else
      begin
-      ProjectName:=XxmProjectCache.SingleProject;
+      FProjectName:=XxmProjectCache.SingleProject;
       FPageClass:='[SingleProject]';
      end;
 
     //fragment name
     j:=i;
     while (j<=Length(x)) and not(x[j] in ['?','&','$','#']) do inc(j);
-    FragmentName:=Copy(x,i,j-i);
+    FFragmentName:=Copy(x,i,j-i);
 
     //create object
-    FProjectEntry:=XxmProjectCache.GetProject(ProjectName);
+    FProjectEntry:=XxmProjectCache.GetProject(FProjectName);
     if not(@XxmAutoBuildHandler=nil) then
-      if not(XxmAutoBuildHandler(FProjectEntry,Self,ProjectName)) then
-        raise EXxmAutoBuildFailed.Create(ProjectName);
+      if not(XxmAutoBuildHandler(FProjectEntry,Self,FProjectName)) then
+        raise EXxmAutoBuildFailed.Create(FProjectName);
     FProjectEntry.OpenContext;
 
-    FPage:=FProjectEntry.Project.LoadPage(Self,FragmentName);
+    FPage:=FProjectEntry.Project.LoadPage(Self,FFragmentName);
     if FPage=nil then
      begin
       //find a file
       //ask project to translate? project should have given a fragment!
-      FProjectEntry.GetFilePath(FragmentName,x,y);
+      FProjectEntry.GetFilePath(FFragmentName,x,y);
       d:=GetFileModifiedDateTime(x);
       if not(d=0) then
        begin
@@ -360,8 +362,8 @@ begin
         if FPage=nil then
           SendError('fnf',[
             'URL',HTMLEncode(URL),
-            'PROJECT',ProjectName,
-            'ADDRESS',FragmentName,
+            'PROJECT',FProjectName,
+            'ADDRESS',FFragmentName,
             'PATH',x,
             'VERSION',ContextString(csVersion)
           ])
@@ -369,7 +371,7 @@ begin
           try
             FPageClass:=FPage.ClassNameEx;
             FBuilding:=FPage;
-            FPage.Build(Self,nil,[FragmentName,x,y],[]);
+            FPage.Build(Self,nil,[FFragmentName,x,y],[]);
           finally
             FBuilding:=nil;
             //let project free, cache or recycle
@@ -485,6 +487,8 @@ begin
     csAcceptedMimeTypes: Result:=GetVar(ecb,'HTTP_ACCEPT');
     csPostMimeType:      Result:=ecb.lpszContentType;
     csURL:               Result:=GetURL;//'HTTP_URL'?
+    csProjectName:       Result:=FProjectName;
+    csLocalURL:          Result:=FFragmentName;
     csReferer:           Result:=GetVar(ecb,'HTTP_REFERER');
     csLanguage:          Result:=GetVar(ecb,'HTTP_ACCEPT_LANGUAGE');
     csRemoteAddress:     Result:=GetVar(ecb,'REMOTE_ADDR');

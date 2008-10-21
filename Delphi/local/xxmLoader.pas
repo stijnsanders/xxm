@@ -21,7 +21,7 @@ type
     FLock:TRTLCriticalSection;
     FProjectEntry:TXxmProjectCacheEntry;
     FStatusCode:integer;
-    FStatusText,FExtraInfo,FQueryString:WideString;
+    FStatusText,FProjectName,FFragmentName,FExtraInfo,FQueryString:WideString;
     FirstData,StatusSet,Aborted:boolean;
     FPostData:TStream;
     FPostTempFile,FPageClass:string;
@@ -166,6 +166,8 @@ begin
   FIncludeDepth:=0;
   StatusSet:=false;
   FStatusCode:=200;
+  FProjectName:='';//parsed from URL later
+  FFragmentName:='';//parsed from URL later
   FStatusText:='';
   FPostData:=nil;
   FPostTempFile:='';
@@ -215,7 +217,7 @@ end;
 procedure TXxmLocalContext.Execute;
 var
   i,j,l:integer;
-  ProjectName,FragmentName,x:WideString;
+  x:WideString;
   ba:TBindInfoF;
   bi:TBindInfo;
   p:IXxmPage;
@@ -289,14 +291,14 @@ begin
     j:=i;
     while (i<=l) and not(Char(FURL[i]) in ['/','?','&','$','#']) do inc(i);
     //if server then remote?
-    ProjectName:=Copy(FURL,j,i-j);
-    if ProjectName='' then
+    FProjectName:=Copy(FURL,j,i-j);
+    if FProjectName='' then
      begin
-      ProjectName:=DefaultProjectName;
-      FURL:=Copy(FURL,1,j-1)+ProjectName+Copy(FURL,i,Length(FURL)-i+1);
+      FProjectName:=DefaultProjectName;
+      FURL:=Copy(FURL,1,j-1)+FProjectName+Copy(FURL,i,Length(FURL)-i+1);
       OleCheck(ProtSink.ReportProgress(BINDSTATUS_REDIRECTING,PWideChar(FURL)));
      end;
-    FPageClass:='['+ProjectName+']';
+    FPageClass:='['+FProjectName+']';
     if (i>l) then
      begin
       FURL:=FURL+'/';
@@ -307,32 +309,32 @@ begin
 
     j:=i;
     while (i<=l) and not(Char(FURL[i]) in ['?','&','$','#']) do inc(i);
-    FragmentName:=Copy(FURL,j,i-j);
+    FFragmentName:=Copy(FURL,j,i-j);
     if (FURL[i]='?') then inc(i);
     FQueryString:=Copy(FURL,i,l-i+1);
 
     //IHttpNegotiate here? see GetRequestParam
 
     //create object
-    OleCheck(ProtSink.ReportProgress(BINDSTATUS_CONNECTING, PWideChar(ProjectName)));
+    OleCheck(ProtSink.ReportProgress(BINDSTATUS_CONNECTING, PWideChar(FProjectName)));
     if XxmProjectCache=nil then XxmProjectCache:=TXxmProjectCache.Create;
-    FProjectEntry:=XxmProjectCache.GetProject(ProjectName);
+    FProjectEntry:=XxmProjectCache.GetProject(FProjectName);
     if not(@XxmAutoBuildHandler=nil) then
      begin
-      OleCheck(ProtSink.ReportProgress(BINDSTATUS_ENCODING, PWideChar(ProjectName)));//?
-      if not(XxmAutoBuildHandler(FProjectEntry,Self,ProjectName)) then
-        raise EXxmAutoBuildFailed.Create(ProjectName);
+      OleCheck(ProtSink.ReportProgress(BINDSTATUS_ENCODING, PWideChar(FProjectName)));//?
+      if not(XxmAutoBuildHandler(FProjectEntry,Self,FProjectName)) then
+        raise EXxmAutoBuildFailed.Create(FProjectName);
      end;
     FProjectEntry.OpenContext; 
-    OleCheck(ProtSink.ReportProgress(BINDSTATUS_SENDINGREQUEST, PWideChar(FragmentName)));
-    FPage:=FProjectEntry.Project.LoadPage(Self,FragmentName);
+    OleCheck(ProtSink.ReportProgress(BINDSTATUS_SENDINGREQUEST, PWideChar(FFragmentName)));
+    FPage:=FProjectEntry.Project.LoadPage(Self,FFragmentName);
 
     if FPage=nil then
      begin
       //find a file
       //ask project to translate? project should have given a fragment!
-      FPageClass:='['+ProjectName+']GetFilePath';
-      FProjectEntry.GetFilePath(FragmentName,FSingleFileSent,x);
+      FPageClass:='['+FProjectName+']GetFilePath';
+      FProjectEntry.GetFilePath(FFragmentName,FSingleFileSent,x);
       if FileExists(FSingleFileSent) then
        begin
         //TODO: if directory file-list?
@@ -341,13 +343,13 @@ begin
        end
       else
        begin
-        FPageClass:='['+ProjectName+']404:'+FragmentName;
+        FPageClass:='['+FProjectName+']404:'+FFragmentName;
         FPage:=FProjectEntry.Project.LoadPage(Self,'404.xxm');
         if FPage=nil then
           SendError('fnf',[
             'URL',HTMLEncode(URL),
-            'PROJECT',ProjectName,
-            'ADDRESS',FragmentName,
+            'PROJECT',FProjectName,
+            'ADDRESS',FFragmentName,
             'PATH',HTMLEncode(FSingleFileSent),
             'VERSION',ContextString(csVersion)
           ])
@@ -355,7 +357,7 @@ begin
           try
             FPageClass:=FPage.ClassNameEx;
             FBuilding:=FPage;
-            FPage.Build(Self,nil,[FragmentName,FSingleFileSent,x],[]);//any parameters?
+            FPage.Build(Self,nil,[FFragmentName,FSingleFileSent,x],[]);//any parameters?
           finally
             FBuilding:=nil;
             //let project free, cache or recycle
@@ -616,6 +618,8 @@ begin
       def:=MimeFormUrlEncoded;
      end;
     csURL:               st:=BINDSTRING_URL;
+    csProjectName:       Result:=FProjectName;
+    csLocalURL:          Result:=FFragmentName;
     csReferer:           Result:=GetRequestParam('Referer');
     csLanguage:
      begin
