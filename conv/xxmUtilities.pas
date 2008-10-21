@@ -102,6 +102,8 @@ begin
                  AbandonDirectory:=true;
                  for i:=Dirs.Count-1 downto 0 do
                    if Copy(Dirs[i],1,Length(CDir))=CDir then Dirs.Delete(i);
+                 for i:=FileList.Count-1 downto 0 do
+                   if Copy(FileList[i],1,Length(CDir))=CDir then FileList.Delete(i);
 
                  //TODO: queue secondary process directory?
                 end;
