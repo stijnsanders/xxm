@@ -281,7 +281,8 @@ begin
           end;
         //assert not(CID='')
         if not(cid[1] in ['A'..'Z','a'..'z']) then cid:='x'+cid;
-        if IsReservedWord(cid) then cid:='x'+cid;
+        if IsReservedWord(cid) then
+          if LowerCase(cid)='or' then cid:='x_'+cid else cid:='x'+cid;
 
         xFile:=ForceNodeID(DataFiles,' File',cid);
         i:=sl1.IndexOf(cid);
@@ -641,7 +642,7 @@ var
   cl1,cl2,cl3:string;
   pi:TProcessInformation;
   si:TStartupInfo;
-  h1,h1x,h2:THandle;
+  h1,h2:THandle;
   sa:TSecurityAttributes;
   h:THandleStream;
   f:TFileStream;
@@ -659,7 +660,7 @@ var
       RaiseLastOSError;
     CloseHandle(pi.hThread);
     try
-      while not(h.Size=0) or (WaitForSingleObject(pi.hProcess,50)=WAIT_TIMEOUT) do
+      while (WaitForSingleObject(pi.hProcess,50)=WAIT_TIMEOUT) or not(h.Size=0) do
        begin
         c:=h.Read(d[0],$1000);
         if not(c=0) then
@@ -686,10 +687,7 @@ begin
       sa.nLength:=SizeOf(TSecurityAttributes);
       sa.lpSecurityDescriptor:=nil;
       sa.bInheritHandle:=true;
-      if not(CreatePipe(h1x,h2,@sa,$10000)) then RaiseLastOSError;
-      if not(DuplicateHandle(GetCurrentProcess(),h1x,
-        GetCurrentProcess(),@h1,0,false,DUPLICATE_SAME_ACCESS)) then RaiseLastOSError;
-      CloseHandle(h1x);
+      if not(CreatePipe(h1,h2,@sa,$10000)) then RaiseLastOSError;
       ZeroMemory(@si,SizeOf(TStartupInfo));
       si.cb:=SizeOf(TStartupInfo);
       si.dwFlags:=STARTF_USESHOWWINDOW or STARTF_USESTDHANDLES;

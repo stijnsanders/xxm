@@ -4,8 +4,8 @@ interface
 
 uses xxm, Classes;
 
-//$Rev: 198 $
-//$Date: 2008-01-21 22:52:37 +0100 (ma, 21 jan 2008) $
+//$Rev$
+//$Date$
 
 type
   TXxmFragmentClass=class of TXxmFragment;
@@ -28,7 +28,7 @@ const
 
 implementation
 
-uses SysUtils, Registry;
+uses SysUtils;
 
 { TXxmFragmentRegistry }
 
