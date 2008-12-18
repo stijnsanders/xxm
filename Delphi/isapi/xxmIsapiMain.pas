@@ -125,7 +125,7 @@ uses ActiveX, Variants, ComObj, xxmCommonUtils;
 
 resourcestring
   SXxmContextStringUnknown='Unknown ContextString __';
-  SXxmResponseHeaderAlreadySent='Response header has already been send.';
+  SXxmResponseHeaderAlreadySent='Response header has already been sent.';
   SXxmDirectInclude='Direct call to include fragment is not allowed.';
   SXxmIncludeFragmentNotFound='Include fragment not found "__"';
   SXxmIncludeStackFull='Maximum level of includes exceeded';
