@@ -11,7 +11,7 @@ Add this unit to the uses clause of the project source file (xxmp.pas) and add t
 function TXxmSomeProject.LoadPage(Context: IXxmContext; Address: WideString): IXxmFragment;
 begin
   inherited;
->>>  SetSession(Context.SessionID);  <<<
+>>>  SetSession(Context);  <<<
   Result:=LoadFragment(Address);
 end;
 
@@ -19,7 +19,7 @@ end;
 
 interface
 
-uses Contnrs;
+uses xxm, Contnrs;
 
 type
   TXxmSession=class(TObject)
@@ -31,11 +31,11 @@ type
     Authenticated:boolean;
     Name:string;
 
-    constructor Create(SessionID:WideString);
+    constructor Create(Context: IXxmContext);
     property SessionID:WideString read FSessionID;
   end;
 
-procedure SetSession(SessionID: WideString);
+procedure SetSession(Context: IXxmContext);
 procedure AbandonSession;
 
 threadvar
@@ -49,17 +49,22 @@ uses SysUtils;
 var
   SessionStore:TObjectList;
 
-procedure SetSession(SessionID: WideString);
+procedure SetSession(Context: IXxmContext);
 var
   i:integer;
+  sid:WideString;
 begin
   if SessionStore=nil then SessionStore:=TObjectList.Create(true);
+  sid:=Context.SessionID;
   i:=0;
-  while (i<SessionStore.Count) and not(TXxmSession(SessionStore[i]).SessionID=SessionID) do inc(i);
+  while (i<SessionStore.Count) and not(TXxmSession(SessionStore[i]).SessionID=sid) do inc(i);
   //TODO: session expiry!!!
   if (i<SessionStore.Count) then Session:=TXxmSession(SessionStore[i]) else
    begin
-    Session:=TXxmSession.Create(SessionID);
+    //as a security measure, disallow  new sessions on a first POST request
+    if Context.ContextString(csVerb)='POST' then
+      raise Exception.Create('Access denied.');
+    Session:=TXxmSession.Create(Context);
     SessionStore.Add(Session);
    end;
 end;
@@ -73,10 +78,10 @@ end;
 
 { TxxmSession }
 
-constructor TXxmSession.Create(SessionID: WideString);
+constructor TXxmSession.Create(Context: IXxmContext);
 begin
   inherited Create;
-  FSessionID:=SessionID;
+  FSessionID:=Context.SessionID;
   //TODO: initiate expiry
 
   //default values
