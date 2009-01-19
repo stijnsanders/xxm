@@ -32,7 +32,7 @@ end;
 function TXxmdemo.LoadPage(Context: IXxmContext; Address: WideString): IXxmFragment;
 begin
   inherited;
-  SetSession(Context.SessionID);
+  SetSession(Context);
   Result:=LoadFragment(Address);
 end;
 

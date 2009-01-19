@@ -204,7 +204,8 @@ var
   v:OleVariant;
 begin
   try
-    v:=FRecordSet.Fields[Idx].Value;
+    //v:=FRecordSet.Fields[Idx].Value;
+	v:=FRecordSet.Collect[idx];
   except
     on e:EOleException do
       if cardinal(e.ErrorCode)=$800A0CC1 then
@@ -218,7 +219,8 @@ end;
 function TQueryResult.GetStr(Idx: OleVariant): WideString;
 begin
   try
-    Result:=VarToWideStr(FRecordSet.Fields[Idx].Value);
+    //Result:=VarToWideStr(FRecordSet.Fields[Idx].Value);
+	Result:=VarToWideStr(FRecordSet.Collect[Idx]);
   except
     on e:EOleException do
       if cardinal(e.ErrorCode)=$800A0CC1 then
@@ -233,7 +235,8 @@ var
   v:OleVariant;
 begin
   try
-    v:=FRecordSet.Fields[Idx].Value;
+    //v:=FRecordSet.Fields[Idx].Value;
+	v:=FRecordSet.Collect[Idx];
   except
     on e:EOleException do
       if cardinal(e.ErrorCode)=$800A0CC1 then
@@ -250,7 +253,8 @@ end;
 function TQueryResult.GetValue(Idx: OleVariant): OleVariant;
 begin
   try
-    Result:=FRecordSet.Fields[Idx].Value;
+    //Result:=FRecordSet.Fields[Idx].Value;
+	Result:=FRecordSet.Collect[Idx];
   except
     on e:EOleException do
       if cardinal(e.ErrorCode)=$800A0CC1 then
@@ -267,7 +271,8 @@ end;
 
 function TQueryResult.IsNull(Idx: OleVariant): boolean;
 begin
-  Result:=VarIsNull(FRecordSet.Fields[Idx].Value);
+  //Result:=VarIsNull(FRecordSet.Fields[Idx].Value);
+  Result:=VarIsNull(FRecordSet.Collect[Idx]);
 end;
 
 function TQueryResult.IsEof: boolean;
@@ -321,7 +326,8 @@ end;
 function TDataChanger.GetValue(Idx: OleVariant): OleVariant;
 begin
   try
-    Result:=FRecordSet.Fields[Idx].Value;
+    //Result:=FRecordSet.Fields[Idx].Value;
+	Result:=FRecordSet.Collect[Idx];
   except
     on e:EOleException do
       if cardinal(e.ErrorCode)=$800A0CC1 then
