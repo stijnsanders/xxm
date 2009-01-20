@@ -53,7 +53,7 @@ begin
   finally
     r.Free;
   end;
-  FServer:=TXxmHTTPServer.Create;
+  FServer:=TXxmHTTPServer.Create(nil);
   FServer.DefaultPort:=p;
   FServer.Active:=true;
 end;

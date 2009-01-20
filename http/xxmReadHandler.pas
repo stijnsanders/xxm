@@ -7,7 +7,7 @@ uses Classes, IdIOHandler;
 type
   THandlerReadStreamAdapter=class(TStream)
   private
-    FSize,FLeft:Int64;
+    FSize:Int64;
     FHandler:TIdIOHandler;
   protected
     function GetSize: Int64; override;
@@ -32,7 +32,6 @@ constructor THandlerReadStreamAdapter.Create(Handler: TIdIOHandler;
 begin
   inherited Create;
   FSize:=Size;
-  FLeft:=Size;
   FHandler:=Handler;
 end;
 
@@ -59,14 +58,8 @@ end;
 
 function THandlerReadStreamAdapter.Read(var Buffer;
   Count: Integer): Longint;
-var
-  d:TIdBytes;
 begin
-  if Count>FLeft then Result:=FLeft else Result:=Count;
-  FHandler.ReadBytes(d,Result,false);
-  Result:=Length(d);
-  Move(d[0],Buffer,Result);
-  dec(FLeft,Result);
+  Result:=FHandler.Recv(Buffer,Count);
 end;
 
 procedure THandlerReadStreamAdapter.SetSize(NewSize: Integer);
