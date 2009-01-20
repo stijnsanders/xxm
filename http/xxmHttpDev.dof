@@ -94,7 +94,7 @@ OutputDir=..\bin
 UnitOutputDir=..\dcu
 PackageDLLOutputDir=
 PackageDCPOutputDir=
-SearchPath=
+SearchPath=C:\Program Files\Indy9
 Packages=vcl;rtl;vclie;xmlrtl;inet;inetdbbde;inetdbxpress;vclx;dbrtl;soaprtl;dsnap;VclSmp;dbexpress;vcldb;dbxcds;adortl;ibxpress;vclactnband;bdertl;vclshlctrls;dclOfficeXP;IndyCore70;IndySystem70;IndyProtocols70;Siggma;MozillaControl;GeckoSDK
 Conditionals=
 DebugSourceDirs=
@@ -111,7 +111,7 @@ AutoIncBuild=0
 MajorVer=1
 MinorVer=0
 Release=0
-Build=220
+Build=222
 Debug=0
 PreRelease=0
 Special=0
@@ -122,7 +122,7 @@ CodePage=1252
 [Version Info Keys]
 CompanyName=
 FileDescription=xxm Server (AutoBuild)
-FileVersion=1.0.0.220
+FileVersion=1.0.0.222
 InternalName=
 LegalCopyright=
 LegalTrademarks=
@@ -134,8 +134,9 @@ Comments=
 Count=1
 Item0=WinTypes=Windows;WinProcs=Windows;DbiTypes=BDE;DbiProcs=BDE;DbiErrs=BDE;
 [HistoryLists\hlSearchPath]
-Count=1
-Item0=..\..\public
+Count=2
+Item0=C:\Program Files\Indy9
+Item1=..\..\public
 [HistoryLists\hlUnitOutputDirectory]
 Count=2
 Item0=..\dcu

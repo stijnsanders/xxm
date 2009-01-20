@@ -10,7 +10,8 @@ uses
   xxmParUtils in '..\common\xxmParUtils.pas',
   xxmPReg in 'xxmPReg.pas',
   xxmCommonUtils in '..\common\xxmCommonUtils.pas',
-  xxmReadHandler in 'xxmReadHandler.pas';
+  xxmReadHandler in 'xxmReadHandler.pas',
+  MSXML2_TLB in '..\common\MSXML2_TLB.pas';
 
 {$R *.res}
 

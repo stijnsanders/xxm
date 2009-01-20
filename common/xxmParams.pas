@@ -186,8 +186,8 @@ begin
         r:=q+1;
         while (r<=l) and not(pd[r]='&') do inc(r);
         Add(TXxmReqParPost.Create(Self,
-          UTF8Decode(URLDecode(Copy(pd,p,q-p))),
-          UTF8Decode(URLDecode(Copy(pd,q+1,r-q-1)))));
+          URLDecode(Copy(pd,p,q-p)),
+          URLDecode(Copy(pd,q+1,r-q-1))));
         inc(r);
        end;
 

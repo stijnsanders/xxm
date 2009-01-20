@@ -35,7 +35,7 @@ end;
 function TXxmProject1.LoadPage(Context: IXxmContext;
   Address: WideString): IXxmFragment;
 begin
-  if Session=nil then SetSession(Context.SessionID);
+  if Session=nil then SetSession(Context);
   Result:=LoadFragment(Address) as IXxmPage;
 end;
 
