@@ -39,9 +39,14 @@ type
   public
     constructor Create(AContext: IXxmContext; ACaller: IXxmFragment);
     destructor Destroy; override;
-    procedure Send(Data: OleVariant);
+    procedure Send(Data: OleVariant); overload;
+    procedure Send(Value: integer); overload;
+    procedure Send(Value: int64); overload;
+    procedure Send(Value: cardinal); overload;
+    procedure Send(const Values:array of OleVariant); overload;
     procedure SendFile(FilePath: WideString);
-    procedure SendHTML(Data: OleVariant);
+    procedure SendHTML(Data: OleVariant); overload;
+    procedure SendHTML(const Values:array of OleVariant); overload;
     procedure SendStream(s: TStream);
     procedure Include(Address: WideString); overload;
     procedure Include(Address: WideString;
@@ -77,6 +82,7 @@ begin
   FBuilding:=ACaller;
   FIncludeDepth:=0;
   FOutput:=TStringStream.Create('');
+  //TODO: encoding!!
 end;
 
 destructor TStringContext.Destroy;
@@ -214,7 +220,7 @@ end;
 
 procedure TStringContext.Send(Data: OleVariant);
 begin
-  FOutput.WriteString(HTMLEncode(VarToStr(Data)));
+  FOutput.WriteString(HTMLEncode(Data));
 end;
 
 procedure TStringContext.SendFile(FilePath: WideString);
@@ -281,6 +287,37 @@ begin
   finally
     f.Free;
   end;
+end;
+
+procedure TStringContext.Send(Value: int64);
+begin
+  FOutput.WriteString(IntToStr(Value));
+end;
+
+procedure TStringContext.Send(Value: integer);
+begin
+  FOutput.WriteString(IntToStr(Value));
+end;
+
+procedure TStringContext.Send(const Values: array of OleVariant);
+var
+  i:integer;
+begin
+  for i:=0 to Length(Values)-1 do
+    FOutput.WriteString(HTMLEncode(Values[i]));
+end;
+
+procedure TStringContext.Send(Value: cardinal);
+begin
+  FOutput.WriteString(IntToStr(Value));
+end;
+
+procedure TStringContext.SendHTML(const Values: array of OleVariant);
+var
+  i:integer;
+begin
+  for i:=0 to Length(Values)-1 do
+    FOutput.WriteString(VarToStr(Values[i]));
 end;
 
 end.

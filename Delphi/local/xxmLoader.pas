@@ -80,8 +80,13 @@ type
 
     procedure DispositionAttach(FileName: WideString);
     //TODO: progress
-    procedure Send(Data: OleVariant);
-    procedure SendHTML(Data: OleVariant);
+    procedure Send(Data: OleVariant); overload;
+    procedure Send(Value: integer); overload;
+    procedure Send(Value: int64); overload;
+    procedure Send(Value: cardinal); overload;
+    procedure Send(const Values:array of OleVariant); overload;
+    procedure SendHTML(Data: OleVariant); overload;
+    procedure SendHTML(const Values:array of OleVariant); overload;
     procedure SendFile(FilePath: WideString);
     procedure SendStream(s: TStream);
     function ContextString(cs: TXxmContextString): WideString;
@@ -1081,6 +1086,35 @@ end;
 procedure TXxmLocalContext.Unlock;
 begin
   LeaveCriticalSection(FLock);
+end;
+
+procedure TXxmLocalContext.Send(Value: int64);
+begin
+  SendRaw(IntToStr(Value));
+end;
+
+procedure TXxmLocalContext.Send(Value: integer);
+begin
+  SendRaw(IntToStr(Value));
+end;
+
+procedure TXxmLocalContext.Send(const Values: array of OleVariant);
+var
+  i:integer;
+begin
+  for i:=0 to Length(Values)-1 do SendRaw(HTMLEncode(Values[i]));
+end;
+
+procedure TXxmLocalContext.Send(Value: cardinal);
+begin
+  SendRaw(IntToStr(Value));
+end;
+
+procedure TXxmLocalContext.SendHTML(const Values: array of OleVariant);
+var
+  i:integer;
+begin
+  for i:=0 to Length(Values)-1 do SendRaw(VarToWideStr(Values[i]));
 end;
 
 { TXxmPageLoader }

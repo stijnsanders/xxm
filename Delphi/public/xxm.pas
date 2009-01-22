@@ -7,7 +7,7 @@ uses SysUtils, Classes;
 const
   //$Date$
   XxmRevision='$Rev$';
-  
+
 type
   IXxmContext=interface;//forward
   IXxmFragment=interface; //forward
@@ -94,8 +94,8 @@ type
     function GetParameterCount:integer;
     function GetSessionID:WideString;
 
-    procedure Send(Data: OleVariant);
-    procedure SendHTML(Data: OleVariant);
+    procedure Send(Data: OleVariant); overload;
+    procedure SendHTML(Data: OleVariant); overload;
     procedure SendFile(FilePath: WideString);
     procedure SendStream(s:TStream); //TODO: IStream
     procedure Include(Address: WideString); overload;
@@ -118,6 +118,13 @@ type
     procedure SetCookie(Name,Value:WideString; KeepSeconds:cardinal;
       Comment,Domain,Path:WideString; Secure,HttpOnly:boolean); overload;
     //procedure SetCookie2();
+
+    //added V1.0.1
+    procedure Send(Value: integer); overload;
+    procedure Send(Value: int64); overload;
+    procedure Send(Value: cardinal); overload;
+    procedure Send(const Values:array of OleVariant); overload;
+    procedure SendHTML(const Values:array of OleVariant); overload;
 
     //TODO: pointer to project?
 
@@ -321,7 +328,7 @@ begin
   s:=XxmRevision;
   Result.Major:=1;
   Result.Minor:=0;
-  Result.Release:=0;
+  Result.Release:=1;
   Result.Build:=StrToInt(Copy(s,7,Length(s)-8));
 end;
 

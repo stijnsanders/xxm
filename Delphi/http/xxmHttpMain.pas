@@ -59,8 +59,13 @@ type
     function GetParameterCount:integer;
     function GetSessionID:WideString;
 
-    procedure Send(Data: OleVariant);
-    procedure SendHTML(Data: OleVariant);
+    procedure Send(Data: OleVariant); overload;
+    procedure Send(Value: integer); overload;
+    procedure Send(Value: int64); overload;
+    procedure Send(Value: cardinal); overload;
+    procedure Send(const Values:array of OleVariant); overload;
+    procedure SendHTML(Data: OleVariant); overload;
+    procedure SendHTML(const Values:array of OleVariant); overload;
     procedure SendFile(FilePath: WideString);
     procedure SendStream(s:TStream);
     procedure Include(Address: WideString); overload;
@@ -674,12 +679,12 @@ end;
 
 procedure TXxmHttpContext.Send(Data: OleVariant);
 begin
-  if not(VarIsNull(Data)) then SendRaw(HTMLEncode(Data));
+  SendRaw(HTMLEncode(Data));
 end;
 
 procedure TXxmHttpContext.SendHTML(Data: OleVariant);
 begin
-  if not(VarIsNull(Data)) then SendRaw(Data);
+  SendRaw(VarToWideStr(Data));
 end;
 
 procedure TXxmHttpContext.SendFile(FilePath: WideString);
@@ -819,6 +824,35 @@ begin
     FAutoEncoding:=aeContentDefined;//?
    end;
   SendHTML(s);
+end;
+
+procedure TXxmHttpContext.Send(Value: int64);
+begin
+  SendRaw(IntToStr(Value));
+end;
+
+procedure TXxmHttpContext.Send(Value: integer);
+begin
+  SendRaw(IntToStr(Value));
+end;
+
+procedure TXxmHttpContext.Send(const Values: array of OleVariant);
+var
+  i:integer;
+begin
+  for i:=0 to Length(Values)-1 do SendRaw(HTMLEncode(Values[i]));
+end;
+
+procedure TXxmHttpContext.Send(Value: cardinal);
+begin
+  SendRaw(IntToStr(Value));
+end;
+
+procedure TXxmHttpContext.SendHTML(const Values: array of OleVariant);
+var
+  i:integer;
+begin
+  for i:=0 to Length(Values)-1 do SendRaw(VarToWideStr(Values[i]));
 end;
 
 end.
