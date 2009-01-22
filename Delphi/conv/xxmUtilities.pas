@@ -5,7 +5,7 @@ interface
 uses Windows, SysUtils, Classes;
 
 procedure ListFilesInPath(FileList:TStringList;Path:string);
-function IsReservedWord(x:string):boolean;
+function GetInternalIdentifier(FileName:string;var cPathIndex,fExtIndex,fPathIndex:integer):string;
 function Signature(Path:string):string;
 function GetFileSize(Path:string):integer;
 function GetSelfPath:string;
@@ -213,6 +213,43 @@ begin
   while not(i=0) and not(Result[i]=PathDelim) do dec(i);
   Result:=Copy(Result,1,i);
   if Copy(Result,1,4)='\\?\' then Result:=Copy(Result,5,Length(Result)-4);
+end;
+
+function GetInternalIdentifier(FileName:string;var cPathIndex,fExtIndex,fPathIndex:integer):string;
+var
+  i:integer;
+begin
+  Result:='';
+  cPathIndex:=1;
+  fPathIndex:=0;
+  fExtIndex:=0;
+  for i:=1 to Length(FileName) do
+    case FileName[i] of
+      '\':
+       begin
+        Result:=Result+'__';
+        cPathIndex:=Length(Result)+1;
+        fPathIndex:=i;
+       end;
+      '.':
+       begin
+        Result:=Result+'_';
+        fExtIndex:=i;
+       end;
+      'A'..'Z':
+        Result:=Result+char(byte(FileName[i])+$20);
+      '0'..'9','_','a'..'z':
+        Result:=Result+FileName[i];
+      else
+        Result:=Result+'x'+Hex[byte(FileName[i]) shr 4]+Hex[byte(FileName[i]) and $F];
+    end;
+  //assert not(CID='')
+  if not(Result[1] in ['A'..'Z','a'..'z']) then Result:='x'+Result;
+  if IsReservedWord(Result) then
+    if LowerCase(Result)='or' then
+      Result:='x_'+Result
+    else
+      Result:='x'+Result;
 end;
 
 end.
