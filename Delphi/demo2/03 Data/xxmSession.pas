@@ -100,7 +100,12 @@ end;
 destructor TXxmSession.Destroy;
 begin
   //TODO: connection pool
-  Connection:=nil;
+  try
+    Connection:=nil;
+  except
+    //COM may have died, dirty fix
+	pointer(Connection):=nil;
+  end;
   inherited;
 end;
 
