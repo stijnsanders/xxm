@@ -385,7 +385,8 @@ end;
 procedure TXxmLocalHandlerFactory.UpdateRegistry(Register: Boolean);
 var
   r:TRegistry;
-  fn:string;
+  fn,fn1:string;
+  i:integer;
   procedure SimpleAdd(Key,Value:string);
   begin
     r.OpenKey(Key,true);
@@ -408,24 +409,15 @@ begin
       r.WriteString('URL Protocol','');
       r.CloseKey;
 
-      r.OpenKey('\'+URLSchema+'\shell',true);
-      r.WriteString('','open');
-      r.CloseKey;
-
-      r.OpenKey('\'+URLSchema+'\shell\open',true);
-      r.WriteString('','Open');
-      r.CloseKey;
-
-      r.OpenKey('\'+URLSchema+'\shell\open\command',true);
-      r.WriteString('','iexplore "%l"');
-      r.CloseKey;
-
+      SimpleAdd('\'+URLSchema+'\shell','open');
+      SimpleAdd('\'+URLSchema+'\shell\open','Open');
+      SimpleAdd('\'+URLSchema+'\shell\open\command','iexplore "%l"');
       SimpleAdd('\'+URLSchema+'\DefaultIcon',fn+',1');
 
-      //r.OpenKey('\'+URLSchema+'\Extensions',true);
-      //r.OpenKey('\'+URLSchema+'\shell',true);
-      //r.OpenKey('\'+URLSchema+'\shell\open',true);
-      //r.OpenKey('\'+URLSchema+'\shell\open\command',true);
+      //SimpleAdd(.OpenKey('\'+URLSchema+'\Extensions',
+      //SimpleAdd(.OpenKey('\'+URLSchema+'\shell',
+      //SimpleAdd(.OpenKey('\'+URLSchema+'\shell\open',
+      //SimpleAdd(.OpenKey('\'+URLSchema+'\shell\open\command',
 
       r.OpenKey('\Protocols\Handler\'+URLSchema,true);
       r.WriteString('',URLSchemaDescription);
@@ -440,35 +432,47 @@ begin
       r.WriteString('Content Type','text/xml');
       r.CloseKey;
       SimpleAdd('xxmpfile','xxm Project File');
+      i:=Length(fn);
+      while not(i=0) and not(fn[i]=PathDelim) do dec(i);
+      fn1:=Copy(fn,1,i)+'xxmProject.exe';
+      if FileExists(fn1) then
+       begin
+        SimpleAdd('xxmpfile\shell','open');
+        SimpleAdd('xxmpfile\shell\open','Properties');
+        SimpleAdd('xxmpfile\shell\open\command','"'+fn1+'" "%l"');
+       end
+      else
+       begin
+        SimpleAdd('xxmpfile\shell','');
+       end;
       SimpleAdd('xxmpfile\DefaultIcon',fn+',3');
       //SimpleAdd('xxmpfile\CLSID',);
-      SimpleAdd('xxmpfile\shell','');
 
       SimpleAdd('.xxm','xxmfile');
       //TODO: mime type?
       SimpleAdd('xxmfile','xxm Page File');
+      SimpleAdd('xxmfile\shell','');
       SimpleAdd('xxmfile\DefaultIcon',fn+',4');
       //SimpleAdd('xxmfile\CLSID',);
-      SimpleAdd('xxmfile\shell','');
       SimpleAdd('.xxmi','xxmifile');
       SimpleAdd('xxmifile','xxm Include File');
+      SimpleAdd('xxmifile\shell','');
       SimpleAdd('xxmifile\DefaultIcon',fn+',5');
       //SimpleAdd('xxmifile\CLSID',);
-      SimpleAdd('xxmifile\shell','');
       SimpleAdd('.xxl','xxlfile');
       SimpleAdd('xxlfile','xxm Library');
+      SimpleAdd('xxlfile\shell','');
       SimpleAdd('xxlfile\DefaultIcon',fn+',2');
       //SimpleAdd('xxlfile\CLSID',);
-      SimpleAdd('xxlfile\shell','');
 
       SimpleAdd('xxlfile\Shell\RegLocal','Register for local handler');
       SimpleAdd('xxlfile\Shell\RegLocal\command','rundll32.exe "'+fn+'",XxmProjectRegister %l');
 
       SimpleAdd('.xxu','xxufile');
       SimpleAdd('xxufile','xxm Library Update');
+      SimpleAdd('xxufile\shell','');
       SimpleAdd('xxufile\DefaultIcon',fn+',6');
       //SimpleAdd('xxufile\CLSID',);
-      SimpleAdd('xxufile\shell','');
 
       //Security Zone: Local Intranet
       r.RootKey:=HKEY_CURRENT_USER;
