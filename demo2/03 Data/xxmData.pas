@@ -70,6 +70,7 @@ type
   end;
 
   EQueryStoreError=class(Exception);
+  EFieldNotFound=class(Exception);
 
 var
   QueryStore: TQueryStore;
@@ -209,7 +210,7 @@ begin
   except
     on e:EOleException do
       if cardinal(e.ErrorCode)=$800A0CC1 then
-        raise Exception.Create('GetInt: Field not found: '+VarToStr(Idx));
+        raise EFieldNotFound.Create('GetInt: Field not found: '+VarToStr(Idx));
       else
         raise;
   end;
@@ -224,7 +225,7 @@ begin
   except
     on e:EOleException do
       if cardinal(e.ErrorCode)=$800A0CC1 then
-        raise Exception.Create('GetStr: Field not found: '+VarToStr(Idx));
+        raise EFieldNotFound.Create('GetStr: Field not found: '+VarToStr(Idx));
       else
         raise;
   end;
@@ -240,7 +241,7 @@ begin
   except
     on e:EOleException do
       if cardinal(e.ErrorCode)=$800A0CC1 then
-        raise Exception.Create('GetDate: Field not found: '+VarToStr(Idx));
+        raise EFieldNotFound.Create('GetDate: Field not found: '+VarToStr(Idx));
       else
         raise;
   end;
@@ -258,7 +259,7 @@ begin
   except
     on e:EOleException do
       if cardinal(e.ErrorCode)=$800A0CC1 then
-        raise Exception.Create('Field not found: '+VarToStr(Idx));
+        raise EFieldNotFound.Create('Field not found: '+VarToStr(Idx));
       else
         raise;
   end;
@@ -271,8 +272,19 @@ end;
 
 function TQueryResult.IsNull(Idx: OleVariant): boolean;
 begin
-  //Result:=VarIsNull(FRecordSet.Fields[Idx].Value);
-  Result:=VarIsNull(FRecordSet.Collect[Idx]);
+  try
+    //Result:=VarIsNull(FRecordSet.Fields[Idx].Value);
+    Result:=VarIsNull(FRecordSet.Collect[Idx]);
+  except
+    on e:EOleException do
+	 begin
+      if cardinal(e.ErrorCode)=$800A0CC1 then
+        raise EFieldNotFound.Create('GetInt: Field not found: '+VarToStr(Idx))
+      else
+        raise;
+	  Result:=true;//counter warning
+	 end;
+  end;
 end;
 
 function TQueryResult.IsEof: boolean;
@@ -331,7 +343,7 @@ begin
   except
     on e:EOleException do
       if cardinal(e.ErrorCode)=$800A0CC1 then
-        raise Exception.Create('GetValue: Field not found: '+VarToStr(Idx));
+        raise EFieldNotFound.Create('GetValue: Field not found: '+VarToStr(Idx));
       else
         raise;
   end;
@@ -344,7 +356,7 @@ begin
   except
     on e:EOleException do
       if cardinal(e.ErrorCode)=$800A0CC1 then
-        raise Exception.Create('SetValue: Field not found: '+VarToStr(Idx));
+        raise EFieldNotFound.Create('SetValue: Field not found: '+VarToStr(Idx));
       else
         raise;
   end;

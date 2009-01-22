@@ -37,9 +37,9 @@ type
 
 const
   XxmFileExtension:array[TXxmFileType] of string=(
-    'xxm',
-    'xxmi',
-    'xxmp',
+    '.xxm',
+    '.xxmi',
+    '.xxmp',
     //add new here
     ''
   );
@@ -81,7 +81,7 @@ begin
            s:=fd.cFileName;
            i:=Length(s);
            while not(i=0) and not(s[i]='.') do dec(i);
-           s:=LowerCase(Copy(s,i+1,Length(s)-i));
+           s:=LowerCase(Copy(s,i,Length(s)-i+1));
 
            ft:=TXxmFileType(0);
            while not(ft=ft_Unknown) and not(s=XxmFileExtension[ft]) do inc(ft);
