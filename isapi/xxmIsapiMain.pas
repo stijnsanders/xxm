@@ -63,9 +63,14 @@ type
       const Objects: array of TObject); overload;
     function Connected: Boolean;
     function PostData: TStream;
-    procedure Send(Data: OleVariant);
+    procedure Send(Data: OleVariant); overload;
+    procedure Send(Value: integer); overload;
+    procedure Send(Value: int64); overload;
+    procedure Send(Value: cardinal); overload;
+    procedure Send(const Values:array of OleVariant); overload;
     procedure SendFile(FilePath: WideString);
-    procedure SendHTML(Data: OleVariant);
+    procedure SendHTML(Data: OleVariant); overload;
+    procedure SendHTML(const Values:array of OleVariant); overload;
     procedure SendStream(s: TStream);
     procedure SetStatus(Code: Integer; Text: WideString);
     procedure Redirect(RedirectURL: WideString; Relative: Boolean);
@@ -866,6 +871,35 @@ begin
      end;
    end;
   Result:=FSessionID;
+end;
+
+procedure TXxmIsapiContext.Send(Value: int64);
+begin
+
+end;
+
+procedure TXxmIsapiContext.Send(Value: integer);
+begin
+  SendRaw(IntToStr(Value));
+end;
+
+procedure TXxmIsapiContext.Send(const Values: array of OleVariant);
+var
+  i:integer;
+begin
+  for i:=0 to Length(Values)-1 do SendRaw(HTMLEncode(Values[i]));
+end;
+
+procedure TXxmIsapiContext.Send(Value: cardinal);
+begin
+  SendRaw(IntToStr(Value));
+end;
+
+procedure TXxmIsapiContext.SendHTML(const Values: array of OleVariant);
+var
+  i:integer;
+begin
+  for i:=0 to Length(Values)-1 do SendRaw(VarToWideStr(Values[i]));
 end;
 
 { TXxmIsapiHandler }
