@@ -74,7 +74,7 @@ begin
 
   i:=Length(SourcePath);
   while not(i=0) and not(SourcePath[i]='.') do dec(i);
-  if LowerCase(Copy(SourcePath,i+1,Length(SourcePath)-i))=XxmFileExtension[ftProject] then
+  if LowerCase(Copy(SourcePath,i,Length(SourcePath)-i+1))=XxmFileExtension[ftProject] then
    begin
     //project file specified
     while not(i=0) and not(SourcePath[i]=PathDelim) do dec(i);
@@ -253,36 +253,7 @@ begin
       for sl_i:=0 to sl.Count-1 do
        begin
         fn:=sl[sl_i];
-
-        //build internal identifier
-        cid:='';
-        cPathIndex:=1;
-        fPathIndex:=0;
-        fExtIndex:=0;
-        for i:=1 to Length(fn) do
-          case fn[i] of
-            '\':
-             begin
-              cid:=cid+'__';
-              cPathIndex:=Length(cid)+1;
-              fPathIndex:=i;
-             end;
-            '.':
-             begin
-              cid:=cid+'_';
-              fExtIndex:=i;
-             end;
-            'A'..'Z':
-              cid:=cid+char(byte(fn[i])+$20); 
-            '0'..'9','_','a'..'z':
-              cid:=cid+fn[i];
-            else
-              cid:=cid+'x'+Hex[byte(fn[i]) shr 4]+Hex[byte(fn[i]) and $F];
-          end;
-        //assert not(CID='')
-        if not(cid[1] in ['A'..'Z','a'..'z']) then cid:='x'+cid;
-        if IsReservedWord(cid) then
-          if LowerCase(cid)='or' then cid:='x_'+cid else cid:='x'+cid;
+        cid:=GetInternalIdentifier(fn,cPathIndex,fExtIndex,fPathIndex);
 
         xFile:=ForceNodeID(DataFiles,' File',cid);
         i:=sl1.IndexOf(cid);
@@ -308,9 +279,10 @@ begin
           i:=0;
           repeat
             inc(i);
-            x:=DataFiles.selectSingleNode('File[@UnitName="'+uname+IntToStr(i)+'"]') as IXMLDOMElement;
+            s:=uname+IntToStr(i);
+            x:=DataFiles.selectSingleNode('File[@UnitName="'+s+'"]') as IXMLDOMElement;
           until (x=nil);
-          uname:=uname+IntToStr(i);
+          uname:=s;
           xFile.setAttribute('UnitName',uname);
           Modified:=true;
          end;
