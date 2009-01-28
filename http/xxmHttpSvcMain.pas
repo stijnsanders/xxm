@@ -54,8 +54,8 @@ begin
     r.Free;
   end;
   FServer:=TXxmHTTPServer.Create(nil);
-  FServer.DefaultPort:=p;
-  FServer.Active:=true;
+  FServer.LocalPort:=IntToStr(p);
+  FServer.Open;
 end;
 
 procedure TTxxmService.ServiceStop(Sender: TService; var Stopped: Boolean);
