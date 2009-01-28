@@ -98,6 +98,8 @@ uses DateUtils, xxmUtilities, Registry, ShellAPI, ComObj;
 {$R *.dfm}
 
 procedure TEditProjectMainForm.DoCreate;
+var
+  s:string;
 begin
   inherited;
   ProjectData:=CoDOMDocument.Create;
@@ -106,7 +108,11 @@ begin
     if not(LoadProject('',false)) then Application.Terminate;
    end
   else
-    LoadProject(ParamStr(1),false);
+   begin
+    s:=ParamStr(1);
+    if s='/n' then s:=ExtractFilePath(ParamStr(2))+XxmProjectFileName;
+    LoadProject(s,false);
+   end;
   //assert Modified=false
 end;
 

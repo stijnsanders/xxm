@@ -440,6 +440,9 @@ begin
         SimpleAdd('xxmpfile\shell','open');
         SimpleAdd('xxmpfile\shell\open','Properties');
         SimpleAdd('xxmpfile\shell\open\command','"'+fn1+'" "%l"');
+        r.OpenKey('.xxmp\xxmpfile\ShellNew',true);
+        r.WriteString('Command','"'+fn1+'" /n "%1"');
+        r.CloseKey;
        end
       else
        begin
