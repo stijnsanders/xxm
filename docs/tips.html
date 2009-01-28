@@ -1,0 +1,33 @@
+<html>
+<head>
+<title>xxm</title>
+<link rel="stylesheet" type="text/css" href="xxm.css" />
+</head>
+<body>
+<p><a href="http://sourceforge.net"><img src="http://sflogo.sourceforge.net/sflogo.php?group_id=230065&amp;type=5" width="210" height="62" border="0" alt="SourceForge.net Logo" align="right" /></a><img src="xxm.png" alt="xxm" /></p>
+<p class="nav">
+<a href="index.html">about</a> |
+<a href="download.html">download</a> |
+<a href="install.html">install</a> |
+<a href="ref.html">reference</a> |
+<a href="faq.html">faq</a> |
+<b>tips&amp;tricks</b>
+</p>
+
+<dl>
+<!--<dt>proto: add with Context do</dt>
+<dd>...</dd>-->
+
+<dt>debugging</dt>
+<dd>
+<p>an xxm project is still a Delphi project, so you can open the project's dpr in Delphi, just remember to edit the xxm and xxmi files, and not the pas files directly (unless for temporary debugging behaviour).</p>
+<p>If you select xxmHttp.exe as host process, use a browser to navigate to a local URL that loads your project.</p>
+<p>When you're using xxmLocal (or xxmLocalDev), set the host application to Internet Explorer (typically <code>C:\Program Files\Internet Explorer\iexplore.exe</code>), optionally with an "xxm://" URL to open your project.</p>
+<p>When you're using xxmIsapiEx (or xxmIsapiDev) on your local IIS, switch IIS into stand-alone mode and use inetinfo.exe as host application, or create a virtual directory with high isolation (IIS 7: in an application pool of it's own), and use <code>%SystemRoot%\system32\dllhost.exe /ProcessID:<i>{AppID}</i></code> with the AppID you can pick up from the properties of the COM+ application in the 'Component Services' administrative tool</p>
+</dd>
+
+
+</dl>
+
+</body>
+</html>

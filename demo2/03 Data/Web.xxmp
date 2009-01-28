@@ -1,0 +1,15 @@
+<XxmWebProject>
+	<ProjectName>demo</ProjectName>
+	<CompileCommand>dcc32 -U..\..\..\public -Q [[ProjectName]].dpr</CompileCommand>
+
+<UUID>{906BACDB-4D7D-43AD-8FEC-59BCC4A5AA18}</UUID>
+<Files>
+<Unit UnitName="xxmSession"/>
+<Unit UnitName="MSXML2_TLB"/>
+<Unit UnitName="ADODB_TLB"/>
+<Unit UnitName="xxmData"/>
+<File ID="default_xxm" UnitName="default_xxm1" UnitPath=""><Path>Default.xxm</Path></File>
+
+<File ID="delete_xxm" UnitName="delete_xxm1" UnitPath=""><Path>Delete.xxm</Path></File>
+<File ID="edit_xxm" UnitName="edit_xxm1" UnitPath=""><Path>Edit.xxm</Path></File></Files>
+<LastModified>2008-06-07T02:02:56</LastModified></XxmWebProject>

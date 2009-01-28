@@ -1,0 +1,13 @@
+What is xxmProto about?
+
+You'll understand if I draw you a little time-line.
+
+First I had done some work with ISAPI and made my first ISAPI extensions. (For example, one that generates barcodes.)
+
+Some time after I started playing around a bit with the IInternetProtocol interface to enable a custom URL scheme in Internet Explorer (and embedded WebBroser/ShDocVw objects).
+
+Short after I noticed both IInternetProtocol and ISAPI projects need to bridge the gap between requests coming in and responses going out, but handle it in a totally different way. So IxxmContext/TxxmContext was born.
+
+Having separate DLL's that only need TxxmContext to do their work, enabled auto-update and auto-compile options. At this time I was ready to start work on a pre-processor that would enable to have chunks of Delphi code embedded in HTML (xxmConv).
+
+xxmProto has the main task to serve as an example of a working Delphi project that compiles into an xxm library as if the code has been pre-processed. This source-code was used to generate the 'proto' templates (abbreviated from 'prototype') xxmConv (and the xxm*Dev handlers) use to generate pas files from xxm and xxmi files.

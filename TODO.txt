@@ -1,0 +1,91 @@
+general
+
+- XxmProjectUnload
+
+- LastModified: toch bias! (uur minder dan IIS)
+
+- Context.URLPath
+- Context.Priority (linked to thread priority!)
+- set-cookie2 support
+- context: settings from registry (e.g. connectionstring?)
+- registration editor
+- exception handling pages (500,400, TXxmHandler=class(TXxmPage) en setting)
+- response timeout (how to halt a running thread?)
+- document.browser
+
+- some good solution for common xxm.pas and xxmFReg.pas units
+
+- relative includes
+
+- reg: ShellNew? tried but didn't work
+- logging?
+
+- XMLHTTP starts new session: test with authentication! (take-over other SessionID?)
+
+Conv
+- increment build version? (how to edit .res?)
+- revise 'entry', directory or xxmp required
+- flags
+- signature on proto files?
+- default proto in resources?
+- (hidden dir 'dcu' maken?)
+- '_proto' per directory zelfs?
+- whitespace voor [[ ook overnemen
+- create new project (can't get ShellNew to work!)
+- CreateProcessWithLogin for compile?
+- web.xxmp signature in TWebProject (not TProjectCacheEntry)
+- dynamic list of supported exceptions, default pas,xxm,xxmi (act; proto, unit, res?)
+- support a respurces file (zlib?) and auto update (using extension list?)
+
+ISAPI
+- authentication?
+- custom errors?
+- reg: <ModulePath> relative to something? (combinepath?)
+- compile-time user (runas)
+- IP(range) to show compile log to
+- check project cache cleanup code
+
+http
+- logging
+
+local
+- bug: .log files? (mime type)
+- CritSection in loader, not context (saves on resources)
+- fix directory traversal to fire on //page.xxm//
+- error/builderror response codes from registry (default 500?)
+- if xxl in same dir, reg and run
+- projects: smarter indexing?
+- store to cache file
+- history by xxm project
+- register project: worn overwriting registration
+
+idea's
+- cascaded loading of xxl's
+- auto-update dll (.xxlu?)
+- limit threads per session
+- GetParameter supporting ContextString enum
+- 401 auth & windows auth (IHttpAuthenticate on local?)
+- add files into rc for dll/xxl (tlb?)
+- buffering?
+- XML whitespace sanitation
+- bpg support? (to what purpose?)
+- separate unit for exceptions?
+- include from other projects?
+- line for line: xxm header rigged 20 lines, then pas line per xxm line?
+- isapi: extra unit to make xxl an extension on its own
+- isapi: need rebuild? rebuild and redirect to same page
+- translatepath refactor into context
+- force trailing "," on "[[@ ]]"
+- create src dir hidden (difficult, since using ForceDirectories now)
+- Context.Include resolve to delphi-name to have compile-time error?
+- virtual directories (getlocalfilepath?)
+- xxmCGI (met een COM server om de projects in te hosten?
+
+minor issues
+- xxm.pas: version from resource?
+
+docs
+- tip: include: raise on caller=nil
+
+
+

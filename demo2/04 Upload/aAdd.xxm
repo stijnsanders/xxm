@@ -1,0 +1,10 @@
+[[!var
+doc:IXxmParameterPostFile;
+]][[
+
+doc:=Context.Parameter['doc'] as IXxmParameterPostFile;
+
+doc.SaveToFile('files\'+ExtractFileName(doc.Value));
+Context.Redirect('Default.xxm',true);
+
+]]

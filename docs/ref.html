@@ -1,0 +1,272 @@
+<html>
+<head>
+<title>xxm - reference</title>
+<link rel="stylesheet" type="text/css" href="xxm.css" />
+</head>
+<body>
+<p><a href="http://sourceforge.net"><img src="http://sflogo.sourceforge.net/sflogo.php?group_id=230065&amp;type=5" width="210" height="62" border="0" alt="SourceForge.net Logo" align="right" /></a><img src="xxm.png" alt="xxm" /></p>
+<p class="nav">
+<a href="index.html">about</a> |
+<a href="download.html">download</a> |
+<a href="install.html">install</a> |
+<b>reference</b> |
+<a href="faq.html">faq</a> |
+<a href="tips.html">tips&amp;tricks</a>
+</p>
+
+<p class="title">Introduction</p>
+
+<p>xxm builds an xxm project into an xxm library. It does this by pre-parsing the xxm and xxmi files into pas files, generating other required Delphi project files, and calling the Delphi compiler. Depending on which installation you choose, you can either call the conversion utility to prepare a project for compiling, or use one of the development installations, to have the xxm library re-compiled when a source file changes.</p>
+
+<p class="title">Project</p>
+
+<p>An xxm project is a directory with:</p>
+<ul>
+<li>a project definition file (typically named "Web.xxmp")</li>
+<li>pages and fragment files: ".xxm" and ".xxmi" files, optionally in sub-directories</li>
+<li>files that will be accessible over the website: css, graphics, client-side script, downloads...</li>
+<li>optionally other files the Delphi project uses</li>
+</ul>
+
+<p>When the project is built into a library, following files are created:</p>
+<ul>
+<li>a directory "src", containing a .pas file for every .xxm and .xxmi file, and the Delphi project files (.dpr, .dof, .cfg)</li>
+<li>a project class definition unit, typically named "xxmp.pas"</li>
+<li>a compiled xxm library ".xxl"</li>
+<li>a hidden signature file "Web.xxmp.~db", used for detecting changes in source files</li>
+</ul>
+
+<p>To transport a website into a live environment, copy only these files:</p>
+<ul>
+<li>the xxm library ".xxl" (AutoUpdate implementations check the existance of a ".xxu" file to update the live ".xxl" with between requests)</li>
+<li>any files the library needs: configuration files, database or datalink files, ...</li>
+<li>any statis files the website requires: css, graphics, client-side script, downloads...</li>
+</ul>
+
+<p class="title">Fragment</p>
+
+<p>A the URL of a request to an xxm website is first parsed to see which xxm project to send the request to. (Each implementation has its specific project registry.) The project (IXxmProject) is loaded if not loaded already, and asked to provide a page object to handle the request (IXxmPage). A page can include fragments to help construct the response (IXxmInclude). Both pages and includes are fragments (IXxmFragment) provided by the project's fragment registry. Because an xxm project has to provide a fragment registry, it has freedom of how to construct portion of the URL it processes. A <i>stock-</i>implementation of a fragment registry is available by default for new xxm projects.</p>
+
+<p class="title">Syntax</p>
+
+<p>xxm and xxmi contain both HTML and Delphi source code. Delphi code is enclosed in double square brackets ("<code>[[ ]]</code>"). A Delphi code block may have an alternate destination by starting with one of these characters:</p>
+
+<dl>
+<dt><code>[[=i]]</code></dt><dd><b>send:</b> the expression is evaluated and sent to the context.</dd>
+<dt><code>[[#x]]</code></dt><dd><b>send HTML:</b> the expression is evaluated and sent to the context, without converting the text into HTML (i.e.: replacing angled brackets and ampersands into HTML code)</dd>
+<dt><code>[[@Variants,]]</code></dt><dd><b>uses clause:</b> adds code to the uses clause. <b>Important:</b> be sure to include a comma for each used unit, including the last, or Delphi syntaxis may break</dd>
+<dt><code>[[!var i:integer;]]</code></dt><dd><b>header:</b> adds code in front of 'begin' of the fragment's Build method implementation, use this to declare local variables</dd>
+<dt><code>[[/ ]]</code></dt><dd><b>comment:</b> excludes a section of the xxm code</dd>
+<dt><code>[[:resourcestring SHelloWorld='Hello world!';]]</code></dt><dd><b>definitions:</b> adds code in front of the fragment's Build method implementation, please read below remarks for proper use</dd>
+<dt><code>[[_ ]]</code></dt><dd><b>footer:</b> adds code right after the fragment's Build method implementation, please read below remarks for proper use</dd>
+<dt><code>[[[]]</code></dt><dd><b>opening square brackets:</b> is replaced by opening square brackets</dd>
+<dt><code>[[]]]</code></dt><dd><b>closing square brackets:</b> is replaced by closing square brackets</dd>
+</dl>
+
+<p><b>Attention:</b> please avoid declaring (nested) procedures and functions in header, footer and definition blocks, use include fragments or plain pascal units for that. One reason to avoid them is because closing the current Delphi code block to output HTML doesn't work, because all HTML is parsed onto <code>Context.SendHTML();</code> calls <i>inside of</i> the fragment's Build method implementation, and breaks Delphi syntax.</i>
+
+<p>Within a Delphi code block (including comment blocks), the number of opening and closing brackets and braces is counted (disregarding those in strings), this enables code like this: <code><span style="background-color:#CCFFCC">[[</span>Context.Send('<span style="background-color:#FFCCCC;">]]</span>');<span style="background-color:#CCFFCC">]]</span></code> and <code><span style="background-color:#CCFFCC">[[</span>=MyArray[x<span style="background-color:#FFCCCC">]</span><span style="background-color:#FFFFCC">]</span><span style="background-color:#CCFFCC">]</span></code>, but also enables a comment block to 'comment out' a full block of both HTML and code blocks.</p>
+
+<p class="title">Proto</p>
+
+<p>Each xxm and xxmi source file is converted into a pas file, using a prototype file. By default the prototype files are used from the "proto" directory provided with the xxm installation, but an xxm project can provide custom prototype files.</p>
+
+<p>When the default prototype files are used, each resulting pas file declares a descendant TXxmFragment class (either TXxmPage or TXxmInclude). The Delphi code blocks are duplicated in the predesignated spot, and all HTML is converted into calls to <code>Context.SendHTML();</code> inside of the Build method implementation.</p>
+
+<p>Longer portions of HTML may be split into several <code>Context.SendHTML();</code> calls, so be carefull whith code like this:</p>
+<p><code>if MyBoolean then ]]&lt;b&gt;priority:[[=PriorityLevel]]&lt;/b&gt;[[</code></p>
+<p>which gets parsed into:</p>
+<p><code>if MyBoolean then <br />
+Context.SendHTML('&lt;b&gt;priority:');<br />
+Context.Send(PriorityLevel);<br />
+Context.SendHTML('&lt;/b&gt;');</code></p>
+<p>so be sure to use <code>begin</code> and <code>end</code>:</p>
+<p><code>if MyBoolean then <span style="background-color:#CCFFCC">begin</span>]]&lt;b&gt;priority:[[=PriorityLevel]]&lt;/b&gt;[[<span style="background-color:#CCFFCC">end</span>;</code></p>
+
+<p class="title">Interface</p>
+
+<p>An xxm project uses the xxm.pas file that declares classes, interfaces and types required for the xxm interface. Your xxm installation should provide a recent copy of the xxm.pas file in the "public" folder.</p>
+
+<p><code>TXxmProjectLoadProc=function(AProjectName:WideString): IXxmProject; stdcall;</code></p>
+<p>Each xxm project must export a function named "XxmProjectLoad", that creates an instance of the project. (by default provided in the xxmp.pas file)</p>
+
+<dl>
+<dt class="title"><code>TXxmProject=class(TInterfacedObject, IXxmProject)</code></dt>
+<dd>An xxm project implements the IXxmProject. (by default provided in the xxmp.pas file)</dd>
+
+<dt><code>function LoadPage(Context:IXxmContext;Address:WideString):IXxmFragment;</code></dt>
+<dd>The project's LoadPage function is called to provide a page to process an incoming request</dd>
+
+<dt><code>function LoadFragment(Address:WideString):IXxmFragment;</code></dt>
+<dd>The project's LoadFragment function is called to provide a fragement</dd>
+
+<dt><code>procedure UnloadFragment(Fragment: IXxmFragment);</code></dt>
+<dd>Pages and include fragments are passed to the UnloadFragment procedure to allow the xxm project to perform clean-up or re-use of object instances.</dd>
+
+<dt class="title"><code>
+  TXxmFragment=class(TInterfacedObject, IXxmFragment)<br />
+  TXxmPage=class(TXxmFragment, IXxmPage)<br />
+  TXxmInclude=class(TXxmFragment, IXxmInclude)</code></dt>
+<dd>the default xxm and xxmi prototype files convert xxm and xxmi source files into a definition of a descendant class of TXxmPage or TXxmInclude.</dd>
+<dt><code>procedure Build(const Context: IXxmContext; const Caller: IXxmFragment;<br />
+&nbsp;      const Values: array of OleVariant;<br />
+&nbsp;      const Objects: array of TObject); virtual; abstract;</code></dt>
+<dd>a fragment's Build method is called to build the response
+<ul>
+<li>Context: an instance of IXxmContext to build the response with</li>
+<li>Caller: set to the fragment that calls Context.Include, nil otherwise</li>
+<li>Values, Objects: values and objects as passed onto Context.Include by the calling fragment</li>
+</ul>
+</dd>
+
+<dt class="title"><code>IXxmContext=interface</code></dt>
+<dd>an xxm context handles all interfacing to the incoming request and the outgoing response</dd>
+
+<dt><code>property URL:WideString</code></dt>
+<dd>read-only, the full URL of the request</dd>
+
+<dt><code>property Page:IXxmFragment</code></dt>
+<dd>read-only, the page the project provided to handle the request, also when an include fragment is called from the page or from another include fragment</dd>
+
+<dt><code>property ContentType:WideString</code></dt>
+<dd>the MIME type of the outgoing response, by default set to 'text/html'</dd>
+
+<dt><code>property AutoEncoding:TXxmAutoEncoding</code></dt>
+<dd>the encoding used for the outgoing response
+<ul>
+<li>aeContentDefined: don't specify an encoding in the header so the content can define it's own encoding</li>
+<li>aeUtf8: send the response using UTF8</li>
+<li>aeUtf16: send the response using UTF16</li>
+<li>aeIso8859: send the response using IS0-8859-1 encoding</li>
+</ul>
+</dd>
+
+<dt><code>property Parameter[Key:OleVariant]:IXxmParameter<br />
+property ParameterCount:integer</code></dt>
+<dd>the parameters provided in the request, see below for more about IXxmParameter and its descendants</dd>
+
+<dt><code>property SessionID:WideString</code></dt>
+<dd>read-only, a unique string constructed with random data, included in the response as a cookie, to identify following requests as requests from the same browser session. A project may use this property to perform session management.</dd>
+
+<dt><code>procedure Send(Data: OleVariant);</code></dt>
+<dd>sends data to the response</dd>
+
+<dt><code>procedure SendHTML(Data: OleVariant);</code></dt>
+<dd>sends data to the response without HTMLEncode</dd>
+
+<dt><code>procedure SendFile(FilePath: WideString);</code></dt>
+<dd>sends the contents of the file to the response. If the response has not started sending data, the ContentType is set to the MIME-type string found in the Windows registry by the file extention (HKEY_CLASSES_ROOT)</dd>
+
+<dt><code>procedure SendStream(s:TStream);</code></dt>
+<dd>sends the contents of the stream to the response</dd>
+
+<dt><code>
+    procedure Include(Address: WideString); overload;<br />
+    procedure Include(Address: WideString;<br />
+    &nbsp;  const Values: array of OleVariant); overload;<br />
+    procedure Include(Address: WideString;<br />
+    &nbsp;  const Values: array of OleVariant;<br />
+    &nbsp;  const Objects: array of TObject); overload;<br />
+</code></dt>
+<dd>load an include fragment and call the Build method with provided Values and Objects. Use Context.Include in favor of creating an instance of the fragment class directly, to enable xxm's built-in exception handling and to enable performance enhancements provided by the fragment registry.</dd>
+
+<dt><code>function ContextString(cs:TXxmContextString):WideString;</code></dt>
+<dd>
+provides information about the incoming request
+<ul>
+<li>    csVersion: xxm version</li>
+<li>    csVerb: HTTP verb, typically "GET" or "POST"</li>
+<li>    csQueryString: the URL portion after "?"</li>
+<li>    csExtraInfo: trailing URL information</li>
+<li>    csUserAgent: browser's identification string</li>
+<li>    csAcceptedMimeTypes: browser's accepted MIME types</li>
+<li>    csPostMimeType: the MIME type of the data posted in the request</li>
+<li>    csURL: the full URL of the request</li>
+<li>    csReferer: the URL of the previous page opened in the browser</li>
+<li>    csLanguage: browser's accepted languages</li>
+<li>    csRemoteAddress: client's address</li>
+<li>    csRemoteHost: client's host name</li>
+<li>    csAuthUser: user name provided by the request authentification</li>
+<li>    csAuthPassword: password provided by the request authentification</li>
+</ul>
+
+</dd>
+
+<dt><code>function PostData:TStream;</code></dt>
+<dd>provides access to the data posted in the request</dd>
+
+<dt><code>function Connected:boolean;</code></dt>
+<dd>checks whether the client disconnected, typically when a user presses abort, or the connection is lost</dd>
+
+<dt><code>procedure SetStatus(Code:integer;Text:WideString);</code></dt>
+<dd>sets the HTTP response code and text to respond with, by default set to 200,'OK'</dd>
+
+<dt><code>procedure Redirect(RedirectURL:WideString; Relative:boolean);</code></dt>
+<dd>redirects the browser to a different URL. Pass Relative as false when redirecting to a URL within the same project to optimally use resources.</dd>
+
+<dt><code>property Cookie[Name:WideString]:WideString</code></dt>
+<dd>reads a cookie from the request</dd>
+
+<dt><code>procedure SetCookie(Name,Value:WideString); overload;<br />
+    procedure SetCookie(Name,Value:WideString; KeepSeconds:cardinal;<br />
+      Comment,Domain,Path:WideString; Secure,HttpOnly:boolean); overload;</code></dt>
+<dd>includes a cookie in the response</dd>
+
+<dt><code>procedure DispositionAttach(FileName: WideString);</code></dt>
+<dd>notifies the browser to show a 'save as' dialog to store the contents of the response</dd>
+
+<dt class="title"><code>IXxmParameter=interface</code></dt>
+<dd>all parameters inherit from IXxmParameter</dd>
+
+<dt><code>property Name:WideString</code></dt>
+<dd>gets the parameter name</dd>
+
+<dt><code>property Value:WideString</code></dt>
+<dd>gets the value of the parameter, by default ''</dd>
+
+<dt><code>function AsInteger:integer;</code></dt>
+<dd>gets the value of the parameter as an integer value, by default 0</dd>
+
+<dt><code>function NextBySameName:IXxmParameter;</code></dt>
+<dd>gets the next parameter in sequence with the same name, if any</dd>
+
+<dt class="title"><code>IXxmParameterGet=interface(IXxmParameter)</code></dt>
+<dd>a parameter provided in the QueryString URL</dd>
+
+<dt class="title"><code>IxxmParameterPost=interface(IXxmParameter)</code></dt>
+<dd>a parameter provided in posted data</dd>
+
+<dt class="title"><code>IxxmParameterPostFile=interface(IxxmParameterPost)</code></dt>
+<dd>a file uploaded in posted data</dd>
+
+<dt><code>property Size:integer</code></dt>
+<dd>gets the file size</dd>
+
+<dt><code>property MimeType:WideString</code></dt>
+<dd>gets the MIME type of the file</dd>
+
+<dt><code>procedure SaveToFile(FilePath:string);</code></dt>
+<dd>saves the uploaded file</dd>
+
+<dt><code>function SaveToStream(Stream:TStream):integer;</code></dt>
+<dd>saves the uploaded content to a stream</dd>
+
+<dt><code>function XxmVersion:TXxmVersion;<br />
+  TXxmVersion=record Major,Minor,Release,Build:integer; end;
+</code></dt>
+<dd>gets the xxm version, use the xxm version to check if newer features are available</dd>
+
+<dt><code>function HTMLEncode(Data:WideString):WideString; overload;<br />
+function HTMLEncode(Data:OleVariant):WideString; overload;
+</code></dt>
+<dd>encodes text for safe output into a HTML document</dd>
+
+<dt><code>function URLEncode(Data:OleVariant):string;<br />
+function URLDecode(Data:string):WideString;
+</code></dt>
+<dd>encodes/decodes data to/from URL notation</dd>
+
+</dl>
+
+</body>
+</html>
