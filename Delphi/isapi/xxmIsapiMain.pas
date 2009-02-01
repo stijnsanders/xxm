@@ -164,8 +164,6 @@ begin
 end;
 
 function HttpExtensionProc(PECB: PEXTENSION_CONTROL_BLOCK): DWORD; stdcall;
-var
-  s:string;
 begin
   try
     IsapiHandlerPool.Queue(TXxmIsapiContext.Create(PECB));
@@ -173,14 +171,6 @@ begin
   except
     on e:Exception do
      begin
-
-     s:=e.Message;
-     with TFileStream.Create('C:\Data\2007\xxm\bin\test.log',fmCreate) do
-      begin
-       Write(s[1],Length(s));
-       Free;
-      end;
-
       //TODO output error?
       Result:=HSE_STATUS_ERROR;
      end;
@@ -297,6 +287,8 @@ begin
       FRedirectPrefix:=y;
       x:=Copy(x,Length(y)+1,Length(x)-Length(y));
      end;
+
+    XxmProjectCache.Refresh;
 
     //project name
     i:=1;
