@@ -408,7 +408,7 @@ begin
 
     //TODO: extra flags,settings?
 
-    Result:=TXxmProjectCacheEntry.Create(Name,ProjectEntry[i].Name);
+    Result:=TXxmProjectCacheEntry.Create(Name,ProjectEntry[i].ModulePath);
     Result.FSignature:=ProjectEntry[i].Signature;
 
     i:=0;

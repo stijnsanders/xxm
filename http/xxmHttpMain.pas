@@ -4,7 +4,7 @@ interface
 
 uses
   SysUtils, IdTCPServer, xxm, Classes,
-  xxmPReg, xxmParams, xxmParUtils;
+  xxmPReg, xxmParams, xxmParUtils, xxmHeaders;
 
 type
   TXxmHTTPServer = class(TIdTCPServer)
@@ -16,19 +16,20 @@ const
   XxmMaxIncludeDepth=64;//TODO: setting?
 
 type
-  TXxmHttpContext=class(TInterfacedObject, IXxmContext)
+  TXxmHttpContext=class(TInterfacedObject, IXxmContext, IxxmHttpHeaders)
   private
     FIdPeerThread:TIdPeerThread;
-    FReqHeaders:TStringList;
+    FReqHeaders:TRequestHeaders;
+    FResHeaders:TResponseHeaders;
     FHeaderSent:boolean;
     FPage, FBuilding: IXxmFragment;
     FConnected:boolean;
-    HTTPVersion,Verb,URI,FSessionID:string;
+    FHTTPVersion,FVerb,FURI,FSessionID:string;
     FProjectEntry:TXxmProjectCacheEntry;
     FParams: TXxmReqPars;
     FIncludeDepth:integer;
     FStatusCode:integer;
-    FStatusText,FProjectName,FFragmentName,FExtraHeaders:string;
+    FStatusText,FProjectName,FFragmentName:string;
     FContentType: WideString;
     FAutoEncoding: TXxmAutoEncoding;
     FCookieParsed: boolean;
@@ -42,12 +43,10 @@ type
     procedure SendRaw(Data: WideString);
     procedure SendError(res:string;vals:array of string);
   public
-    constructor Create(IdPeerThread:TIdPeerThread;CommandLine:string);
+    constructor Create(IdPeerThread:TIdPeerThread);
     destructor Destroy; override;
 
     procedure Execute;
-
-    property RequestHeaders:TStringList read FReqHeaders;
 
     function GetURL:WideString;
     function GetPage:IXxmFragment;
@@ -87,12 +86,14 @@ type
     procedure SetCookie(Name,Value:WideString; KeepSeconds:cardinal;
       Comment,Domain,Path:WideString; Secure,HttpOnly:boolean); overload;
 
+    function GetRequestHeaders:IxxmDictionaryEx;
+    function GetResponseHeaders:IxxmDictionaryEx;
   end;
 
+  EXxmMaximumHeaderLines=class(Exception);
   EXxmDirectInclude=class(Exception);
   EXxmAutoBuildFailed=class(Exception);
   EXxmContextStringUnknown=class(Exception);
-  EXxmResponseHeaderAlreadySent=class(Exception);
   EXxmIncludeFragmentNotFound=class(Exception);
   EXxmUnknownPostDataTymed=class(Exception);
   EXxmIncludeStackFull=class(Exception);
@@ -102,14 +103,18 @@ procedure XxmRunServer;
 
 implementation
 
-uses Windows, Variants, ActiveX, ComObj, xxmCommonUtils, xxmReadHandler;
+uses Windows, Variants, ActiveX, ComObj, xxmCommonUtils, xxmReadHandler,
+  IdTCPConnection;
 
 resourcestring
+  SXxmMaximumHeaderLines='Maximum header lines exceeded.';
   SXxmDirectInclude='Direct call to include fragment is not allowed.';
   SXxmContextStringUnknown='Unknown ContextString __';
-  SXxmResponseHeaderAlreadySent='Response header has already been send.';
   SXxmIncludeFragmentNotFound='Include fragment not found "__"';
   SXxmIncludeStackFull='Maximum level of includes exceeded';
+
+const
+  HTTPMaxHEaderLines=$400;
 
 procedure XxmRunServer;
 type
@@ -121,16 +126,13 @@ const
     'port',
     //add new here (lowercase)
     '');
-
+  WM_QUIT = $0012;//from Messages
 var
   Server:TXxmHTTPServer;
   i,j,Port:integer;
   s,t:string;
   Msg:TMsg;
   par:TParameters;
-const
-  WM_QUIT = $0012;//from Messages
-
 begin
   Port:=80;//default
 
@@ -175,54 +177,17 @@ end;
 
 function TXxmHTTPServer.DoExecute(AThread: TIdPeerThread): Boolean;
 var
-  s,t:string;
-  i,j:integer;
   cx:TXxmHttpContext;
-const
-  HTTPMaxHeaderLines=$400;
 begin
   CoInitialize(nil);
   try
-    //command line
-    cx:=TXxmHttpContext.Create(AThread,AThread.Connection.ReadLn);
-    //headers
-    i:=0;
-    t:='';
-    repeat
-     s:=AThread.Connection.ReadLn;
-     if i=HTTPMaxHeaderLines then raise Exception.Create('Maximum header lines exceeded.');
-     if not(s='') then
-      begin
-       inc(i);
-       j:=1;
-       while (j<=Length(s)) and (s[j] in [#9,' ']) do inc(j);
-       if j=1 then
-        begin
-         while (j<=Length(s)) and not(s[j]=':') do inc(j);
-         t:=Copy(s,1,j-1);
-         inc(j);
-         while (j<=Length(s)) and (s[j] in [#9,' ']) do inc(j);
-         cx.RequestHeaders.Values[t]:=Copy(s,j,Length(s)-j+1);
-        end
-       else
-         cx.RequestHeaders.Values[t]:=
-           cx.RequestHeaders.Values[t]+Copy(s,j,Length(s)-j+1);
-      end;
-    until s='';
-
-    //'Authorization' ?
-    //'If-Modified-Since' ? 304
-    //'Connection: Keep-alive' ? with sent Content-Length
-
-    //data (Content-Length
-
+    cx:=TXxmHttpContext.Create(AThread);
     cx._AddRef;//strange, param fill calls release
     try
       cx.Execute;
     finally
       cx._Release;
     end;
-
   finally
     AThread.Connection.Disconnect;
   end;
@@ -237,14 +202,14 @@ end;
 
 { TXxmHttpContext }
 
-constructor TXxmHttpContext.Create(IdPeerThread:TIdPeerThread;CommandLine:string);
-var
-  i,j,l:integer;
+constructor TXxmHttpContext.Create(IdPeerThread:TIdPeerThread);
 begin
   inherited Create;
   FIdPeerThread:=IdPeerThread;
   FProjectEntry:=nil;
-  FReqHeaders:=TStringList.Create;
+  FReqHeaders:=nil;
+  FResHeaders:=TResponseHeaders.Create;
+  (FResHeaders as IUnknown)._AddRef;
   FHeaderSent:=false;
   FConnected:=true;
   FParams:=nil;//see GetParameter
@@ -256,30 +221,27 @@ begin
   FCookieParsed:=false;
   FStatusCode:=200;
   FStatusText:='OK';
-  FExtraHeaders:='';
   FPostData:=nil;
   FIncludeDepth:=0;
   FPageClass:='';
   FQueryStringIndex:=1;
   FSessionID:='';//see GetSessionID
-
-  l:=Length(CommandLine);
-  j:=l;
-  while (j>0) and not(CommandLine[j]=' ') do dec(j);
-  HTTPVersion:=Copy(CommandLine,j+1,l-j);
-  dec(j);
-  i:=0;
-  while (i<l) and not(CommandLine[i]=' ') do inc(i);
-  Verb:=UpperCase(Copy(CommandLine,1,i-1));
-  inc(i);
-
-  URI:=Copy(CommandLine,i,j-i+1);
+  FURI:='';//see Execute
 end;
 
 destructor TXxmHttpContext.Destroy;
 begin
-  FReqHeaders.Free;
   FreeAndNil(FParams);
+  if not(FReqHeaders=nil) then
+   begin
+    (FReqHeaders as IUnknown)._Release;
+    FReqHeaders:=nil;
+   end;
+  if not(FResHeaders=nil) then
+   begin
+    (FResHeaders as IUnknown)._Release;
+    FResHeaders:=nil;
+   end;
   FreeAndNil(FPostData);
   if not(FProjectEntry=nil) then
    begin
@@ -296,24 +258,62 @@ var
   p:IxxmPage;
 begin
   try
+    //command line
+    x:=FIdPeerThread.Connection.ReadLn;
+    l:=Length(x);
+    j:=l;
+    while (j>0) and not(x[j]=' ') do dec(j);
+    FHTTPVersion:=Copy(x,j+1,l-j);
+    dec(j);
+    i:=0;
+    while (i<l) and not(x[i]=' ') do inc(i);
+    FVerb:=UpperCase(Copy(x,1,i-1));
+    inc(i);
+
+    FURI:=Copy(x,i,j-i+1);
+    
+    //headers
+    i:=0;
+    x:='';
+    repeat
+     y:=FIdPeerThread.Connection.ReadLn;
+     if not(y='') then
+      begin
+       inc(i);
+       if i=HTTPMaxHeaderLines then
+         raise EXxmMaximumHeaderLines.Create(SXxmMaximumHeaderLines);
+       x:=x+y+#13#10;
+      end;
+    until y='';
+    FReqHeaders:=TRequestHeaders.Create(y);
+    (FReqHeaders as IUnknown)._AddRef;
+
+    //'Authorization' ?
+    //'If-Modified-Since' ? 304
+    //'Connection: Keep-alive' ? with sent Content-Length
+
+    //data (Content-Length
+
+    FResHeaders['X-Powered-By']:=SelfVersion;
+
     if XxmProjectCache=nil then XxmProjectCache:=TXxmProjectCache.Create;
 
     //TODO: RequestHeaders['Host']?
-    l:=Length(URI);
-    if not(URI='') and (URI[1]='/') then
+    l:=Length(FURI);
+    if not(FURI='') and (FURI[1]='/') then
      begin
       i:=2;
       if XxmProjectCache.SingleProject='' then
        begin
-        while (i<=l) and not(URI[i] in ['/','?','&','$','#']) do inc(i);
-        FProjectName:=Copy(URI,2,i-2);
+        while (i<=l) and not(FURI[i] in ['/','?','&','$','#']) do inc(i);
+        FProjectName:=Copy(FURI,2,i-2);
         if FProjectName='' then
          begin
-          if (i<=l) and (URI[i]='/') then x:='' else x:='/';
-          Redirect('/'+XxmProjectCache.DefaultProject+x+Copy(URI,i,l-i+1),true);
+          if (i<=l) and (FURI[i]='/') then x:='' else x:='/';
+          Redirect('/'+XxmProjectCache.DefaultProject+x+Copy(FURI,i,l-i+1),true);
          end;
         FPageClass:='['+FProjectName+']';
-        if (i<=l) then inc(i) else if l>1 then Redirect(URI+'/',true);
+        if (i<=l) then inc(i) else if l>1 then Redirect(FURI+'/',true);
        end
       else
        begin
@@ -321,8 +321,8 @@ begin
         FPageClass:='[SingleProject]';
        end;
       j:=i;
-      while (i<=l) and not(URI[i] in ['?','&','$','#']) do inc(i);
-      FFragmentName:=Copy(URI,j,i-j);
+      while (i<=l) and not(FURI[i] in ['?','&','$','#']) do inc(i);
+      FFragmentName:=Copy(FURI,j,i-j);
       if (i<=l) then inc(i);
       FQueryStringIndex:=i;
      end
@@ -333,7 +333,7 @@ begin
       FProjectName:='';
       FFragmentName:='';
       SendError('error',[
-        'URL',HTMLEncode(URI),
+        'URL',HTMLEncode(FURI),
         'CLASS','',
         'POSTDATA','',
         'QUERYSTRING','',
@@ -341,14 +341,14 @@ begin
         'ERRORCLASS','',
         'VERSION',ContextString(csVersion)
       ]);
-      raise EXxmPageRedirected.Create(HTTPVersion+' 400 Bad Request');
+      raise EXxmPageRedirected.Create(FHTTPVersion+' 400 Bad Request');
      end;
 
     //assert headers read and parsed
     //TODO: HTTP/1.1 100 Continue?
 
     //if not(Verb='GET') then?
-    x:=FReqHeaders.Values['Content-Length'];
+    x:=FReqHeaders['Content-Length'];
     if not(x='') then FPostData:=THandlerReadStreamAdapter.Create(
       FIdPeerThread.Connection.IOHandler,StrToInt(x));
 
@@ -459,16 +459,16 @@ begin
   case cs of
     csVersion:Result:=SelfVersion;
     csExtraInfo:Result:='';//???
-    csVerb:Result:=Verb;
-    csQueryString:Result:=Copy(URI,FQueryStringIndex,Length(URI)-FQueryStringIndex+1);
-    csUserAgent:Result:=FReqHeaders.Values['User-Agent'];
-    csAcceptedMimeTypes:Result:=FReqHeaders.Values['Accept'];//TODO:
-    csPostMimeType:Result:=FReqHeaders.Values['Post-Mime'];//TODO:
+    csVerb:Result:=FVerb;
+    csQueryString:Result:=Copy(FURI,FQueryStringIndex,Length(FURI)-FQueryStringIndex+1);
+    csUserAgent:Result:=FReqHeaders['User-Agent'];
+    csAcceptedMimeTypes:Result:=FReqHeaders['Accept'];//TODO:
+    csPostMimeType:Result:=FReqHeaders['Post-Mime'];//TODO:
     csURL:Result:=GetURL;
     csProjectName:Result:=FProjectName;
     csLocalURL:Result:=FFragmentName;
-    csReferer:Result:=FReqHeaders.Values['Referer'];//TODO:
-    csLanguage:Result:=FReqHeaders.Values['Language'];//TODO:
+    csReferer:Result:=FReqHeaders['Referer'];//TODO:
+    csLanguage:Result:=FReqHeaders['Language'];//TODO:
 
     csRemoteAddress:Result:=FIdPeerThread.Connection.Socket.Binding.PeerIP;
     csRemoteHost:Result:=FIdPeerThread.Connection.Socket.Binding.PeerIP;//TODO: resolve
@@ -482,7 +482,8 @@ end;
 
 procedure TXxmHttpContext.DispositionAttach(FileName: WideString);
 begin
-  //TODO: dispositionattach
+  FResHeaders.SetComplex('Content-disposition','attachment')
+    ['filename']:=FileName;
 end;
 
 procedure TXxmHttpContext.HeaderOK;
@@ -518,8 +519,8 @@ function TXxmHttpContext.GetCookie(Name: WideString): WideString;
 begin
   if not(FCookieParsed) then
    begin
-    FCookie:=';'+FReqHeaders.Values['Cookie'];
-    SplitHeaderValue(FCookie,FCookieIdx);
+    FCookie:=';'+FReqHeaders['Cookie'];
+    SplitHeaderValue(FCookie,1,Length(FCookie),FCookieIdx);
     FCookieParsed:=true;
    end;
   Result:=GetParamValue(FCookie,FCookieIdx,Name);
@@ -530,33 +531,35 @@ begin
   HeaderOK;
   //check name?
   //TODO: "quoted string"?
-  FExtraHeaders:=FExtraHeaders+'Cache-Control: no-cache="set-cookie"'#13#10;//only once!
-  FExtraHeaders:=FExtraHeaders+'Set-Cookie: '+Name+'="'+Value+'"'+#13#10;
+  FResHeaders['Cache-Control']:='no-cache="set-cookie"';
+  FResHeaders.Add('Set-Cookie',Name+'="'+Value+'"');
 end;
 
 procedure TXxmHttpContext.SetCookie(Name, Value: WideString;
   KeepSeconds: cardinal; Comment, Domain, Path: WideString; Secure,
   HttpOnly: boolean);
+var
+  x:WideString;
 begin
   HeaderOK;
   //check name?
   //TODO: "quoted string"?
-  FExtraHeaders:=FExtraHeaders+'Cache-Control: no-cache="set-cookie"'#13#10;//only once!
-  FExtraHeaders:=FExtraHeaders+'Set-Cookie: '+Name+'="'+Value+'"';
+  FResHeaders['Cache-Control']:='no-cache="set-cookie"';
+  x:=Name+'="'+Value+'"';
   //'; Version=1';
   if not(Comment='') then
-    FExtraHeaders:=FExtraHeaders+'; Comment="'+Comment+'"';
+    x:=x+'; Comment="'+Comment+'"';
   if not(Domain='') then
-    FExtraHeaders:=FExtraHeaders+'; Domain="'+Domain+'"';
+    x:=x+'; Domain="'+Domain+'"';
   if not(Path='') then
-    FExtraHeaders:=FExtraHeaders+'; Path="'+Path+'"';
-  FExtraHeaders:=FExtraHeaders+'; Max-Age='+IntToStr(KeepSeconds)+
+    x:=x+'; Path="'+Path+'"';
+  x:=x+'; Max-Age='+IntToStr(KeepSeconds)+
     '; Expires="'+RFC822DateGMT(Now+KeepSeconds/86400)+'"';
   if Secure then
-    FExtraHeaders:=FExtraHeaders+'; Secure'+#13#10;
+    x:=x+'; Secure'+#13#10;
   if HttpOnly then
-    FExtraHeaders:=FExtraHeaders+'; HttpOnly'+#13#10;
-  FExtraHeaders:=FExtraHeaders+#13#10;
+    x:=x+'; HttpOnly'+#13#10;
+  FResHeaders.Add('Set-Cookie',x);
   //TODO: Set-Cookie2
 end;
 
@@ -599,14 +602,14 @@ var
   s:string;
 begin
   Result:='http://';//TODO: get from port? ssl?
-  s:=FReqHeaders.Values['Host'];
+  s:=FReqHeaders['Host'];
   if s='' then
    begin
     s:='localhost';//TODO: from binding? setting;
     if not(FIdPeerThread.Connection.Socket.Binding.PeerPort=80) then
       s:=s+':'+IntToStr(FIdPeerThread.Connection.Socket.Binding.PeerPort);
    end;
-  Result:=Result+s+URI;
+  Result:=Result+s+FURI;
 end;
 
 procedure TXxmHttpContext.SetStatus(Code: integer; Text: WideString);
@@ -671,7 +674,7 @@ begin
   FStatusCode:=301;
   FStatusText:='Moved Permanently';
   //TODO: relative
-  FExtraHeaders:=FExtraHeaders+'Location: '+RedirectURL+#13#10;
+  FResHeaders['Location']:=RedirectURL;
   //TODO: move this to execute's except?
   SendHTML('<a href="'+HTMLEncode(RedirectURL)+'">'+HTMLEncode(RedirectURL)+'</a>');
   raise EXxmPageRedirected.Create(RedirectURL);
@@ -758,8 +761,8 @@ end;
 
 procedure TXxmHttpContext.SendStream(s: TStream);
 begin
-  FExtraHeaders:=FExtraHeaders+'Content-Length: '+IntToStr(s.Size)+
-    #13#10'Accept-Ranges: bytes'#13#10;
+  FResHeaders['Content-Length']:=IntToStr(s.Size);
+  FResHeaders['Accept-Ranges']:='bytes';
   //TODO: keep-connection since content-length known?
   //if not(s.Size=0) then
    begin
@@ -771,29 +774,27 @@ end;
 
 function TXxmHttpContext.CheckHeader:boolean;
 var
-  t:string;
+  x:string;
   l:cardinal;
   d:array of byte;
 begin
   Result:=not(FHeaderSent);
   if Result then
    begin
-    t:=HTTPVersion+' '+IntToStr(FStatusCode)+' '+FStatusText+
-      #13#10'X-Powered-By: '+SelfVersion+#13#10;
     //TODO: Content-Length?
     //TODO: Connection keep?
-    //TODO: additional headers?
+    //use FResHeader.Complex?
     case FAutoEncoding of
-      aeUtf8:   t:=t+'Content-Type: '+FContentType+'; charset="utf-8"'#13#10;
-      aeUtf16:  t:=t+'Content-Type: '+FContentType+'; charset="utf-16"'#13#10;
-      aeIso8859:t:=t+'Content-Type: '+FContentType+'; charset="iso-8859-15"'#13#10;
-      else      t:=t+'Content-Type: '+FContentType+#13#10;
+      aeUtf8:   FResHeaders['Content-Type']:=FContentType+'; charset="utf-8"';
+      aeUtf16:  FResHeaders['Content-Type']:=FContentType+'; charset="utf-16"';
+      aeIso8859:FResHeaders['Content-Type']:=FContentType+'; charset="iso-8859-15"';
+      else      FResHeaders['Content-Type']:=FContentType;
     end;
-    //assert FExtraHeaders blank or ends with #13#10
-    t:=t+FExtraHeaders+#13#10;
-    l:=Length(t);
+    x:=FHTTPVersion+' '+IntToStr(FStatusCode)+' '+FStatusText+#13#10+
+      FResHeaders.Build+#13#10;
+    l:=Length(x);
     SetLength(d,l);
-    Move(t[1],d[0],l);
+    Move(x[1],d[0],l);
     FIdPeerThread.Connection.IOHandler.Send(d[0],l);
     FHeaderSent:=true;
    end;
@@ -853,6 +854,17 @@ var
   i:integer;
 begin
   for i:=0 to Length(Values)-1 do SendRaw(VarToWideStr(Values[i]));
+end;
+
+function TXxmHttpContext.GetRequestHeaders: IxxmDictionaryEx;
+begin
+  //assert not(FReqHeaders=nil) since parsed at start of Execute
+  Result:=FReqHeaders;
+end;
+
+function TXxmHttpContext.GetResponseHeaders: IxxmDictionaryEx;
+begin
+  Result:=FResHeaders;
 end;
 
 end.

@@ -12,6 +12,7 @@ uses
   xxmPReg in 'xxmPReg.pas',
   xxmParams in '..\common\xxmParams.pas',
   xxmParUtils in '..\common\xxmParUtils.pas',
+  xxmHeaders in '..\public\xxmHeaders.pas',
   xxmThreadPool in 'xxmThreadPool.pas';
 
 exports

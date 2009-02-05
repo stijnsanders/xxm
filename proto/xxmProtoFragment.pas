@@ -14,7 +14,7 @@ type
 
 implementation
 
-uses SysUtils, xxmFReg, xxmString;
+uses SysUtils, xxmFReg, xxmString, xxmHeaders;
 
 { TXxmFragment1 }
 
@@ -24,9 +24,11 @@ procedure TXxmFragment1.Build(const Context: IXxmContext;
 var
   s:string;
   w:WideString;
-  i:integer;
+  i,j:integer;
   p,q:IXxmParameter;
   f:IxxmParameterPostFile;
+  x:IxxmDictionaryEx;
+  y:IxxmDictionary;
 begin
   inherited;
   Context.SendHTML('Hello world<br>'+
@@ -58,6 +60,8 @@ begin
   Context.Send(Context['uploadtest'].Value);
   Context.SendHTML('</p>');
 
+  Context.SendHTML('<p><u>Parameters</u></p>');
+
   for i:=0 to Context.ParameterCount-1 do
    begin
     try
@@ -74,6 +78,25 @@ begin
     p:=nil;
     q:=nil;
    end;
+
+  Context.SendHTML('<p><u>RequestHeaders</u></p>');
+
+  x:=(Context as IxxmHttpHeaders).RequestHeaders;
+  for i:=0 to x.Count-1 do
+    try
+      s:=x.Complex(i,y);
+      Context.SendHTML('<p><b>'+x.Name[i]+'</b>: '+s+'</p>');
+      if not(y=nil) then
+       begin
+        Context.SendHTML('<ul>');
+        for j:=0 to y.Count-1 do
+          Context.SendHTML('<li><b>'+y.Name[j]+'</b>: '+y[j]+'</li>');
+        Context.SendHTML('</ul>');
+       end;
+    except
+      on e:Exception do
+        Context.SendHTML('<p style="color: red;">'+HTMLEncode(e.Message)+'</p>');
+    end;
 
   p:=Context.Parameter['uploadtest'];
   if p.QueryInterface(IID_IXxmParameterPostFile,f)=S_OK then

@@ -107,7 +107,8 @@ begin
 
   r:=TRegistry.Create;
   try
-    r.RootKey:=HKEY_LOCAL_MACHINE;
+    //r.RootKey:=HKEY_LOCAL_MACHINE;//setting?
+    r.RootKey:=HKEY_CURRENT_USER;
     r.OpenKey('\Software\xxm\local\'+t,true);
     r.WriteString('',s);
     //TODO: default settings?
@@ -298,12 +299,20 @@ end;
 procedure TXxmProjectCacheEntry.SetSignature(const Value: string);
 var
   r:TRegistry;
+  k:string;
 begin
-  FSignature := Value;
+  FSignature:=Value;
+  k:='\Software\xxm\local\'+FName;
   r:=TRegistry.Create;
   try
-    r.RootKey:=HKEY_LOCAL_MACHINE;
-    r.OpenKey('\Software\xxm\local\'+FName,true);
+    r.RootKey:=HKEY_CURRENT_USER;
+    if not(r.OpenKey(k,false)) then
+     begin
+      r.RootKey:=HKEY_LOCAL_MACHINE;
+      if not(r.OpenKey(k,false)) then
+        raise EXxmProjectNotFound.Create(StringReplace(
+          SXxmProjectNotFound,'__',FName,[]));
+     end;
     r.WriteString('Signature',FSignature);
   finally
     r.Free;
@@ -313,18 +322,28 @@ end;
 procedure TXxmProjectCacheEntry.GetRegisteredPath;
 var
   r:TRegistry;
+  k:string;
   i:integer;
 begin
+  k:='\Software\xxm\local\'+FName;
   r:=TRegistry.Create;
   try
-    r.RootKey:=HKEY_LOCAL_MACHINE;
-    FFilePath:='';
-    if r.OpenKeyReadOnly('\Software\xxm\local\'+FName) then FFilePath:=r.ReadString('');
+    r.RootKey:=HKEY_CURRENT_USER;
+    if r.OpenKeyReadOnly(k) then
+      FFilePath:=r.ReadString('')
+    else
+     begin
+      r.RootKey:=HKEY_LOCAL_MACHINE;
+      if r.OpenKeyReadOnly(k) then
+        FFilePath:=r.ReadString('')
+      else
+        FFilePath:='';
+     end;
     if FFilePath='' then
       raise EXxmProjectNotFound.Create(StringReplace(
         SXxmProjectNotFound,'__',FName,[]));
 
-    //TODO: alias? (see isapi)
+    //TODO: alias? (see xxm.xml)
 
     //TODO: extra flags,settings?
 

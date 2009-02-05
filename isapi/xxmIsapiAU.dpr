@@ -11,6 +11,7 @@ uses
   xxmPReg in 'xxmPReg.pas',
   xxmParams in '..\common\xxmParams.pas',
   xxmParUtils in '..\common\xxmParUtils.pas',
+  xxmHeaders in '..\public\xxmHeaders.pas',
   MSXML2_TLB in '..\common\MSXML2_TLB.pas',
   xxmCommonUtils in '..\common\xxmCommonUtils.pas',
   xxmAutoUpdate in '..\common\xxmAutoUpdate.pas';

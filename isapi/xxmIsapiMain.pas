@@ -2,7 +2,8 @@ unit xxmIsapiMain;
 
 interface
 
-uses Windows, SysUtils, Classes, isapi4, xxm, xxmPReg, xxmParams, xxmParUtils;
+uses Windows, SysUtils, Classes, isapi4, xxm, xxmPReg,
+  xxmParams, xxmParUtils, xxmHeaders;
 
 function GetExtensionVersion(var Ver: THSE_VERSION_INFO): BOOL; stdcall;
 function HttpExtensionProc(PECB: PEXTENSION_CONTROL_BLOCK): DWORD; stdcall;
@@ -12,7 +13,7 @@ const
   XxmMaxIncludeDepth=64;//TODO: setting?
 
 type
-  TXxmIsapiContext=class(TInterfacedObject, IXxmContext)
+  TXxmIsapiContext=class(TInterfacedObject, IXxmContext, IxxmHttpHeaders)
   private
     FURL:WideString;
     FContentType: WideString;
@@ -21,12 +22,14 @@ type
     FPage, FBuilding: IXxmFragment;
     FHeaderSent:boolean;
     FStatusCode:integer;
-    FStatusText,FProjectName,FFragmentName,FExtraHeaders,FRedirectPrefix,FSessionID:string;
+    FStatusText,FProjectName,FFragmentName,FRedirectPrefix,FSessionID:string;
     FIncludeDepth:integer;
     ecb:PEXTENSION_CONTROL_BLOCK;
     FPostData: TStream;
     FPostTempFile,FPageClass:string;
     FParams: TXxmReqPars;
+    FReqHeaders:TRequestHeaders;
+    FResHeaders:TResponseHeaders;
     FCookieParsed: boolean;
     FCookie: string;
     FCookieIdx: TParamIndexes;
@@ -46,6 +49,8 @@ type
     function GetParameter(Key: OleVariant): IXxmParameter;
     function GetParameterCount: Integer;
     function GetSessionID: WideString;
+    function GetRequestHeaders:IxxmDictionaryEx;
+    function GetResponseHeaders:IxxmDictionaryEx;
   public
     Queue:TXxmIsapiContext;//used by thread pool
 
@@ -110,7 +115,6 @@ type
     Context: IXxmContext; ProjectName:WideString):boolean;
 
   EXxmContextStringUnknown=class(Exception);
-  EXxmResponseHeaderAlreadySent=class(Exception);
   EXxmAutoBuildFailed=class(Exception);
   EXxmDirectInclude=class(Exception);
   EXxmIncludeFragmentNotFound=class(Exception);
@@ -130,7 +134,6 @@ uses ActiveX, Variants, ComObj, xxmCommonUtils;
 
 resourcestring
   SXxmContextStringUnknown='Unknown ContextString __';
-  SXxmResponseHeaderAlreadySent='Response header has already been sent.';
   SXxmDirectInclude='Direct call to include fragment is not allowed.';
   SXxmIncludeFragmentNotFound='Include fragment not found "__"';
   SXxmIncludeStackFull='Maximum level of includes exceeded';
@@ -219,7 +222,6 @@ begin
   FHeaderSent:=false;
   FStatusCode:=200;
   FStatusText:='OK';
-  FExtraHeaders:='';
   FProjectName:='';//parsed from URL later
   FFragmentName:='';//parsed from URL later
   FPostData:=nil;
@@ -229,12 +231,25 @@ begin
   FCookieParsed:=false;
   FPageClass:='';
   FSessionID:='';//see GetSessionID
+  FReqHeaders:=nil;
+  FResHeaders:=TResponseHeaders.Create;
+  (FResHeaders as IUnknown)._AddRef;
 end;
 
 destructor TXxmIsapiContext.Destroy;
 begin
   FreeAndNil(FParams);
   FreeAndNil(FPostData);
+  if not(FReqHeaders=nil) then
+   begin
+    (FReqHeaders as IUnknown)._Release;
+    FReqHeaders:=nil;
+   end;
+  if not(FResHeaders=nil) then
+   begin
+    (FResHeaders as IUnknown)._Release;
+    FResHeaders:=nil;
+   end;
   if not(FProjectEntry=nil) then
    begin
     FProjectEntry.CloseContext;
@@ -288,6 +303,7 @@ begin
       x:=Copy(x,Length(y)+1,Length(x)-Length(y));
      end;
 
+    FResHeaders['X-Powered-By']:=SelfVersion;
     XxmProjectCache.Refresh;
 
     //project name
@@ -345,7 +361,7 @@ begin
         FContentType:=y;
         FAutoEncoding:=aeContentDefined;
 
-        FExtraHeaders:=FExtraHeaders+'Last-Modified: '+RFC822DateGMT(d)+#13#10;
+        FResHeaders['Last-Modified']:=RFC822DateGMT(d);
         //TODO:Content-Length
 
         SendFile(x);
@@ -502,9 +518,8 @@ end;
 
 procedure TXxmIsapiContext.DispositionAttach(FileName: WideString);
 begin
-  FExtraHeaders:=FExtraHeaders+
-    'Content-disposition: attachment; filename="'+FileName+'"'#13#10;
-  //TODO: test this!!!
+  FResHeaders.SetComplex('Content-disposition','attachment')
+    ['filename']:=FileName;
 end;
 
 procedure TXxmIsapiContext.SendRaw(Data: WideString);
@@ -587,8 +602,11 @@ var
   d:array[0..$FFFF] of byte;
 begin
   inherited;
-  FExtraHeaders:=FExtraHeaders+'Content-Length: '+IntToStr(s.Size)+
-    #13#10'Accept-Ranges: bytes'#13#10;
+  if not(FHeaderSent) then
+   begin
+    FResHeaders['Content-Length']:=IntToStr(s.Size);
+    FResHeaders['Accept-Ranges']:='bytes';
+   end;
   //TODO: keep-connection since content-length known?
   //if not(s.Size=0) then
    begin
@@ -651,14 +669,14 @@ begin
     s:=IntToStr(FStatusCode)+' '+FStatusText;
     head.pszStatus:=PChar(s);
     head.cchStatus:=Length(s);
-    t:='X-Powered-By: '+SelfVersion+#13#10;
+    //use FResHeader.Complex?
     case FAutoEncoding of
-      aeUtf8:   t:=t+'Content-Type: '+FContentType+'; charset="utf-8"'#13#10;
-      aeUtf16:  t:=t+'Content-Type: '+FContentType+'; charset="utf-16"'#13#10;
-      aeIso8859:t:=t+'Content-Type: '+FContentType+'; charset="iso-8859-15"'#13#10;
-      else      t:=t+'Content-Type: '+FContentType+#13#10;
+      aeUtf8:   FResHeaders['Content-Type']:=FContentType+'; charset="utf-8"';
+      aeUtf16:  FResHeaders['Content-Type']:=FContentType+'; charset="utf-16"';
+      aeIso8859:FResHeaders['Content-Type']:=FContentType+'; charset="iso-8859-15"';
+      else      FResHeaders['Content-Type']:=FContentType;
     end;
-    t:=t+FExtraHeaders+#13#10;
+    t:=FResHeaders.Build+#13#10;
     //TODO cookies? redirect?
     head.pszHeader:=PChar(t);
     head.cchHeader:=Length(t);
@@ -808,7 +826,7 @@ begin
   if not(FCookieParsed) then
    begin
     FCookie:=';'+GetVar(ecb,'HTTP_COOKIE');
-    SplitHeaderValue(FCookie,FCookieIdx);
+    SplitHeaderValue(FCookie,1,Length(FCookie),FCookieIdx);
     FCookieParsed:=true;
    end;
   Result:=GetParamValue(FCookie,FCookieIdx,Name);
@@ -819,33 +837,35 @@ begin
   HeaderOK;
   //check name?
   //TODO: "quoted string"?
-  FExtraHeaders:=FExtraHeaders+'Cache-Control: no-cache="set-cookie"'#13#10;//only once!
-  FExtraHeaders:=FExtraHeaders+'Set-Cookie: '+Name+'="'+Value+'"'+#13#10;
+  FResHeaders['Cache-Control']:='no-cache="set-cookie"';
+  FResHeaders.Add('Set-Cookie',Name+'="'+Value+'"');
 end;
 
 procedure TXxmIsapiContext.SetCookie(Name,Value:WideString;
   KeepSeconds:cardinal; Comment,Domain,Path:WideString;
-  Secure,HttpOnly:boolean); 
+  Secure,HttpOnly:boolean);
+var
+  x:WideString;
 begin
   HeaderOK;
   //check name?
   //TODO: "quoted string"?
-  FExtraHeaders:=FExtraHeaders+'Cache-Control: no-cache="set-cookie"'#13#10;//only once!
-  FExtraHeaders:=FExtraHeaders+'Set-Cookie: '+Name+'="'+Value+'"';
+  FResHeaders['Cache-Control']:='no-cache="set-cookie"';
+  x:=Name+'="'+Value+'"';
   //'; Version=1';
   if not(Comment='') then
-    FExtraHeaders:=FExtraHeaders+'; Comment="'+Comment+'"';
+    x:=x+'; Comment="'+Comment+'"';
   if not(Domain='') then
-    FExtraHeaders:=FExtraHeaders+'; Domain="'+Domain+'"';
+    x:=x+'; Domain="'+Domain+'"';
   if not(Path='') then
-    FExtraHeaders:=FExtraHeaders+'; Path="'+Path+'"';
-  FExtraHeaders:=FExtraHeaders+'; Max-Age='+IntToStr(KeepSeconds)+
+    x:=x+'; Path="'+Path+'"';
+  x:=x+'; Max-Age='+IntToStr(KeepSeconds)+
     '; Expires="'+RFC822DateGMT(Now+KeepSeconds/86400)+'"';
   if Secure then
-    FExtraHeaders:=FExtraHeaders+'; Secure'+#13#10;
+    x:=x+'; Secure'+#13#10;
   if HttpOnly then
-    FExtraHeaders:=FExtraHeaders+'; HttpOnly'+#13#10;
-  FExtraHeaders:=FExtraHeaders+#13#10;
+    x:=x+'; HttpOnly'+#13#10;
+  FResHeaders.Add('Set-Cookie',x);
   //TODO: Set-Cookie2
 end;
 
@@ -892,6 +912,21 @@ var
   i:integer;
 begin
   for i:=0 to Length(Values)-1 do SendRaw(VarToWideStr(Values[i]));
+end;
+
+function TXxmIsapiContext.GetRequestHeaders: IxxmDictionaryEx;
+begin
+  if FReqHeaders=nil then
+   begin
+    FReqHeaders:=TRequestHeaders.Create(GetVar(ecb,'ALL_RAW'));
+    (FReqHeaders as IUnknown)._AddRef;
+   end;
+  Result:=FReqHeaders;
+end;
+
+function TXxmIsapiContext.GetResponseHeaders: IxxmDictionaryEx;
+begin
+  Result:=FResHeaders;
 end;
 
 { TXxmIsapiHandler }
