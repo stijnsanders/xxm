@@ -8,7 +8,8 @@ uses
   xxmProtoInclude in 'xxmProtoInclude.pas',
   xxmProtoPage in 'xxmProtoPage.pas',
   xxmSession in '..\public\xxmSession.pas',
-  xxmString in '..\public\xxmString.pas';
+  xxmString in '..\public\xxmString.pas',
+  xxmHeaders in '..\public\xxmHeaders.pas';
 
 {$E xxl}
 
