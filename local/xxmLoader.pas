@@ -3,7 +3,7 @@ unit xxmLoader;
 interface
 
 uses Windows, SysUtils, ActiveX, UrlMon, Classes, xxm, xxmPReg,
-  xxmParams, xxmParUtils;
+  xxmParams, xxmParUtils, xxmHeaders;
 
 const
   XxmMaxIncludeDepth=64;//TODO: setting?
@@ -11,7 +11,7 @@ const
 type
   TXxmPageLoader=class;//forward
 
-  TXxmLocalContext=class(TInterfacedObject, IXxmContext)
+  TXxmLocalContext=class(TInterfacedObject, IXxmContext, IxxmHttpHeaders)
   private
     FVerb: WideString;
     ProtSink: IInternetProtocolSink;
@@ -30,15 +30,16 @@ type
     FIncludeDepth:integer;
     FParams: TXxmReqPars;
     FBuilding: IXxmFragment;
-    FReqHeadersDone: boolean;
-    FReqHeaders: WideString;
-    FReqHeaderIdx: TParamIndexes;
+    FReqHeaders: TRequestHeaders;
+    FResHeaders: TResponseHeaders;
+    FHttpNegotiate: IHttpNegotiate;
     procedure ReportData;
     function CheckSendStart:boolean;
     procedure SendRaw(Data: WideString);
     procedure SendError(res:string;vals:array of string);
     function StgMediumAsStream(stgmed:TStgMedium):TStream;
     procedure HeaderOK;
+    procedure CheckReqHeaders;
   protected
     FContentType: WideString;
     FAutoEncoding: TXxmAutoEncoding;
@@ -54,6 +55,8 @@ type
     function LocaleLanguage: string;
     function GetRequestParam(Name: string):string;
     function GetSessionID: WideString;
+    function GetRequestHeaders:IxxmDictionaryEx;
+    function GetResponseHeaders:IxxmDictionaryEx;
   public
     OutputData:TStream;
     OutputSize,ClippedSize:Int64;
@@ -119,7 +122,6 @@ type
   EXxmDirectInclude=class(Exception);
   EXxmAutoBuildFailed=class(Exception);
   EXxmContextStringUnknown=class(Exception);
-  EXxmResponseHeaderAlreadySent=class(Exception);
   EXxmIncludeFragmentNotFound=class(Exception);
   EXxmUnknownPostDataTymed=class(Exception);
   EXxmIncludeStackFull=class(Exception);
@@ -127,7 +129,7 @@ type
 
 var
   //see xxmSettings
-  StatusBuildError,StatusException:integer;
+  StatusBuildError,StatusException,StatusFileNotFound:integer;
   DefaultProjectName:string;
 
 implementation
@@ -137,7 +139,6 @@ uses Variants, ComObj, AxCtrls, xxmThreadPool;
 const //resourcestring?
   SXxmDirectInclude='Direct call to include fragment is not allowed.';
   SXxmContextStringUnknown='Unknown ContextString __';
-  SXxmResponseHeaderAlreadySent='Can''t change content type after data has been sent.';
   SXxmIncludeFragmentNotFound='Include fragment not found "__"';
   SXxmIncludeStackFull='Maximum level of includes exceeded';
 
@@ -178,7 +179,10 @@ begin
   FPostTempFile:='';
   FMimeTypeSent:=false;
   FParams:=nil;//see GetParameter
-  FReqHeadersDone:=false;
+  FReqHeaders:=nil;
+  FResHeaders:=TResponseHeaders.Create;
+  (FResHeaders as IUnknown)._AddRef;
+  FHttpNegotiate:=nil;
   FPageClass:='';
   FSingleFileSent:='';
   FGotSessionID:=false;
@@ -186,9 +190,20 @@ end;
 
 destructor TXxmLocalContext.Destroy;
 begin
+  FHttpNegotiate:=nil;
   BindInfo:=nil;
   ProtSink:=nil;
   FreeAndNil(FParams);
+  if not(FReqHeaders=nil) then
+   begin
+    (FReqHeaders as IUnknown)._Release;
+    FReqHeaders:=nil;
+   end;
+  if not(FResHeaders=nil) then
+   begin
+    (FResHeaders as IUnknown)._Release;
+    FResHeaders:=nil;
+   end;
   FreeAndNil(FPostData);
   if not(FProjectEntry=nil) then
    begin
@@ -351,13 +366,17 @@ begin
         FPageClass:='['+FProjectName+']404:'+FFragmentName;
         FPage:=FProjectEntry.Project.LoadPage(Self,'404.xxm');
         if FPage=nil then
+         begin
+          FStatusCode:=StatusFileNotFound;
+          FStatusText:='File not found';
           SendError('fnf',[
             'URL',HTMLEncode(URL),
             'PROJECT',FProjectName,
             'ADDRESS',FFragmentName,
             'PATH',HTMLEncode(FSingleFileSent),
             'VERSION',ContextString(csVersion)
-          ])
+          ]);
+         end
         else
           try
             FPageClass:=FPage.ClassNameEx;
@@ -701,12 +720,24 @@ begin
 end;
 
 function TXxmLocalContext.CheckSendStart:boolean;
+var
+  px:WideString;
+  py:PWideChar;
 begin
   Result:=not(FMimeTypeSent);
   if Result then
    begin
     //FAutoEncoding: see SendHTML
     OleCheck(ProtSink.ReportProgress(BINDSTATUS_MIMETYPEAVAILABLE,PWideChar(FContentType)));
+
+    if FHttpNegotiate=nil then
+      OleCheck((ProtSink as IServiceProvider).QueryService(
+        IID_IHttpNegotiate,IID_IHttpNegotiate,FHttpNegotiate));
+    px:=FResHeaders.Build+#13#10;
+    py:=nil;
+    OleCheck(FHttpNegotiate.OnResponse(FStatusCode,PWideChar(px),nil,py));
+    //TODO: add py to FResHeaders?
+
     //BINDSTATUS_ENCODING
     OleCheck(ProtSink.ReportProgress(BINDSTATUS_VERIFIEDMIMETYPEAVAILABLE,PWideChar(FContentType)));
     OleCheck(ProtSink.ReportProgress(BINDSTATUS_BEGINDOWNLOADDATA,''));
@@ -920,25 +951,27 @@ begin
   Result:=LowerCase(s+'-'+t);
 end;
 
-function TXxmLocalContext.GetRequestParam(Name: string): string;
+procedure TXxmLocalContext.CheckReqHeaders;
 var
-  hn:IHttpNegotiate;
   px:PWideChar;
 begin
-  if not(FReqHeadersDone) then
+  if FReqHeaders=nil then
    begin
-    //catch extra headers (always here or postpone to check FReqHeadersDone?)
+    //catch extra headers
     px:=nil;
-    OleCheck((ProtSink as IServiceProvider).QueryService(IID_IHttpNegotiate,IID_IHttpNegotiate,hn));
-    OleCheck(hn.BeginningTransaction(PWideChar(URL),nil,0,px));
-    FReqHeaders:=px;
-    //TODO: hn.OnResponse()
-    hn:=nil;
-
-    SplitHeader(FReqHeaders,FReqHeaderIdx);
-    FReqHeadersDone:=true;
+    if FHttpNegotiate=nil then
+      OleCheck((ProtSink as IServiceProvider).QueryService(
+        IID_IHttpNegotiate,IID_IHttpNegotiate,FHttpNegotiate));
+    OleCheck(FHttpNegotiate.BeginningTransaction(PWideChar(URL),nil,0,px));
+    FReqHeaders:=TRequestHeaders.Create(px);
+    (FReqHeaders as IUnknown)._AddRef;
    end;
-  Result:=GetParamValue(FReqHeaders,FReqHeaderIdx,Name);//case?
+end;
+
+function TXxmLocalContext.GetRequestParam(Name: string): string;
+begin
+  CheckReqHeaders;
+  Result:=FReqHeaders.Item[Name];
 end;
 
 function XmlDate(s:string):TDateTime;
@@ -1115,6 +1148,17 @@ var
   i:integer;
 begin
   for i:=0 to Length(Values)-1 do SendRaw(VarToWideStr(Values[i]));
+end;
+
+function TXxmLocalContext.GetRequestHeaders: IxxmDictionaryEx;
+begin
+  CheckReqHeaders;
+  Result:=FReqHeaders;
+end;
+
+function TXxmLocalContext.GetResponseHeaders: IxxmDictionaryEx;
+begin
+  Result:=FResHeaders;
 end;
 
 { TXxmPageLoader }

@@ -34,20 +34,24 @@ type
     FLock:TRTLCriticalSection;
     ProjectCacheSize:integer;
     ProjectCache:array of TXxmProjectCacheEntry;
-    FRegFilePath,FRegSignature:string;
-    FRegDoc:DOMDocument;
+    ProjectEntry:array of record
+      Name,Alias,Signature,ModulePath:string;
+    end;
+    FRegFilePath,FRegSignature,FDefaultProject,FSingleProject:string;
+    FLastRefresh:cardinal;
     procedure ClearAll;
     function Grow:integer;
     function FindProject(Name:WideString):integer;
-    function LoadRegistry:IXMLDOMElement;
   public
     constructor Create;
     destructor Destroy; override;
 
+    procedure Refresh;
+
     function GetProject(Name:WideString):TXxmProjectCacheEntry;
-    function DefaultProject:string;
-    function SingleProject:string;
     procedure ReleaseProject(Name:WideString);
+    property DefaultProject:string read FDefaultProject;
+    property SingleProject:string read FSingleProject;
   end;
 
   TXxmAutoBuildHandler=function(pce:TXxmProjectCacheEntry;
@@ -74,6 +78,10 @@ resourcestring
   SXxmProjectLoadFailed='xxm Project load "__" failed.';
   SXxmFileTypeAccessDenied='Access denied to this type of file';
   SXxmProjectAliasDepth='xxm Project "__": aliasses are limited to 8 in sequence';
+
+const
+  ProjectCacheCheckPause=10000;//milliseconds
+  //TODO: setting
 
 { TXxmProjectCacheEntry }
 
@@ -207,16 +215,29 @@ end;
 
 procedure TXxmProjectCacheEntry.SetSignature(const Value: string);
 var
+  doc:DOMDocument;
   x:IXMLDOMElement;
 begin
   FSignature := Value;
-  x:=XxmProjectCache.LoadRegistry.selectSingleNode(
-    'Project[@Name="'+FName+'"]') as IXMLDOMElement;
-  if x=nil then
-    raise EXxmProjectNotFound.Create(StringReplace(
-      SXxmProjectNotFound,'__',FName,[]));
-  x.setAttribute('Signature',FSignature);
-  x.ownerDocument.save(XxmProjectCache.FRegFilePath);
+  doc:=CoDOMDocument.Create;
+  try
+    doc.async:=false;
+    if not(doc.load(XxmProjectCache.FRegFilePath)) then
+      raise EXxmProjectRegistryError.Create(StringReplace(
+        SXxmProjectRegistryError,'__',XxmProjectCache.FRegFilePath,[])+#13#10+
+        doc.parseError.reason);
+    x:=doc.documentElement.selectSingleNode(
+      'Project[@Name="'+FName+'"]') as IXMLDOMElement;
+    if x=nil then
+      raise EXxmProjectNotFound.Create(StringReplace(
+        SXxmProjectNotFound,'__',FName,[]));
+    x.setAttribute('Signature',FSignature);
+    doc.save(XxmProjectCache.FRegFilePath);
+    //force XxmProjectCache.Refresh?
+  finally
+    x:=nil;
+    doc:=nil;
+  end;
 end;
 
 procedure TXxmProjectCacheEntry.OpenContext;
@@ -238,8 +259,10 @@ begin
   inherited;
   ProjectCacheSize:=0;
   InitializeCriticalSection(FLock);
-  FRegDoc:=nil;
   FRegSignature:='-';
+  FDefaultProject:='xxm';
+  FSingleProject:='';
+  FLastRefresh:=GetTickCount-ProjectCacheCheckPause-1;
 
   SetLength(FRegFilePath,$400);
   SetLength(FRegFilePath,GetModuleFileName(HInstance,PChar(FRegFilePath),$400));
@@ -255,7 +278,6 @@ destructor TXxmProjectCache.Destroy;
 begin
   ClearAll;
   DeleteCriticalSection(FLock);
-  FRegDoc:=nil;
   inherited;
 end;
 
@@ -286,87 +308,116 @@ begin
   if Result=ProjectCacheSize then Result:=-1;
 end;
 
-function TXxmProjectCache.LoadRegistry: IXMLDOMElement;
+procedure TXxmProjectCache.Refresh;
 var
   fh:THandle;
   fd:TWin32FindData;
   s:string;
+  doc:DOMDocument;
+  xl:IXMLDOMNodeList;
+  x,y:IXMLDOMElement;
+  i:integer;
 begin
-  if FRegDoc=nil then FRegDoc:=CoDOMDocument.Create;
-
-  //signature
-  fh:=FindFirstFile(PChar(FRegFilePath),fd);
-  if fh=INVALID_HANDLE_VALUE then s:='' else
+  if GetTickCount-FLastRefresh+ProjectCacheCheckPause>0 then
    begin
-    s:=IntToHex(fd.ftLastWriteTime.dwHighDateTime,8)+
-      IntToHex(fd.ftLastWriteTime.dwLowDateTime,8)+
-      IntToStr(fd.nFileSizeLow);
-    Windows.FindClose(fh);
+    EnterCriticalSection(FLock);
+    try
+      if GetTickCount-FLastRefresh+ProjectCacheCheckPause>0 then
+       begin
+        //signature
+        fh:=FindFirstFile(PChar(FRegFilePath),fd);
+        if fh=INVALID_HANDLE_VALUE then s:='' else
+         begin
+          s:=IntToHex(fd.ftLastWriteTime.dwHighDateTime,8)+
+            IntToHex(fd.ftLastWriteTime.dwLowDateTime,8)+
+            IntToStr(fd.nFileSizeLow);
+          Windows.FindClose(fh);
+         end;
+        if not(FRegSignature=s) then
+         begin
+          //assert CoInitialize called
+          doc:=CoDOMDocument.Create;
+          try
+            doc.async:=false;
+            if not(doc.load(FRegFilePath)) then
+              raise EXxmProjectRegistryError.Create(StringReplace(
+                SXxmProjectRegistryError,'__',FRegFilePath,[])+#13#10+
+                doc.parseError.reason);
+            //assert documentElement.nodeName='ProjectRegistry'
+            FSingleProject:=VarToStr(doc.documentElement.getAttribute('SingleProject'));
+            FDefaultProject:=VarToStr(doc.documentElement.getAttribute('DefaultProject'));
+            if FDefaultProject='' then FDefaultProject:='xxm';
+            xl:=doc.documentElement.selectNodes('Project');
+            SetLength(ProjectEntry,xl.length);
+            for i:=0 to xl.length-1 do
+             begin
+              x:=xl[i] as IXMLDOMElement;
+              SetLength(ProjectEntry,i+1);
+              ProjectEntry[i].Name:=LowerCase(VarToStr(x.getAttribute('Name')));
+              ProjectEntry[i].Alias:=LowerCase(VarToStr(x.getAttribute('Alias')));
+              ProjectEntry[i].Signature:=LowerCase(VarToStr(x.getAttribute('Signature')));
+              y:=x.selectSingleNode('ModulePath') as IXMLDOMElement;
+              if y=nil then ProjectEntry[i].ModulePath:='' else ProjectEntry[i].ModulePath:=y.text;
+             end;
+          finally
+            y:=nil;
+            x:=nil;
+            xl:=nil;
+            doc:=nil;
+          end;
+          FRegSignature:=s;
+         end;
+        FLastRefresh:=GetTickCount;
+       end;
+    finally
+      LeaveCriticalSection(FLock);
+    end;
    end;
-  if not(FRegSignature=s) then
-   begin
-    if not(FRegDoc.load(FRegFilePath)) then
-      raise EXxmProjectRegistryError.Create(StringReplace(
-        SXxmProjectRegistryError,'__',FRegFilePath,[])+#13#10+
-        FRegDoc.parseError.reason);
-    FRegSignature:=s;
-   end;
-  //assert documentElement.nodeName='ProjectRegistry'
-  Result:=FRegDoc.documentElement;
 end;
 
 function TXxmProjectCache.GetProject(Name: WideString): TXxmProjectCacheEntry;
 var
   i,d:integer;
-  x,y:IXMLDOMNode;
   n:WideString;
   found:boolean;
 begin
-  Result:=nil;//counter warning;
-  EnterCriticalSection(FLock);
-  try
-    //assert CoInitialize called
-    i:=FindProject(Name);
-    if i=-1 then
-     begin
-      n:=Name;
-      d:=0;
-      found:=false;
-      repeat
-        x:=LoadRegistry.selectSingleNode('Project[@Name="'+n+'"]');
-        if not(x=nil) then
-         begin
-          y:=x.attributes.getNamedItem('Alias');
-          if y=nil then found:=true else
-           begin
-            inc(d);
-            if d=8 then raise EXxmProjectAliasDepth.Create(StringReplace(
-              SXxmProjectAliasDepth,'__',Name,[]));
-            n:=y.text;
-           end;
-         end;
-      until (x=nil) or found;
-
-      if x=nil then y:=nil else y:=x.selectSingleNode('ModulePath') as IXMLDOMElement;
-      if y=nil then raise EXxmProjectNotFound.Create(StringReplace(
-        SXxmProjectNotFound,'__',Name,[]));
-
-      //TODO: extra flags,settings?
-
-      Result:=TXxmProjectCacheEntry.Create(Name,y.text);
-
-      Result.FSignature:=VarToStr((x as IXMLDOMElement).getAttribute('Signature'));
-
+  i:=FindProject(Name);
+  if i=-1 then
+   begin
+    n:=LowerCase(Name);
+    d:=0;
+    found:=false;
+    repeat
+      //TODO: quicker search?
       i:=0;
-      while (i<ProjectCacheSize) and not(ProjectCache[i]=nil) do inc(i);
-      if (i=ProjectCacheSize) then i:=Grow;
-      ProjectCache[i]:=Result;
-     end
-    else
-      Result:=ProjectCache[i];
-  finally
-    LeaveCriticalSection(FLock);
-  end;
+      while (i<Length(ProjectEntry)) and not(ProjectEntry[i].Name=n) do inc(i);
+      if (i<Length(ProjectEntry)) then
+       begin
+        if ProjectEntry[i].Alias='' then found:=true else
+         begin
+          inc(d);
+          if d=8 then raise EXxmProjectAliasDepth.Create(StringReplace(
+            SXxmProjectAliasDepth,'__',Name,[]));
+          n:=ProjectEntry[i].Alias;
+         end;
+       end;
+    until not(i<Length(ProjectEntry)) or found;
+
+    if not(found) then raise EXxmProjectNotFound.Create(StringReplace(
+      SXxmProjectNotFound,'__',Name,[]));
+
+    //TODO: extra flags,settings?
+
+    Result:=TXxmProjectCacheEntry.Create(Name,ProjectEntry[i].ModulePath);
+    Result.FSignature:=ProjectEntry[i].Signature;
+
+    i:=0;
+    while (i<ProjectCacheSize) and not(ProjectCache[i]=nil) do inc(i);
+    if (i=ProjectCacheSize) then i:=Grow;
+    ProjectCache[i]:=Result;
+   end
+  else
+    Result:=ProjectCache[i];
 end;
 
 procedure TXxmProjectCache.ReleaseProject(Name: WideString);
@@ -385,17 +436,6 @@ begin
   for i:=0 to ProjectCacheSize-1 do FreeAndNil(ProjectCache[i]);
   SetLength(ProjectCache,0);
   ProjectCacheSize:=0;
-end;
-
-function TXxmProjectCache.DefaultProject: string;
-begin
-  Result:=VarToStr(LoadRegistry.getAttribute('DefaultProject'));
-  if Result='' then Result:='xxm';
-end;
-
-function TXxmProjectCache.SingleProject: string;
-begin
-  Result:=VarToStr(LoadRegistry.getAttribute('SingleProject'));
 end;
 
 initialization

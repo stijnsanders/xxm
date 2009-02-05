@@ -132,7 +132,7 @@ procedure TXxmReqPars.Fill(Context: IXxmContext);
 var
   i,p,q,r,l:integer;
   ps:TStream;
-  pm,pn,pd,pb,ph,pf,px:string;
+  pm,pn,pb,pd,pf,px:string;
   pa,pax:TParamIndexes;
   sn:TStreamNozzle;
 begin
@@ -158,7 +158,7 @@ begin
    begin
     ps.Seek(0,soFromBeginning);
     pm:=Context.ContextString(csPostMimeType);
-    pn:=SplitHeaderValue(pm,pa);//lower?
+    pn:=SplitHeaderValue(pm,1,Length(pm),pa);//lower?
 
     //pm='' with redirect in response to POST request, but StgMed prevails! dorp it
     if pm='' then PostDataOnRedirect:=true else
@@ -208,20 +208,19 @@ begin
 
           pm:='';
           pf:='';
-          ph:=sn.GetHeader(pa);
+          pd:=sn.GetHeader(pa);
           for i:=0 to Length(pa)-1 do
            begin
-            pn:=LowerCase(Copy(ph,pa[i].NameStart,pa[i].NameLength));
+            pn:=LowerCase(Copy(pd,pa[i].NameStart,pa[i].NameLength));
             if pn='content-disposition' then
              begin
-              pd:=Copy(ph,pa[i].ValueStart,pa[i].ValueLength);
-              pn:=SplitHeaderValue(pd,pax);
+              pn:=SplitHeaderValue(pd,pa[i].ValueStart,pa[i].ValueLength,pax);
               //assert pn='form-data'
               px:=GetParamValue(pd,pax,'name');
               pf:=GetParamValue(pd,pax,'filename');
              end
             else
-            if pn='content-type' then pm:=Copy(ph,pa[i].ValueStart,pa[i].ValueLength)
+            if pn='content-type' then pm:=Copy(pd,pa[i].ValueStart,pa[i].ValueLength)
             else
               ;//raise Exception.Create('Unknown multipart header "'+pn+'"');
            end;
