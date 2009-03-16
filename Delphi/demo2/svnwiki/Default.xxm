@@ -1,0 +1,62 @@
+[[@wikiObj,Variants,MSXML2_TLB,]][[!var
+pn,gn,mn,mv:WideString;
+rq:IXMLHTTPRequest;
+x:WideString;
+redirecting:boolean;
+rl:array of WideString;
+i,l:integer;
+]][[
+pn:=Context.ContextString(csLocalURL);
+if pn='' then pn:='HomePage';
+CheckMainWikiEngine;
+gn:=MainWikiEngine.GetGroupByName(pn,'Main');
+rq:=CoXMLHTTP.Create;
+redirecting:=true;
+SetLength(rl,0);
+while redirecting do
+ begin
+  redirecting:=false;
+	try
+	  rq.open('GET',WikiDataRoot+FileNameSafe(pn+WikiDataExt),false,WikiDataUser,WikiDataPwd);
+	  rq.send(EmptyParam);
+	  if rq.status in [0,200] then x:=rq.responseText else x:='''''Page not found''''';
+	except
+	  x:='''''Page not found''''';
+	end;
+	x:=MainWikiEngine.Render(x,gn);
+	while MainWikiEngine.GetModification(mn,mv) do
+	 begin
+	  if mn='redirect' then
+	   begin
+		//Context.Redirect(mv,true);
+		i:=0;
+		l:=Length(rl);
+		while (i<l) and not(FileNameSafe(rl[i])=FileNameSafe(mv)) do inc(i);
+		if i<l then raise Exception.Create('Redirect loop detected.');
+		SetLength(rl,l+1);
+		rl[l]:=pn;
+		redirecting:=true;
+		pn:=mv;
+        gn:=MainWikiEngine.GetGroupByName(pn,'Main');
+	   end;
+	  //more?
+	 end;
+ end;
+Context.Include('iHead.xxmi',[pn,gn,pn]);
+for i:=0 to Length(rl)-1 do
+ begin
+  ]]<p class="redirected">redirected from <b>[[=rl[i]]]</b></p>[[
+ end;
+Context.SendHTML(x);
+]]</div>
+<div class="footerbar">rev:[[=RevFromETag(rq.getResponseHeader('ETag'))]] &nbsp; [[=rq.getResponseHeader('Last-Modified')]]</div>
+<div class="sidebar"><div class="faketitle">&nbsp;</div><div class="sidewiki">[[
+try
+  rq.open('GET',WikiDataRoot+FileNameSafe(gn+WikiSideBarSuffix+WikiDataExt),false,WikiDataUser,WikiDataPwd);
+  rq.send(EmptyParam);
+  if rq.status in [0,200] then Context.SendHTML(MainWikiEngine.Render(rq.responseText,gn));
+except
+end;
+]]</div>[[
+Context.Include('iFoot.xxmi');
+]]

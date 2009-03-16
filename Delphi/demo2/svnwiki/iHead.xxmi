@@ -1,0 +1,24 @@
+[[@Variants,]][[!var
+pn,gn:string;
+]]<html><head><title>[[=Values[0]]]</title><link rel="stylesheet" type="text/css" href="svnwiki.css" /></head><body>
+<div class="searchbar"><form action="" method="GET">search: <input type="text" name="q" /></form></div>
+<div class="titlebar"><a href="" class="homelink">wiki</a>: [[
+case Length(Values) of
+  1:
+   begin
+    Context.SendHTML(Values[0]);
+   end;
+  3:
+   begin
+	gn:=VarToStr(Values[1]);
+    pn:=VarToStr(Values[2]);
+    ]]<a href="[[=gn]].HomePage">[[=gn]]</a> . [[=Copy(pn,Length(gn)+2,Length(pn)-Length(gn)-1)]] <a href="+[[=pn]]">+</a> <a href="~[[=pn]]">~</a>[[
+   end;
+  4:
+   begin
+	gn:=VarToStr(Values[1]);
+    pn:=VarToStr(Values[2]);
+    ]]<a href="[[=gn]].HomePage">[[=gn]]</a> . <a href="[[=pn]]">[[=Copy(pn,Length(gn)+2,Length(pn)-Length(gn)-1)]]</a>[[=Values[3]]][[
+   end;   
+end;
+]]</div><div class="wikipage">
