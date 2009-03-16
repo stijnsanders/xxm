@@ -1,0 +1,61 @@
+[[@wikiObj,Classes,Variants,MSXML2_TLB,]][[!var
+pn,gn:WideString;
+rq:IXMLHTTPRequest;
+i:integer;
+sl:TStringList;
+fx,ft:string;
+const
+linkclass:array[boolean] of string=('wikiedit','wikilink');
+]][[
+pn:=Context.ContextString(csLocalURL);
+fx:=WikiDataExtBackLinks;
+ft:='BackLinks';
+if not(pn='') and (pn[1]='+') then
+ begin
+  fx:=WikiDataExtLinks;
+  ft:='Links';
+ end;
+pn:=Copy(pn,2,Length(pn)-1);//shave prefix
+if pn='' then pn:='HomePage';
+CheckMainWikiEngine;
+gn:=MainWikiEngine.GetGroupByName(pn,'Main');
+Context.Include('iHead.xxmi',[pn+' ('+ft+')',gn,pn,': '+ft]);
+sl:=TStringList.Create;
+try
+  rq:=CoXMLHTTP.Create;
+  try
+    rq.open('GET',WikiDataRoot+FileNameSafe(pn+fx),false,WikiDataUser,WikiDataPwd);
+    rq.send(EmptyParam);
+    if rq.status in [0,200] then sl.Text:=rq.responseText;
+  except
+    //nothing
+  end;
+  if sl.Count=0 then
+   begin
+    ]]<p><i>No BackLinks</i></p>[[
+   end
+  else
+   begin
+    ]]<p>[[
+    for i:=0 to sl.Count-1 do
+     begin 
+	  rq.open('HEAD',WikiDataRoot+FileNameSafe(sl[i]+WikiDataExt),false,WikiDataUser,WikiDataPwd);
+	  rq.send(EmptyParam);
+	  ]]<a href="[[=sl[i]]]" class="[[#linkclass[rq.status in [0,200]]]]">[[=sl[i]]]</a><br />[[
+     end;
+	]]</p>[[
+   end;
+finally
+  sl.Free;
+end;
+]]<p><a href="[[=pn]]">back</a></p></div>
+<div class="footerbar">rev:[[=RevFromETag(rq.getResponseHeader('ETag'))]] &nbsp; [[=rq.getResponseHeader('Last-Modified')]]</div>
+<div class="sidebar"><div class="faketitle">&nbsp;</div><div class="sidewiki">[[
+try
+  rq.open('GET',WikiDataRoot+FileNameSafe(gn+WikiSideBarSuffix+WikiDataExt),false,WikiDataUser,WikiDataPwd);
+  rq.send(EmptyParam);
+  if rq.status in [0,200] then Context.SendHTML(MainWikiEngine.Render(rq.responseText,gn));
+except
+end;
+Context.Include('iFoot.xxmi');
+]]

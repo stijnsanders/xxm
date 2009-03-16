@@ -1,0 +1,24 @@
+<wikiparse>
+	<group>
+		TheWikiWikiWeb
+		<replace>
+			<pattern>^(wiki:)(.+)$</pattern>
+			<with>http://c2.com/cgi/wiki?$2|@@hspan%$1@@h/span%$2</with>
+		</replace>
+		WikiPedia
+		<replace>
+			<pattern>^(wikipedia:)(.+)$</pattern>
+			<with>http://en.wikipedia.org/wiki/$2|@@hspan%$1@@h/span%$2</with>
+		</replace>
+		MeatBall
+		<replace>
+			<pattern>^(usemod:)(.+)$</pattern>
+			<with>http://www.usemod.com/cgi-bin/wiki.pl?$2|@@hspan%$1@@h/span%$2</with>
+		</replace>
+		UseMod
+		<replace>
+			<pattern>^(meatball:)(.+)$</pattern>
+			<with>http://www.usemod.com/cgi-bin/mb.pl?$2|@@hspan%$1@@h/span%$2</with>
+		</replace>
+	</group>
+</wikiparse>

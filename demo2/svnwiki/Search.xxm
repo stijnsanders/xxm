@@ -1,0 +1,70 @@
+[[@wikiObj,Variants,MSXML2_TLB,VBScript_RegExp_55_TLB,]][[!var
+q:WideString;
+rq:IXMLHTTPRequest;
+x:WideString;
+re1,re2:IRegExp2;
+mc1,mc2:IMatchCollection2;
+i,mx,fx:integer;
+]][[
+q:=Context['q'].Value;
+Context.Include('iHead.xxmi',['Search "'+q+'"']);
+]]<p id="searchingdisplay1" class="redirected">searching...</p><p>[[
+rq:=CoXMLHTTP.Create;
+try
+  //get directory listing!
+  rq.open('GET',WikiDataRoot,false,WikiDataUser,WikiDataPwd);
+  rq.send(EmptyParam);
+  if rq.status in [0,200] then x:=rq.responseText else x:='''''Page not found''''';
+except
+  x:='''''Page not found''''';
+end;
+
+re1:=CoRegExp.Create;
+re1.Pattern:='<a href="([^"]*?/)?([^"/]+?)\.wx">';//WikiDataExt
+re1.Global:=true;
+re1.IgnoreCase:=true;
+
+re2:=CoRegExp.Create;
+re2.Pattern:=q;//transform regex chars?
+re2.Global:=false;
+re2.IgnoreCase:=true;
+
+mx:=0;
+fx:=0;
+mc1:=re1.Execute(x) as IMatchCollection2;
+for i:=0 to mc1.Count-1 do
+ begin
+  x:=((mc1[i] as IMatch2).SubMatches as ISubMatches)[1];//TODO: HTMLDecode?
+  try  
+    rq.open('GET',WikiDataRoot+FileNameSafe(x+WikiDataExt),false,WikiDataUser,WikiDataPwd);
+    rq.send(EmptyParam);
+    if rq.status in [0,200] then
+	 begin
+ 	  mc2:=re2.Execute(rq.responseText) as IMatchCollection2;
+	  if not(mc2.Count=0) then
+	   begin
+	    inc(mx,mc2.Count);
+		inc(fx);
+        ]]<a href="[[=x]]" title="rev:[[=RevFromETag(rq.getResponseHeader('ETag'))]] &nbsp; [[=rq.getResponseHeader('Last-Modified')]]">[[=x]]</a> ([[=mc2.Count]])<br />[[
+	    //TODO: preview? count?
+	   end;
+     end;
+  except
+    //silent
+  end;
+ end;
+
+]]</p></div><script><!--
+document.getElementById("searchingdisplay1").style.display="none";
+//--></script>
+<div class="footerbar">[[=mx]] matches in [[=fx]] entries &nbsp; [[=Now]]</div>
+<div class="sidebar"><div class="faketitle">&nbsp;</div><div class="sidewiki">
+<form action="" method="GET">
+<b>Search:</b><br />
+<input type="text" name="q" value="[[=q]]"/><br />
+<input type="submit" value=" Search " />
+</form>
+</div>
+[[
+Context.Include('iFoot.xxmi');
+]]

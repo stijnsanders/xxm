@@ -1,0 +1,965 @@
+<?xml version="1.0"?>
+<wikiparse xmlns="http://yoy.be/dev/xsd/wikiparse.xsd">
+    <!--
+
+    wikiparse_pmwiki.xml
+    WikiParse XML to mimic PmWiki
+    version 1.0.12.4
+    by Stijn Sanders <stijn@yoy.be>
+    2006-12
+
+    When adapting for own use, change relative URL prefixes in "LocalURLs" below
+
+    Incoming text is first parsed to extract [= =] sections,
+    WikiLink's are extracted, and then other layout is transformed to HTML.
+    CRLF's are changed to LF's only, since that triggers the RegEx's "$", but not ".".
+    To match over lines "[\u0000-\uFFFF]" is used in stead of ".".
+
+    -->
+    
+    <jump>Start</jump>
+
+    This label is called to replace parse-codes local URL, adapt to your site
+    <group id="LocalURLs">
+		Link to a page that exists
+		<replace>
+			<pattern>@@w%</pattern>
+			<with></with>
+		</replace>
+		Link to a page that doesn't exist (edit page link)
+		<replace>
+			<pattern>@@e%</pattern>
+			<with>~</with>
+		</replace>
+    </group>
+    
+    Extract WikiLinks, feel free to change or add other alternatives in the main "(|)"
+	The "`?([A-Z][A-Za-z0-9_]+?[\./])?" prefix handles groups
+	<extract id="FindWikiLinks">
+	
+		<!--
+		This one takes anything with two or more capitals in it (or a capital somewhere followed by a digit somewhere)
+		<pattern>`?(([A-Z][A-Za-z0-9_]+?)[\./])?([a-z0-9]*?[A-Z][A-Za-z0-9_]*?[A-Z0-9][A-Za-z0-9_]*)</pattern>
+		-->
+		
+		This one is a bit looser and takes up more names that usually show up in code
+		<pattern>`?([A-Z][A-Za-z0-9_]+?[\./:])?([A-Za-z_][A-Za-z0-9_]*?[A-Z0-9][A-Za-z0-9_]*)</pattern>
+		
+		
+		<prefix>%A%</prefix>
+		<ignorecase>0</ignorecase>
+		<match>
+		
+			Ignore neutralized WikiWords
+			<replaceif>
+				<pattern>^`</pattern>
+				<with></with>
+				<do>
+					<jump>NonLinkText</jump>
+				</do>
+				<else>
+					<jump>ParseLink</jump>
+				</else>
+			</replaceif>
+
+		</match>
+		<inbetween>
+
+			<jump>NonLinkText</jump>
+
+		</inbetween>
+	</extract>
+
+
+    <group id="Start">
+
+        CRLF/LF fix
+        <replace>
+			<pattern>\r\n</pattern>
+			<with>&#xA;</with>
+		</replace>
+		<append>&#xA;</append>
+		
+		Treat tabs as spaces
+		<replace>
+			<pattern>\t</pattern>
+			<with> </with>
+		</replace>
+        
+        Extract items marked for skipping layout, process inbetweens as one block
+        <extract>
+			<pattern>\[([=@])([\u0000-\uFFFF]*?)\1\]</pattern>
+			<prefix>%B%</prefix>
+			<match>
+				<submatch>
+					<number>2</number>
+				</submatch>
+				<htmlencode></htmlencode>
+			</match>
+			<inbetween>
+				<extract>
+					<pattern>\(:([\u0000-\uFFFF]*?):\)</pattern>
+					<prefix>%C%</prefix>
+					<match>
+						<submatch>
+							<number>1</number>
+						</submatch>
+						<command></command>
+					</match>
+					<inbetween>
+
+						First pre-process text for post-processing styles
+						<replace>
+							<pattern>@@</pattern>
+							<with>@@k%</with>
+						</replace>
+						
+						Extract WikiLinks and HyperLinks from plain text:
+						<extract>
+							First find anything enclosed in double square brackets:
+							<pattern>\[\[([\u0000-\uFFFF]+?)\]\]</pattern>
+							<prefix>%D%</prefix>
+							<match>
+								<submatch>
+									<number>1</number>
+								</submatch>
+								
+								<jump>ParseLink</jump>
+					            					            
+							</match>
+							<inbetween>
+
+
+								Text Formatting
+								<replace>
+									<pattern>@@k%([\u0000-\uFFFF]*?)@@k%</pattern>
+									<with>@@hcode%$1@@h/code%</with>
+								</replace>
+								<replace>
+									<pattern>([^']|^)''''('')?([^']|$)</pattern>
+									<with>$1@@hspan%@@h/span%$3</with>
+								</replace>
+								<replace>
+									<pattern>'''([\u0000-\uFFFF]+?)'''</pattern>
+									<with>@@hb%$1@@h/b%</with>
+								</replace>
+								<replace>
+									<pattern>''([\u0000-\uFFFF]+?)''</pattern>
+									<with>@@hi%$1@@h/i%</with>
+								</replace>
+								<split>
+									<pattern>\[\++[\u0000-\uFFFF]*?\++\]</pattern>
+									<match>
+										<replace>
+											<pattern>\[(\++)([\u0000-\uFFFF]*?)\++\]</pattern>
+											<with>$1$2$1</with>
+										</replace>
+										<split>
+											<pattern>^\+*</pattern>
+											<match>
+												<replace>
+													<pattern>\+</pattern>
+													<with>@@hbig%</with>
+												</replace>
+											</match>
+										</split>
+										<split>
+											<pattern>\+*$</pattern>
+											<match>
+												<replace>
+													<pattern>\+</pattern>
+													<with>@@h/big%</with>
+												</replace>
+											</match>
+										</split>
+									</match>
+								</split>
+								<split>
+									<pattern>\[-+[\u0000-\uFFFF]*?-+\]</pattern>
+									<match>
+										<replace>
+											<pattern>\[(-+)([\u0000-\uFFFF]*?)-+\]</pattern>
+											<with>$1$2$1</with>
+										</replace>
+										<split>
+											<pattern>^-*</pattern>
+											<match>
+												<replace>
+													<pattern>-</pattern>
+													<with>@@hsmall%</with>
+												</replace>
+											</match>
+										</split>
+										<split>
+											<pattern>-*$</pattern>
+											<match>
+												<replace>
+													<pattern>-</pattern>
+													<with>@@h/small%</with>
+												</replace>
+											</match>
+										</split>
+									</match>
+								</split>
+								<replace>
+									<pattern>\[\[&lt;&lt;\]\]</pattern>
+									<with>@@hbr /%</with>
+								</replace>
+								<replace>
+									<pattern>\{\+([\u0000-\uFFFF]*?)\+\}</pattern>
+									<with>@@hins%$1@@h/ins%</with>
+								</replace>
+								<replace>
+									<pattern>\{-([\u0000-\uFFFF]*?)-\}</pattern>
+									<with>@@hdel%$1@@h/del%</with>
+								</replace>
+
+								<replace>
+									<pattern>'\+([A-Z0-9].*)\+'</pattern>
+									<with>@@hbig%$1@@h/big%</with>
+								</replace>
+								<replace>
+									<pattern>'-([A-Z0-9].*)-'</pattern>
+									<with>@@hsmall%$1@@h/small%</with>
+								</replace>
+								<replace>
+									<pattern>'\^([A-Z0-9].*)\^'</pattern>
+									<with>@@hsuper%$1@@h/super</with>
+								</replace>
+								<replace>
+									<pattern>'_([A-Z0-9].*)_'</pattern>
+									<with>@@hsub%$1@@h/sub%</with>
+								</replace>
+								<replace>
+									<pattern>'__([A-Z0-9].*)__'</pattern>
+									<with>@@hu%$1@@h/u%</with>
+								</replace>
+							
+								Plain URL's
+								<extract>
+									<pattern>(www\.|(http|https|file|ftp|irc|ldap|mailto|news|nntp|ed2k|rlogin|shell|snews|svn|svn+ssh|telnet|tsvn):)[-_\.'\*\+\(\)?&amp;%=#:;,/A-Z0-9]+</pattern>
+									<prefix>%E%</prefix>
+									<match>
+										<jump>HyperLink</jump>
+									</match>
+									<inbetween>
+									
+										Other prefixed things
+										<extract>
+											<pattern>([A-Za-z0-9_]+:)[-_\.'\*\+\(\)?&amp;=#:;/A-Z0-9]+</pattern>
+											<prefix>%F%</prefix>
+											<match>
+												Check SisterWiki prefixes
+												<include>sisterwikis.xml</include>
+												<jump>ParseLink</jump>
+											</match>
+											<inbetween>
+												<jump>FindWikiLinks</jump>
+											</inbetween>
+										</extract>
+									
+									</inbetween>
+								</extract>
+								
+							</inbetween>
+						</extract>
+
+						Lines ending with two backslashes (or more), change to BR's
+						<split>
+							<pattern>\\(\\+)\n</pattern>
+							<match>
+								<submatch>
+									<number>1</number>
+								</submatch>
+								<replace>
+									<pattern>\\</pattern>
+									<with>@@hbr /%</with>
+								</replace>
+							</match>
+						</split>
+				        
+						Lines ending with backslash, join with next
+						<replace>
+							<pattern>\\\n</pattern>
+							<with></with>
+						</replace>
+						
+						Replace dashes with HR
+						<replace>
+							<pattern>^ *?----+ *?$</pattern>
+							<with>&lt;hr /&gt;</with>
+						</replace>
+				        
+						Headers
+						<replace>
+							<pattern>^!!!!(.*?)$</pattern>
+							<with>&lt;/p&gt;&#xA;&lt;h4&gt;$1&lt;/h4&gt;&#xA;&lt;p&gt;</with>
+						</replace>
+						<replace>
+							<pattern>^!!!(.*?)$</pattern>
+							<with>&lt;/p&gt;&#xA;&lt;h3&gt;$1&lt;/h3&gt;&#xA;&lt;p&gt;</with>
+						</replace>
+						<replace>
+							<pattern>^!!(.*?)$</pattern>
+							<with>&lt;/p&gt;&#xA;&lt;h2&gt;$1&lt;/h2&gt;&#xA;&lt;p&gt;</with>
+						</replace>
+						<replace>
+							<pattern>^!(.*?)$</pattern>
+							<with>&lt;/p&gt;&#xA;&lt;h1&gt;$1&lt;/h1&gt;&#xA;&lt;p&gt;</with>
+						</replace>
+				        
+						Formatted text
+						<split>
+							<pattern>^ .*?$(\n* .*?$\n?)*</pattern>
+							<match>
+				            
+								Strip preceding spaces
+								<replace>
+									<pattern>^ </pattern>
+									<with></with>
+								</replace>
+								
+								Fix EOL's for later since br's would change layout
+								<replace>
+									<pattern>\n</pattern>
+									<with>@@n%</with>
+								</replace>
+				            
+								<prepend>&lt;/p&gt;&lt;pre&gt;</prepend>
+								<append>&lt;/pre&gt;&lt;p&gt;</append>
+							</match>
+						</split>
+						
+						Lists and Tables
+						<jump>DoIndent</jump>
+						<jump>DoLists</jump>
+						<jump>DoTables</jump>
+
+						Double EOL's end paragraph and start new
+						<replace>
+							<pattern>\n( *?\n)+</pattern>
+							<with>&#xA;&lt;/p&gt;&#xA;&lt;p&gt;&#xA;</with>
+						</replace>
+						
+						Ignore EOL's after extract codes
+						<split>
+							<pattern>(%B%[0-9]+?#)\n</pattern>
+							<inbetween>
+								All other EOL's to plain BR's
+								<replace>
+									<pattern>([^&gt;])\n</pattern>
+									<with>$1&lt;br /&gt;&#xA;</with>
+								</replace>
+							</inbetween>
+						</split>
+						
+						Local URL's
+						<jump>LocalURLs</jump>
+
+						Post-processing to get additional layout correct
+						<replace>
+							<pattern>@@h(.+?)%</pattern>
+							<with>&lt;$1&gt;</with>
+						</replace>
+						<replace>
+							<pattern>@@n%</pattern>
+							<with>&#xA;</with>
+						</replace>
+						<replace>
+							<pattern>@@k%</pattern>
+							<with>@@</with>
+						</replace>
+
+						Enclose all in a paragraph, remove empty ones
+						<prepend>&lt;p&gt;&#xA;</prepend>
+						<append>&lt;/p&gt;&#xA;</append>
+						<replace>
+							<pattern>&lt;p&gt;\s*?&lt;/p&gt;\s*</pattern>
+							<with></with>
+						</replace>
+						
+						Fix extra p's in lists and tables
+						<replace>
+							<pattern>(&lt;(/dt|/dd|/li|td|th|/table|ul|ol)[^&gt;]*?&gt;\n *?)&lt;/p&gt;</pattern>
+							<with>$1</with>
+						</replace>
+						<replace>
+							<pattern>&lt;p&gt;(\n *?&lt;(/ul|/ol|/td|/th|li|dt|dd|table)&gt;)</pattern>
+							<with>$1</with>
+						</replace>
+
+						Color codes
+						<replace>
+							<pattern>%color=(#?[a-z0-9]+?)%([\u0000-\uFFFF]*?)(%%|$)</pattern>
+							<with>&lt;span style="color:$1"&gt;$2&lt;/span&gt;</with>
+						</replace>
+						<replace>
+							<pattern>&lt;([^/&gt;]+?)&gt;[\n ]*?%center%</pattern>	
+							<with>&lt;$1 style="text-align:center;"&gt;</with>
+						</replace>
+						<replace>
+							<pattern>&lt;([^/&gt;]+?)&gt;[\n ]*?%right%</pattern>	
+							<with>&lt;$1 style="text-align:right;"&gt;</with>
+						</replace>
+						<replace>
+							<pattern>&lt;([^/&gt;]+?)&gt;[\n ]*?%rfloat%</pattern>
+							<with>&lt;$1 style="float:right;"&gt;</with>
+						</replace>
+						<replace>
+							<pattern>&lt;([^/&gt;]+?)&gt;[\n ]*?%lfloat%</pattern>
+							<with>&lt;$1 style="float:left;"&gt;</with>
+						</replace>
+						<replace>
+							<pattern>&lt;([^/&gt;]+?)&gt;[\n ]*?%width=([0-9emnptx]+?)%</pattern>
+							<with>&lt;$1 style="width:$2;"&gt;</with>
+						</replace>
+						<replace>
+							<pattern>%(#[0-9]+?|[a-z]{3,}?)%([\u0000-\uFFFF]*?)(%%|$)</pattern>
+							<with>&lt;span style="color:$1"&gt;$2&lt;/span&gt;</with>
+						</replace>
+
+                    </inbetween>
+				</extract>
+			</inbetween>
+		</extract>
+
+        CRLF/LF fix
+        <replace>
+			<pattern>\n</pattern>
+			<with>&#xD;&#xA;</with>
+		</replace>
+
+    </group>
+    
+	Does it start with a slash, or an internet protocol, then it's a HyperLink
+	<group  id="ParseLink">
+
+		Replace arrow notation by pipe notation
+        <replace>
+			<pattern>^([^\|]*?) *?-?&gt; *([\u0000-\uFFFF]*)$</pattern>
+			<with>$2|$1</with>
+		</replace>
+		
+		Check for a () portion inside [[]]
+		<split>
+			<pattern>^.*?\(.*?\).*?(\||$)</pattern>
+			<match>
+				duplicate
+				<replace>
+					<pattern>^(.+?)(\|.*)?$</pattern>
+					<with>$1@@d%$1$2</with>
+				</replace>
+				and process both
+				<split>
+					<pattern>^.+@@d%</pattern>
+					<match>
+						remove () from prefix
+						<replace>
+							<pattern>[\(\)]</pattern>
+							<with></with>
+						</replace>
+					</match>
+					<inbetween>
+						rip from suffix
+						<replace>
+							<pattern>\(.*?\)</pattern>
+							<with></with>
+						</replace>
+					</inbetween>
+				</split>
+				update to pipe
+				<replace>
+					<pattern>@@d%</pattern>
+					<with>|</with>
+				</replace>
+			</match>
+		</split>
+		
+		Check External URL's
+		<check>
+			<pattern>^([/#]|(http|https|file|ftp|ldap|mailto|news|nntp|ed2k|rlogin|shell|snews|svn|svn+ssh|telnet|tsvn):|[-a-z0-9\.]+?@[-a-z0-9\.]+?\.[a-z]{2,3}\b|[-a-z0-9\.]+?\.[-a-z0-9]+?\.[a-z]{2,3}/?)</pattern>
+			<do>
+				<replaceif>
+					<pattern>^#(([\u0000-\uFFFF]*) *\| *?([\u0000-\uFFFF]*)|([\u0000-\uFFFF]+))$</pattern>
+					<with>&lt;a name="$2$4"&gt;$3@@h/a%</with>
+					<else>
+						<jump>HyperLink</jump>
+					</else>
+				</replaceif>
+			</do>
+			<else>
+				Else it's a WikiLink,
+				
+				Fix non-displaying group prefix (slash)
+				<replace>
+					<pattern>^([A-Za-z0-9_]+?)/(.+)$</pattern>
+					<with>$1.$2|$2</with>
+				</replace>
+
+				<!--
+				Fix any unrecognized prefix
+				<replaceif>
+					<pattern>^([^:]+?:.*)$</pattern>
+					<with>@@hu%$1@@h/u%</with>
+					<else>
+				-->
+				
+						Check if the WikiPage linked to exists or not and link appropriately
+						<wiki>
+							<pattern>( *\|.*)$</pattern>
+							<with></with>
+							<update>1</update>
+							<updateprefix>@@u%</updateprefix>
+							<updatedo>
+								<replaceif>
+									<pattern>^(.*?)@@u%.+?(\|)</pattern>
+									<with>$1$2</with>
+									<else>
+										<replace>
+											<pattern>@@u%</pattern>
+											<with>|</with>
+										</replace>
+									</else>
+								</replaceif>
+							</updatedo>
+							<found>
+								<jump>WikiLinkFound</jump>
+							</found>
+							<missing>
+								<jump>WikiLinkMissing</jump>
+							</missing>
+						</wiki>
+				<!--
+					</else>
+				</replaceif>
+				-->
+			</else>
+		</check>
+	</group>
+    
+    <group id="HyperLink">
+		Check if it's an e-mail address
+		<check>
+			<pattern>^[-a-z0-9\.]+?@[-a-z0-9\.]+?\.[a-z]{2,3}\b</pattern>
+			<do>
+				<prepend>hyperlink##mailto:####</prepend>
+			</do>
+			<else>
+				Check if it starts with something like www.site.tld
+				<check>
+					<pattern>^[-a-z0-9\.]+?\.[-a-z0-9]+?\.[a-z]{2,3}/?</pattern>
+					<do>
+						<prepend>hyperlink##http://####</prepend>
+					</do>
+					<else>
+						<prepend>hyperlink######</prepend>
+					</else>
+				</check>
+			</else>
+		</check>
+		<jump>SomeLink</jump>
+	</group>
+
+    Use id="SomeLink" with prefix of form "class##prefix##suffix##"
+    <group id="WikiLinkFound">
+		<prepend>wikilink##@@w%####</prepend>
+		<jump>SomeLink</jump>
+	</group>
+
+    <group id="WikiLinkMissing">
+        Suffix with pre-codes because HTMLencode later
+        <!--<prepend>wikiedit##@@e%##@@hspan%?@@h/span%##</prepend>-->
+        <prepend>wikiedit##@@e%####</prepend>
+        <jump>SomeLink</jump>
+    </group>
+
+    Display some link, prefix text with: class##prefix##suffix##
+    <group id="SomeLink">
+        HTMLEncode up front!
+        <htmlencode></htmlencode>
+
+        Ending tags /a are in code here to pick-up a plain EOL later
+        Check if a caption or title is provided, first with both name and title
+        <replaceif>
+			<pattern>^(.+?)##(.*?)##(.*?)##([^\|]*?) *?\| *?([^\|]*?) *?\| *([\u0000-\uFFFF]*)$</pattern>
+			<with>&lt;a href="$2[[$4]]" title="$6" class="$1"&gt;$5$3@@h/a%</with>
+			<else>
+				With pipe "|"
+				<replaceif>
+					<pattern>^(.+?)##(.*?)##(.*?)##([^\|]*?) *?\| *([\u0000-\uFFFF]*)$</pattern>
+					<with>&lt;a href="$2[[$4]]" title="$4" class="$1"&gt;$5$3@@h/a%</with>
+					<else>
+						Else take target as display name
+						<replace>
+							<pattern>^(.+?)##(.*?)##(.*?)##([\u0000-\uFFFF]*)$</pattern>
+							<with>&lt;a href="$2[[$4]]" title="$4" class="$1"&gt;$4$3@@h/a%</with>
+						</replace>
+					</else>
+				</replaceif>
+            </else>
+		</replaceif>
+		
+		URLEncode sections enclosed in [[]]
+		<split>
+			<pattern>\[\[([\u0000-\uFFFF]+?)\]\]</pattern>
+			<match>
+				<submatch>
+					<number>1</number>
+				</submatch>
+				<urlencode></urlencode>
+			</match>
+		</split>
+		
+    </group>
+    
+    <group id="NonLinkText">
+        Other layout, between links
+
+        HTMLEncode up front
+        <htmlencode />
+    </group>
+    
+    <split id="DoIndent">
+		<pattern>(^-+?&amp;gt;.+?$\n?( *?\n)*)+</pattern>
+		<match>
+		
+			<!-- not really needed
+			Clear any empty lines
+            <replace>
+                <pattern>^ *?\n</pattern>
+                <with></with>
+            </replace>
+            -->            
+            
+            Start/end
+            <prepend>&lt;div class="indent"&gt;&#xA;</prepend>
+            <append>&lt;/div&gt;&#xA;</append>
+            
+            Remove single level prefixes, and one off other levels
+            <replace>
+				<pattern>^(-&amp;gt;|-(-+&amp;gt;))</pattern>
+				<with>$2</with>
+			</replace>
+            
+            Check deeper levels
+            <check>
+				<pattern>^-+&amp;gt;</pattern>
+				<do>
+					<jump>DoIndent</jump>
+				</do>
+			</check>			
+            
+		</match>
+	</split>
+
+    <split id="DoLists">
+		<pattern>^([\*#:].*?$\n?( *?\n)?)+</pattern>
+		<match>
+        
+            Clear any empty lines
+            <replace>
+				<pattern>^ *?\n</pattern>
+				<with></with>
+			</replace>
+            
+            Check list type, start/end
+            <check>
+				<pattern>^#</pattern>
+				<multiline>0</multiline>
+				<do>
+                    Ordered List
+                    <prepend>&lt;/p&gt;&lt;ol&gt;&#xA;</prepend>
+                    <append>&lt;/ol&gt;&lt;p&gt;&#xA;</append>
+                </do>
+				<else>
+					<check>
+						<pattern>^:</pattern>
+						<multiline>0</multiline>
+						<do>
+                            Definition list
+                            <prepend>&lt;/p&gt;&lt;dl&gt;&#xA;</prepend>
+                            <append>&lt;/dl&gt;&lt;p&gt;&#xA;</append>
+                        </do>
+						<else>
+                            check, pattern ^\*
+                            Unordered list
+                            <prepend>&lt;/p&gt;&lt;ul&gt;&#xA;</prepend>
+                            <append>&lt;/ul&gt;&lt;p&gt;&#xA;</append>
+                        </else>
+					</check>
+				</else>
+			</check>
+
+            Check nested levels
+            <extract>
+                <pattern>(^[\*#:][\*#:].*?$\n?)+</pattern>
+                <prefix>%G%</prefix>
+                Extraction needs a suffix with EOL to preserve line breaks
+                <suffix>#&#xA;</suffix>
+                <match>
+
+                    Remove prefixes
+                    <replace>
+						<pattern>^[\*#:]</pattern>
+						<with></with>
+					</replace>
+
+                    Recurse
+                    <jump>DoLists</jump>
+
+                    Add indentation
+                    <replace>
+						<pattern>^</pattern>
+						<with>&#x20;&#x20;&#x20;&#x20;</with>
+					</replace>
+                </match>
+                <inbetween>
+					Take an item per line
+					<split>
+						<pattern>\n</pattern>
+						<inbetween>
+							Enclose items of list
+							<replaceif>
+								Definition items first
+								<pattern>^: *((&lt;[^&gt;]+&gt;|.)+) *?: *?(.*)$</pattern>
+								<with>  &lt;dt&gt;$1&lt;/dt&gt;&lt;dd&gt;$3&lt;/dd&gt;</with>
+								<else>
+									Or any with only a term
+									<replaceif>
+										<pattern>^: *((&lt;[^&gt;]+&gt;|.)+)$</pattern>
+										<with>  &lt;dt&gt;$1&lt;/dt&gt;</with>
+										<else>
+											Any other list items
+											<replace>
+												<pattern>^[\*#](.*?)$</pattern>
+												<with>  &lt;li&gt;$1&lt;/li&gt;</with>
+											</replace>
+										</else>
+									</replaceif>
+								</else>
+							</replaceif>
+						</inbetween>
+					</split>
+                </inbetween>
+            </extract>
+
+        </match>
+	</split>
+
+    <split id="DoTables">
+		<pattern>(^\|\|.+?$\n?( *?\n)?)+</pattern>
+		<match>
+
+            Clear any empty lines
+            <replace>
+				<pattern>^ *?\n</pattern>
+				<with></with>
+			</replace>
+                        
+            Start/end
+            <prepend>&lt;/p&gt;&lt;table class="basetable"&gt;&lt;tbody&gt;&#xA;</prepend>
+            Rows and cells
+            <split>
+				<pattern>^\|\|.*?$</pattern>
+				<match>
+                    Remove overfluxious prefixes
+                    <replace>
+						<pattern>^(\|\|)+</pattern>
+						<with>||</with>
+					</replace>
+
+                    Create colspan codes
+                    <split>
+                    	<pattern>\|\|(\|\|)+</pattern>
+                        <match>
+                            <replace>
+                                <pattern>\|\|</pattern>
+                                <with>x</with>
+                            </replace>
+                            <length></length>
+                            <prepend>@@s</prepend>
+                            <append>%||</append>
+                        </match>
+                    </split>
+
+                    Remove ending delimiter
+                    <replace>
+						<pattern>\|\| *?$</pattern>
+						<with></with>
+					</replace>
+
+                    Plain cells
+					<replace>
+						<pattern>\|\|</pattern>
+						<with>&lt;/td&gt;&lt;td&gt;</with>
+					</replace>
+
+                    Row tags, first cell will close an unexisting previous cell
+                    <prepend>&lt;tr valign="top"&gt;</prepend>
+                    <append>&lt;/td&gt;&lt;/tr&gt;</append>
+
+                </match>
+			</split>
+
+            Fix first cells
+            <replace>
+				<pattern>&lt;tr([^&gt;]*?)&gt;&lt;/td&gt;</pattern>
+				<with>&lt;tr$1&gt;</with>
+			</replace>
+
+			Fix empty cells and cell alignment,colspan codes
+			<split>
+				<pattern>&lt;td[^&gt;]*?&gt;.+?&lt;/td&gt;</pattern>
+				<match>
+                    <replace>
+						<pattern>&lt;(td[^&gt;]*?)&gt;(.+?)@@s([0-9]+?)%&lt;/td&gt;</pattern>
+                        <with>&lt;$1 colspan="$3"&gt;$2&lt;/td&gt;</with>
+                    </replace>
+					<replace>
+						<pattern>&lt;(td[^&gt;]*?)&gt; *?&lt;/td&gt;</pattern>
+						<with>&lt;$1&gt;&amp;nbsp;&lt;/td&gt;</with>
+					</replace>
+					<replace>
+						<pattern>&lt;(td[^&gt;]*?)&gt;(!?) (.+?) &lt;/td&gt;</pattern>
+						<with>&lt;$1 align="center"&gt;$2$3&lt;/td&gt;</with>
+					</replace>
+					<replace>
+						<pattern>&lt;(td[^&gt;]*?)&gt;(!?) (.+?)&lt;/td&gt;</pattern>
+						<with>&lt;$1 align="right"&gt;$2$3&lt;/td&gt;</with>
+					</replace>
+					<replace>
+						<pattern>&lt;(td[^&gt;]*?)&gt;(.+?) &lt;/td&gt;</pattern>
+						<with>&lt;$1 align="left"&gt;$2&lt;/td&gt;</with>
+					</replace>
+				</match>
+			</split>
+			
+
+            Fix header cells
+            <replace>
+				<pattern>&lt;td([^&gt;]*?)&gt;!(.*?)&lt;/td&gt;</pattern>
+				<with>&lt;th$1&gt;$2&lt;/th&gt;</with>
+			</replace>
+            
+            <append>&lt;/tbody&gt;&lt;/table&gt;&lt;p&gt;&#xA;</append>
+                    
+        </match>
+	</split>
+
+    <!--
+    <split id="DoTables_WithSpanNumbers">
+		<pattern>(^\|-?[0-9]*?\|.+?$\n?( *?\n)?)+</pattern>
+		<match>
+
+            Clear any empty lines
+            <replace>
+				<pattern>^ *?\n</pattern>
+				<with></with>
+			</replace>
+                        
+            Check nested tables
+            <extract>
+                <pattern>(^(\|-?[0-9]*?\|){2,}.+?$\n?)+</pattern>
+                <prefix>%H%</prefix>
+                Extraction needs a suffix with EOL to preserve line breaks
+                <suffix>#&#xA;</suffix>
+                <match>
+                    Remove prefixes
+                    <replace>
+						<pattern>^\|-?[0-9]*?\|</pattern>
+						<with></with>
+					</replace>
+
+                    Recurse
+                    <jump>DoTables</jump>
+
+                    Add indentation
+                    <replace>
+						<pattern>^&lt;</pattern>
+						<with>&#x20;&#x20;&#x20;&#x20;&lt;</with>
+					</replace>
+                    
+                    Enclose in a cell (alignment?)
+                    <prepend>&lt;tr valign="top"&gt;&lt;td&gt;&#xA;</prepend>
+                    <append>&lt;/td&gt;&lt;/tr&gt;&#xA;</append>
+
+                </match>
+                <inbetween>
+                    Start/end
+                    <prepend>&lt;/p&gt;&lt;table class="basetable"&gt;&lt;tbody&gt;&#xA;</prepend>
+                    Rows and cells
+                    <split>
+						<pattern>^\|-?[0-9]*?\|.*?$</pattern>
+						<match>
+                            Remove ending delimiter
+                            <replace>
+								<pattern>\|-?[0-9]*?\| *?$</pattern>
+								<with></with>
+							</replace>
+                            Row tags, first cell will close an unexisting previous cell
+                            <prepend>&lt;tr valign="top"&gt;</prepend>
+                            <append>&lt;/td&gt;&lt;/tr&gt;</append>
+                            Cells with rowspan
+                            <replace>
+								<pattern>(^|[^\|])\|-([0-9]+?)\|</pattern>
+								<with>$1&lt;/td&gt;&lt;td rowspan="$2"&gt;</with>
+							</replace>
+                            Cells with colspan
+                            <replace>
+								<pattern>(^|[^\|])\|([0-9]+?)\|</pattern>
+								<with>$1&lt;/td&gt;&lt;td colspan="$2"&gt;</with>
+							</replace>
+                            Plain cells
+                            <replace>
+								<pattern>\|\|</pattern>
+								<with>&lt;/td&gt;&lt;td&gt;</with>
+							</replace>
+                        </match>
+					</split>
+
+                    Fix first cells
+                    <replace>
+						<pattern>&lt;tr([^&gt;]*?)&gt;&lt;/td&gt;</pattern>
+						<with>&lt;tr$1&gt;</with>
+					</replace>
+					
+					Fix empty cells and cell alignment
+					<split>
+						<pattern>&lt;td[^&gt;]*?&gt;.+?&lt;/td&gt;</pattern>
+						<match>
+							<replace>
+								<pattern>&lt;(td[^&gt;]*?)&gt; *?&lt;/td&gt;</pattern>
+								<with>&lt;$1&gt;&amp;nbsp;&lt;/td&gt;</with>
+							</replace>
+							<replace>
+								<pattern>&lt;(td[^&gt;]*?)&gt; (.+?) &lt;/td&gt;</pattern>
+								<with>&lt;$1 align="center"&gt;$2&lt;/td&gt;</with>
+							</replace>
+							<replace>
+								<pattern>&lt;(td[^&gt;]*?)&gt; (.+?)&lt;/td&gt;</pattern>
+								<with>&lt;$1 align="right"&gt;$2&lt;/td&gt;</with>
+							</replace>
+							<replace>
+								<pattern>&lt;(td[^&gt;]*?)&gt;(.+?) &lt;/td&gt;</pattern>
+								<with>&lt;$1 align="left"&gt;$2&lt;/td&gt;</with>
+							</replace>
+						</match>
+					</split>
+					
+
+                    Fix header cells
+                    <replace>
+						<pattern>&lt;td([^&gt;]*?)&gt;!(.*?)&lt;/td&gt;</pattern>
+						<with>&lt;th$1&gt;$2&lt;/th&gt;</with>
+					</replace>
+                    
+                    <append>&lt;/tbody&gt;&lt;/table&gt;&lt;p&gt;&#xA;</append>
+                    
+                </inbetween>
+            </extract>
+
+        </match>
+	</split>
+	-->
+
+</wikiparse>
