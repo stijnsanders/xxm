@@ -110,7 +110,7 @@ begin
   else
    begin
     s:=ParamStr(1);
-    if s='/n' then s:=ExtractFilePath(ParamStr(2))+XxmProjectFileName;
+    if LowerCase(s)='/n' then s:=ExtractFilePath(ParamStr(2))+XxmProjectFileName;
     LoadProject(s,false);
    end;
   //assert Modified=false
@@ -137,7 +137,7 @@ function TEditProjectMainForm.LoadProject(Path: string;
 var
   fn:string;
   fe:boolean;
-  i:integer;
+  i,j:integer;
 begin
   //assert CheckModified called before
 
@@ -167,8 +167,14 @@ begin
        end;
      end
     else
-      ProjectData.loadXML('<XxmWebProject>'#13#10#9'<ProjectName></ProjectName>'#13#10#9+
+     begin
+      j:=Length(fn);
+      while not(j=0) and not(fn[j]=PathDelim) do dec(j);
+      i:=j-1;
+      while not(i<=0) and not(fn[i]=PathDelim) do dec(i);
+      ProjectData.loadXML('<XxmWebProject>'#13#10#9'<ProjectName>'+Copy(fn,i+1,j-i-1)+'</ProjectName>'#13#10#9+
         '<CompileCommand>dcc32 -U..\..\public -Q [[ProjectName]].dpr</CompileCommand>'#13#10'</XxmWebProject>');
+     end;
     ProjectPath:=fn;
     Caption:='xxm Project - '+fn;
     Application.Title:='xxm Project - '+fn;
