@@ -105,19 +105,22 @@ begin
   inc(j);
   t:=Copy(s,j,i-j);
 
-  r:=TRegistry.Create;
-  try
-    //r.RootKey:=HKEY_LOCAL_MACHINE;//setting?
-    r.RootKey:=HKEY_CURRENT_USER;
-    r.OpenKey('\Software\xxm\local\'+t,true);
-    r.WriteString('',s);
-    //TODO: default settings?
-  finally
-    r.Free;
-  end;
-
-  MessageBox(GetDesktopWindow,PChar('Project "'+t+'" registered.'),
-    'xxm Local Handler',MB_OK or MB_ICONINFORMATION);
+  if MessageBox(GetDesktopWindow,PChar('Register xxm project "'+t+'" for local handler?'),
+    'xxm Local Handler',MB_OKCANCEL or MB_ICONQUESTION)=idOk then
+   begin
+    r:=TRegistry.Create;
+    try
+      //r.RootKey:=HKEY_LOCAL_MACHINE;//setting?
+      r.RootKey:=HKEY_CURRENT_USER;
+      r.OpenKey('\Software\xxm\local\'+t,true);
+      r.WriteString('',s);
+      //TODO: default settings?
+    finally
+      r.Free;
+    end;
+    MessageBox(GetDesktopWindow,PChar('Project "'+t+'" registered.'),
+      'xxm Local Handler',MB_OK or MB_ICONINFORMATION);
+   end;
 end;
 
 { TXxmProjectCacheEntry }
