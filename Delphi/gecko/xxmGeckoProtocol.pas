@@ -20,7 +20,7 @@ type
   //TODO: nsIFileProtocolHandler?
 
 const
-  CID_xxmProtocolHandler: TGUID = '{78786D00-0000-000C-C000-00000000000C}';
+  CID_xxmProtocolHandler: TGUID = '{78786D00-0000-0010-C000-000000000010}';
 
 implementation
 
