@@ -1,0 +1,55 @@
+<html>
+<head>
+<title>xxm tutorial quick guide screenshots</title>
+<style type="text/css"><!--
+BODY{font-family:Calibri,Verdana,sans-serif;font-size:18pt;overflow:hidden;}
+P{text-align:center;margin:0pt;}
+IMG#tutsnap{border:2px solid #999999;}
+A{text-decoration:none;}
+//--></style>
+<body onresize="doresize();">
+<p id="tutnav"><i>loading...</i></p>
+<p><img src="snap00.png" id="tutsnap" width="1024" height="768" onclick="nav(csnap+1);" /><img src="snap01.png" id="tutpre" width="0" height="0" /></p>
+<p id="tuttxt"></p>
+<script language="javascript" src="snaps.js"></script>
+<script language="javascript"><!--
+var tutnav=document.getElementById("tutnav");
+var tutsnap=document.getElementById("tutsnap");
+var tuttxt=document.getElementById("tuttxt");
+var tutpre=document.getElementById("tutpre");
+var csnap=0;
+function doresize()
+{
+	var x=tutnav.clientWidth;
+	if(x==0)x=tutnav.offsetWidth;
+	if(x<1024)
+	{
+		tutsnap.width=x;
+		tutsnap.height=x*0.75;
+	}
+	else if(tutsnap.width!=1024)
+	{
+		tutsnap.width=1024;
+		tutsnap.height=768;
+	}
+}
+function buildnav()
+{
+	var i;
+	var x=(csnap==0)?'<s>prev</s>':('<a href="javascript:nav('+(csnap-1)+');">prev</a>');
+	for(i=0;i<snaps.length;i++) x+=" "+((csnap==i)?('<b>['+i+']</b>'):('<a href="javascript:nav('+i+');">['+i+']</a>'));
+	tutnav.innerHTML=x+' '+((csnap==snaps.length-1)?'<s>next</s>':('<a href="javascript:nav('+(csnap+1)+');">next</a>'));
+}
+function nav(x)
+{
+	if(x<snaps.length)csnap=x;
+	tutsnap.src="snap"+new String(100+x).substr(1,2)+".png";
+	tuttxt.innerHTML=snaps[x];
+	buildnav();
+	if(x+1<spans.length)tutpre.src="snap"+new String(101+x).substr(1,2)+".png";
+}
+doresize();
+buildnav();
+tuttxt.innerHTML=snaps[csnap];
+//--></script>
+</body>
