@@ -47,7 +47,7 @@
 
 <p>A the URL of a request to an xxm website is first parsed to see which xxm project to send the request to. (Each implementation has its specific project registry.) The project (IXxmProject) is loaded if not loaded already, and asked to provide a page object to handle the request (IXxmPage). A page can include fragments to help construct the response (IXxmInclude). Both pages and includes are fragments (IXxmFragment) provided by the project's fragment registry. Because an xxm project has to provide a fragment registry, it has freedom of how to construct portion of the URL it processes. A <i>stock-</i>implementation of a fragment registry is available by default for new xxm projects.</p>
 
-<p class="title">Syntax</p>
+<p class="title"><a name="syntax"></a>Syntax</p>
 
 <p>xxm and xxmi contain both HTML and Delphi source code. Delphi code is enclosed in double square brackets ("<code>[[ ]]</code>"). A Delphi code block may have an alternate destination by starting with one of these characters:</p>
 
@@ -67,7 +67,7 @@
 
 <p>Within a Delphi code block (including comment blocks), the number of opening and closing brackets and braces is counted (disregarding those in strings), this enables code like this: <code><span style="background-color:#CCFFCC">[[</span>Context.Send('<span style="background-color:#FFCCCC;">]]</span>');<span style="background-color:#CCFFCC">]]</span></code> and <code><span style="background-color:#CCFFCC">[[</span>=MyArray[x<span style="background-color:#FFCCCC">]</span><span style="background-color:#FFFFCC">]</span><span style="background-color:#CCFFCC">]</span></code>, but also enables a comment block to 'comment out' a full block of both HTML and code blocks.</p>
 
-<p class="title">Proto</p>
+<p class="title"><a name="proto"></a>Proto</p>
 
 <p>Each xxm and xxmi source file is converted into a pas file, using a prototype file. By default the prototype files are used from the "proto" directory provided with the xxm installation, but an xxm project can provide custom prototype files.</p>
 
@@ -83,7 +83,7 @@ Context.SendHTML('&lt;/b&gt;');</code></p>
 <p>so be sure to use <code>begin</code> and <code>end</code>:</p>
 <p><code>if MyBoolean then <span style="background-color:#CCFFCC">begin</span>]]&lt;b&gt;priority:[[=PriorityLevel]]&lt;/b&gt;[[<span style="background-color:#CCFFCC">end</span>;</code></p>
 
-<p class="title">Interface</p>
+<p class="title"><a name="interface"></a>Interface</p>
 
 <p>An xxm project uses the xxm.pas file that declares classes, interfaces and types required for the xxm interface. Your xxm installation should provide a recent copy of the xxm.pas file in the "public" folder.</p>
 
@@ -119,7 +119,7 @@ Context.SendHTML('&lt;/b&gt;');</code></p>
 </ul>
 </dd>
 
-<dt class="title"><code>IXxmContext=interface</code></dt>
+<dt class="title"><code><a name="xxmcontext"></a>IXxmContext=interface</code></dt>
 <dd>an xxm context handles all interfacing to the incoming request and the outgoing response</dd>
 
 <dt><code>property URL:WideString</code></dt>
@@ -215,7 +215,7 @@ provides information about the incoming request
 <dt><code>procedure DispositionAttach(FileName: WideString);</code></dt>
 <dd>notifies the browser to show a 'save as' dialog to store the contents of the response</dd>
 
-<dt class="title"><code>IXxmParameter=interface</code></dt>
+<dt class="title"><code><a name="xxmparameter"></a>IXxmParameter=interface</code></dt>
 <dd>all parameters inherit from IXxmParameter</dd>
 
 <dt><code>property Name:WideString</code></dt>
@@ -268,7 +268,7 @@ function URLDecode(Data:string):WideString;
 
 </dl>
 
-<p class="title">Headers</p>
+<p class="title"><a name="headers"></a>Headers</p>
 
 <p>The xxm context objects provide separate interfaces to allow access to request and response HTTP headers. Include the <code>xxmHeaders.pas</code> and query the Context object for an IxxmHttpHeaders interface pointer.</p>
 
