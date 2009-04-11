@@ -46,7 +46,7 @@ function nav(x)
 	tutsnap.src="snap"+new String(100+x).substr(1,2)+".png";
 	tuttxt.innerHTML=snaps[x];
 	buildnav();
-	if(x+1<spans.length)tutpre.src="snap"+new String(101+x).substr(1,2)+".png";
+	if(x+1<snaps.length)tutpre.src="snap"+new String(101+x).substr(1,2)+".png";
 }
 doresize();
 buildnav();
