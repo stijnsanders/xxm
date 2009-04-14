@@ -1,5 +1,5 @@
 var snaps=[
-"xxm Tutorial 1<br />Quick Guide with Screenshots<br />How to install xxmLocal and xxmIsapi<br /><span style='font-size:10pt;'>Use navigation on top or click image to proceed.</span>",
+"xxm Tutorial 1<br />Quick guide with screenshots<br />How to install xxmLocal,<br />xxmIsapi and xxmHttp<br /><span style='font-size:10pt;'>Use navigation on top or click image to proceed.</span>",
 "This is a default Windows install, with IIS. Delphi 7 is installed also.",
 "Download xxm binaries...<br /><span style='font-size:10pt'>see <a href='http://xxm.sourceforge.net/download.html' target='_blank'>xxm/download</a></span>",
 "Create an appropriate directory and extract",
@@ -21,4 +21,6 @@ var snaps=[
 "Let's go live with these! First a quick and dirty method: call over xxmIsapiEx.dll as an executable<br /><span style='font-size:10pt;'>enter \"localhost/Scripts/xxmIsapiEx.dll\"</span>",
 "It uses a project registry in a local XML file<br /><span style='font-size:9pt;white-space:nowrap;'>&lt;ProjectRegistry&gt;<br />&lt;Project Name=\"hello\"&gt;&lt;ModulePath&gt;C:\\InetPub\\xxm\\MyFirstXxmProject\\MyFirstXxmProject.xxl&lt;/ModulePath&gt;&lt;/Project&gt;<br />&lt;Project Name=\"demo\"&gt;&lt;ModulePath&gt;C:\\InetPub\\xxm\\demo\\03 Data\\demo.xxl&lt;/ModulePath&gt;&lt;/Project&gt;<br />&lt;/ProjectRegistry&gt;</span>",
 "Now the proper way: copy only the files needed for a live environment, and rig a virt-dir <span style='font-size:10pt'>or website</span> to pass all requests through an extension mapping. (I prefer xxmIsapiAU.dll to enable xxl updates without IIS downtime!) Tip: use a separate xxmIsapi*.dll instance <span style='font-size:10pt'>with its own xxm.xml</span> per project on the server, this enables per-project upgrades if xxm should release a new version.",
-"Optionally, set Isolation High to have a separate process to control identity and permissions"];
+"Optionally, set Isolation High to have a separate process to control identity and permissions",
+"If you don't need all the extra's IIS provides, use the stand-alone server, as a user-controlled process...",
+"... or as an NT-service"];
