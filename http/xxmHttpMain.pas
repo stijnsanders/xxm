@@ -279,7 +279,7 @@ begin
        x:=x+y+#13#10;
       end;
     until y='';
-    FReqHeaders:=TRequestHeaders.Create(y);
+    FReqHeaders:=TRequestHeaders.Create(x);
     (FReqHeaders as IUnknown)._AddRef;
 
     //'Authorization' ?
@@ -599,8 +599,7 @@ begin
   if s='' then
    begin
     s:='localhost';//TODO: from binding? setting;
-    if not(FSocket.RemotePort='80') then
-      s:=s+':'+FSocket.RemotePort;
+    //TODO: if local port (tcpserver.port?) not 80 s:=s+':'+IntToStr()
    end;
   Result:=Result+s+FURI;
 end;
