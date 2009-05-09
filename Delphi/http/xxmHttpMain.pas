@@ -3,13 +3,14 @@ unit xxmHttpMain;
 interface
 
 uses
-  SysUtils, IdTCPServer, xxm, Classes,
+  SysUtils, Sockets, xxm, Classes,
   xxmPReg, xxmParams, xxmParUtils, xxmHeaders;
 
 type
-  TXxmHTTPServer = class(TIdTCPServer)
+  TXxmHttpServer = class(TCustomTcpServer)
   protected
-    function DoExecute(AThread: TIdPeerThread): Boolean; override;
+    procedure DoAccept(ClientSocket: TCustomIpClient); override;
+    //procedure DoHandleError; override;//?
   end;
 
 const
@@ -18,7 +19,7 @@ const
 type
   TXxmHttpContext=class(TInterfacedObject, IXxmContext, IxxmHttpHeaders)
   private
-    FIdPeerThread:TIdPeerThread;
+    FSocket:TCustomIpClient;
     FReqHeaders:TRequestHeaders;
     FResHeaders:TResponseHeaders;
     FHeaderSent:boolean;
@@ -43,7 +44,7 @@ type
     procedure SendRaw(Data: WideString);
     procedure SendError(res:string;vals:array of string);
   public
-    constructor Create(IdPeerThread:TIdPeerThread);
+    constructor Create(Socket:TCustomIpClient);
     destructor Destroy; override;
 
     procedure Execute;
@@ -103,8 +104,9 @@ procedure XxmRunServer;
 
 implementation
 
-uses Windows, Variants, ActiveX, ComObj, xxmCommonUtils, xxmReadHandler,
-  IdTCPConnection;
+uses Windows, Variants, ActiveX, ComObj, xxmCommonUtils, xxmReadHandler;
+
+
 
 resourcestring
   SXxmMaximumHeaderLines='Maximum header lines exceeded.';
@@ -128,7 +130,7 @@ const
     '');
   WM_QUIT = $0012;//from Messages
 var
-  Server:TXxmHTTPServer;
+  Server:TxxmHttpServer;
   i,j,Port:integer;
   s,t:string;
   Msg:TMsg;
@@ -153,11 +155,11 @@ begin
 
   CoInitialize(nil);
   XxmProjectCache:=TXxmProjectCache.Create;
-  Server:=TXxmHTTPServer.Create(nil);
+  Server:=TxxmHttpServer.Create(nil);
   try
-    Server.DefaultPort:=Port;
-    Server.Active:=true;
+    Server.LocalPort:=IntToStr(Port);
     //TODO: listen on multiple ports
+    Server.Open;
 
     repeat
       if GetMessage(Msg,0,0,0) then
@@ -173,15 +175,16 @@ begin
   end;
 end;
 
-{ TxxmHTTPServer }
+{ TxxmHttpServer }
 
-function TXxmHTTPServer.DoExecute(AThread: TIdPeerThread): Boolean;
+procedure TXxmHttpServer.DoAccept(ClientSocket: TCustomIpClient);
 var
   cx:TXxmHttpContext;
 begin
+  inherited;
   CoInitialize(nil);
   try
-    cx:=TXxmHttpContext.Create(AThread);
+    cx:=TXxmHttpContext.Create(ClientSocket);
     cx._AddRef;//strange, param fill calls release
     try
       cx.Execute;
@@ -189,23 +192,16 @@ begin
       cx._Release;
     end;
   finally
-    AThread.Connection.Disconnect;
-  end;
-
-  Result := False;
-  if AThread <> nil then begin
-    if AThread.Connection <> nil then begin
-      Result := AThread.Connection.Connected;
-    end;
+    ClientSocket.Disconnect;
   end;
 end;
 
 { TXxmHttpContext }
 
-constructor TXxmHttpContext.Create(IdPeerThread:TIdPeerThread);
+constructor TXxmHttpContext.Create(Socket:TCustomIpClient);
 begin
   inherited Create;
-  FIdPeerThread:=IdPeerThread;
+  FSocket:=Socket;
   FProjectEntry:=nil;
   FReqHeaders:=nil;
   FResHeaders:=TResponseHeaders.Create;
@@ -259,7 +255,7 @@ var
 begin
   try
     //command line
-    x:=FIdPeerThread.Connection.ReadLn;
+    x:=FSocket.Receiveln;
     l:=Length(x);
     j:=l;
     while (j>0) and not(x[j]=' ') do dec(j);
@@ -276,7 +272,7 @@ begin
     i:=0;
     x:='';
     repeat
-     y:=FIdPeerThread.Connection.ReadLn;
+     y:=FSocket.Receiveln;
      if not(y='') then
       begin
        inc(i);
@@ -285,7 +281,7 @@ begin
        x:=x+y+#13#10;
       end;
     until y='';
-    FReqHeaders:=TRequestHeaders.Create(y);
+    FReqHeaders:=TRequestHeaders.Create(x);
     (FReqHeaders as IUnknown)._AddRef;
 
     //'Authorization' ?
@@ -349,8 +345,7 @@ begin
 
     //if not(Verb='GET') then?
     x:=FReqHeaders['Content-Length'];
-    if not(x='') then FPostData:=THandlerReadStreamAdapter.Create(
-      FIdPeerThread.Connection.IOHandler,StrToInt(x));
+    if not(x='') then FPostData:=THandlerReadStreamAdapter.Create(FSocket,StrToInt(x));
 
     FProjectEntry:=XxmProjectCache.GetProject(FProjectName);
     if not(@XxmAutoBuildHandler=nil) then
@@ -470,8 +465,8 @@ begin
     csReferer:Result:=FReqHeaders['Referer'];//TODO:
     csLanguage:Result:=FReqHeaders['Language'];//TODO:
 
-    csRemoteAddress:Result:=FIdPeerThread.Connection.Socket.Binding.PeerIP;
-    csRemoteHost:Result:=FIdPeerThread.Connection.Socket.Binding.PeerIP;//TODO: resolve
+    csRemoteAddress:Result:=FSocket.RemoteHost;//TODO: name to address?
+    csRemoteHost:Result:=FSocket.RemoteHost;
     csAuthUser:Result:='';//TODO:
     csAuthPassword:Result:='';//TODO:
     else
@@ -606,8 +601,8 @@ begin
   if s='' then
    begin
     s:='localhost';//TODO: from binding? setting;
-    if not(FIdPeerThread.Connection.Socket.Binding.PeerPort=80) then
-      s:=s+':'+IntToStr(FIdPeerThread.Connection.Socket.Binding.PeerPort);
+    if not(FSocket.RemotePort='80') then
+      s:=s+':'+FSocket.RemotePort;
    end;
   Result:=Result+s+FURI;
 end;
@@ -721,14 +716,14 @@ begin
           l:=3;
           SetLength(d,l);
           Move(Utf8ByteOrderMark[1],d[0],l);
-          FIdPeerThread.Connection.IOHandler.Send(d[0],l)
+          FSocket.SendBuf(d[0],l);
          end;
         aeUtf16:
          begin
           l:=2;
           SetLength(d,l);
           Move(Utf16ByteOrderMark[1],d[0],l);
-          FIdPeerThread.Connection.IOHandler.Send(d[0],l)
+          FSocket.SendBuf(d[0],l);
          end;
       end;
     case FAutoEncoding of
@@ -737,7 +732,7 @@ begin
         l:=Length(Data)*2;
         SetLength(d,l);
         Move(Data[1],d[0],l);
-        FIdPeerThread.Connection.IOHandler.Send(d[0],l)
+        FSocket.SendBuf(d[0],l);
        end;
       aeUtf8:
        begin
@@ -745,7 +740,7 @@ begin
         l:=Length(s);
         SetLength(d,l);
         Move(s[1],d[0],l);
-        FIdPeerThread.Connection.IOHandler.Send(d[0],l)
+        FSocket.SendBuf(d[0],l);
        end;
       else
        begin
@@ -753,7 +748,7 @@ begin
         l:=Length(s);
         SetLength(d,l);
         Move(s[1],d[0],l);
-        FIdPeerThread.Connection.IOHandler.Send(d[0],l)
+        FSocket.SendBuf(d[0],l);
        end;
     end;
    end;
@@ -768,7 +763,7 @@ begin
    begin
     CheckHeader;
     //no autoencoding here
-    FIdPeerThread.Connection.WriteStream(s);
+    FSocket.SendStream(s);
    end;
 end;
 
@@ -795,7 +790,7 @@ begin
     l:=Length(x);
     SetLength(d,l);
     Move(x[1],d[0],l);
-    FIdPeerThread.Connection.IOHandler.Send(d[0],l);
+    FSocket.SendBuf(d[0],l);
     FHeaderSent:=true;
    end;
 end;

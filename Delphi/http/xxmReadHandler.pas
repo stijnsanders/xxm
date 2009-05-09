@@ -2,19 +2,19 @@ unit xxmReadHandler;
 
 interface
 
-uses Classes, IdIOHandler;
+uses Classes, Sockets;
 
 type
   THandlerReadStreamAdapter=class(TStream)
   private
     FSize:Int64;
-    FHandler:TIdIOHandler;
+    FSocket:TCustomIpClient;
   protected
     function GetSize: Int64; override;
     procedure SetSize(NewSize: Longint); overload; override;
     procedure SetSize(const NewSize: Int64); overload; override;
   public
-    constructor Create(Handler:TIdIOHandler;Size:Int64);
+    constructor Create(Socket:TCustomIpClient;Size:Int64);
     function Read(var Buffer; Count: Longint): Longint; override;
     function Write(const Buffer; Count: Longint): Longint; override;
     function Seek(Offset: Longint; Origin: Word): Longint; overload; override;
@@ -23,16 +23,16 @@ type
 
 implementation
 
-uses SysUtils, IdGlobal;
+uses SysUtils;
 
 { THandlerReadStreamAdapter }
 
-constructor THandlerReadStreamAdapter.Create(Handler: TIdIOHandler;
+constructor THandlerReadStreamAdapter.Create(Socket: TCustomIpClient;
   Size: Int64);
 begin
   inherited Create;
   FSize:=Size;
-  FHandler:=Handler;
+  FSocket:=Socket;
 end;
 
 function THandlerReadStreamAdapter.GetSize: Int64;
@@ -59,7 +59,7 @@ end;
 function THandlerReadStreamAdapter.Read(var Buffer;
   Count: Integer): Longint;
 begin
-  Result:=FHandler.Recv(Buffer,Count);
+  Result:=FSocket.ReceiveBuf(Buffer,Count);
 end;
 
 procedure THandlerReadStreamAdapter.SetSize(NewSize: Integer);
