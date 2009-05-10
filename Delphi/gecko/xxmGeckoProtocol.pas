@@ -13,7 +13,7 @@ type
     function GetDefaultPort: Integer; safecall;
     function GetProtocolFlags: Cardinal; safecall;
     function NewChannel(aURI: nsIURI): nsIChannel; safecall;
-    function NewURI(const aSpec: nsACString;
+    function NewURI(const aSpec: nsAUTF8String;
       const aOriginCharset: PAnsiChar; aBaseURI: nsIURI): nsIURI; safecall;
   end;
 
@@ -52,7 +52,7 @@ begin
   Result:=true;
 end;
 
-function TxxmProtocolHandler.NewURI(const aSpec: nsACString;
+function TxxmProtocolHandler.NewURI(const aSpec: nsAUTF8String;
   const aOriginCharset: PAnsiChar; aBaseURI: nsIURI): nsIURI;
 var
   u:nsIStandardURL;

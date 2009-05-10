@@ -56,7 +56,7 @@ type
     //procedure nsGetInterface(const uuid: TGUID; out _result); safecall;
     //procedure nsIInterfaceRequestor.GetInterface=nsGetInterface;
     //nsIRequest
-    procedure GetName(aName: nsACString); safecall;
+    procedure GetName(aName: nsAUTF8String); safecall;
     function IsPending: PRBool; safecall;
     function GetStatus: nsresult; safecall;
     property Status: nsresult read GetStatus;
@@ -127,8 +127,13 @@ type
     function GetParameterCount:integer;
     function GetSessionID:WideString;
 
-    procedure Send(Data: OleVariant);
-    procedure SendHTML(Data: OleVariant);
+    procedure Send(Data: OleVariant); overload;
+    procedure Send(Value: integer); overload;
+    procedure Send(Value: int64); overload;
+    procedure Send(Value: cardinal); overload;
+    procedure Send(const Values:array of OleVariant); overload;
+    procedure SendHTML(Data: OleVariant); overload;
+    procedure SendHTML(const Values:array of OleVariant); overload;
     procedure SendFile(FilePath: WideString);
     procedure SendStream(s:TStream); //TODO: IStream
     procedure Include(Address: WideString); overload;
@@ -153,7 +158,6 @@ type
     //procedure SetCookie2();
 
     //TODO: pointer to project?
-
 
     function QueryInterface2(const IID: TGUID; out Obj): HResult; stdcall;
     function IInterface.QueryInterface=QueryInterface2;
@@ -224,7 +228,7 @@ resourcestring
 
 constructor TxxmChannel.Create(aURI: nsIURI);
 var
-  x:IInterfacedCString;
+  x:IInterfacedUTF8String;
 begin
   inherited Create;
   //TODO:
@@ -244,9 +248,9 @@ begin
   FVerb:='GET';//default
   FResponseHeaders['Content-Type']:='text/html';//default (setting?)
   FAutoEncoding:=aeUtf8;//default (setting?)
-  x:=NewCString;
-  aURI.GetSpec(x.ACString);
-  FURL:=x.ToString;
+  x:=NewUTF8String;
+  aURI.GetSpec(x.AUTF8String);
+  FURL:=UTF8Decode(x.ToString);
 Debug('TxxmChannel.Create('+FURL);
 end;
 
@@ -328,10 +332,10 @@ Debug('post OnStopRequest');
 Debug('execute done');
 end;
 
-procedure TxxmChannel.GetName(aName: nsACString);
+procedure TxxmChannel.GetName(aName: nsAUTF8String);
 begin
 Debug('TxxmChannel.GetName');
-  NewCString(aName).Assign(FURL);
+  NewUTF8String(aName).Assign(UTF8Encode(FURL));
 end;
 
 function TxxmChannel.GetURI: nsIURI;
@@ -766,6 +770,31 @@ function TxxmChannel.QueryInterface2(const IID: TGUID; out Obj): HResult;
 begin
   Result:=QueryInterface(IID,Obj);
 Debug('TxxmChannel.QueryInterface('+GUIDToString(IID)+')'+IntToHex(Result,8));
+end;
+
+procedure TxxmChannel.Send(Value: int64);
+begin
+
+end;
+
+procedure TxxmChannel.Send(Value: integer);
+begin
+
+end;
+
+procedure TxxmChannel.Send(const Values: array of OleVariant);
+begin
+
+end;
+
+procedure TxxmChannel.Send(Value: cardinal);
+begin
+
+end;
+
+procedure TxxmChannel.SendHTML(const Values: array of OleVariant);
+begin
+
 end;
 
 { TXxmGeckoLoader }

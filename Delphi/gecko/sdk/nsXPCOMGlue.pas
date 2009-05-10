@@ -300,12 +300,12 @@ type
 function NS_NewSupportsWeakReferenceDelegate(aTarget: nsISupports): nsISupportsWeakReference;
 
 resourcestring
-  SGetComponentManagerError = 'コンポーネントマネージャを取得することが出来ません。';
-  SGetServiceManagerError = 'サービスマネージャを取得することが出来ません。';
-  SCreateInstanceError = 'CID ''%s'' のインスタンスを取得することが出来ません。';
-  SGetServiceError = 'CID ''%s'' のサービスを取得することが出来ません。';
-  SNoSuchSpecialDir = '特殊ディレクトリ ''%s'' を取得することが出来ません。';
-  SNoSuchInterface = 'インターフェース ''%s'' を取得することが出来ません。';
+  SGetComponentManagerError = 'Cannot get the Component Manager.';
+  SGetServiceManagerError = 'Cannot get the Service Manager.';
+  SCreateInstanceError = 'Cannot get the instance of CID ''%s.'' ';
+  SGetServiceError = 'Cannot get the service of CID ''%s.'' ';
+  SNoSuchSpecialDir = 'Cannot get the Special Directory ''%s.'' ';
+  SNoSuchInterface = 'Cannot get the Interface ''%s.'' ';
 
 
 implementation

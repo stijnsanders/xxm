@@ -40,6 +40,7 @@ uses
   nsConsts, nsTypes;
 
 type
+
   nsAString = ^nsStringContainer;
   nsString = nsAString;
   nsStringContainer = record
@@ -58,8 +59,13 @@ type
     d3: Pointer;
   end;
 
+  nsAUTF8String = nsACString;
+  nsUTF8String = nsAUTF8String;
+  nsUTF8StringContainer = nsCStringContainer;
+
   IInterfacedString = interface;
   IInterfacedCString = interface;
+  IInterfacedUTF8String = interface;
 
   IInterfacedString = interface
   ['{0FA36E7C-6CA9-4D02-AF23-B49F35047181}']
@@ -99,6 +105,25 @@ type
     function ToString: AnsiString;
   end;
 
+  IInterfacedUTF8String = interface
+  ['{100ABB7D-46A0-4BB2-B5BF-A94F9E53B78C}']
+    function Length: Longword;
+    procedure Cut(cutStart, cutLength: Longword);
+    procedure Assign(Source: IInterfacedUTF8String); overload;
+    procedure Assign(const Source: nsAUTF8String); overload;
+    procedure Assign(Source: UTF8String); overload;
+    procedure Append(Source: IInterfacedUTF8String); overload;
+    procedure Append(const Source: nsAUTF8String); overload;
+    procedure Append(Source: UTF8String); overload;
+    procedure Insert(Source: IInterfacedUTF8String; aPosition: Longword); overload;
+    procedure Insert(const Source: nsAUTF8String; aPosition: Longword); overload;
+    procedure Insert(Source: UTF8String; aPosition: Longword); overload;
+    procedure Replace(aPosition, aLength: Longword; const Source: nsAUTF8String); overload;
+    procedure Replace(aPosition, aLength: Longword; Source: IInterfacedUTF8String); overload;
+    function AUTF8String: nsAUTF8String;
+    function ToString: UTF8String;
+  end;
+
 function Compare(const lhs, rhs: nsAString): Integer; overload;
 function Compare(const lhs, rhs: nsACString): Integer; overload;
 
@@ -112,8 +137,14 @@ function NewCString(src: PAnsiChar): IInterfacedCString; overload;
 function NewCString(src: AnsiString): IInterfacedCString; overload;
 function NewCString(src: nsACString): IInterfacedCString; overload;
 
+function NewUTF8String: IInterfacedUTF8String; overload;
+function NewUTF8String(src: PAnsiChar): IInterfacedUTF8String; overload;
+function NewUTF8String(src: UTF8String): IInterfacedUTF8String; overload;
+function NewUTF8String(src: nsAUTF8String): IInterfacedUTF8String; overload;
+
 function RelateString(src: nsAString; own: Boolean=False): IInterfacedString;
 function RelateCString(src: nsACString; own: Boolean=False): IInterfacedCString;
+function RelateUTF8String(src: nsAUTF8String; own: Boolean=False): IInterfacedUTF8String;
 
 implementation
 
@@ -165,7 +196,7 @@ type
     FContainer: nsStringContainer;
     FString: nsString;
     FOwn: Boolean;
-
+  public
     constructor Create; overload;
     constructor Create(src: PWideChar); overload;
     constructor Create(src: WideString); overload;
@@ -187,7 +218,8 @@ type
     procedure Replace(aPosition, aLength: Longword; const Source: nsAString); overload;
     procedure Replace(aPosition, aLength: Longword; Source: IInterfacedString); overload;
     function AString: nsAString;
-    function ToString: WideString;
+    function SIToString: WideString;
+    function IInterfacedString.ToString = SIToString;
   end;
 
 function NewString: IInterfacedString;
@@ -357,7 +389,7 @@ begin
   Result := FString;
 end;
 
-function TIStringImpl.ToString: WideString;
+function TIStringImpl.SIToString: WideString;
 var
   p: PWideChar;
   l: Longword;
@@ -379,10 +411,9 @@ type
     FOwn: Boolean;
 
     constructor Create; overload;
-    constructor Create(src: PAnsiChar); overload;
     constructor Create(src: AnsiString); overload;
     constructor Create(src: nsACString); overload;
-    constructor Relate(src: nsACString; own: Boolean);
+    constructor Relate(src: nsACString; own: Boolean); overload;
     destructor Destroy; override;
 
     function Length: Longword;
@@ -399,7 +430,37 @@ type
     procedure Replace(aPosition, aLength: Longword; const Source: nsACString); overload;
     procedure Replace(aPosition, aLength: Longword; Source: IInterfacedCString); overload;
     function ACString: nsACString;
-    function ToString: AnsiString;
+    function ToAnsiString: AnsiString;
+    function IInterfacedCString.ToString = ToAnsiString;
+  end;
+
+  TIUTF8StringImpl = class(TInterfacedObject, IInterfacedUTF8String)
+    FContainer: nsCStringContainer;
+    FString: nsCString;
+    FOwn: Boolean;
+
+    constructor Create; overload;
+    constructor Create(src: UTF8String); overload;
+    constructor Create(src: nsAUTF8String); overload;
+    constructor Relate(src: nsAUTF8String; own: Boolean); overload;
+    destructor Destroy; override;
+
+    function Length: Longword;
+    procedure Cut(cutStart, cutLength: Longword);
+    procedure Assign(Source: IInterfacedUTF8String); overload;
+    procedure Assign(const Source: nsAUTF8String); overload;
+    procedure Assign(Source: UTF8String); overload;
+    procedure Append(Source: IInterfacedUTF8String); overload;
+    procedure Append(const Source: nsAUTF8String); overload;
+    procedure Append(Source: UTF8String); overload;
+    procedure Insert(Source: IInterfacedUTF8String; aPosition: Longword); overload;
+    procedure Insert(const Source: nsAUTF8String; aPosition: Longword); overload;
+    procedure Insert(Source: UTF8String; aPosition: Longword); overload;
+    procedure Replace(aPosition, aLength: Longword; const Source: nsAUTF8String); overload;
+    procedure Replace(aPosition, aLength: Longword; Source: IInterfacedUTF8String); overload;
+    function AUTF8String: nsAUTF8String;
+    function ToUTF8String: UTF8String;
+    function IInterfacedUTF8String.ToString = ToUTF8String;
   end;
 
 function NewCString: IInterfacedCString;
@@ -427,6 +488,31 @@ begin
   Result := TICStringImpl.Relate(src, own);
 end;
 
+function NewUTF8String: IInterfacedUTF8String;
+begin
+  Result := TIUTF8StringImpl.Create;
+end;
+
+function NewUTF8String(src: PAnsiChar): IInterfacedUTF8String;
+begin
+  Result := TIUTF8StringImpl.Create(src);
+end;
+
+function NewUTF8String(src: UTF8String): IInterfacedUTF8String;
+begin
+  Result := TIUTF8StringImpl.Create(src);
+end;
+
+function NewUTF8String(src: nsAUTF8String): IInterfacedUTF8String;
+begin
+  Result := TIUTF8StringImpl.Create(src);
+end;
+
+function RelateUTF8String(src: nsAUTF8String; own: Boolean): IInterfacedUTF8String;
+begin
+  Result := TIUTF8StringImpl.Relate(src, own);
+end;
+
 constructor TICStringImpl.Create;
 begin
   inherited Create;
@@ -434,17 +520,7 @@ begin
     Error(reOutOfMemory);
   FOwn := True;
   FString := @FContainer;
-end;
-
-constructor TICStringImpl.Create(src: PAnsiChar);
-begin
   inherited Create;
-  if NS_FAILED(NS_CStringContainerInit(FContainer)) then
-    Error(reOutOfMemory);
-  FOwn := True;
-  FString := @FContainer;
-  Assign(src);
-  //nsMemory.Free(src);
 end;
 
 constructor TICStringImpl.Create(src: AnsiString);
@@ -486,7 +562,6 @@ var
   temp: PAnsiChar;
 begin
   Result := NS_CStringGetData(FString, temp);
-  //nsMemory.Free(temp);
 end;
 
 procedure TICStringImpl.Cut(cutStart, cutLength: Longword);
@@ -510,58 +585,61 @@ begin
 end;
 
 procedure TICStringImpl.Append(Source: IInterfacedCString);
+var
+  src2: PAnsiChar;
 begin
-  NS_CStringAppendData(FString, PAnsiChar(Source.ToString));
+  NS_CStringGetData(Source.ACString, src2);
+  NS_CStringAppendData(FString, src2);
 end;
 
 procedure TICStringImpl.Append(const Source: nsACString);
 var
-  src2: IInterfacedCString;
+  src2: PAnsiChar;
 begin
-  src2 := NewCString(Source);
-  Append(src2);
+  NS_CStringGetData(Source, src2);
+  NS_CStringAppendData(FString, src2);
 end;
 
 procedure TICStringImpl.Append(Source: AnsiString);
-var
-  src2: IInterfacedCString;
 begin
-  src2 := NewCString(Source);
-  Append(src2);
+  NS_CStringAppendData(FString, PAnsiChar(Source));
 end;
 
 procedure TICStringImpl.Insert(Source: IInterfacedCString; aPosition: Longword);
+var
+  src2: PAnsiChar;
 begin
-  NS_CStringInsertData(FString, aPosition, PAnsiChar(Source.ToString));
+  NS_CStringGetData(Source.ACString, src2);
+  NS_CStringInsertData(FString, aPosition, src2);
 end;
 
 procedure TICStringImpl.Insert(const Source: nsACString; aPosition: Longword);
 var
-  src2: IInterfacedCString;
+  src2: PAnsiChar;
 begin
-  src2 := NewCString(Source);
-  Insert(src2, aPosition);
+  NS_CStringGetData(Source, src2);
+  NS_CStringInsertData(FString, aPosition, src2);
 end;
 
 procedure TICStringImpl.Insert(Source: AnsiString; aPosition: Longword);
-var
-  src2: IInterfacedCString;
 begin
-  src2 := NewCString(Source);
-  Insert(src2, aPosition);
+  NS_CStringInsertData(FString, aPosition, PAnsiChar(Source));
 end;
 
 procedure TICStringImpl.Replace(aPosition, aLength: Longword; Source: IInterfacedCString);
+var
+  src2: PAnsiChar;
 begin
-  NS_CStringSetDataRange(FString, aPosition, aLength, PAnsiChar(Source.ToString));
+  NS_CStringGetData(Source.ACString, src2);
+  NS_CStringSetDataRange(FString, aPosition, aLength, src2);
 end;
 
 procedure TICStringImpl.Replace(aPosition, aLength: Longword; const Source: nsACString);
 var
-  src2: IInterfacedCString;
+  src2: PAnsiChar;
 begin
-  src2 := NewCString(Source);
-  Replace(aPosition, aLength, Src2);
+  NS_CStringGetData(Source, src2);
+  NS_CStringSetDataRange(FString, aPosition, aLength, src2);
 end;
 
 function TICStringImpl.ACString: nsACString;
@@ -569,7 +647,150 @@ begin
   Result := FString;
 end;
 
-function TICStringImpl.ToString: AnsiString;
+function TICStringImpl.ToAnsiString: AnsiString;
+var
+  p: PAnsiChar;
+  l: Longword;
+  i: Longword;
+begin
+  l := NS_CStringGetData(FString, p);
+  SetLength(Result, l);
+  for i:=1 to l do
+  begin
+    Result[i] := p^;
+    Inc(p);
+  end;
+end;
+
+constructor TIUTF8StringImpl.Create;
+begin
+  inherited Create;
+  if NS_FAILED(NS_CStringContainerInit(FContainer)) then
+    Error(reOutOfMemory);
+  FOwn := True;
+  FString := @FContainer;
+  inherited Create;
+end;
+
+constructor TIUTF8StringImpl.Create(src: UTF8String);
+begin
+  inherited Create;
+  if NS_FAILED(NS_CStringContainerInit(FContainer)) then
+    Error(reOutOfMemory);
+  FOwn := True;
+  FString := @FContainer;
+  Assign(src);
+end;
+
+constructor TIUTF8StringImpl.Create(src: nsAUTF8String);
+begin
+  inherited Create;
+  if NS_FAILED(NS_CStringContainerInit(FContainer)) then
+    Error(reOutOfMemory);
+  FOwn := True;
+  FString := @FContainer;
+  Assign(src);
+end;
+
+constructor TIUTF8StringImpl.Relate(src: nsAUTF8String; own: Boolean);
+begin
+  inherited Create;
+  FString := src;
+  FOwn := own;
+end;
+
+destructor TIUTF8StringImpl.Destroy;
+begin
+  if FOwn then
+    NS_CStringContainerFinish(FString^);
+  inherited Destroy;
+end;
+
+function TIUTF8StringImpl.Length: Longword;
+var
+  temp: PAnsiChar;
+begin
+  Result := NS_CStringGetData(FString, temp);
+end;
+
+procedure TIUTF8StringImpl.Cut(cutStart: Cardinal; cutLength: Cardinal);
+begin
+  NS_CStringCutData(FString, cutStart, cutLength);
+end;
+
+procedure TIUTF8StringImpl.Assign(Source: IInterfacedUTF8String);
+begin
+  NS_CStringCopy(FString, Source.AUTF8String);
+end;
+
+procedure TIUTF8StringImpl.Assign(const Source: nsAUTF8String);
+begin
+  NS_CStringCopy(FString, Source);
+end;
+
+procedure TIUTF8StringImpl.Assign(Source: UTF8String);
+begin
+  NS_CStringSetData(FString, PAnsiChar(Source));
+end;
+
+procedure TIUTF8StringImpl.Append(Source: IInterfacedUTF8String);
+begin
+  NS_CStringAppendData(FString, PAnsiChar(Source.ToString));
+end;
+
+procedure TIUTF8StringImpl.Append(const Source: nsAUTF8String);
+var
+  src2: PAnsiChar;
+begin
+  NS_CStringGetData(source, src2);
+  NS_CStringAppendData(FString, src2);
+end;
+
+procedure TIUTF8StringImpl.Append(Source: UTF8String);
+begin
+  NS_CStringAppendData(FString, PAnsiChar(Source));
+end;
+
+procedure TIUTF8StringImpl.Insert(Source: IInterfacedUTF8String; aPosition: Longword);
+begin
+  NS_CStringInsertData(FString, aPosition, PAnsiChar(Source.ToString));
+end;
+
+procedure TIUTF8StringImpl.Insert(const Source: nsAUTF8String; aPosition: Longword);
+var
+  src2: PAnsiChar;
+begin
+  NS_CStringGetData(source, src2);
+  NS_CStringInsertData(FString, aPosition, src2);
+end;
+
+procedure TIUTF8StringImpl.Insert(Source: UTF8String; aPosition: Longword);
+begin
+  NS_CStringInsertData(FString, aPosition, PAnsiChar(Source));
+end;
+
+procedure TIUTF8StringImpl.Replace(aPosition, aLength: Longword; Source: IInterfacedUTF8String);
+var
+  src2: PAnsiChar;
+begin
+  NS_CStringGetData(source.AUTF8String, src2);
+  NS_CStringSetDataRange(FString, aPosition, aLength, src2);
+end;
+
+procedure TIUTF8StringImpl.Replace(aPosition, aLength: Longword; const Source: nsAUTF8String);
+var
+  src2: PAnsiChar;
+begin
+  NS_CStringGetData(source, src2);
+  NS_CStringSetDataRange(FString, aPosition, aLength, src2);
+end;
+
+function TIUTF8StringImpl.AUTF8String: nsAUTF8String;
+begin
+  Result := FString;
+end;
+
+function TIUTF8StringImpl.ToUTF8String:UTF8String;
 var
   p: PAnsiChar;
   l: Longword;

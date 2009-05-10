@@ -88,6 +88,8 @@ function NS_UTF16ToCString(const aSource: nsAString; aSrcEncoding: nsSourceEncod
 type
   nsGetModuleProc = function (aCompMgr: nsIComponentManager; location: nsIFile; out return_cobj: nsIModule): nsresult; cdecl;
 
+  PStaticModuleInfo = ^nsStaticModuleInfo;
+  PStaticModuleInfoArray = ^nsStaticModuleInfoArray;
   nsStaticModuleInfo = record
     name: PChar;
     getModule: nsGetModuleProc;
@@ -268,6 +270,25 @@ function XPCOMGlueLoadXULFunctions(aSymbols: PDynamicFunctionLoad): nsresult;
 function GRE_Startup: Longword;
 function GRE_Shutdown: Longword;
 
+
+// PChar functions
+function NS_StrLen(const Str: PAnsiChar): Cardinal; overload;
+function NS_StrCopy(Dest: PAnsiChar; const Source: PAnsiChar): PAnsiChar; overload;
+function NS_StrLCopy(Dest: PAnsiChar; const Source: PAnsiChar; maxLen: Cardinal): PAnsiChar; overload;
+function NS_StrCat(Dest: PAnsiChar; const Source: PAnsiChar): PAnsiChar; overload;
+function NS_StrLCat(Dest: PAnsiChar; const Source: PAnsiChar; maxLen: Cardinal): PAnsiChar; overload;
+function NS_StrComp(const Str1, Str2: PAnsiChar): Integer; overload;
+function NS_StrRScan(const Str: PAnsiChar; Chr: AnsiChar): PAnsiChar; overload;
+
+function NS_StrLen(const Str: PWideChar): Cardinal; overload;
+function NS_StrCopy(Dest: PWideChar; const Source: PWideChar): PWideChar; overload;
+function NS_StrLCopy(Dest: PWideChar; const Source: PWideChar; maxLen: Cardinal): PWideChar; overload;
+function NS_StrCat(Dest: PWideChar; const Source: PWideChar): PWideChar; overload;
+function NS_StrLCat(Dest: PWideChar; const Source: PWideChar; maxLen: Cardinal): PWideChar; overload;
+function NS_StrComp(const Str1, Str2: PWideChar): Integer; overload;
+function NS_StrRScan(const Str: PWideChar; Chr: WideChar): PWideChar; overload;
+
+function NS_CurrentProcessDirectory(buf: PAnsiChar; bufLen: Cardinal): Boolean;
 
 implementation
 
@@ -810,31 +831,6 @@ begin
     Result := NS_ERROR_FAILURE;
 end;
 
-
-
-function StrLen(const Str: PChar): Cardinal; forward;
-function StrCopy(Dest: PChar; const Source: PChar): PChar; forward;
-function StrCat(Dest: PChar; const Source: PChar): PChar; forward;
-function StrComp(const Str1, Str2: PChar): Integer; forward;
-function StrRScan(const Str: PChar; Chr: Char): PChar; forward;
-
-function safe_strncat(Dest: PChar; Append: PChar; count: PRUint32): PRBool;
-var
-  last: PChar;
-begin
-  last := (dest+count-1);
-  while dest^ <> #0 do
-    Inc(dest);
-  while (append^ <> #0) and (Last - Dest > 0) do
-  begin
-    Dest^ := Append^;
-    Inc(dest);
-    Inc(Append);
-  end;
-  Dest^ := #0;
-  Result := (Append^ = #0);
-end;
-
 function CheckVersion(toCheck: PAnsiChar;
                       const versions: PGREVersionRangeArray;
                       versionsLength: PRUint32): PRBool; forward;
@@ -873,7 +869,7 @@ begin
   end;
   *)
 
-  if GetEnvironmentVariable('USE_LOCAL_GRE', env, MAX_PATH)>0 then
+  if GetEnvironmentVariableA('USE_LOCAL_GRE', env, MAX_PATH)>0 then
   begin
     buf[0] := #0;
     Result := NS_OK;
@@ -955,14 +951,14 @@ begin
   case aType of
   REG_SZ:
     begin
-      if strlen(aSource)>=aBufLen then
+      if NS_StrLen(aSource)>=aBufLen then
         Exit;
-      strcopy(aDest, aSource);
+      NS_StrCopy(aDest, aSource);
       Result := True;
     end;
   REG_EXPAND_SZ:
     begin
-      if ExpandEnvironmentStrings(aSource, aDest, aBufLen) <= aBufLen then
+      if ExpandEnvironmentStringsA(aSource, aDest, aBufLen) <= aBufLen then
         Result := True;
     end;
   end;
@@ -979,7 +975,7 @@ const
   XPCOM_DLL = 'xpcom.dll';
 var
   i, j: DWORD;
-  name: array [0..MAX_PATH] of Char;
+  name: array [0..MAX_PATH] of AnsiChar;
   nameLen: DWORD;
   subKey: HKEY;
   ver: array[0..40] of AnsiChar;
@@ -993,21 +989,22 @@ begin
   while True do
   begin
     nameLen := MAX_PATH;
-    if RegEnumKeyEx(aRegKey, i, PChar(@name), nameLen, nil, nil, nil, nil) <>
+    if RegEnumKeyExA(aRegKey, i, PAnsiChar(@name), nameLen, nil, nil, nil, nil) <>
        ERROR_SUCCESS then
     begin
       break;
     end;
 
     subKey := 0;
-    if RegOpenKeyEx(aRegKey, name, 0, KEY_QUERY_VALUE, subKey) <>
+    if RegOpenKeyExA(aRegKey, name, 0, KEY_QUERY_VALUE, subKey) <>
        ERROR_SUCCESS then
     begin
       Continue;
     end;
 
     ok := False;
-    if (RegQueryValueEx(subKey, 'Version', nil, nil,
+    verLen := SizeOf(ver) div SizeOf(ver[0]);
+    if (RegQueryValueExA(subKey, 'Version', nil, nil,
                         PByte(@ver), @VerLen)=ERROR_SUCCESS) and
         CheckVersion(ver, versions, versionsLength) then
     begin
@@ -1017,9 +1014,9 @@ begin
         for j:=0 to propertiesLength-1 do
         begin
           proplen := Sizeof(propbuf);
-          if (RegQueryValueEx(subKey, properties[i].property_, nil, nil,
+          if (RegQueryValueExA(subKey, properties[i].property_, nil, nil,
               PByte(@propbuf), @proplen)<>ERROR_SUCCESS) or
-              (strcomp(propbuf, properties[i].value)<>0) then
+              (NS_StrComp(propbuf, properties[i].value)<>0) then
           begin
             ok := False;
           end;
@@ -1028,15 +1025,15 @@ begin
 
       proplen := SizeOf(propbuf);
       if ok and
-        ((RegQueryValueEx(subKey, 'GreHome', nil, @pathtype,
+        ((RegQueryValueExA(subKey, 'GreHome', nil, @pathtype,
                           PByte(@propbuf), @proplen)<>ERROR_SUCCESS) or
          (propbuf[0] = #0) or
          not CopyWithEnvExpansion(Buf, propbuf, BufLen, pathtype)) then
       begin
         ok := False;
-      end else if not safe_strncat(Buf, '\'+XPCOM_DLL, BufLen) then
+      end else
       begin
-        ok := False;
+        NS_StrLCat(Buf, '\'+XPCOM_DLL, BufLen);
       end;
     end;
     RegCloseKey(subKey);
@@ -1054,7 +1051,7 @@ end;
 type
   TAnsiCharArray = array [0..High(Word) div SizeOf(AnsiChar)] of AnsiChar;
   PAnsiCharArray = ^TAnsiCharArray;
-  TMaxPathChar = array[0..MAX_PATH] of Char;
+  TMaxPathChar = array[0..MAX_PATH] of AnsiChar;
   PDependentLib = ^TDependentLib;
   TDependentLib = record
     libHandle: HINST;
@@ -1081,7 +1078,7 @@ const
 type
   TBufferedFile = record
     f: THandle;
-    buf: array [0..BUFFEREDFILE_BUFSIZE-1] of Char;
+    buf: array [0..BUFFEREDFILE_BUFSIZE-1] of AnsiChar;
     bufPos: Integer;
     bufMax: Integer;
   end;
@@ -1089,7 +1086,7 @@ type
 function BufferedFile_Open(name: PAnsiChar; var ret: TBufferedFile): Boolean;
 begin
   Result := False;
-  ret.f := CreateFile(name, GENERIC_READ, FILE_SHARE_READ, nil, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+  ret.f := CreateFileA(name, GENERIC_READ, FILE_SHARE_READ, nil, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
   if ret.f <> INVALID_HANDLE_VALUE then
   begin
     Result := True;
@@ -1117,10 +1114,10 @@ begin
   end;
 end;
 
-function BufferedFile_GetString(dest: PChar; destSize: PRUint32; var buf: TBufferedFile): PRInt32;
+function BufferedFile_GetString(dest: PAnsiChar; destSize: PRUint32; var buf: TBufferedFile): PRInt32;
 var
   i: Cardinal;
-  c: Char;
+  c: AnsiChar;
 begin
   i := 0;
   c := #0;
@@ -1168,26 +1165,30 @@ var
 const
   XPCOM_DEPENDENT_LIBS_LIST = 'dependentlibs.list';
 begin
-  strcopy(buffer, xpcomDir);
-  safe_strncat(buffer, '\' + XPCOM_DEPENDENT_LIBS_LIST, MAX_PATH);
+  NS_StrCopy(buffer, xpcomDir);
+  NS_StrLCat(buffer, '\' + XPCOM_DEPENDENT_LIBS_LIST, MAX_PATH);
 
   if not BufferedFile_Open(buffer, f) then
   begin
     Exit;
   end;
 
-  while BufferedFile_GetString(buffer, MAX_PATH, f)>0 do
-  begin
-    l := strlen(buffer);
-    if (buffer[0] = '#') or (l=0) then
-      Continue;
-    if buffer[l-1] in [#10, #13] then
-      buffer[l-1]:= #0;
-    strcopy(buffer2, xpcomdir);
-    safe_strncat(buffer2, '\', MAX_PATH);
-    safe_strncat(buffer2, buffer, MAX_PATH);
+  try
+    while BufferedFile_GetString(buffer, MAX_PATH, f)>0 do
+    begin
+      l := NS_StrLen(buffer);
+      if (buffer[0] = '#') or (l=0) then
+        Continue;
+      if buffer[l-1] in [#10, #13] then
+        buffer[l-1]:= #0;
+      NS_StrCopy(buffer2, xpcomdir);
+      NS_StrLCat(buffer2, '\', MAX_PATH);
+      NS_StrLCat(buffer2, buffer, MAX_PATH);
 
-    cb(buffer2);
+      cb(buffer2);
+    end;
+  finally
+    BufferedFile_Close(f);
   end;
 end;
 
@@ -1207,7 +1208,7 @@ procedure ReadDependentCB(aDependentLib: PAnsiChar);
 var
   h: HINST;
 begin
-  h := LoadLibraryEx(aDependentLib, 0, LOAD_WITH_ALTERED_SEARCH_PATH);
+  h := LoadLibraryExA(aDependentLib, 0, LOAD_WITH_ALTERED_SEARCH_PATH);
   if h <> 0 then
     AppendDependentLib(h);
 end;
@@ -1224,18 +1225,18 @@ begin
   end else
   begin
     fullpath(xpcomDir, xpcomFile, sizeof(xpcomDir));
-    idx := strlen(xpcomDir);
+    idx := NS_StrLen(xpcomDir);
     while (idx>=0) and not (xpcomDir[idx] in ['\','/']) do Dec(idx);
     if idx>=0 then
     begin
       xpcomDir[idx] := #0;
       XPCOMGlueLoadDependentLibs(xpcomDir, ReadDependentCB);
-      safe_Strncat(xpcomdir, '\'+xul_dll, sizeof(xpcomdir));
-      sXULLibrary := LoadLibraryEx(xpcomdir, 0, LOAD_WITH_ALTERED_SEARCH_PATH);
+      NS_StrLCat(xpcomdir, '\'+xul_dll, sizeof(xpcomdir));
+      sXULLibrary := LoadLibraryExA(xpcomdir, 0, LOAD_WITH_ALTERED_SEARCH_PATH);
     end;
   end;
 
-  h := LoadLibraryEx(xpcomFile, 0, LOAD_WITH_ALTERED_SEARCH_PATH);
+  h := LoadLibraryExA(xpcomFile, 0, LOAD_WITH_ALTERED_SEARCH_PATH);
 
   AppendDependentLib(h);
 
@@ -1324,27 +1325,6 @@ begin
     if not Assigned(PPointer(symbols[i].function_)^) then
       Result := NS_ERROR_LOSS_OF_SIGNIFICANT_DATA;
     Inc(i);
-  end;
-end;
-
-function GetCurrentProccessDirectory(buf: PAnsiChar): Boolean;
-var
-  i: Integer;
-begin
-  Result := False;
-  if SUCCEEDED(GetModuleFileName(0, buf, SizeOf(TMaxPathChar))) then
-  begin
-    i := StrLen(buf)-1;
-    while i>=0 do
-    begin
-      if buf[i]='\' then
-      begin
-        buf[i] := #0;
-        Result := True;
-        Exit;
-      end;
-      Dec(i);
-    end;
   end;
 end;
 
@@ -1498,21 +1478,21 @@ const
   BUFSIZE = 4096;
 var
   buf: array[0..BUFSIZE-1] of Char;
-  fileVer: PChar;
+  fileVer: PAnsiChar;
   dwSize: DWORD;
   dw: DWORD;
   greVer: TGREVersion;
 begin
   Result := False;
 
-  dwSize := GetFileVersionInfoSize(path, dw);
+  dwSize := GetFileVersionInfoSizeA(path, dw);
   if (dwSize<=0) or (dwSize>BUFSIZE) then Exit;
 
-  Result := GetFileVersionInfo(path, 0, dwSize, @buf);
+  Result := GetFileVersionInfoA(path, 0, dwSize, @buf);
   if not Result then Exit;
 
   // ƒo[ƒWƒ‡ƒ“î•ñ‚ÌŒ¾ŒêID‚ÍŒˆ‚ß‘Å‚¿
-  Result := VerQueryValue(@buf, '\StringFileInfo\000004b0\FileVersion', Pointer(fileVer), dw);
+  Result := VerQueryValueA(@buf, '\StringFileInfo\000004b0\FileVersion', Pointer(fileVer), dw);
   if not Result then Exit;
 
   greVer := GetGREVersion(fileVer);
@@ -1526,7 +1506,7 @@ var
   proc: Pointer;
 begin
   Result := False;
-  module := LoadLibrary(filename);
+  module := LoadLibraryA(filename);
   if module=0 then Exit;
 
   proc := GetProcAddress(module, 'NS_GetFrozenFunctions');
@@ -1549,14 +1529,14 @@ begin
   Result := False;
   i := 0;
   dwSize := MAX_PATH;
-  rv := RegEnumKeyEx(regBase, i, keyName, dwSize, nil, nil, nil, nil);
+  rv := RegEnumKeyExA(regBase, i, keyName, dwSize, nil, nil, nil, nil);
   while rv=0 do
   begin
-    rv := RegOpenKey(regBase, PChar(@keyName), curKey);
+    rv := RegOpenKeyA(regBase, PAnsiChar(@keyName), curKey);
     if rv=0 then
     begin
       dwSize := MAX_PATH;
-      rv := RegQueryValueEx(curKey, 'GreHome', nil, nil, PByte(@path), @dwSize);
+      rv := RegQueryValueExA(curKey, 'GreHome', nil, nil, PByte(@path), @dwSize);
       if rv=0 then
       begin
         ver := GetGREVersion(keyName);
@@ -1564,13 +1544,13 @@ begin
            (GREVersionCompare(ver, greVer)>=0) then
         begin
           dllPath := path;
-          StrCat(dllPath, '\xpcom.dll');
+          NS_StrCat(dllPath, '\xpcom.dll');
           //if IsXpcomDll(dllPath) then
 //          if CheckGeckoVersion(dllPath, reqVer) and
 //             IsXpcomDll(@dllPath) then
           if CheckGeckoVersion(dllPath, reqVer) then
           begin
-            StrCopy(grePath, path);
+            NS_StrCopy(grePath, path);
             greVer := ver;
             Result := True;
           end;
@@ -1580,7 +1560,7 @@ begin
     end;
     Inc(i);
     dwSize := MAX_PATH;
-    rv := RegEnumKeyEx(regBase, i, keyName, dwSize, nil, nil, nil, nil);
+    rv := RegEnumKeyExA(regBase, i, keyName, dwSize, nil, nil, nil, nil);
   end;
   RegCloseKey(regBase);
 end;
@@ -1603,10 +1583,10 @@ begin
   FillChar(lmVer, SizeOf(lmVer), 0);
   reqVer := GetGREVersion(GRE_BUILD_ID);
 
-  rv := RegOpenKey(HKEY_LOCAL_MACHINE, nameBase, base);
+  rv := RegOpenKeyA(HKEY_LOCAL_MACHINE, nameBase, base);
   HasLM := (rv=ERROR_SUCCESS) and GetLatestGreFromReg(base, reqVer, lmPath, lmVer);
 NoLocalMachine:;
-  rv := RegOpenKey(HKEY_CURRENT_USER, nameBase, base);
+  rv := RegOpenKeyA(HKEY_CURRENT_USER, nameBase, base);
   hasCU := (rv=ERROR_SUCCESS) and GetLatestGreFromReg(base, reqVer, cuPath, cuVer);
 NoCurrentUser:;
   Result := hasLM or hasCU;
@@ -1615,10 +1595,10 @@ NoCurrentUser:;
   begin
     if GREVersionCompare(lmVer,cuVer)>0 then
       //buf := lmPath
-      StrCopy(buf, lmPath)
+      NS_StrCopy(buf, lmPath)
     else
       //buf := cuPath;
-      StrCopy(buf, cuPath);
+      NS_StrCopy(buf, cuPath);
   end;
 end;
 
@@ -1646,27 +1626,27 @@ var
   dllPath: TMaxPathChar;
   useLocalGre: TMaxPathChar;
 begin
-  if StrLen(GreLocation)>0 then
+  if NS_StrLen(GreLocation)>0 then
   begin
-    StrCopy(buf, GreLocation);
+    NS_StrCopy(buf, GreLocation);
     Result := True;
     Exit;
   end;
 
-  if GetCurrentProccessDirectory(cpd) then
+  if NS_CurrentProcessDirectory(cpd, MAX_PATH) then
   begin
     dllPath := cpd;
-    StrCat(dllPath, '\xpcom.dll');
+    NS_StrCat(dllPath, '\xpcom.dll');
     if IsXpcomDll(dllPath) then
     begin
       //buf := cpd;
-      StrCopy(buf, cpd);
+      NS_StrCopy(buf, cpd);
       Result := True;
       Exit;
     end;
   end;
 
-  if GetEnvironmentVariable('USE_LOCAL_GRE', useLocalGre, MAX_PATH)>0 then
+  if GetEnvironmentVariableA('USE_LOCAL_GRE', useLocalGre, MAX_PATH)>0 then
   begin
     Result := False;
     Exit;
@@ -1739,7 +1719,7 @@ begin
     Result := tempLocal.QueryInterface(nsILocalFile, AFile);
 end;
 
-function nsGREDirServiceProvider.GetFile(const Prop: PChar; out Persistent: LongBool; out AFile: nsIFile): nsresult;
+function nsGREDirServiceProvider.GetFile(const Prop: PAnsiChar; out Persistent: LongBool; out AFile: nsIFile): nsresult;
 var
   localFile: nsILocalFile;
 const
@@ -1747,7 +1727,7 @@ const
 begin
   persistent := True;
 
-  if StrComp(Prop, NS_GRE_DIR)=0 then
+  if NS_StrComp(Prop, NS_GRE_DIR)=0 then
     Result := GetGreDirectory(localFile)
   else
     Result := NS_ERROR_FAILURE;
@@ -1779,13 +1759,13 @@ begin
   //if not GetGreDirectoryPath(grePath) then
   if NS_FAILED(GRE_GetGREPathWithProperties(nil, 0, nil, 0, grePath, MAX_PATH)) then
   begin
-    if GetEnvironmentVariable('MOZILLA_FIVE_HOME', greEnv, MAX_PATH)=0 then
+    if GetEnvironmentVariableA('MOZILLA_FIVE_HOME', greEnv, MAX_PATH)=0 then
       Exit;
-    StrCopy(buf, greEnv);
-    safe_StrnCat(buf, '\xpcom.dll', MAX_PATH);
+    NS_StrCopy(buf, greEnv);
+    NS_StrLCat(buf, '\xpcom.dll', MAX_PATH);
   end else
   begin
-    Strcopy(buf, grePath);
+    NS_StrCopy(buf, grePath);
   end;
 
   Result := True;
@@ -1808,7 +1788,7 @@ begin
     Exit;
   end;
 
-  GetXPCOMPath(@xpcomLocation[0]);
+  GetXPCOMPath(xpcomLocation);
 
   Result := XPCOMGlueStartup(xpcomLocation);
 
@@ -1841,7 +1821,7 @@ begin
   if sStartupCount=0 then
   begin
     NS_ShutdownXPCOM(nil);
-    XPCOMGlueShutdown;
+    //XPCOMGlueShutdown;
   end else
   if sStartupCount<0 then sStartupCount := 0;
 
@@ -1860,9 +1840,9 @@ end;
 
 { PChar routines }
 
-function StrLen(const Str: PChar): Cardinal;
+function NS_StrLen(const Str: PAnsiChar): Cardinal;
 var
-  P: PChar;
+  P: PAnsiChar;
 begin
   P := Str;
   Result := 0;
@@ -1873,9 +1853,9 @@ begin
   end;
 end;
 
-function StrCopy(Dest: PChar; const Source: PChar): PChar;
+function NS_StrCopy(Dest: PAnsiChar; const Source: PAnsiChar): PAnsiChar;
 var
-  D, S: PChar;
+  D, S: PAnsiChar;
 begin
   D := Dest;
   S := Source;
@@ -1887,20 +1867,55 @@ begin
   Result := Dest;
 end;
 
-function StrCat(Dest: PChar; const Source: PChar): PChar;
+function NS_StrLCopy(Dest: PAnsiChar; const Source: PAnsiChar; maxLen: Cardinal): PAnsiChar;
 var
-  D: PChar;
+  D, S, last: PAnsiChar;
+begin
+  D := Dest;
+  S := Source;
+  last := Dest + maxLen;
+  while (S^<>#0) and (D < last) do
+  begin
+    D^ := S^;
+    Inc(D);
+    Inc(S);
+  end;
+  D^ := #0;
+  Result := Dest;
+end;
+
+function NS_StrCat(Dest: PAnsiChar; const Source: PAnsiChar): PAnsiChar;
+var
+  D: PAnsiChar;
 begin
   D := Dest;
   while D^ <> #0 do
     Inc(D);
-  StrCopy(D, Source);
+  NS_StrCopy(D, Source);
   Result := Dest;
 end;
 
-function StrComp(const Str1, Str2: PChar): Integer;
+function NS_StrLCat(Dest: PAnsiChar; const Source: PAnsiChar; maxLen: Cardinal): PAnsiChar;
 var
-  P1, P2: PChar;
+  D, S: PAnsiChar;
+  last: PAnsiChar;
+begin
+  D := Dest + NS_StrLen(Dest);
+  S := Source;
+  last := Dest + maxLen - 1;
+  while (S^ <> #0) and (D < last) do
+  begin
+    D ^ := S^;
+    Inc(D);
+    Inc(S);
+  end;
+  D^ := #0;
+  Result := Dest;
+end;
+
+function NS_StrComp(const Str1, Str2: PAnsiChar): Integer;
+var
+  P1, P2: PAnsiChar;
 begin
   P1 := Str1;
   P2 := Str2;
@@ -1912,9 +1927,9 @@ begin
   Result := Ord(P1^) - Ord(P2^);
 end;
 
-function StrRScan(const Str: PChar; Chr: Char): PChar;
+function NS_StrRScan(const Str: PAnsiChar; Chr: AnsiChar): PAnsiChar;
 var
-  P: PChar;
+  P: PAnsiChar;
 begin
   P := Str;
   while P^<>#0 do
@@ -1927,12 +1942,147 @@ begin
     Result := nil;
 end;
 
+function NS_StrLen(const Str: PWideChar): Cardinal;
+var
+  P: PWideChar;
+begin
+  P := Str;
+  Result := 0;
+  while P^ <> #0 do
+  begin
+    Inc(P);
+    Inc(Result);
+  end;
+end;
+
+function NS_StrCopy(Dest: PWideChar; const Source: PWideChar): PWideChar;
+var
+  D, S: PWideChar;
+begin
+  D := Dest;
+  S := Source;
+  repeat
+    D^ := S^;
+    Inc(D);
+    Inc(S);
+  until D[-1] = #0;
+  Result := Dest;
+end;
+
+function NS_StrLCopy(Dest: PWideChar; const Source: PWideChar; maxLen: Cardinal): PWideChar;
+var
+  D, S: PWideChar;
+begin
+  D := Dest;
+  S := Source;
+  while (S^<>#0) and (Dest+maxLen<D) do
+  begin
+    D^ := S^;
+    Inc(D);
+    Inc(S);
+  end;
+  D^ := #0;
+  Result := Dest;
+end;
+
+function NS_StrCat(Dest: PWideChar; const Source: PWideChar): PWideChar;
+var
+  D: PWideChar;
+begin
+  D := Dest;
+  while D^ <> #0 do
+    Inc(D);
+  NS_StrCopy(D, Source);
+  Result := Dest;
+end;
+
+function NS_StrLCat(Dest: PWideChar; const Source: PWideChar; maxLen: Cardinal): PWideChar;
+var
+  D, S: PWideChar;
+  last: PWideChar;
+begin
+  D := Dest + NS_StrLen(Dest);
+  S := Source;
+  last := Dest + maxLen - 1;
+  while (S^ <> #0) and (D < last) do
+  begin
+    D ^ := S^;
+    Inc(D);
+    Inc(S);
+  end;
+  D^ := #0;
+  Result := Dest;
+end;
+
+function NS_StrComp(const Str1, Str2: PWideChar): Integer;
+var
+  P1, P2: PWideChar;
+begin
+  P1 := Str1;
+  P2 := Str2;
+  while (P1^<>#0) and (P1^=P2^) do
+  begin
+    Inc(P1);
+    Inc(P2);
+  end;
+  Result := Ord(P1^) - Ord(P2^);
+end;
+
+function NS_StrRScan(const Str: PWideChar; Chr: WideChar): PWideChar;
+var
+  P: PWideChar;
+begin
+  P := Str;
+  while P^<>#0 do
+    Inc(P);
+  while (P>=Str) and (P^<>Chr) do
+    Dec(P);
+  if (P>=Str) then
+    Result := P
+  else
+    Result := nil;
+end;
+
+function safe_strncat(Dest: PAnsiChar; Append: PAnsiChar; count: PRUint32): PRBool;
+var
+  last: PAnsiChar;
+begin
+  last := (dest+count-1);
+  while dest^ <> #0 do
+    Inc(dest);
+  while (append^ <> #0) and (Last - Dest > 0) do
+  begin
+    Dest^ := Append^;
+    Inc(dest);
+    Inc(Append);
+  end;
+  Dest^ := #0;
+  Result := (Append^ = #0);
+end;
+
 function fullpath(absPath, relPath: PAnsiChar; maxLength: PRUint32): PAnsiChar;
 var
   filePart: PAnsiChar;
 begin
-  GetFullPathName(relPath, maxLength, absPath, filePart);
+  GetFullPathNameA(relPath, maxLength, absPath, filePart);
   Result := absPath;
 end;
+
+function NS_CurrentProcessDirectory(buf: PAnsiChar; bufLen: Cardinal): Boolean;
+var
+  lastSlash: PAnsiChar;
+begin
+  Result := False;
+  if SUCCEEDED(GetModuleFileNameA(0, buf, bufLen)) then
+  begin
+    lastSlash := NS_StrRScan(buf, '\');
+    if Assigned(lastSlash) then
+    begin
+      lastSlash^ := #0;
+      Result := True;
+    end;
+  end;
+end;
+
 
 end.

@@ -230,7 +230,7 @@ begin
   end;
 end;
 
-function TInputStream.Read(aBuf: PChar; aCount: PRUint32): PRUint32;
+function TInputStream.Read(aBuf: PAnsiChar; aCount: PRUint32): PRUint32;
 begin
   Result := FStream.Read(aBuf^, aCount);
 end;
@@ -313,7 +313,7 @@ procedure TOutputStream.Flush;
 begin
 end;
 
-function TOutputStream.Write(const aBuf: PChar; aCount: PRUint32): PRUint32;
+function TOutputStream.Write(const aBuf: PAnsiChar; aCount: PRUint32): PRUint32;
 begin
   Result := FStream.Write(aBuf^, aCount);
 end;

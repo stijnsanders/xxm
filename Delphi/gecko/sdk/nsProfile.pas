@@ -53,12 +53,12 @@ type
 function NS_NewProfileDirServiceProvider(aNotifyObservers: PRBool): nsProfileDirServiceProvider;
 
 resourcestring
-  SProfileRegisterError = 'プロファイルの登録に失敗しました。';
-  SProfileShutdownError = 'プロファイルの終了に失敗しました。';
-  SSetProfileDirError = 'プロファイルディレクトリの登録に失敗しました。';
-  SNotADirectory = '指定されたファイルはディレクトリではありません。';
-  SProfileInitError = 'プロファイルの初期化に失敗しました。';
-  SEnsureProfileDirError = 'プロファイルディレクトリを有効にすることが出来ません。';
+  SProfileRegisterError = 'Failed to register profile.';
+  SProfileShutdownError = 'Failed to shutdown profile.';
+  SSetProfileDirError = 'Failed to register profile directory.';
+  SNotADirectory = 'The specified file is not a directory.';
+  SProfileInitError = 'Failed to initialize profile.';
+  SEnsureProfileDirError = 'Cannot ensure profile directory.';
 
 implementation
 
@@ -168,7 +168,7 @@ begin
     lockFile.Append(lockFileName.AString);
     lockFile.GetNativePath(filePath.ACString);
 
-    FLockFileHandle := CreateFile(PAnsiChar(filePath.ToString),
+    FLockFileHandle := CreateFileA(PAnsiChar(filePath.ToString),
                                   GENERIC_READ or GENERIC_WRITE,
                                   0,
                                   nil,
@@ -536,7 +536,7 @@ var
   i: Integer;
 const
   NUM_OF_DIRS = 15;
-  Dirs: array [1..15] of PChar = (
+  Dirs: array [1..15] of PAnsiChar = (
     NS_APP_PREFS_50_DIR,
     NS_APP_PREFS_50_FILE,
     NS_APP_USER_PROFILE_50_DIR,

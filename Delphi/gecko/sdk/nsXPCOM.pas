@@ -1,4 +1,4 @@
-  unit nsXPCOM;
+unit nsXPCOM;
 
 interface
 
@@ -1172,7 +1172,7 @@ type
 
   nsIRequest = interface(nsISupports)
   ['{ef6bfbd2-fd46-48d8-96b7-9f8f0fd387fe}']
-    procedure GetName(aName: nsACString); safecall;
+    procedure GetName(aName: nsAUTF8String); safecall;
     function IsPending(): PRBool; safecall;
     function GetStatus(): nsresult; safecall;
     property Status: nsresult read GetStatus;
@@ -1284,8 +1284,8 @@ type
     procedure GetValue(aValue: nsACString); safecall;
     function GetIsDomain(): PRBool; safecall;
     property IsDomain: PRBool read GetIsDomain;
-    procedure GetHost(aHost: nsACString); safecall;
-    procedure GetPath(aPath: nsACString); safecall;
+    procedure GetHost(aHost: nsAUTF8String); safecall;
+    procedure GetPath(aPath: nsAUTF8String); safecall;
     function GetIsSecure(): PRBool; safecall;
     property IsSecure: PRBool read GetIsSecure;
     function GetExpires(): PRUint64; safecall;
@@ -1301,7 +1301,7 @@ type
     procedure RemoveAll(); safecall;
     function GetEnumerator(): nsISimpleEnumerator; safecall;
     property Enumerator: nsISimpleEnumerator read GetEnumerator;
-    procedure Remove(const aDomain: nsACString; const aName: nsACString; const aPath: nsACString; aBlocked: PRBool); safecall;
+    procedure Remove(const aDomain: nsAUTF8String; const aName: nsACString; const aPath: nsAUTF8String; aBlocked: PRBool); safecall;
   end;
 
   nsICRLInfo = interface(nsISupports)
@@ -1315,7 +1315,7 @@ type
     procedure GetLastUpdateLocale(aLastUpdateLocale: nsAString); safecall;
     procedure GetNextUpdateLocale(aNextUpdateLocale: nsAString); safecall;
     procedure GetNameInDb(aNameInDb: nsAString); safecall;
-    procedure GetLastFetchURL(aLastFetchURL: nsACString); safecall;
+    procedure GetLastFetchURL(aLastFetchURL: nsAUTF8String); safecall;
   end;
 
   nsIDebug = interface(nsISupports)
@@ -2966,30 +2966,30 @@ type
 
   nsIURI = interface(nsISupports)
   ['{07a22cc0-0ce5-11d3-9331-00104ba0fd40}']
-    procedure GetSpec(aSpec: nsACString); safecall;
-    procedure SetSpec(const aSpec: nsACString); safecall;
-    procedure GetPrePath(aPrePath: nsACString); safecall;
+    procedure GetSpec(aSpec: nsAUTF8String); safecall;
+    procedure SetSpec(const aSpec: nsAUTF8String); safecall;
+    procedure GetPrePath(aPrePath: nsAUTF8String); safecall;
     procedure GetScheme(aScheme: nsACString); safecall;
     procedure SetScheme(const aScheme: nsACString); safecall;
-    procedure GetUserPass(aUserPass: nsACString); safecall;
-    procedure SetUserPass(const aUserPass: nsACString); safecall;
-    procedure GetUsername(aUsername: nsACString); safecall;
-    procedure SetUsername(const aUsername: nsACString); safecall;
-    procedure GetPassword(aPassword: nsACString); safecall;
-    procedure SetPassword(const aPassword: nsACString); safecall;
-    procedure GetHostPort(aHostPort: nsACString); safecall;
-    procedure SetHostPort(const aHostPort: nsACString); safecall;
-    procedure GetHost(aHost: nsACString); safecall;
-    procedure SetHost(const aHost: nsACString); safecall;
+    procedure GetUserPass(aUserPass: nsAUTF8String); safecall;
+    procedure SetUserPass(const aUserPass: nsAUTF8String); safecall;
+    procedure GetUsername(aUsername: nsAUTF8String); safecall;
+    procedure SetUsername(const aUsername: nsAUTF8String); safecall;
+    procedure GetPassword(aPassword: nsAUTF8String); safecall;
+    procedure SetPassword(const aPassword: nsAUTF8String); safecall;
+    procedure GetHostPort(aHostPort: nsAUTF8String); safecall;
+    procedure SetHostPort(const aHostPort: nsAUTF8String); safecall;
+    procedure GetHost(aHost: nsAUTF8String); safecall;
+    procedure SetHost(const aHost: nsAUTF8String); safecall;
     function GetPort(): PRInt32; safecall;
     procedure SetPort(aPort: PRInt32); safecall;
     property Port: PRInt32 read GetPort write SetPort;
-    procedure GetPath(aPath: nsACString); safecall;
-    procedure SetPath(const aPath: nsACString); safecall;
+    procedure GetPath(aPath: nsAUTF8String); safecall;
+    procedure SetPath(const aPath: nsAUTF8String); safecall;
     function Equals(other: nsIURI): PRBool; safecall;
     function SchemeIs(const scheme: PAnsiChar): PRBool; safecall;
     function Clone(): nsIURI; safecall;
-    procedure Resolve(const relativePath: nsACString; _retval: nsACString); safecall;
+    procedure Resolve(const relativePath: nsAUTF8String; _retval: nsAUTF8String); safecall;
     procedure GetAsciiSpec(aAsciiSpec: nsACString); safecall;
     procedure GetAsciiHost(aAsciiHost: nsACString); safecall;
     procedure GetOriginCharset(aOriginCharset: nsACString); safecall;
@@ -2997,24 +2997,24 @@ type
 
   nsIURL = interface(nsIURI)
   ['{d6116970-8034-11d3-9399-00104ba0fd40}']
-    procedure GetFilePath(aFilePath: nsACString); safecall;
-    procedure SetFilePath(const aFilePath: nsACString); safecall;
-    procedure GetParam(aParam: nsACString); safecall;
-    procedure SetParam(const aParam: nsACString); safecall;
-    procedure GetQuery(aQuery: nsACString); safecall;
-    procedure SetQuery(const aQuery: nsACString); safecall;
-    procedure GetRef(aRef: nsACString); safecall;
-    procedure SetRef(const aRef: nsACString); safecall;
-    procedure GetDirectory(aDirectory: nsACString); safecall;
-    procedure SetDirectory(const aDirectory: nsACString); safecall;
-    procedure GetFileName(aFileName: nsACString); safecall;
-    procedure SetFileName(const aFileName: nsACString); safecall;
-    procedure GetFileBaseName(aFileBaseName: nsACString); safecall;
-    procedure SetFileBaseName(const aFileBaseName: nsACString); safecall;
-    procedure GetFileExtension(aFileExtension: nsACString); safecall;
-    procedure SetFileExtension(const aFileExtension: nsACString); safecall;
-    procedure GetCommonBaseSpec(aURIToCompare: nsIURI; _retval: nsACString); safecall;
-    procedure GetRelativeSpec(aURIToCompare: nsIURI; _retval: nsACString); safecall;
+    procedure GetFilePath(aFilePath: nsAUTF8String); safecall;
+    procedure SetFilePath(const aFilePath: nsAUTF8String); safecall;
+    procedure GetParam(aParam: nsAUTF8String); safecall;
+    procedure SetParam(const aParam: nsAUTF8String); safecall;
+    procedure GetQuery(aQuery: nsAUTF8String); safecall;
+    procedure SetQuery(const aQuery: nsAUTF8String); safecall;
+    procedure GetRef(aRef: nsAUTF8String); safecall;
+    procedure SetRef(const aRef: nsAUTF8String); safecall;
+    procedure GetDirectory(aDirectory: nsAUTF8String); safecall;
+    procedure SetDirectory(const aDirectory: nsAUTF8String); safecall;
+    procedure GetFileName(aFileName: nsAUTF8String); safecall;
+    procedure SetFileName(const aFileName: nsAUTF8String); safecall;
+    procedure GetFileBaseName(aFileBaseName: nsAUTF8String); safecall;
+    procedure SetFileBaseName(const aFileBaseName: nsAUTF8String); safecall;
+    procedure GetFileExtension(aFileExtension: nsAUTF8String); safecall;
+    procedure SetFileExtension(const aFileExtension: nsAUTF8String); safecall;
+    procedure GetCommonBaseSpec(aURIToCompare: nsIURI; _retval: nsAUTF8String); safecall;
+    procedure GetRelativeSpec(aURIToCompare: nsIURI; _retval: nsAUTF8String); safecall;
   end;
 
   nsIFileURL = interface(nsIURL)
@@ -3084,7 +3084,7 @@ type
   ['{fa9c7f6c-61b3-11d4-9877-00c04fa0cf4a}']
     procedure Close(); safecall;
     function Available(): PRUint32; safecall;
-    function Read(aBuf: Pchar; aCount: PRUint32): PRUint32; safecall;
+    function Read(aBuf: PAnsiChar; aCount: PRUint32): PRUint32; safecall;
     function ReadSegments(aWriter: nsWriteSegmentFun; aClosure: Pointer; aCount: PRUint32): PRUint32; safecall;
     function IsNonBlocking(): PRBool; safecall;
   end;
@@ -3098,15 +3098,15 @@ type
   ['{bddeda3f-9020-4d12-8c70-984ee9f7935e}']
     function GetProtocolHandler(const aScheme: PAnsiChar): nsIProtocolHandler; safecall;
     function GetProtocolFlags(const aScheme: PAnsiChar): PRUint32; safecall;
-    function NewURI(const aSpec: nsACString; const aOriginCharset: PAnsiChar; aBaseURI: nsIURI): nsIURI; safecall;
+    function NewURI(const aSpec: nsAUTF8String; const aOriginCharset: PAnsiChar; aBaseURI: nsIURI): nsIURI; safecall;
     function NewFileURI(aFile: nsIFile): nsIURI; safecall;
     function NewChannelFromURI(aURI: nsIURI): nsIChannel; safecall;
-    function NewChannel(const aSpec: nsACString; const aOriginCharset: PAnsiChar; aBaseURI: nsIURI): nsIChannel; safecall;
+    function NewChannel(const aSpec: nsAUTF8String; const aOriginCharset: PAnsiChar; aBaseURI: nsIURI): nsIChannel; safecall;
     function GetOffline(): PRBool; safecall;
     procedure SetOffline(aOffline: PRBool); safecall;
     property Offline: PRBool read GetOffline write SetOffline;
     function AllowPort(aPort: PRInt32; const aScheme: PAnsiChar): PRBool; safecall;
-    function ExtractScheme(const urlString: nsACString): nsACString; safecall;
+    function ExtractScheme(const urlString: nsAUTF8String): nsAUTF8String; safecall;
   end;
 
   nsIJSON = interface(nsISupports)
@@ -3513,7 +3513,7 @@ type
     property DefaultPort: PRInt32 read GetDefaultPort;
     function GetProtocolFlags(): PRUint32; safecall;
     property ProtocolFlags: PRUint32 read GetProtocolFlags;
-    function NewURI(const aSpec: nsACString; const aOriginCharset: PAnsiChar; aBaseURI: nsIURI): nsIURI; safecall;
+    function NewURI(const aSpec: nsAUTF8String; const aOriginCharset: PAnsiChar; aBaseURI: nsIURI): nsIURI; safecall;
     function NewChannel(aURI: nsIURI): nsIChannel; safecall;
     function AllowPort(port: PRInt32; const scheme: PAnsiChar): PRBool; safecall;
   end;

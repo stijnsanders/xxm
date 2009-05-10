@@ -43,11 +43,11 @@ uses
 
 function NS_GetIOService: nsIIOService;
 
-function NS_NewURI(const spec: nsACString;
+function NS_NewURI(const spec: nsAUTF8String;
                    const charset: AnsiString='';
                    baseURI: nsIURI=nil; ioService:
                    nsIIOService=nil): nsIURI; overload;
-function NS_NewURI(const spec: AnsiString;
+function NS_NewURI(const spec: UTF8String;
                    baseURI: nsIURI=nil;
                    ioService: nsIIOService=nil): nsIURI; overload;
 function NS_NewFileURI(spec: nsIFile; ioService:
@@ -68,27 +68,27 @@ procedure NS_OpenURI(listener: nsIStreamListener;
                      loadGroup: nsILoadGroup=nil;
                      callbacks: nsIInterfaceRequestor=nil;
                      loadFlags: Longword=NS_IREQUEST_LOAD_NORMAL); overload;
-procedure NS_MakeAbsoluteURI(uri: nsACString;
-                            const spec: nsACString;
+procedure NS_MakeAbsoluteURI(uri: nsAUTF8String;
+                            const spec: nsAUTF8String;
                             baseURI: nsIURI;
                             ioService: nsIIOService=nil); overload;
-function NS_MakeAbsoluteURI(const spec: AnsiString;
+function NS_MakeAbsoluteURI(const spec: UTF8String;
                             baseURI: nsIURI;
-                            ioService: nsIIOService=nil): AnsiString; overload;
+                            ioService: nsIIOService=nil): UTF8String; overload;
 function NS_NewLoadGroup(obs: nsIRequestObserver): nsILoadGroup;
 
 
 function NS_NewURI(const spec: nsAString; const charset: AnsiString=''; baseURI: nsIURI=nil; ioService: nsIIOService=nil): nsIURI; overload;
-procedure NS_MakeAbsoluteURI(uri: nsAString; const spec: nsAString; baseURI: nsIURI; ioService: nsIIOService=nil); overload
+procedure NS_MakeAbsoluteURI(uri: nsAString; const spec: nsAString; baseURI: nsIURI; ioService: nsIIOService=nil); overload;
 
 resourcestring
-  SNewURIError = 'URI ''%s'' で nsIURI を作成することが出来ません。';
-  SConversationError = 'UTF8/UTF16 変換に失敗しました。';
-  SNewFileURIError = 'ファイル ''%s'' で nsIURI を作成することが出来ません。';
-  SNewChannelError = 'nsIChannel の作成に失敗しました。';
-  SOpenURIError = 'URI ''%s'' を開くことが出来ません。';
-  SMakeAbsoluteURIError = '絶対 URI の作成が出来ません。';
-  SNewLoadGroupError = 'nsILoadGroup の作成に失敗しました。';
+  SNewURIError = 'Cannot create instance of nsIURI by URI ''%s.'' ';
+  SConversationError = 'Cannot convert strings between UTF8 and UTF16.';
+  SNewFileURIError = 'Cannot create instance of nsIURI by file ''%s.''';
+  SNewChannelError = 'Cannot create instance of nsIChannel.';
+  SOpenURIError = 'Cannot open URI ''%s.'' ';
+  SMakeAbsoluteURIError = 'Cannot make the absolute URI.';
+  SNewLoadGroupError = 'Cannot create instance of nsILoadGroup.';
 
 implementation
 
@@ -113,11 +113,11 @@ begin
   end;
 end;
 
-function NS_NewURI(const spec: nsACString; const charset: AnsiString; baseURI: nsIURI; ioService: nsIIOService): nsIURI;
+function NS_NewURI(const spec: nsAUTF8String; const charset: AnsiString; baseURI: nsIURI; ioService: nsIIOService): nsIURI;
 var
   charsetPtr: PAnsiChar;
   grip: nsIIOService;
-  str: IInterfacedCString;
+  str: IInterfacedUTF8String;
 begin
   if Length(charset)>0 then
     charsetPtr := PAnsiChar(charset)
@@ -128,45 +128,45 @@ begin
   try
     Result := grip.NewURI(spec, charsetPtr, baseURI);
   except
-    str := RelateCString(spec);
+    str := RelateUTF8String(spec);
     raise EGeckoError.CreateResFmt(PResStringRec(@SNewURIError), [str.ToString]);
   end;
 end;
 
 function NS_NewURI(const spec: nsAString; const charset: AnsiString; baseURI: nsIURI; ioService: nsIIOService): nsIURI;
 var
-  spec2: IInterfacedCString;
+  spec2: IInterfacedUTF8String;
   rv: nsresult;
 begin
-  spec2 := NewCString;
-  rv := NS_UTF16ToCString(spec, NS_ENCODING_UTF8, spec2.ACString);
+  spec2 := NewUTF8String;
+  rv := NS_UTF16ToCString(spec, NS_ENCODING_UTF8, spec2.AUTF8String);
   if NS_FAILED(rv) then
     raise EGeckoError.CreateRes(PResStringRec(@SConversationError));
-  Result := NS_NewURI(spec2.ACString, charset, baseURI, ioService);
+  Result := NS_NewURI(spec2.AUTF8String, charset, baseURI, ioService);
 end;
 
-function NS_NewURI(const spec: AnsiString; baseURI: nsIURI; ioService: nsIIOService): nsIURI;
+function NS_NewURI(const spec: UTF8String; baseURI: nsIURI; ioService: nsIIOService): nsIURI;
 var
-  spec2: IInterfacedCString;
+  spec2: IInterfacedUTF8String;
 begin
-  spec2 := NewCString(PChar(spec));
+  spec2 := NewUTF8String(spec);
 
-  Result := NS_NewURI(spec2.ACString, '', baseURI, ioService);
+  Result := NS_NewURI(spec2.AUTF8String, '', baseURI, ioService);
 end;
 
 function NS_NewFileURI(spec: nsIFile; ioService:
                        nsIIOService): nsIURI;
 var
   grip: nsIIOService;
-  str: IInterfacedCString;
+  str: IInterfacedUTF8String;
 begin
   grip := EnsureIOService(ioService);
   if Assigned(grip) then
   try
     Result := grip.NewFileURI(spec);
   except
-    str := NewCString;
-    spec.GetNativePath(str.ACString);
+    str := NewUTF8String;
+    spec.GetNativePath(str.AUTF8String);
     raise EGeckoError.CreateResFmt(PResStringRec(@SNewFileURIError), [str.ToString]);
   end;
 end;
@@ -236,15 +236,15 @@ begin
   end;
 end;
 
-procedure NS_MakeAbsoluteURI(uri: nsACString;
-                             const spec: nsACString;
+procedure NS_MakeAbsoluteURI(uri: nsAUTF8String;
+                             const spec: nsAUTF8String;
                              baseURI: nsIURI;
                              ioService: nsIIOService);
 var
-  uri2, spec2: IInterfacedCString;
+  uri2, spec2: IInterfacedUTF8String;
 begin
-  uri2 := RelateCString(uri);
-  spec2 := RelateCString(spec);
+  uri2 := RelateUTF8String(uri);
+  spec2 := RelateUTF8String(spec);
 
   if not Assigned(baseURI) then
   begin
@@ -252,7 +252,7 @@ begin
   end else
   if uri2.Length()>0 then
   try
-    baseURI.Resolve(spec2.ACString, uri2.ACString);
+    baseURI.Resolve(spec2.AUTF8String, uri2.AUTF8String);
   except
     raise EGeckoError.CreateRes(PResStringRec(@SMakeAbsoluteURIError));
   end else
@@ -262,13 +262,13 @@ end;
 procedure NS_MakeAbsoluteURI(uri: nsAString; const spec: nsAString; baseURI: nsIURI; ioService: nsIIOService=nil);
 var
   uri2, spec2: IInterfacedString;
-  buf1, buf2: IInterfacedCString;
+  buf1, buf2: IInterfacedUTF8String;
   rv: nsresult;
 begin
   uri2 := RelateString(uri);
   spec2 := RelateString(spec);
-  buf1 := NewCString;
-  buf2 := NewCString;
+  buf1 := NewUTF8String;
+  buf2 := NewUTF8String;
 
   if not Assigned(baseURI) then
   begin
@@ -276,13 +276,13 @@ begin
   end else
   try
     if uri2.Length()=0 then
-      baseURI.GetSpec(buf1.ACString)
+      baseURI.GetSpec(buf1.AUTF8String)
     else
     begin
-      NS_UTF16ToCString(spec,NS_ENCODING_UTF8,buf2.ACString);
-      baseURI.Resolve(buf2.ACString, buf1.ACString);
+      NS_UTF16ToCString(spec,NS_ENCODING_UTF8,buf2.AUTF8String);
+      baseURI.Resolve(buf2.AUTF8String, buf1.AUTF8String);
     end;
-    rv := NS_CStringToUTF16(buf1.ACString, NS_ENCODING_UTF8, uri);
+    rv := NS_CStringToUTF16(buf1.AUTF8String, NS_ENCODING_UTF8, uri);
     if NS_FAILED(rv) then
       raise EGeckoError.CreateRes(PResStringRec(@SConversationError));
   except
@@ -291,16 +291,16 @@ begin
   end;
 end;
 
-function NS_MakeAbsoluteURI(const spec: AnsiString;
+function NS_MakeAbsoluteURI(const spec: UTF8String;
                             baseURI: nsIURI;
-                            ioService: nsIIOService): AnsiString;
+                            ioService: nsIIOService): UTF8String;
 var
-  uri2, spec2: IInterfacedCString;
+  uri2, spec2: IInterfacedUTF8String;
 begin
-  uri2 := NewCString();
-  spec2 := NewCString(spec);
+  uri2 := NewUTF8String();
+  spec2 := NewUTF8String(spec);
 
-  NS_MakeAbsoluteURI(uri2.ACString, spec2.ACString, baseURI, ioService);
+  NS_MakeAbsoluteURI(uri2.AUTF8String, spec2.AUTF8String, baseURI, ioService);
   Result := uri2.ToString;
 end;
 
