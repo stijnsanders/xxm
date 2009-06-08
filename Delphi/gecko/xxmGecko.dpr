@@ -1,5 +1,7 @@
 library xxmGecko;
 
+{$R 'xxmData.res' 'xxmData.rc'}
+
 uses
   SysUtils,
   xxmGeckoProtocol in 'xxmGeckoProtocol.pas',
@@ -8,7 +10,11 @@ uses
   xxmGeckoStreams in 'xxmGeckoStreams.pas',
   xxmDictionary in 'xxmDictionary.pas',
   xxmGeckoInterfaces in 'xxmGeckoInterfaces.pas',
-  Debug1 in 'debug\Debug1.pas';
+  Debug1 in 'debug\Debug1.pas',
+  xxmSettings in 'xxmSettings.pas',
+  xxmPReg in 'xxmPReg.pas',
+  xxmParams in '..\common\xxmParams.pas',
+  xxmParUtils in '..\common\xxmParUtils.pas';
 
 {$R *.res}
 

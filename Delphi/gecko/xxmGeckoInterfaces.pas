@@ -45,6 +45,27 @@ type
     procedure setEOF();
   end;
 
+procedure SetCString(x:nsACString;v:string);
+function GetCString(const x:nsACString):string;
+
 implementation
+
+uses
+  nsInit;
+
+procedure SetCString(x:nsACString;v:string);
+begin
+  NS_CStringSetData(x,PAnsiChar(v),Length(v));
+end;
+
+function GetCString(const x:nsACString):string;
+var
+  l: Longword;
+  p: PAnsiChar;
+begin
+  l:=NS_CStringGetData(x,p);
+  SetLength(Result,l);
+  Move(p^,PAnsiChar(Result)^,l);
+end;
 
 end.

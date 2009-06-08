@@ -31,7 +31,7 @@ uses
 
 procedure TxxmProtocolHandler.GetScheme(aScheme: nsACString);
 begin
-  NewCString(aScheme).Assign('xxm');
+  SetCString(aScheme,'xxm');
 end;
 
 function TxxmProtocolHandler.GetDefaultPort: Integer;

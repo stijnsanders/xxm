@@ -335,7 +335,7 @@ begin
 
     //IHttpNegotiate here? see GetRequestParam
 
-    //create object
+    //create page object
     OleCheck(ProtSink.ReportProgress(BINDSTATUS_CONNECTING, PWideChar(FProjectName)));
     if XxmProjectCache=nil then XxmProjectCache:=TXxmProjectCache.Create;
     FProjectEntry:=XxmProjectCache.GetProject(FProjectName);
@@ -345,7 +345,7 @@ begin
       if not(XxmAutoBuildHandler(FProjectEntry,Self,FProjectName)) then
         raise EXxmAutoBuildFailed.Create(FProjectName);
      end;
-    FProjectEntry.OpenContext; 
+    FProjectEntry.OpenContext;
     OleCheck(ProtSink.ReportProgress(BINDSTATUS_SENDINGREQUEST, PWideChar(FFragmentName)));
     FPage:=FProjectEntry.Project.LoadPage(Self,FFragmentName);
 
@@ -651,7 +651,7 @@ begin
       Result:=GetRequestParam('Accept-Language');
       if Result='' then Result:=LocaleLanguage;
      end;
-    csRemoteAddress:     Result:='127.0.0.1';
+    csRemoteAddress:     Result:='127.0.0.1';//TODO: IPV6?
     csRemoteHost:        Result:='localhost';
     csAuthUser:          //st:=BINDSTRING_USERNAME;//doc says not supported
       //TODO: GetUserNameEx?

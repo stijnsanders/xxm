@@ -2,8 +2,8 @@ unit xxmGeckoChannel;
 
 interface
 
-uses nsXPCOM, nsTypes, nsGeckoStrings, xxm, Windows, Classes, SysUtils,
-  xxmDictionary, xxmGeckoStreams;
+uses nsXPCOM, nsTypes, nsGeckoStrings, nsThreadUtils, xxm,
+  Windows, Classes, SysUtils, xxmDictionary, xxmGeckoStreams, xxmPReg, xxmParams;
 
 type
   TxxmChannel=class(TInterfacedObject,
@@ -11,31 +11,16 @@ type
     nsIRequest,
     nsIChannel,
     nsIHttpChannel,
+    //nsIClassInfo,
     //nsIInterfaceRequestor,
     //nsITransportEventSink,??
-    //nsIUploadChannel
+    //nsIUploadChannel //TODO!!!
     //nsIPropertyBag2
+    //nsIXPCScriptable,
+    //nsIXPConnectWrappedJS,
+    //nsISecurityCheckedComponent,
     IxxmContext)
   private
-{
-  nsRefPtr<nsInputStreamPump>         mPump;
-  nsCOMPtr<nsIInterfaceRequestor>     mCallbacks;
-  nsCOMPtr<nsIProgressEventSink>      mProgressSink;
-  nsCOMPtr<nsIURI>                    mOriginalURI;
-  nsCOMPtr<nsIURI>                    mURI;
-  nsCOMPtr<nsILoadGroup>              mLoadGroup;
-  nsCOMPtr<nsISupports>               mOwner;
-  nsCOMPtr<nsISupports>               mSecurityInfo;
-  nsCOMPtr<nsIStreamListener>         mListener;
-  nsCOMPtr<nsISupports>               mListenerContext;
-  nsCString                           mContentType;
-  nsCString                           mContentCharset;
-  PRUint32                            mLoadFlags;
-  nsresult                            mStatus;
-  PRPackedBool                        mQueriedProgressSink;
-  PRPackedBool                        mSynthProgressEvents;
-  PRPackedBool                        mWasOpened;
-}  
     FOwner:nsISupports;
     FURI,FOrigURI:nsIURI;
     FURL:WideString;
@@ -43,14 +28,21 @@ type
     FLoadGroup:nsILoadGroup;
     FListenerContext:nsISupports;
     FListener:nsIStreamListener;
+    FCallBacks:nsIInterfaceRequestor;
     FConnected,FComplete,FHeaderSent:boolean;
+    FStatus,FSuspendCount:integer;
     FStatusCode:word;
-    FStatusText,FVerb:string;
+    FStatusText,FVerb,FProjectName,FFragmentName,FPageClass,FQueryString:string;
+    FProjectEntry:TXxmProjectCacheEntry;
+    FPage: IXxmFragment;
     FAutoEncoding: TXxmAutoEncoding;
     FRequestHeaders,FResponseHeaders:TxxmDictionary;
-    FReturnString:IInterfacedCString;
     FData:TxxmInputStream;
+    FSingleFileSent: WideString;
     procedure CheckHeader(Sent:boolean);
+    procedure CheckSuspend;
+    procedure SendRaw(Data: WideString);
+    procedure SendError(res:string;vals:array of string);
   protected
     //nsIInterfaceRequestor
     //procedure nsGetInterface(const uuid: TGUID; out _result); safecall;
@@ -192,10 +184,24 @@ type
     procedure Queue(Channel:TxxmChannel);//called from handler
     function Unqueue:TxxmChannel;//called from threads
   end;
-{
-  TXxmAutoBuildHandler=function(pce:TXxmProjectCacheEntry;
-    Context: IXxmContext; ProjectName:WideString):boolean;
-}
+
+  TxxmListenerCall=(lcActivate,lcStart,lcData,lcStop);
+
+  TxxmListenerCaller=class(TInterfacedObject,
+    nsIRunnable)
+  private
+    FOwner:TxxmChannel;
+    FCall:TxxmListenerCall;
+    FOffset,FCount:cardinal;
+    debugid:integer;
+  protected
+    procedure run; safecall;
+  public
+    constructor Create(Owner:TxxmChannel;Call:TxxmListenerCall;
+      Offset,Count:cardinal);
+    destructor Destroy; override;
+  end;
+
   EXxmContextStringUnknown=class(Exception);
   EXxmResponseHeaderAlreadySent=class(Exception);
   EXxmResponseHeaderNotSent=class(Exception);
@@ -210,11 +216,13 @@ const
 
 var
   GeckoLoaderPool:TXxmGeckoLoaderPool;
-//  XxmAutoBuildHandler:TXxmAutoBuildHandler;
+  //see xxmSettings
+  StatusBuildError,StatusException,StatusFileNotFound:integer;
+  DefaultProjectName:string;
 
 implementation
 
-uses ActiveX, Math, Debug1, nsThreadUtils;
+uses ActiveX, Variants, Debug1, nsInit, xxmGeckoInterfaces;
 
 resourcestring
   SXxmContextStringUnknown='Unknown ContextString __';
@@ -231,38 +239,52 @@ var
   x:IInterfacedUTF8String;
 begin
   inherited Create;
-  //TODO:
   FOwner:=nil;
   FLoadGroup:=nil;
+  FLoadFlags:=0;//?
   FListener:=nil;
+  FCallBacks:=nil;
   FURI:=aURI;
   FOrigURI:=aURI;
   FData:=TxxmInputStream.Create;
   FRequestHeaders:=TxxmDictionary.Create;
   FResponseHeaders:=TxxmDictionary.Create;
+  FSuspendCount:=1;//see AsyncOpen, TxxmListenerCaller/lcActivate
   FConnected:=false;//see AsyncOpen
   FComplete:=false;
   FHeaderSent:=false;
-  FStatusCode:=0;//200;
+  FStatus:=NS_OK;
+  FStatusCode:=200;
   FStatusText:='OK';
   FVerb:='GET';//default
   FResponseHeaders['Content-Type']:='text/html';//default (setting?)
+  FResponseHeaders['Content-Charset']:='utf-8';//used by GetContentCharset/SetContentCharset
   FAutoEncoding:=aeUtf8;//default (setting?)
   x:=NewUTF8String;
   aURI.GetSpec(x.AUTF8String);
   FURL:=UTF8Decode(x.ToString);
+  FProjectName:='';//parsed from URL
+  FFragmentName:='';//parsed from URL
+  FQueryString:='';//parsed from URL
+  FProjectEntry:=nil;
+  FPage:=nil;
+  FPageClass:='';
+  FSingleFileSent:='';
 Debug('TxxmChannel.Create('+FURL);
 end;
 
 destructor TxxmChannel.Destroy;
 begin
 Debug('TxxmChannel.Destroying');
+  if not(FProjectEntry=nil) then FProjectEntry.CloseContext;
+  FProjectEntry:=nil;
+  FPage:=nil;
   FOwner:=nil;
   FListenerContext:=nil;
   FListener:=nil;
+  FCallBacks:=nil;
   FOrigURI:=nil;
   FURI:=nil;
-  FReturnString:=nil;
   FData.Free;
   FRequestHeaders.Free;
   FResponseHeaders.Free;
@@ -282,60 +304,203 @@ end;
 procedure TxxmChannel.AsyncOpen(aListener: nsIStreamListener;
   aContext: nsISupports);
 begin
+Debug('>TxxmChannel.AsyncOpen');
   FConnected:=true;
   FListener:=aListener;
   FListenerContext:=aContext;
-Debug('TxxmChannel.AsyncOpen');
-  if not(FLoadGroup=nil) then FLoadGroup.AddRequest(Self as nsIRequest,FListenerContext);
-
+  //if not(FLoadGroup=nil) then FLoadGroup.AddRequest(Self as nsIRequest,nil);
   GeckoLoaderPool.Queue(Self);
+  NS_DispatchToCurrentThread(TxxmListenerCaller.Create(Self,lcActivate,0,0));
+Debug('<TxxmChannel.AsyncOpen');
 end;
 
 procedure TxxmChannel.Execute;
+var
+  i,j,l:integer;
+  x:WideString;
 begin
   //called from TXxmGeckoLoader
   try
 
-    //TODO: use FLoadFlags
-    //TODO: catch suspend/resume
+    //TODO: use FLoadFlags?
 
-    FData.Data.LoadFromFile('C:\temp\test.html');
+    //parse URL
+    //TODO: use FURI?
+    l:=Length(FURL);
+    i:=1;
+    while (i<=l) and not(FURL[i]=':') do inc(i); //skip "xxm://"
+    inc(i);
+    if FURL[i]='/' then inc(i);
+    if FURL[i]='/' then inc(i);
+    j:=i;
+    while (i<=l) and not(Char(FURL[i]) in ['/','?','&','$','#']) do inc(i);
+    //if server then remote?
+    FProjectName:=Copy(FURL,j,i-j);
+    if FProjectName='' then
+     begin
+      FProjectName:=DefaultProjectName;
+      FURL:=Copy(FURL,1,j-1)+FProjectName+Copy(FURL,i,Length(FURL)-i+1);
+      FURI.SetSpec(NewCString(FURL).ACString);
+     end;
+    FPageClass:='['+FProjectName+']';
+    if (i>l) then
+     begin
+      FURL:=FURL+'/';
+      FURI.SetSpec(NewCString(FURL).ACString);
+      inc(l);
+     end;
+    inc(i);
 
-Debug('pre OnStartRequest');
-    if FConnected then FListener.OnStartRequest(Self as nsIRequest,FListenerContext);
-Debug('post OnStartRequest');
+    j:=i;
+    while (i<=l) and not(Char(FURL[i]) in ['?','&','$','#']) do inc(i);
+    FFragmentName:=Copy(FURL,j,i-j);
+    if (FURL[i]='?') then inc(i);
+    FQueryString:=Copy(FURL,i,l-i+1);
 
-Sleep(2000);
+    //create page object
+    if XxmProjectCache=nil then XxmProjectCache:=TXxmProjectCache.Create;
+    FProjectEntry:=XxmProjectCache.GetProject(FProjectName);
+    if not(@XxmAutoBuildHandler=nil) then
+      if not(XxmAutoBuildHandler(FProjectEntry,Self,FProjectName)) then
+        raise EXxmAutoBuildFailed.Create(FProjectName);
+    FProjectEntry.OpenContext;
+    //FPage:=FProjectEntry.Project.LoadPage(Self,FFragmentName);
+FPage:=nil;
 
-NS_ProcessNextEvent(nil,false);
+    if FPage=nil then
+     begin
+      //find a file
+      //ask project to translate? project should have given a fragment!
+      FPageClass:='['+FProjectName+']GetFilePath';
+      FProjectEntry.GetFilePath(FFragmentName,FSingleFileSent,x);
+      if FileExists(FSingleFileSent) then
+       begin
+        //TODO: if directory file-list?
+        FResponseHeaders['Content-Type']:=x;
+        if FConnected then SendFile(FSingleFileSent);
+       end
+      else
+       begin
+        FPageClass:='['+FProjectName+']404:'+FFragmentName;
+        FPage:=FProjectEntry.Project.LoadPage(Self,'404.xxm');
+        if FPage=nil then
+         begin
+          FStatusCode:=StatusFileNotFound;
+          FStatusText:='File not found';
+          SendError('fnf',[
+            'URL',HTMLEncode(FURL),
+            'PROJECT',FProjectName,
+            'ADDRESS',FFragmentName,
+            'PATH',HTMLEncode(FSingleFileSent),
+            'VERSION',ContextString(csVersion)
+          ]);
+         end
+        else
+{
+          try
+            FPageClass:=FPage.ClassNameEx;
+            FBuilding:=FPage;
+            FPage.Build(Self,nil,[FFragmentName,FSingleFileSent,x],[]);//any parameters?
+          finally
+            FBuilding:=nil;
+            //let project free, cache or recycle
+            FProjectEntry.Project.UnloadFragment(FPage);
+            FPage:=nil;
+          end;
+}
+       end;
+     end
+    else
+{      try
+        FPageClass:=FPage.ClassNameEx;
+        //mime type moved to CheckSendStart;
+        //OleCheck(ProtSink.ReportProgress(BINDSTATUS_CACHEFILENAMEAVAILABLE,));
+        //TODO: cache output?
 
-Debug('pre OnDataAvailable');
-    FListener.OnDataAvailable(Self as nsIRequest,FListenerContext,FData,0,FData.Data.Size);
-Debug('post OnDataAvailable');
+        //TODO: setting?
+        if not(FPage.QueryInterface(IID_IXxmPage,p)=S_OK) then
+          raise EXxmDirectInclude.Create(SXxmDirectInclude);
+        p:=nil;
+
+        //build page
+        FBuilding:=FPage;
+        FPage.Build(Self,nil,[],[]);//any parameters?
+
+      finally
+        FBuilding:=nil;
+        //let project decide to free or not
+        FProjectEntry.Project.UnloadFragment(FPage);
+        FPage:=nil;
+      end;
+};
 
   except
+{//TODO
+    on EXxmPageRedirected do
+     begin
+      FStatusCode:=301;//??
+      FStatusText:='Moved Permanently';
+      //SendHTML('Redirected to <a href=""></a>')?
+     end;
+}
+
+{//TODO
+    on EXxmAutoBuildFailed do
+     begin
+      //assert AutoBuild handler already displays message
+      StatusSet:=true;
+      FStatusCode:=StatusBuildError;
+      FStatusText:='BUILDFAILED';
+     end;
+}
+
     on e:Exception do
      begin
-      //TODO:
-Debug('ex:'+e.ClassName+':'+e.Message);     
+Debug('ex:'+e.ClassName+':'+e.Message);
+      FStatusCode:=StatusException;
+      FStatusText:='ERROR';
+      //TODO: get fragment 500.xxm?
+      try
+x:='//TODO';      
+        //if FPostData=nil then x:='none' else x:=IntToStr(FPostData.Size)+' bytes';
+      except
+        x:='unknown';
+      end;
+      SendError('error',[
+        'URL',HTMLEncode(FURL),
+        'CLASS',FPageClass,
+        'POSTDATA',x,
+        'QUERYSTRING',FQueryString,
+        'ERROR',HTMLEncode(e.Message),
+        'ERRORCLASS',e.ClassName,
+        'VERSION',ContextString(csVersion)
+      ]);
      end;
   end;
 
   try
-Debug('pre OnStopRequest');
-    if FConnected then FListener.OnStopRequest(Self as nsIRequest,FListenerContext,FStatusCode);
-Debug('post OnStopRequest');
+    if FConnected then
+     begin
+      CheckSuspend;
+      NS_DispatchToMainThread(TxxmListenerCaller.Create(Self,lcStop,0,0));
+     end;
   except
-    //silent
+    //silent!
   end;
 
+  //if not(FLoadGroup=nil) then FLoadGroup.RemoveRequest(Self as nsIRequest,nil,NS_OK);
+  FComplete:=true;
+  //TODO: FProjectEntry.CloseContext?
 Debug('execute done');
 end;
 
 procedure TxxmChannel.GetName(aName: nsAUTF8String);
+var
+  x:UTF8String;
 begin
 Debug('TxxmChannel.GetName');
-  NewUTF8String(aName).Assign(UTF8Encode(FURL));
+  x:=UTF8Encode(FURL);
+  NS_CStringSetData(aName,PAnsiChar(x),Length(x));
 end;
 
 function TxxmChannel.GetURI: nsIURI;
@@ -347,20 +512,20 @@ end;
 function TxxmChannel.GetRequestSucceeded: PRBool;
 begin
 Debug('TxxmChannel.GetRequestSucceeded');
-  Result:=true;//TODO
+  //TODO
+  Result:=FStatusCode=200;//FStatus=NS_OK?
   //Result:=FStatusCode in [200,404,500]??
 end;
 
 function TxxmChannel.GetStatus: nsresult;
 begin
-  Result:=0;//NS_OK;
+  Result:=FStatus;
 end;
 
 function TxxmChannel.GetResponseStatus: PRUint32;
 begin
 Debug('TxxmChannel.GetResponseStatus');
-  //TODO?
-  //CheckHeader(true);
+  //CheckHeader(true);?
   Result:=FStatusCode;
 end;
 
@@ -368,9 +533,8 @@ procedure TxxmChannel.GetResponseStatusText(
   aResponseStatusText: nsACString);
 begin
 Debug('TxxmChannel.GetResponseStatusText');
-  //TODO?
-  //CheckHeader(true);
-  NewCString(aResponseStatusText).Assign(FStatusText);
+  //CheckHeader(true);?
+  NS_CStringSetData(aResponseStatusText,PAnsiChar(FStatusText),Length(FStatusText));
 end;
 
 function TxxmChannel.GetSecurityInfo: nsISupports;
@@ -389,7 +553,7 @@ function TxxmChannel.IsNoStoreResponse: PRBool;
 begin
 Debug('TxxmChannel.IsNoStoreResponse');
   //TODO
-  Result:=false;
+  Result:=true;
 end;
 
 procedure TxxmChannel.Cancel(aStatus: nsresult);
@@ -401,7 +565,7 @@ end;
 
 function TxxmChannel.GetAllowPipelining: PRBool;
 begin
-  //TODO:
+  //TODO: ??
   Result:=false;
 end;
 
@@ -412,21 +576,24 @@ begin
 end;
 
 procedure TxxmChannel.GetContentCharset(aContentCharset: nsACString);
+var
+  x:string;
 begin
-  //TODO:
-  NewCString(aContentCharset).Assign('utf-8');
+  x:=FResponseHeaders['Content-Charset'];
+  NS_CStringSetData(aContentCharset,PAnsiChar(x),Length(x));
 end;
 
 procedure TxxmChannel.SetContentCharset(const aContentCharset: nsACString);
 begin
-  //TODO:
-  raise EInvalidOperation.Create('Not implemented');
+  CheckHeader(false);
+  FAutoEncoding:=aeContentDefined;
+  FResponseHeaders['Content-Charset']:=GetCString(aContentCharset);
 end;
 
 function TxxmChannel.GetContentLength: Integer;
 begin
   //TODO:
-  if FData=nil then Result:=-1 else Result:=FData.Data.Size;
+  if FData=nil then Result:=-1 else Result:=FData.TotalSize;
 Debug('TxxmChannel.GetContentLength:'+IntToStr(Result));
 end;
 
@@ -439,11 +606,14 @@ end;
 procedure TxxmChannel.GetContentType(aContentType: nsACString);
 begin
   //TODO:
-  NewCString(aContentType).Assign('text/html');
+  Debug('TxxmChannel.GetContentType('+FResponseHeaders['Content-Type']);
+  SetCString(aContentType,FResponseHeaders['Content-Type']);
 end;
 
 procedure TxxmChannel.SetContentType(const aContentType: nsACString);
 begin
+  Debug('TxxmChannel.SetContentType('+GetCString(aContentType));
+  FResponseHeaders['Content-Type']:=GetCString(aContentType);
   //TODO:
   raise EInvalidOperation.Create('Not implemented');
 end;
@@ -539,47 +709,43 @@ end;
 function TxxmChannel.GetRequestHeader(
   const aHeader: nsACString): nsACString;
 begin
-Debug('TxxmChannel.GetRequestHeader('+NewCString(aHeader).ToString);
-  FReturnString:=NewCString;
-  FReturnString.Assign(FRequestHeaders[NewCString(aHeader).ToString]);
-  Result:=FReturnString.ACString;
+Debug('TxxmChannel.GetRequestHeader('+GetCString(aHeader)+','+FRequestHeaders[GetCString(aHeader)]);
+  SetCString(Result,FRequestHeaders[GetCString(aHeader)]);
 end;
 
 procedure TxxmChannel.SetRequestHeader(const aHeader, aValue: nsACString;
   aMerge: PRBool);
 begin
-Debug('TxxmChannel.SetRequestHeader('+NewCString(aHeader).ToString+','+NewCString(aValue).ToString);
+Debug('TxxmChannel.SetRequestHeader('+GetCString(aHeader)+','+GetCString(aValue));
   if not(aMerge) then raise Exception.Create('set header without merge not supported');
-  FRequestHeaders[NewCString(aHeader).ToString]:=NewCString(aValue).ToString;
+  FRequestHeaders[GetCString(aHeader)]:=GetCString(aValue);
 end;
 
 procedure TxxmChannel.GetRequestMethod(aRequestMethod: nsACString);
 begin
 Debug('TxxmChannel.GetRequestMethod('+FVerb);
-  NewCString(aRequestMethod).Assign(FVerb);
+  SetCString(aRequestMethod,FVerb);
 end;
 
 procedure TxxmChannel.SetRequestMethod(const aRequestMethod: nsACString);
 begin
-  FVerb:=NewCString(aRequestMethod).ToString;
+  FVerb:=GetCString(aRequestMethod);
 Debug('TxxmChannel.SetRequestMethod('+FVerb);
 end;
 
 function TxxmChannel.GetResponseHeader(
   const header: nsACString): nsACString;
 begin
-Debug('TxxmChannel.GetResponseHeader('+NewCString(header).ToString);
-  FReturnString:=NewCString;
-  FReturnString.Assign(FResponseHeaders[NewCString(header).ToString]);
-  Result:=FReturnString.ACString;
+Debug('TxxmChannel.GetResponseHeader('+GetCString(header)+'='+FResponseHeaders[GetCString(header)]);
+  SetCString(Result,FResponseHeaders[GetCString(header)]);
 end;
 
 procedure TxxmChannel.SetResponseHeader(const header, value: nsACString;
   merge: PRBool);
 begin
-Debug('TxxmChannel.SetResponseHeader('+NewCString(header).ToString+','+NewCString(value).ToString);
+Debug('TxxmChannel.SetResponseHeader('+GetCString(header)+','+GetCString(value));
   if not(merge) then raise Exception.Create('set header without merge not supported');
-  FResponseHeaders[NewCString(header).ToString]:=NewCString(value).ToString;
+  FResponseHeaders[GetCString(header)]:=GetCString(value);
 end;
 
 function TxxmChannel.IsPending: PRBool;
@@ -591,12 +757,15 @@ end;
 procedure TxxmChannel.Suspend;
 begin
 Debug('TxxmChannel.Suspend');
+  InterlockedIncrement(FSuspendCount);
   //raise EInvalidOperation.Create('Not implemented');
 end;
 
 procedure TxxmChannel.Resume;
 begin
 Debug('TxxmChannel.Resume');
+  if FSuspendCount<=0 then raise Exception.Create('Can''t resume, not suspended') else
+    InterlockedDecrement(FSuspendCount);
   //raise EInvalidOperation.Create('Not implemented');
 end;
 
@@ -620,12 +789,49 @@ end;
 
 function TxxmChannel.ContextString(cs: TXxmContextString): WideString;
 begin
-
+  case cs of
+    csVersion:
+      Result:=SelfVersion;
+    csExtraInfo:
+      Result:='';//???
+    csVerb:
+      Result:=FVerb;
+    csQueryString:
+      Result:=FQueryString;
+    csUserAgent:
+      Result:=FRequestHeaders['user-agent'];
+    csAcceptedMimeTypes:
+      Result:=FRequestHeaders['accept-mime-type'];
+    csPostMimeType:
+      Result:=FRequestHeaders['content-type'];
+    csURL:
+      Result:=FURL;//FURI.GetSpec?
+    csReferer:
+      Result:=FRequestHeaders['referer'];
+    csLanguage:
+      Result:=FRequestHeaders['accept-language'];
+    csRemoteAddress:
+      Result:='127.0.0.1';//TODO: IPV6?
+    csRemoteHost:
+      Result:='localhost';
+    csAuthUser:
+      //TODO: GetUserNameEx?
+      Result:=GetEnvironmentVariable('USERDOMAIN')+'\'+GetEnvironmentVariable('USERNAME');
+    csAuthPassword:
+      Result:='';
+    csProjectName:
+      Result:=FProjectName;
+    csLocalURL:
+      Result:=FFragmentName;
+    else
+      raise EXxmContextStringUnknown.Create(StringReplace(
+        SXxmContextStringUnknown,'__',IntToHex(integer(cs),8),[]));
+  end;
 end;
 
 procedure TxxmChannel.DispositionAttach(FileName: WideString);
 begin
-
+  //TODO:
 end;
 
 function TxxmChannel.GetAutoEncoding: TXxmAutoEncoding;
@@ -640,17 +846,17 @@ end;
 
 function TxxmChannel.GetCookie(Name: WideString): WideString;
 begin
-
+  //TODO:
 end;
 
 function TxxmChannel.GetPage: IXxmFragment;
 begin
-
+  Result:=FPage;
 end;
 
 function TxxmChannel.GetParameter(Key: OleVariant): IXxmParameter;
 begin
-
+  //TODO:
 end;
 
 function TxxmChannel.GetParameterCount: integer;
@@ -661,7 +867,8 @@ end;
 
 function TxxmChannel.GetSessionID: WideString;
 begin
-
+  CheckHeader(true);
+  Result:=IntToHex(HInstance,8)+IntToHex(GetCurrentProcessId,8);
 end;
 
 function TxxmChannel.GetURL: WideString;
@@ -672,18 +879,18 @@ end;
 procedure TxxmChannel.Include(Address: WideString;
   const Values: array of OleVariant; const Objects: array of TObject);
 begin
-
+  //TODO:
 end;
 
 procedure TxxmChannel.Include(Address: WideString;
   const Values: array of OleVariant);
 begin
-
+  //TODO:
 end;
 
 procedure TxxmChannel.Include(Address: WideString);
 begin
-
+  //TODO:
 end;
 
 function TxxmChannel.PostData: TStream;
@@ -694,26 +901,29 @@ end;
 
 procedure TxxmChannel.Redirect(RedirectURL: WideString; Relative: boolean);
 begin
-
-end;
-
-procedure TxxmChannel.Send(Data: OleVariant);
-begin
-
-end;
-
-procedure TxxmChannel.SendFile(FilePath: WideString);
-begin
+  //TODO:
 
 end;
 
 procedure TxxmChannel.SendHTML(Data: OleVariant);
 begin
+  if not(VarIsNull(Data)) then SendRaw(VarToWideStr(Data));
+end;
+
+procedure TxxmChannel.Send(Data: OleVariant);
+begin
+  if not(VarIsNull(Data)) then SendRaw(HTMLEncode(VarToWideStr(Data)));
+end;
+
+procedure TxxmChannel.SendFile(FilePath: WideString);
+begin
+  //TODO:
 
 end;
 
 procedure TxxmChannel.SendStream(s: TStream);
 begin
+  //TODO:
 
 end;
 
@@ -721,6 +931,12 @@ procedure TxxmChannel.SetAutoEncoding(const Value: TXxmAutoEncoding);
 begin
   CheckHeader(false);
   FAutoEncoding:=Value;
+  case FAutoEncoding of
+    aeUtf8:FResponseHeaders['Content-Charset']:='utf-8';
+    aeUtf16:FResponseHeaders['Content-Charset']:='utf-16';
+    aeIso8859:FResponseHeaders['Content-Charset']:='iso-8859-15';//-1?
+    aeContentDefined:FResponseHeaders['Content-Charset']:='';//??
+  end;
 end;
 
 procedure TxxmChannel.SetContentType(const Value: WideString);
@@ -732,14 +948,14 @@ end;
 
 procedure TxxmChannel.SetCookie(Name, Value: WideString);
 begin
-
+  //TODO:
 end;
 
 procedure TxxmChannel.SetCookie(Name, Value: WideString;
   KeepSeconds: cardinal; Comment, Domain, Path: WideString; Secure,
   HttpOnly: boolean);
 begin
-
+  //TODO:
 end;
 
 procedure TxxmChannel.SetStatus(Code: integer; Text: WideString);
@@ -774,27 +990,119 @@ end;
 
 procedure TxxmChannel.Send(Value: int64);
 begin
+  //TODO:
 
 end;
 
 procedure TxxmChannel.Send(Value: integer);
 begin
+  //TODO:
 
 end;
 
 procedure TxxmChannel.Send(const Values: array of OleVariant);
 begin
+  //TODO:
 
 end;
 
 procedure TxxmChannel.Send(Value: cardinal);
 begin
+  //TODO:
 
 end;
 
 procedure TxxmChannel.SendHTML(const Values: array of OleVariant);
 begin
+  //TODO:
 
+end;
+
+procedure TxxmChannel.CheckSuspend;
+begin
+  while not(FSuspendCount=0) do Sleep(5);
+end;
+
+const
+  Utf8ByteOrderMark=#$EF#$BB#$BF;
+  Utf16ByteOrderMark=#$FF#$FE;
+
+procedure TxxmChannel.SendRaw(Data: WideString);
+var
+  s:string;
+  startdata:boolean;
+begin
+  inherited;
+  if not(Data='') then
+   begin
+    startdata:=not(FHeaderSent);
+    if startdata then //do this outside of lock
+      if FConnected then
+       begin
+        CheckSuspend;
+        NS_DispatchToMainThread(TxxmListenerCaller.Create(Self,lcStart,0,0));
+       end;
+    FData.Lock;
+    try
+      if startdata then
+       begin
+        FHeaderSent:=true;
+        case FAutoEncoding of
+          aeUtf8:FData.Write(Utf8ByteOrderMark,3);
+          aeUtf16:FData.Write(Utf16ByteOrderMark,2);
+        end;
+       end;
+
+      case FAutoEncoding of
+        aeUtf16:FData.Write(Data[1],Length(Data)*2);
+        aeUtf8:
+         begin
+          s:=UTF8Encode(Data);
+          FData.Write(s[1],Length(s));
+         end;
+        else
+         begin
+          s:=Data;
+          FData.Write(s[1],Length(s));
+         end;
+        end;
+      if FConnected and not(FData.ReportPending) then
+       begin
+        CheckSuspend;//is this no problem inside of lock?
+        FData.ReportPending:=true;
+        NS_DispatchToMainThread(TxxmListenerCaller.Create(Self,lcData,0,FData.ReportSize));
+       end;
+    finally
+      FData.Unlock;
+    end;
+   end;
+end;
+
+procedure TxxmChannel.SendError(res: string; vals: array of string);
+var
+  s:string;
+  i:integer;
+  r:TResourceStream;
+  l:Int64;
+const
+  RT_HTML = MakeIntResource(23);
+begin
+  r:=TResourceStream.Create(HInstance,res,RT_HTML);
+  try
+    l:=r.Size;
+    SetLength(s,l);
+    r.Read(s[1],l);
+  finally
+    r.Free;
+  end;
+  for i:=0 to (Length(vals) div 2)-1 do
+    s:=StringReplace(s,'[['+vals[i*2]+']]',vals[i*2+1],[rfReplaceAll]);
+  if not(FHeaderSent) then
+   begin
+    FResponseHeaders['Content-Type']:='text/html';
+    FAutoEncoding:=aeContentDefined;//?
+   end;
+  SendHTML(s);
 end;
 
 { TXxmGeckoLoader }
@@ -822,8 +1130,9 @@ begin
      end
     else
      begin
+      Sleep(10);//let AsyncOpen return...
       Channel.Execute;//assert all exceptions handled!
-      Channel._Release;
+      //Channel._Release;
      end;
    end;
   CoUninitialize;
@@ -936,6 +1245,54 @@ begin
       LeaveCriticalSection(FLock);
     end;
    end;
+end;
+
+{ TxxmListenerCaller }
+
+const
+  lcName:array[TxxmListenerCall] of string=(
+    'Activate',
+    'OnStartRequest',
+    'OnDataAvailable',
+    'OnStopRequest');
+
+var
+  DebugListenerCount: integer;
+
+constructor TxxmListenerCaller.Create(Owner: TxxmChannel;
+  Call: TxxmListenerCall;Offset,Count:cardinal);
+begin
+  inherited Create;
+  FOwner:=Owner;
+  FCall:=Call;
+  FOffset:=Offset;
+  FCount:=Count;
+  inc(DebugListenerCount);
+  debugid:=DebugListenerCount;
+  Debug('Q>'+lcName[FCall]+' '+IntToStr(debugid));
+end;
+
+destructor TxxmListenerCaller.Destroy;
+begin
+  Debug('Q<'+lcName[FCall]+' '+IntToStr(debugid));
+  inherited;
+end;
+
+procedure TxxmListenerCaller.run;
+begin
+Debug('>'+lcName[FCall]+' '+IntToStr(debugid));
+try
+  case FCall of
+    lcActivate:FOwner.Resume;
+    lcStart:FOwner.FListener.OnStartRequest(FOwner,FOwner.FListenerContext);
+    lcData:FOwner.FListener.OnDataAvailable(FOwner,FOwner.FListenerContext,FOwner.FData,FOffset,FCount);
+    lcStop:FOwner.FListener.OnStopRequest(FOwner,FOwner.FListenerContext,FOwner.FStatusCode);
+  end;
+Debug('<'+lcName[FCall]+' '+IntToStr(debugid));
+except
+  on e:Exception do
+Debug('<'+lcName[FCall]+' '+IntToStr(debugid)+' !!! '+e.ClassName+':'+e.Message);
+end;
 end;
 
 initialization
