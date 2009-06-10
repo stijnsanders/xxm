@@ -37,35 +37,41 @@ type
       aOriginCharset: PAnsiChar; aBaseURI: nsIURI); safecall;
   end;
 
-  nsISeekableStream = interface(nsISupports)
-  ['{8429d350-1040-4661-8b71-f2a6ba455980}']
-    //const NS_SEEK_* see above
-    procedure seek(whence:PRUint32;offset:PRUint64);
-    function tell:PRUint64;
-    procedure setEOF();
-  end;
+  nsISeekableStream = interface(nsISupports)
+  ['{8429d350-1040-4661-8b71-f2a6ba455980}']
+  //const NS_SEEK_* see above
+  procedure seek(whence:PRUint32;offset:PRUint64);
+    function tell:PRUint64;
+    procedure setEOF();
+  end;
 
-procedure SetCString(x:nsACString;v:string);
-function GetCString(const x:nsACString):string;
+  nsIProgressEventSink = interface(nsISupports)
+  ['{d974c99e-4148-4df9-8d98-de834a2f6462}']
+    procedure onProgress(aRequest:nsIRequest;aContext:nsISupports;aProgress,aProgressMax:PRUint64);
+    procedure onStatus(aRequest:nsIRequest;aContext:nsISupports;aStatus:NSRESULT;aStatusArg:PWideChar);//wstring?
+  end;
 
-implementation
-
+procedure SetCString(x:nsACString;v:string);
+function GetCString(const x:nsACString):string;
+
+implementation
+
 uses
   nsInit;
-
+
 procedure SetCString(x:nsACString;v:string);
 begin
   NS_CStringSetData(x,PAnsiChar(v),Length(v));
 end;
 
 function GetCString(const x:nsACString):string;
-var
-  l: Longword;
-  p: PAnsiChar;
-begin
-  l:=NS_CStringGetData(x,p);
-  SetLength(Result,l);
-  Move(p^,PAnsiChar(Result)^,l);
-end;
-
+var
+  l: Longword;
+  p: PAnsiChar;
+begin
+  l:=NS_CStringGetData(x,p);
+  SetLength(Result,l);
+  Move(p^,PAnsiChar(Result)^,l);
+end;
+
 end.
