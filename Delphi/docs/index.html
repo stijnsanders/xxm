@@ -16,5 +16,26 @@
 
 <p>xxm enables you to create dynamic websites in Delphi, combining both Delphi and HTML in the source files. The project is compiled into a module, ready for use by a pluggable protocol handler in Internet Explorer, an ISAPI Extension or a stand-alone HTTP server. (Perhaps more in the future or by other parties.)</p>
 
+<p class="title">How does it work?</p>
+
+<p><img src="overview1.png" align="right" width="420" height="323" hspace="8" />
+An xxm project contains source-files that hold both HTML and Object Pascal source code. These are converted (e.g. by the auto-compile feature) into a plain Delphi project, which is compiled into a xxm Library (with the .xxl file extension). This xxm Library can be loaded by one of the xxm handlers:</p>
+<ul>
+<li>an IInternetProtocol implementation that plugs into Internet Explorer</li>
+<li>an ISAP extension that plugs into IIS</li>
+<li>a stand-alone basic HTTP server</li>
+<li>... (more are on the way: a firefox nsIProtocolHandler implementation, an Apache module...)</li>
+</ul>
+
+<p>Most handlers are available in these forms:</p>
+<ul>
+<li>no extra's: the handler loads one or more xxl's and keeps them loaded until shutdown</li>
+<li>auto-compile: the handler checks if source-files are modified, and parses and compiles the project (great for development!)</li>
+<li>auto-update: the handler checks for a .xxu file, if present requests are stalled until the xxl can get overwritten by the xxu file (great for live environments!)</li>
+</ul>
+
+<p>To get started, <a href="download.html">download</a> the binaries or follow the <a href="tutorial01/index.html">get started screenshot tutorial</a>.</p>
+<br clear="left" />
+
 </body>
 </html>
