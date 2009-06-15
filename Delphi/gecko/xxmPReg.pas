@@ -474,5 +474,4 @@ initialization
   XxmProjectCache:=nil;//TXxmProjectCache.Create;//see Handler.Start
 finalization
   FreeAndNil(XxmProjectCache);
-
 end.

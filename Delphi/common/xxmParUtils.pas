@@ -257,7 +257,7 @@ begin
       i:=FSource.Read(Data[Size+1],i);
       inc(Size,i);
       if not(i=GrowStep) then SourceAtEnd:=true;
-      Result:=true;//TODO??????????? compare repositories
+      Result:=Index+EnsureSize<=Size;
      end;
    end
   else

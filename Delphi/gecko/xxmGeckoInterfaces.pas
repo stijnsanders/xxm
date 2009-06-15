@@ -39,10 +39,10 @@ type
 
   nsISeekableStream = interface(nsISupports)
   ['{8429d350-1040-4661-8b71-f2a6ba455980}']
-  //const NS_SEEK_* see above
-  procedure seek(whence:PRUint32;offset:PRUint64);
-    function tell:PRUint64;
-    procedure setEOF();
+    //const NS_SEEK_* see above
+    procedure seek(whence:PRUint32;offset:PRUint64); safecall;
+    function tell:PRUint64; safecall;
+    procedure setEOF(); safecall;
   end;
 
   nsIProgressEventSink = interface(nsISupports)

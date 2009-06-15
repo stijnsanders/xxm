@@ -3,7 +3,7 @@ unit xxmGeckoChannel;
 interface
 
 uses nsXPCOM, nsTypes, nsGeckoStrings, nsThreadUtils, xxm, xxmHeaders,
-  Windows, Classes, SysUtils, xxmParUtils, xxmPReg, xxmParams;
+  Windows, Classes, SysUtils, xxmParUtils, xxmPReg, xxmParams, xxmGeckoStreams;
 
 type
   TxxmChannel=class(TInterfacedObject,
@@ -13,7 +13,7 @@ type
     //nsIClassInfo,
     //nsIInterfaceRequestor,
     //nsITransportEventSink,??
-    //nsIUploadChannel //TODO!!!
+    nsIUploadChannel,
     //nsIPropertyBag2
     //nsIXPCScriptable,
     //nsIXPConnectWrappedJS,
@@ -45,6 +45,7 @@ type
     FReportPending:boolean;
     FData:TMemoryStream;
     FLock:TRTLCriticalSection;
+    FPostData:TUploadStream;
     procedure CheckHeader(Sent:boolean);
     procedure CheckSuspend;
     procedure Lock;
@@ -117,7 +118,10 @@ type
     procedure VisitResponseHeaders(aVisitor: nsIHttpHeaderVisitor); safecall;
     function IsNoStoreResponse: PRBool; safecall;
     function IsNoCacheResponse: PRBool; safecall;
-    //nsIInputStream
+    //nsIUploadChannel
+    procedure SetUploadStream(aStream: nsIInputStream; const aContentType: nsACString; aContentLength: PRInt32); safecall;
+    function GetUploadStream(): nsIInputStream; safecall;
+    //nsIInputStream (attention: interface on channel object for convenience)
     function Available: Cardinal; safecall;
     procedure Close; safecall;
     function IsNonBlocking: LongBool; safecall;
@@ -309,6 +313,7 @@ begin
   FSingleFileSent:='';
   FBuilding:=nil;
   FIncludeDepth:=0;
+  FPostData:=nil;
 Debug('++TxxmChannel.Create('+FURL);
 end;
 
@@ -333,6 +338,7 @@ Debug('-->TxxmChannel.Destroying('+FURL);
   (FResponseHeaders as IUnknown)._Release;
   FResponseHeaders:=nil;
   FreeAndNil(FParams);
+  FreeAndNil(FPostData);
 Debug('--<TxxmChannel.Destroy('+FURL);
   inherited;
 end;
@@ -352,7 +358,7 @@ Debug('>>TxxmChannel.AsyncOpen');
   FConnected:=true;
   FListener:=aListener;
   FListenerContext:=aContext;
-  //if not(FLoadGroup=nil) then FLoadGroup.AddRequest(Self as nsIRequest,nil);
+  if not(FLoadGroup=nil) then FLoadGroup.AddRequest(Self as nsIRequest,nil);
   GeckoLoaderPool.Queue(Self);
   NS_DispatchToCurrentThread(TxxmListenerCaller.Create(Self,lcActivate,0,0));
 Debug('<<TxxmChannel.AsyncOpen');
@@ -497,8 +503,7 @@ Debug('ex:'+e.ClassName+':'+e.Message);
       FStatusText:='ERROR';
       //TODO: get fragment 500.xxm?
       try
-x:='//TODO';
-        //if FPostData=nil then x:='none' else x:=IntToStr(FPostData.Size)+' bytes';
+        if FPostData=nil then x:='none' else x:=IntToStr(FPostData.Size)+' bytes';
       except
         x:='unknown';
       end;
@@ -524,7 +529,6 @@ x:='//TODO';
     //silent!
   end;
 
-  //if not(FLoadGroup=nil) then FLoadGroup.RemoveRequest(Self as nsIRequest,nil,NS_OK);
   FComplete:=true;
 Debug('execute done');
 end;
@@ -533,14 +537,12 @@ procedure TxxmChannel.GetName(aName: nsAUTF8String);
 var
   x:UTF8String;
 begin
-Debug('TxxmChannel.GetName');
   x:=UTF8Encode(FURL);
   NS_CStringSetData(aName,PAnsiChar(x),Length(x));
 end;
 
 function TxxmChannel.GetURI: nsIURI;
 begin
-Debug('TxxmChannel.GetURI');
   Result:=FURI;
 end;
 
@@ -657,7 +659,6 @@ end;
 
 function TxxmChannel.GetLoadFlags: nsLoadFlags;
 begin
-Debug('TxxmChannel.GetLoadFlags('+IntToHex(FLoadFlags,8));
   Result:=FLoadFlags;
 end;
 
@@ -669,7 +670,6 @@ end;
 
 function TxxmChannel.GetLoadGroup: nsILoadGroup;
 begin
-Debug('TxxmChannel.GetLoadGroup');
   Result:=FLoadGroup;
 end;
 
@@ -723,16 +723,17 @@ end;
 function TxxmChannel.GetRedirectionLimit: PRUint32;
 begin
 Debug('TxxmChannel.GetRedirectionLimit');
+  //TODO
 end;
 
 procedure TxxmChannel.SetRedirectionLimit(aRedirectionLimit: PRUint32);
 begin
 Debug('TxxmChannel.SetRedirectionLimit');
+  //TODO
 end;
 
 function TxxmChannel.GetReferrer: nsIURI;
 begin
-Debug('TxxmChannel.GetReferrer');
   Result:=FReferer;
 end;
 
@@ -766,7 +767,6 @@ end;
 
 procedure TxxmChannel.GetRequestMethod(aRequestMethod: nsACString);
 begin
-Debug('TxxmChannel.GetRequestMethod('+FVerb);
   SetCString(aRequestMethod,FVerb);
 end;
 
@@ -873,9 +873,13 @@ begin
 end;
 
 procedure TxxmChannel.DispositionAttach(FileName: WideString);
+var
+  x:WideString;
+  i:integer;
 begin
-  //TODO:
-  FResponseHeaders['Content-Disposition']:=
+  x:=FileName;
+  for i:=1 to Length(x) do if x[i]='"' then x[i]:='_';
+  FResponseHeaders['Content-Disposition']:='attachment; filname="'+x+'"';
 end;
 
 function TxxmChannel.GetAutoEncoding: TXxmAutoEncoding;
@@ -903,7 +907,7 @@ begin
   //parse parameters on first use
   if FParams=nil then
    begin
-    FParams:=TXxmReqPars.Create(Self);
+    FParams:=TXxmReqPars.CreateNoSeek(Self);
     //redirect on post? invalidate postdata!
     //TODO: ?//if FParams.PostDataOnRedirect then FreeAndNil(FPostData);
    end;
@@ -913,7 +917,7 @@ end;
 
 function TxxmChannel.GetParameterCount: integer;
 begin
-  if FParams=nil then FParams:=TXxmReqPars.Create(Self);
+  if FParams=nil then FParams:=TXxmReqPars.CreateNoSeek(Self);
   Result:=FParams.Count;
 end;
 
@@ -971,8 +975,7 @@ end;
 
 function TxxmChannel.PostData: TStream;
 begin
-  //TODO:
-  Result:=nil;
+  Result:=FPostData;
 end;
 
 procedure TxxmChannel.Redirect(RedirectURL: WideString; Relative: boolean);
@@ -1327,7 +1330,29 @@ end;
 
 function TxxmChannel.GetResponseHeaders: IxxmDictionaryEx;
 begin
-  //Result:=FResponseHeaders;
+  Result:=FResponseHeaders;
+end;
+
+function TxxmChannel.GetUploadStream: nsIInputStream;
+begin
+Debug('GetUploadStream');
+  Result:=FPostData.InputStream;
+end;
+
+procedure TxxmChannel.SetUploadStream(aStream: nsIInputStream;
+  const aContentType: nsACString; aContentLength: PRInt32);
+var
+  ct:string;
+begin
+  if @aContentType=nil then ct:='' else ct:=GetCString(aContentType);
+Debug('SetUploadStream(,"'+ct+'",'+IntToStr(aContentLength));
+  FPostData:=TUploadStream.Create(aStream);
+  if not(aContentLength=-1) then FRequestHeaders['Content-Length']:=IntToStr(aContentLength);
+  //if aContentLength=-1 then aStream.Available?
+  if ct='' then
+    FPostData.ParseHeader(FRequestHeaders)
+  else
+    FRequestHeaders['Content-Type']:=ct;
 end;
 
 { TXxmGeckoLoader }
@@ -1512,7 +1537,11 @@ Debug('>>'+lcName[FCall]+' '+IntToStr(debugid));
 try
   case FCall of
     lcActivate:FOwner.Resume;
-    lcStart:FOwner.FListener.OnStartRequest(FOwner,FOwner.FListenerContext);
+    lcStart:
+     begin
+      FOwner.FListener.OnStartRequest(FOwner,FOwner.FListenerContext);
+      if not(FOwner.FLoadGroup=nil) then FOwner.FLoadGroup.RemoveRequest(FOwner as nsIRequest,nil,NS_OK);
+     end;
     lcData:FOwner.FListener.OnDataAvailable(FOwner,FOwner.FListenerContext,FOwner,FOffset,FCount);
     lcStop:FOwner.FListener.OnStopRequest(FOwner,FOwner.FListenerContext,FOwner.FStatusCode);
   end;

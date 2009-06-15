@@ -17,8 +17,6 @@ type
       const aOriginCharset: PAnsiChar; aBaseURI: nsIURI): nsIURI; safecall;
   end;
 
-  //TODO: nsIFileProtocolHandler?
-
 const
   CID_xxmProtocolHandler: TGUID = '{78786D00-0000-0010-C000-000000000010}';
 
