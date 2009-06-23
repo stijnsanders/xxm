@@ -22,6 +22,7 @@ type
     constructor Create(Data:string);
     destructor Destroy; override;
     property Item[Name:OleVariant]:WideString read GetItem write SetItem; default;
+    property Name[Idx: integer]:WideString read GetName write SetName;
     property Count:integer read GetCount;
     function Complex(Name:OleVariant;out Items:IxxmDictionary):WideString;
   end;
@@ -40,6 +41,7 @@ type
       var FirstValue:WideString);
     destructor Destroy; override;
     property Item[Name:OleVariant]:WideString read GetItem write SetItem; default;
+    property Name[Idx: integer]:WideString read GetName write SetName;
     property Count:integer read GetCount;
   end;
 
@@ -61,6 +63,7 @@ type
     constructor Create;
     destructor Destroy; override;
     property Item[Name:OleVariant]:WideString read GetItem write SetItem; default;
+    property Name[Idx: integer]:WideString read GetName write SetName;
     property Count:integer read GetCount;
     function Complex(Name:OleVariant;out Items:IxxmDictionary):WideString;
     function Build:string;

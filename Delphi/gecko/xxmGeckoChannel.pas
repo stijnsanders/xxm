@@ -31,8 +31,8 @@ type
     FListenerContext:nsISupports;
     FListener:nsIStreamListener;
     FCallBacks:nsIInterfaceRequestor;
-    FConnected,FComplete,FHeaderSent:boolean;
-    FStatus,FSuspendCount,FIncludeDepth:integer;
+    FConnected,FComplete,FHeaderSent,FAllowPipelining:boolean;
+    FStatus,FSuspendCount,FIncludeDepth,FRedirectionLimit:integer;
     FStatusCode:word;
     FStatusText,FVerb,FProjectName,FFragmentName,FPageClass,FQueryString:string;
     FProjectEntry:TXxmProjectCacheEntry;
@@ -46,6 +46,7 @@ type
     FData:TMemoryStream;
     FLock:TRTLCriticalSection;
     FPostData:TUploadStream;
+    FRedirectChannel:nsIChannel;//see Redirect
     procedure CheckHeader(Sent:boolean);
     procedure CheckSuspend;
     procedure Lock;
@@ -55,6 +56,7 @@ type
     procedure SendRaw(Data: WideString);
     procedure SendError(res:string;vals:array of string);
     procedure ReadCheck;
+    procedure RedirectSync;
   protected
     //nsIInterfaceRequestor
     //procedure nsGetInterface(const uuid: TGUID; out _result); safecall;
@@ -213,7 +215,7 @@ type
     function Unqueue:TxxmChannel;//called from threads
   end;
 
-  TxxmListenerCall=(lcActivate,lcStart,lcData,lcStop);
+  TxxmListenerCall=(lcActivate,lcStart,lcData,lcStop,lcRedirect);
 
   TxxmListenerCaller=class(TInterfacedObject,
     nsIRunnable)
@@ -251,7 +253,7 @@ var
 
 implementation
 
-uses ActiveX, Variants, Debug1, nsInit, xxmGeckoInterfaces;
+uses ActiveX, Variants, Debug1, nsInit, xxmGeckoInterfaces, nsNetUtil;
 
 resourcestring
   SXxmContextStringUnknown='Unknown ContextString __';
@@ -294,6 +296,7 @@ begin
   FConnected:=false;//see AsyncOpen
   FComplete:=false;
   FHeaderSent:=false;
+  FAllowPipelining:=true;//?
   FStatus:=NS_OK;
   FStatusCode:=200;
   FStatusText:='OK';
@@ -313,7 +316,9 @@ begin
   FSingleFileSent:='';
   FBuilding:=nil;
   FIncludeDepth:=0;
+  FRedirectionLimit:=32;//set later?
   FPostData:=nil;
+  FRedirectChannel:=nil;
 Debug('++TxxmChannel.Create('+FURL);
 end;
 
@@ -582,34 +587,34 @@ end;
 
 function TxxmChannel.IsNoCacheResponse: PRBool;
 begin
-Debug('TxxmChannel.IsNoCacheResponse');
+  //TODO
   Result:=true;
+Debug('TxxmChannel.IsNoCacheResponse:'+BoolToStr(Result,true));
 end;
 
 function TxxmChannel.IsNoStoreResponse: PRBool;
 begin
-Debug('TxxmChannel.IsNoStoreResponse');
   //TODO
   Result:=true;
+Debug('TxxmChannel.IsNoStoreResponse:'+BoolToStr(Result,true));
 end;
 
 procedure TxxmChannel.Cancel(aStatus: nsresult);
 begin
   //TODO: test here
-Debug('TxxmChannel.Cancel');
+Debug('TxxmChannel.Cancel('+IntToHex(aStatus,8));
+  FStatus:=aStatus;
   FConnected:=false;
 end;
 
 function TxxmChannel.GetAllowPipelining: PRBool;
 begin
-  //TODO: ??
-  Result:=false;
+  Result:=FAllowPipelining;
 end;
 
 procedure TxxmChannel.SetAllowPipelining(aAllowPipelining: PRBool);
 begin
-  //TODO:
-  raise EInvalidOperation.Create('Not implemented');
+  FAllowPipelining:=aAllowPipelining;
 end;
 
 procedure TxxmChannel.GetContentCharset(aContentCharset: nsACString);
@@ -722,14 +727,14 @@ end;
 
 function TxxmChannel.GetRedirectionLimit: PRUint32;
 begin
-Debug('TxxmChannel.GetRedirectionLimit');
-  //TODO
+Debug('TxxmChannel.GetRedirectionLimit('+IntToStr(FRedirectionLimit));
+  Result:=FRedirectionLimit;
 end;
 
 procedure TxxmChannel.SetRedirectionLimit(aRedirectionLimit: PRUint32);
 begin
-Debug('TxxmChannel.SetRedirectionLimit');
-  //TODO
+Debug('TxxmChannel.SetRedirectionLimit('+IntToStr(aRedirectionLimit));
+  FRedirectionLimit:=aRedirectionLimit;
 end;
 
 function TxxmChannel.GetReferrer: nsIURI;
@@ -813,13 +818,27 @@ Debug('TxxmChannel.Resume');
 end;
 
 procedure TxxmChannel.VisitRequestHeaders(aVisitor: nsIHttpHeaderVisitor);
+var
+  i:integer;
 begin
-Debug('TxxmChannel.VisitRequestHeaders');
+Debug('>TxxmChannel.VisitRequestHeaders');
+  for i:=0 to FRequestHeaders.Count-1 do
+    aVisitor.VisitHeader(
+      NewCString(FRequestHeaders.Name[i]).ACString,
+      NewCString(FRequestHeaders.Item[i]).ACString);
+Debug('<TxxmChannel.VisitRequestHeaders');
 end;
 
 procedure TxxmChannel.VisitResponseHeaders(aVisitor: nsIHttpHeaderVisitor);
+var
+  i:integer;
 begin
-Debug('TxxmChannel.VisitResponseHeaders');
+Debug('>TxxmChannel.VisitResponseHeaders');
+  for i:=0 to FResponseHeaders.Count-1 do
+    aVisitor.VisitHeader(
+      NewCString(FResponseHeaders.Name[i]).ACString,
+      NewCString(FResponseHeaders.Item[i]).ACString);
+Debug('<TxxmChannel.VisitResponseHeaders');
 end;
 
 //IxxmContext
@@ -979,9 +998,83 @@ begin
 end;
 
 procedure TxxmChannel.Redirect(RedirectURL: WideString; Relative: boolean);
+const
+  NS_BINDING_REDIRECTED=$804B000A;//1 shl 31 or ($45+6) shl 16 or 10
+  NS_ERROR_REDIRECT_LOOP=$804B0020;//1 shl 31 or ($45+6) shl 16 or 32
+var
+  u:nsIURI;
+  x:IInterfacedCString;
 begin
   //TODO:
+  //if FRedirectionLimit=0 then NS_ERROR_REDIRECT_LOOP
+  //if 307 then forward as POST else as GET?
 
+  if FRedirectionLimit=0 then
+   begin
+    Cancel(NS_ERROR_REDIRECT_LOOP);
+    raise Exception.Create('Redirection limit reached');
+   end;
+
+  x:=NewCString;
+  u:=FURI.Clone;
+  if Relative then
+    FURI.Resolve(NewCString(RedirectURL).ACString,x.ACString)
+  else
+    x.Assign(RedirectURL);
+  u.SetSpec(x.ACString);
+
+  FRedirectChannel:=NS_GetIOService.NewChannelFromURI(u);
+
+  NS_DispatchToMainThread(TxxmListenerCaller.Create(Self,lcRedirect,0,0));
+
+  Cancel(NS_BINDING_REDIRECTED);
+Debug('TxxmChannel.Redirect('+x.ToString);
+  raise EXxmPageRedirected.Create(x.ToString);
+
+  //TODO: PromptTempRedirect?
+end;
+
+procedure TxxmChannel.RedirectSync;
+const
+  LOAD_REPLACE=$40000;//1 shl 18
+var
+  h:nsIHttpChannel;
+  uc:nsIUploadChannel;
+begin
+  try
+    FRedirectChannel.OriginalURI:=FOrigURI;
+    FRedirectChannel.LoadGroup:=FLoadGroup;
+    FRedirectChannel.NotificationCallbacks:=FCallBacks;
+    FRedirectChannel.LoadFlags:=FLoadFlags or LOAD_REPLACE;
+    if FRedirectChannel.QueryInterface(NS_IHTTPCHANNEL_IID,h)=S_OK then
+     begin
+      //h.SetRequestMethod(NewCString('GET').ACString);//FVerb?
+      if not(FReferer=nil) then h.Referrer:=FReferer;
+      h.AllowPipelining:=FAllowPipelining;
+      h.RedirectionLimit:=FRedirectionLimit-1;
+     end;
+
+    //if FVerb='POST'?
+    if FRedirectChannel.QueryInterface(NS_IUPLOADCHANNEL_IID,uc)=S_OK then
+     begin
+      if not(FPostData=nil) then
+       begin
+        (FPostData.InputStream as nsISeekableStream).seek(NS_SEEK_SET,0);
+        uc.SetUploadStream(FPostData.InputStream,NewCString('').ACString,-1);
+       end;
+     end;
+    //nsIHttpChannelInternal? DocumentURI?
+    //nsIEncodedChannel?
+    //nsIResumableChannel?
+    //nsIWritablePropertyBag, CopyProperties?
+
+    (FCallBacks as nsIChannelEventSink).onChannelRedirect(Self,
+      FRedirectChannel,REDIRECT_PERMANENT);//temporary?
+    FRedirectChannel.AsyncOpen(FListener,FListenerContext);//???
+
+  finally
+    FRedirectChannel:=nil;
+  end;
 end;
 
 procedure TxxmChannel.SendHTML(Data: OleVariant);
@@ -1504,7 +1597,8 @@ const
     'Activate',
     'OnStartRequest',
     'OnDataAvailable',
-    'OnStopRequest');
+    'OnStopRequest',
+    'Redirect');
 
 var
   DebugListenerCount: integer;
@@ -1544,6 +1638,7 @@ try
      end;
     lcData:FOwner.FListener.OnDataAvailable(FOwner,FOwner.FListenerContext,FOwner,FOffset,FCount);
     lcStop:FOwner.FListener.OnStopRequest(FOwner,FOwner.FListenerContext,FOwner.FStatusCode);
+    lcRedirect:FOwner.RedirectSync;
   end;
 Debug('<<'+lcName[FCall]+' '+IntToStr(debugid));
 except

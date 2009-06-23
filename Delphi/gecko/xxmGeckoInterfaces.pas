@@ -20,6 +20,10 @@ const
   NS_SEEK_CUR = 1;
   NS_SEEK_END = 2;
 
+  REDIRECT_TEMPORARY  = $1;
+  REDIRECT_PERMANENT  = $2;
+  REDIRECT_INTERNAL   = $4;
+
 type
   nsIMutable = interface(nsISupports)
   ['{321578d0-03c1-4d95-8821-021ac612d18d}']
@@ -47,8 +51,17 @@ type
 
   nsIProgressEventSink = interface(nsISupports)
   ['{d974c99e-4148-4df9-8d98-de834a2f6462}']
-    procedure onProgress(aRequest:nsIRequest;aContext:nsISupports;aProgress,aProgressMax:PRUint64);
-    procedure onStatus(aRequest:nsIRequest;aContext:nsISupports;aStatus:NSRESULT;aStatusArg:PWideChar);//wstring?
+    procedure onProgress(aRequest: nsIRequest; aContext: nsISupports;
+      aProgress, aProgressMax: PRUint64); safecall;
+    procedure onStatus(aRequest: nsIRequest; aContext: nsISupports;
+      aStatus: NSRESULT; aStatusArg: PWideChar); safecall;//wstring?
+  end;
+
+  nsIChannelEventSink = interface(nsISupports)
+  ['{6757d790-2916-498e-aaca-6b668a956875}']
+    //const REDIRECT_* see above
+    procedure onChannelRedirect(oldChannel: nsIChannel;
+      newChannel: nsIChannel; flags: PRUint32); safecall;
   end;
 
 procedure SetCString(x:nsACString;v:string);
