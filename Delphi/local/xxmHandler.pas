@@ -175,7 +175,7 @@ begin
      begin
       FContext.OutputData.Position:=FDataPos;
       cbRead:=FContext.OutputData.Read(pv^,ReadSize);
-      inc(FDataPos,cbRead);
+      FDataPos:=FDataPos+cbRead;
       //cache to file??
      end;
 
@@ -183,7 +183,7 @@ begin
      begin
       if (FContext.OutputData is TMemoryStream) then
        begin
-        inc(FContext.ClippedSize,FContext.OutputSize);
+        FContext.ClippedSize:=FContext.ClippedSize+FContext.OutputSize;
         FContext.OutputSize:=0;//no SetSize, just reset pointer, saves on realloc calls
         FDataPos:=0;
        end;
@@ -204,7 +204,7 @@ begin
      begin
       if (FContext.OutputData is TMemoryStream) and (FDataPos>=CollapseTreshold) then
        begin
-        dec(FContext.OutputSize,FDataPos);
+        FContext.OutputSize:=FContext.OutputSize-FDataPos;
         BArr:=PBArr((FContext.OutputData as TMemoryStream).Memory);
         Move(BArr[FDataPos],BArr[0],FContext.OutputSize);
         FDataPos:=0;

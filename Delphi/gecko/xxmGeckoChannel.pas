@@ -223,7 +223,7 @@ type
     FOwner:TxxmChannel;
     FCall:TxxmListenerCall;
     FOffset,FCount:cardinal;
-    debugid:integer;
+debugid:string;
   protected
     procedure run; safecall;
   public
@@ -1111,10 +1111,19 @@ const
 var
   l:integer;
   d:array[0..SendBufferSize-1] of byte;
+  startdata:boolean;
 begin
   inherited;
   //if not(s.Size=0) then
    begin
+    startdata:=not(FHeaderSent);
+    if startdata then //do this outside of lock
+      if FConnected then
+       begin
+        CheckSuspend;
+        NS_DispatchToMainThread(TxxmListenerCaller.Create(Self,lcStart,0,0));
+        FHeaderSent:=true;
+       end;
     //no autoencoding here!
     l:=SendBufferSize;
     repeat
@@ -1126,7 +1135,7 @@ begin
         Unlock;
       end;
       ReportData;
-    until not(l=SendBufferSize);
+    until not(l=SendBufferSize) or not(FConnected);
    end;
 end;
 
@@ -1216,7 +1225,9 @@ end;
 
 procedure TxxmChannel.CheckSuspend;
 begin
+Debug('>CheckSuspend');
   while not(FSuspendCount=0) do Sleep(5);
+Debug('<CheckSuspend');
 end;
 
 const
@@ -1323,9 +1334,9 @@ begin
   FData.Position:=FOutputSize;
   Result:=FData.Write(Buffer,Count);
   //Result=Count
-  inc(FOutputSize,Result);
-  inc(FTotalSize,Result);
-  inc(FReportSize,Result);
+  FOutputSize:=FOutputSize+Result;
+  FTotalSize:=FTotalSize+Result;
+  FReportSize:=FReportSize+Result;
 end;
 
 function TxxmChannel.Available: Cardinal;
@@ -1356,8 +1367,8 @@ Debug('>TxxmInputStream.Read(,'+IntToStr(aCount));
     Result:=FData.Read(aBuf^,aCount);
     //assert Result=aCount
     FReportPending:=false;
-    inc(FExportSize,Result);
-    dec(FReportSize,aCount);
+    FExportSize:=FExportSize+Result;
+    if aCount>FReportSize then FReportSize:=0 else FReportSize:=FReportSize-aCount;
     if FExportSize=FOutputSize then
      begin
       //assert FReportSize=0
@@ -1385,8 +1396,8 @@ Debug('TxxmInputStream.ReadSegments(,'+IntToStr(aCount));
     aWriter(Self,aClosure,p,0,aCount,Result);
     //assert Result=aCount
     FReportPending:=false;
-    inc(FExportSize,Result);
-    dec(FReportSize,aCount);
+    FExportSize:=FExportSize+Result;
+    if aCount>FReportSize then FReportSize:=0 else FReportSize:=FReportSize-aCount;
     if FExportSize=FOutputSize then
      begin
       //assert FReportSize=0
@@ -1613,21 +1624,21 @@ begin
   FOffset:=Offset;
   FCount:=Count;
   inc(DebugListenerCount);
-  debugid:=DebugListenerCount;
-  Debug('++'+lcName[FCall]+' '+IntToStr(debugid));
+  debugid:=' '+IntToStr(DebugListenerCount)+' '+FOwner.FURL+' '+IntToStr(FOffset)+' '+IntToStr(FCount);
+  Debug('++'+lcName[FCall]+debugid);
 end;
 
 destructor TxxmListenerCaller.Destroy;
 begin
   FOwner._Release;
   //if FCall=lcStop then FOwner._Release;
-  Debug('--'+lcName[FCall]+' '+IntToStr(debugid));
+  Debug('--'+lcName[FCall]+debugid);
   inherited;
 end;
 
 procedure TxxmListenerCaller.run;
 begin
-Debug('>>'+lcName[FCall]+' '+IntToStr(debugid));
+Debug('>>'+lcName[FCall]+debugid);
 try
   case FCall of
     lcActivate:FOwner.Resume;
@@ -1640,10 +1651,10 @@ try
     lcStop:FOwner.FListener.OnStopRequest(FOwner,FOwner.FListenerContext,FOwner.FStatusCode);
     lcRedirect:FOwner.RedirectSync;
   end;
-Debug('<<'+lcName[FCall]+' '+IntToStr(debugid));
+Debug('<<'+lcName[FCall]+debugid);
 except
   on e:Exception do
-Debug('<<'+lcName[FCall]+' '+IntToStr(debugid)+' !!! '+e.ClassName+':'+e.Message);
+Debug('<<'+lcName[FCall]+debugid+' !!! '+e.ClassName+':'+e.Message);
 end;
 end;
 
