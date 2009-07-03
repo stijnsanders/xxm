@@ -11,6 +11,7 @@ const
 
   NS_IMUTABLE_IID:TGUID='{321578d0-03c1-4d95-8821-021ac612d18d}';
   NS_ISTANDARDURL_IID:TGUID='{babd6cca-ebe7-4329-967c-d6b9e33caa81}';
+  NS_IHTTPCHANNELINTERNAL_IID:TGUID='{3ce040fb-3933-462a-8d62-80b78fbd0809}';
 
   URLTYPE_STANDARD        = 1;
   URLTYPE_AUTHORITY       = 2;
@@ -62,6 +63,16 @@ type
     //const REDIRECT_* see above
     procedure onChannelRedirect(oldChannel: nsIChannel;
       newChannel: nsIChannel; flags: PRUint32); safecall;
+  end;
+
+  nsIHttpChannelInternal = interface(nsISupports)
+  ['{3ce040fb-3933-462a-8d62-80b78fbd0809}']
+    function GetDocumentURI: nsIURI; safecall;
+    procedure SetDocumentURI(aDocumentURI: nsIURI); safecall;
+    procedure getRequestVersion(var major:PRUint32; var minor:PRUint32); safecall;
+    procedure getResponseVersion(var major:PRUint32; var minor:PRUint32); safecall;
+    procedure setCookie(aCookieHeader:PChar); safecall;//string?
+    procedure setupFallbackChannel(aFallbackKey:PChar); safecall;//string?
   end;
 
 procedure SetCString(x:nsACString;v:string);
