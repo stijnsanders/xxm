@@ -2,8 +2,8 @@ unit xxmLoader;
 
 interface
 
-uses Windows, SysUtils, ActiveX, UrlMon, Classes, xxm, xxmPReg,
-  xxmParams, xxmParUtils, xxmHeaders;
+uses Windows, SysUtils, ActiveX, UrlMon, Classes, xxm,
+  xxmPReg, xxmPRegLocal, xxmParams, xxmParUtils, xxmHeaders;
 
 const
   XxmMaxIncludeDepth=64;//TODO: setting?
@@ -921,6 +921,7 @@ var
   s:WideString;
 begin
   inherited;
+  HeaderOK;
   Redirected:=true;
   //BINDSTATUS_REDIRECTING?
   if Relative then

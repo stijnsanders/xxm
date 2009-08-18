@@ -9,7 +9,8 @@ uses
   xxmParams in '..\common\xxmParams.pas',
   xxmParUtils in '..\common\xxmParUtils.pas',
   xxmHeaders in '..\public\xxmHeaders.pas',
-  xxmPReg in 'xxmPReg.pas',
+  xxmPReg in '..\common\xxmPReg.pas',
+  xxmHttpPReg in 'xxmHttpPReg.pas',
   xxmCommonUtils in '..\common\xxmCommonUtils.pas',
   xxmReadHandler in 'xxmReadHandler.pas',
   xxmAutoUpdate in '..\common\xxmAutoUpdate.pas';

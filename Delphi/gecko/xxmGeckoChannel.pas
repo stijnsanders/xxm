@@ -3,8 +3,8 @@ unit xxmGeckoChannel;
 interface
 
 uses nsXPCOM, nsTypes, nsGeckoStrings, nsThreadUtils, xxm, xxmHeaders,
-  Windows, Classes, SysUtils, xxmParUtils, xxmPReg, xxmParams,
-  xxmGeckoInterfaces, xxmGeckoStreams;
+  Windows, Classes, SysUtils, xxmParUtils, xxmPReg, xxmPRegLocal,
+  xxmParams, xxmGeckoInterfaces, xxmGeckoStreams;
 
 type
   TxxmChannel=class(TInterfacedObject,

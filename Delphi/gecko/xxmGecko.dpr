@@ -10,7 +10,8 @@ uses
   xxmGeckoInterfaces in 'xxmGeckoInterfaces.pas',
   Debug1 in 'debug\Debug1.pas',
   xxmSettings in 'xxmSettings.pas',
-  xxmPReg in 'xxmPReg.pas',
+  xxmPReg in '..\common\xxmPReg.pas',
+  xxmPRegLocal in '..\local\xxmPRegLocal.pas',
   xxmParams in '..\common\xxmParams.pas',
   xxmParUtils in '..\common\xxmParUtils.pas',
   xxmGeckoStreams in 'xxmGeckoStreams.pas';

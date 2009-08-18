@@ -4,7 +4,7 @@ interface
 
 uses xxm, xxmPReg;
 
-function AutoBuild(pce:TXxmProjectCacheEntry;
+function AutoBuild(pce:TXxmProjectEntry;
   Context:IXxmContext; ProjectName:WideString):boolean;
 
 implementation
@@ -40,7 +40,7 @@ begin
     Result:=StringReplace(Result,'[['+vals[i*2]+']]',vals[i*2+1],[rfReplaceAll]);
 end;
 
-function AutoBuild(pce:TXxmProjectCacheEntry;
+function AutoBuild(pce:TXxmProjectEntry;
   Context:IXxmContext; ProjectName:WideString):boolean;
 var
   WebProject:TXxmWebProject;

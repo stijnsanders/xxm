@@ -1,32 +1,30 @@
-unit xxmPReg;
+unit xxmHttpPReg;
 
 interface
 
-uses Windows, SysUtils, xxm, MSXML2_TLB;
+uses Windows, SysUtils, xxm, xxmPReg, MSXML2_TLB;
 
 type
-  TXxmProjectCacheEntry=class(TObject)
+  TXxmProjectCacheEntry=class(TXxmProjectEntry)
   private
     FName,FFilePath:WideString;
     FProject: IXxmProject;
     FHandle:THandle;
-    FSignature:string;
     FContextCount:integer;
     function GetProject: IXxmProject;
-    procedure SetSignature(const Value: string);
+  protected
+    procedure SetSignature(const Value: string); override;
+    function GetModulePath: WideString; override;
   published
     constructor Create(Name,FilePath:WideString);
   public
-    LastCheck:cardinal;
-    procedure Release;
+    procedure Release; override;
     destructor Destroy; override;
     procedure GetFilePath(Address:WideString;var Path,MimeType:string);
     procedure OpenContext;
     procedure CloseContext;
     property Name:WideString read FName;
     property Project: IXxmProject read GetProject;
-    property ModulePath:WideString read FFilePath;
-    property Signature:string read FSignature write SetSignature;
   end;
 
   TXxmProjectCache=class(TObject)
@@ -49,9 +47,6 @@ type
     function SingleProject:string;
     procedure ReleaseProject(Name:WideString);
   end;
-
-  TXxmAutoBuildHandler=function(pce:TXxmProjectCacheEntry;
-    Context: IXxmContext; ProjectName:WideString):boolean;
 
   EXxmProjectRegistryError=class(Exception);
   EXxmProjectNotFound=class(Exception);
@@ -228,6 +223,11 @@ end;
 procedure TXxmProjectCacheEntry.CloseContext;
 begin
   InterlockedDecrement(FContextCount);
+end;
+
+function TXxmProjectCacheEntry.GetModulePath: WideString;
+begin
+  Result:=FFilePath;
 end;
 
 { TXxmProjectCache }

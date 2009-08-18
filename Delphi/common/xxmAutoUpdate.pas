@@ -4,7 +4,7 @@ interface
 
 uses xxm, xxmPReg;
 
-function AutoUpdate(pce:TXxmProjectCacheEntry;
+function AutoUpdate(pce:TXxmProjectEntry;
   Context:IXxmContext; ProjectName:WideString):boolean;
 
 implementation
@@ -14,7 +14,7 @@ uses Windows, SysUtils;
 var
   UpdateLock:TRTLCriticalSection;
 
-function AutoUpdate(pce:TXxmProjectCacheEntry;
+function AutoUpdate(pce:TXxmProjectEntry;
   Context:IXxmContext; ProjectName:WideString):boolean;
 var
   fn,fn1:string;

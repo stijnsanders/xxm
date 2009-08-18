@@ -1,30 +1,30 @@
-unit xxmPReg;
+unit xxmPRegLocal;
 
 interface
 
-uses Windows, SysUtils, xxm;
+uses Windows, SysUtils, xxm, xxmPReg;
 
 type
-  TXxmProjectCacheEntry=class(TObject)
+  TXxmProjectCacheEntry=class(TXxmProjectEntry)
   private
     FName,FFilePath,FCookiePath:WideString;
     FProject:IXxmProject;
     FHandle:THandle;
-    FSignature,FUserName:string;
+    FUserName:string;
     FCookies:array of record
       Name,Value:WideString;
       //TODO: expiry, domain, path...
     end;
     FContextCount:integer;
     procedure GetRegisteredPath;
-    function GetModulePath:WideString;
     function GetProject:IXxmProject;
-    procedure SetSignature(const Value: string);
+  protected
+    function GetModulePath:WideString; override;
+    procedure SetSignature(const Value: string); override;
   published
     constructor Create(Name:WideString);
   public
-    LastCheck:cardinal;
-    procedure Release;
+    procedure Release; override;
     destructor Destroy; override;
     procedure OpenContext;
     procedure CloseContext;
@@ -33,8 +33,6 @@ type
     procedure SetSessionCookie(Name: WideString; Value: WideString);
     property Name:WideString read FName;
     property Project:IXxmProject read GetProject;
-    property ModulePath:WideString read GetModulePath;
-    property Signature:string read FSignature write SetSignature;
     function CookieFile(Name:string):string;
   end;
 
@@ -55,16 +53,12 @@ type
 
   end;
 
-  TXxmAutoBuildHandler=function(pce:TXxmProjectCacheEntry;
-    Context:IXxmContext; ProjectName:WideString):boolean;
-
   EXxmProjectNotFound=class(Exception);
   EXxmModuleNotFound=class(Exception);
   EXxmProjectLoadFailed=class(Exception);
 
 var
   XxmProjectCache:TXxmProjectCache;
-  XxmAutoBuildHandler:TXxmAutoBuildHandler;
 
 procedure XxmProjectRegister(
   hwnd:HWND;        // handle to owner window
@@ -474,4 +468,5 @@ initialization
   XxmProjectCache:=nil;//TXxmProjectCache.Create;//see Handler.Start
 finalization
   FreeAndNil(XxmProjectCache);
+
 end.

@@ -2,7 +2,7 @@ unit xxmIsapiMain;
 
 interface
 
-uses Windows, SysUtils, Classes, isapi4, xxm, xxmPReg,
+uses Windows, SysUtils, Classes, isapi4, xxm, xxmIsapiPReg,
   xxmParams, xxmParUtils, xxmHeaders;
 
 function GetExtensionVersion(var Ver: THSE_VERSION_INFO): BOOL; stdcall;

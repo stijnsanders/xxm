@@ -4,7 +4,7 @@ interface
 
 uses
   SysUtils, Sockets, xxm, Classes,
-  xxmPReg, xxmParams, xxmParUtils, xxmHeaders;
+  xxmHttpPReg, xxmParams, xxmParUtils, xxmHeaders;
 
 type
   TXxmHttpServer = class(TCustomTcpServer)
