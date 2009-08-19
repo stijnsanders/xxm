@@ -61,7 +61,6 @@ local
 
 idea's
 - cascaded loading of xxl's
-- auto-update dll (.xxlu?)
 - limit threads per session
 - GetParameter supporting ContextString enum
 - 401 auth & windows auth (IHttpAuthenticate on local?)
@@ -79,7 +78,6 @@ idea's
 - create src dir hidden (difficult, since using ForceDirectories now)
 - Context.Include resolve to delphi-name to have compile-time error?
 - virtual directories (getlocalfilepath?)
-- xxmCGI (met een COM server om de projects in te hosten?
 
 minor issues
 - xxm.pas: version from resource?

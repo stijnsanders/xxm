@@ -43,6 +43,9 @@ add to the response headers.</dd>
 <dt>is it better/faster/... to use Context.SendHTML whereever possible?</dt>
 <dd>No. HTML is parsed into Context.SendHTML calls for you, and doesn't take as much time extra as it would take you to type the HTML in Delphi string  syntax. By far. The compile time of both is virtually equal. The execution time is equal.</dd>
 
+<dt>does xxm work with <a href="http://jquery.com/">jQuery</a> and <a href="http://www.prototypejs.org/">prototype</a>?</dt>
+<dd>Yes. These are javascript libraries, and javascript is able to resolve relative URL's, even with an XmlHttpRequest. Prototype may need a minor tweak to work with the xxmLocal handler in InternetExplorer, since as a security measure the responseDocument property is undefined on non-http protocol handlers.</dd>
+
 <dt>how do I debug an xxm project</dt>
 <dd>an xxm project is still a Delphi project, so you can open the project's dpr in Delphi, just remember to edit the xxm and xxmi files, and not the pas files directly (unless for temporary debugging behaviour).<br />
 When you're using xxmLocal (or xxmLocalDev), set the host application to Internet Explorer (typically <code>C:\Program Files\Internet Explorer\iexplore.exe</code>), optionally with an "xxm://" URL to open your project.<br />
