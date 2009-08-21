@@ -48,7 +48,7 @@ add to the response headers.</dd>
 
 <dt>how do I debug an xxm project</dt>
 <dd>an xxm project is still a Delphi project, so you can open the project's dpr in Delphi, just remember to edit the xxm and xxmi files, and not the pas files directly (unless for temporary debugging behaviour).<br />
-When you're using xxmLocal (or xxmLocalDev), set the host application to Internet Explorer (typically <code>C:\Program Files\Internet Explorer\iexplore.exe</code>), optionally with an "xxm://" URL to open your project.<br />
+When you're using xxmLocal (or xxmLocalDev), set the host application to Internet Explorer (typically <code>C:\Program Files\Internet Explorer\iexplore.exe</code>), optionally with an "xxm://" URL to open your project. (Update: to force IE8 to run in a single process, see <a href="http://blogs.msdn.com/askie/archive/2009/03/09/opening-a-new-tab-may-launch-a-new-process-with-internet-explorer-8-0.aspx">TabProcGrowth</a>)<br />
 When you're using xxmIsapiEx (or xxmIsapiDev) on your local IIS, switch IIS into stand-alone mode and use inetinfo.exe as host application, or create a virtual directory with high isolation (IIS 7: in an application pool of it's own), and use <code>%SystemRoot%\system32\dllhost.exe /ProcessID:<i>{AppID}</i></code> with the AppID you can pick up from the properties of the COM+ application in the 'Component Services' administrative tool</dd>
 
 <dt>why is it not possible to pass extra parameters with the directory delimiter<br />

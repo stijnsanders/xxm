@@ -174,7 +174,7 @@ function SplitHeaderValue(Value:string;ValueStart,ValueLength:integer;
 var
   i,j,l,q:integer;
 begin
-  l:=ValueStart+ValueLength;
+  l:=ValueStart+ValueLength-1;
   i:=ValueStart;
   while (i<=l) and not(Value[i]=';') do inc(i);
   if (i<=l) then

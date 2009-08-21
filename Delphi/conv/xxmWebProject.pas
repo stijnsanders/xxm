@@ -358,7 +358,7 @@ begin
     xl:=DataFiles.selectNodes('Unit');
     try
       xFile:=xl.nextNode as IXMLDOMElement;
-      while not(xFile=nil) and not(Result) do
+      while not(xFile=nil) do
        begin
         uname:=VarToStr(xFile.getAttribute('UnitName'));
         upath:=VarToStr(xFile.getAttribute('UnitPath'));
