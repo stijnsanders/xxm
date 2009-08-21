@@ -981,7 +981,7 @@ begin
   FBuilding:=f;
   inc(FIncludeDepth);
   try
-    FPageClass:=f.ClassNameEx;
+    FPageClass:=f.ClassNameEx+' < '+pc;
     f.Build(Self,fb,Values,Objects);//queue to avoid building up stack?
     FPageClass:=pc;
   finally
