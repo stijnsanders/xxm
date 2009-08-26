@@ -57,7 +57,6 @@ type
 
 var
   XxmProjectCache:TXxmProjectCache;
-  XxmAutoBuildHandler:TXxmAutoBuildHandler;
 
 implementation
 

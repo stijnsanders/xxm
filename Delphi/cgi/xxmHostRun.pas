@@ -1,0 +1,126 @@
+unit xxmHostRun;
+
+interface
+
+type
+  TXxmHandleMessagesProc=procedure(var QuitApp:boolean);
+
+procedure XxmRunHoster(HandleMessagesProc:TXxmHandleMessagesProc);
+
+procedure HandleWindowsMessages(var QuitApp:boolean);
+
+implementation
+
+uses Windows, SysUtils, ActiveX, xxmHttpPReg, xxmThreadPool, xxmHostMain, xxmCGIHeader;
+
+procedure XxmRunHoster(HandleMessagesProc:TXxmHandleMessagesProc);
+type
+  TParameters=(cpPipePath,
+    //add new here
+    cp_Unknown);
+const
+  ParameterKey:array[TParameters] of string=(
+    'pipe',
+    //add new here (lowercase)
+    '');
+  FILE_FLAG_FIRST_PIPE_INSTANCE=$00080000;
+var
+  i,j:integer;
+  s,t,PipePath:string;
+  h,h1,h2:THandle;
+  par:TParameters;
+  QuitApp:boolean;
+  r:DWORD;
+  ch:TxxmCGIHeader;
+  l:cardinal;
+begin
+  PipePath:='xxm';//default
+  QuitApp:=false;
+
+  for i:=1 to ParamCount do
+   begin
+    s:=ParamStr(i);
+    j:=1;
+    while (j<=Length(s)) and not(s[j]='=') do inc(j);
+    t:=LowerCase(Copy(s,1,j-1));
+    par:=TParameters(0);
+    while not(par=cp_Unknown) and not(t=ParameterKey[par]) do inc(par);
+    case par of
+      cpPipePath:PipePath:=Copy(s,j+1,Length(s)-j);
+      //add new here
+      cp_Unknown: raise Exception.Create('Unknown setting: '+t);
+    end;
+   end;
+
+  CoInitialize(nil);
+  XxmProjectCache:=TXxmProjectCache.Create;
+  PageLoaderPool:=TXxmPageLoaderPool.Create;
+
+  h:=INVALID_HANDLE_VALUE;
+  ch.Size:=SizeOf(TxxmCGIHeader);
+  ch.ServerProcessID:=GetCurrentProcessId;
+
+  //TODO: queue of pipe handles (recycle disconnected pipe handles?)
+  //TODO: try except
+  //TODO: mutex?
+  while not(QuitApp) do
+   begin
+    if h=INVALID_HANDLE_VALUE then
+      h:=CreateNamedPipe(PChar('\\.\pipe\'+PipePath),
+        PIPE_ACCESS_OUTBOUND,
+        PIPE_TYPE_BYTE or PIPE_NOWAIT,//PIPE_WAIT?
+        PIPE_UNLIMITED_INSTANCES,//setting?
+        $1000,//in buffer size
+        $1000,//out buffer size
+        30000,//timeout
+        nil);
+    if h=INVALID_HANDLE_VALUE then RaiseLastOSError;
+    if ConnectNamedPipe(h,nil) then r:=ERROR_PIPE_CONNECTED else r:=GetLastError;
+    if r=ERROR_PIPE_CONNECTED then
+     begin
+
+      CreatePipe(h1,ch.PipeRequest,nil,$1000);
+      CreatePipe(ch.PipeResponse,h2,nil,$1000);
+      if WriteFile(h,ch,ch.Size,l,nil) then
+       begin
+        //TODO: create context(s) up front (together with pipes?)
+        PageLoaderPool.Queue(TXxmHostedContext.Create(h1,h2));
+       end
+      else
+       begin
+        CloseHandle(h);
+        CloseHandle(h1);
+        CloseHandle(h2);
+        CloseHandle(ch.PipeRequest);
+        CloseHandle(ch.PipeResponse);
+       end;
+
+      h:=INVALID_HANDLE_VALUE;
+     end
+    else
+      if r=ERROR_PIPE_LISTENING then
+        HandleMessagesProc(QuitApp)
+      else
+        raise Exception.Create(IntToStr(r)+' '+SysErrorMessage(r));
+   end;
+end;
+
+procedure HandleWindowsMessages(var QuitApp:boolean);
+var
+  Msg:TMsg;
+const
+  WM_QUIT = $0012;//from Messages
+begin
+  if PeekMessage(Msg,0,0,0,PM_REMOVE) then
+    if Msg.message=WM_QUIT then
+      QuitApp:=true
+    else
+     begin
+      TranslateMessage(Msg);
+      DispatchMessage(Msg);
+     end
+  else
+    Sleep(1);//don't take 100% CPU!
+end;
+
+end.

@@ -91,7 +91,7 @@ Context.SendHTML('&lt;/b&gt;');</code></p>
 <p>Each xxm project must export a function named "XxmProjectLoad", that creates an instance of the project. (by default provided in the xxmp.pas file)</p>
 
 <dl>
-<dt class="title"><code>TXxmProject=class(TInterfacedObject, IXxmProject)</code></dt>
+<dt class="title"><a name="xxproject"></a><code>TXxmProject=class(TInterfacedObject, IXxmProject)</code></dt>
 <dd>An xxm project implements the IXxmProject. (by default provided in the xxmp.pas file)</dd>
 
 <dt><code>function LoadPage(Context:IXxmContext;Address:WideString):IXxmFragment;</code></dt>
@@ -103,7 +103,7 @@ Context.SendHTML('&lt;/b&gt;');</code></p>
 <dt><code>procedure UnloadFragment(Fragment: IXxmFragment);</code></dt>
 <dd>Pages and include fragments are passed to the UnloadFragment procedure to allow the xxm project to perform clean-up or re-use of object instances.</dd>
 
-<dt class="title"><code>
+<dt class="title"><a name="xxmfragment"></a><a name="xxmpage"></a><a name="xxminclude"></a><code>
   TXxmFragment=class(TInterfacedObject, IXxmFragment)<br />
   TXxmPage=class(TXxmFragment, IXxmPage)<br />
   TXxmInclude=class(TXxmFragment, IXxmInclude)</code></dt>
@@ -128,7 +128,7 @@ Context.SendHTML('&lt;/b&gt;');</code></p>
 <dt><code>property Page:IXxmFragment</code></dt>
 <dd>read-only, the page the project provided to handle the request, also when an include fragment is called from the page or from another include fragment</dd>
 
-<dt><code>property ContentType:WideString</code></dt>
+<dt><a name="ContentType"></a><code>property ContentType:WideString</code></dt>
 <dd>the MIME type of the outgoing response, by default set to 'text/html'</dd>
 
 <dt><code>property AutoEncoding:TXxmAutoEncoding</code></dt>
@@ -155,7 +155,7 @@ property ParameterCount:integer</code></dt>
 <dd>sends data to the response without HTMLEncode</dd>
 
 <dt><code>procedure SendFile(FilePath: WideString);</code></dt>
-<dd>sends the contents of the file to the response. If the response has not started sending data, the ContentType is set to the MIME-type string found in the Windows registry by the file extention (HKEY_CLASSES_ROOT)</dd>
+<dd>sends the contents of the file to the response. If the response has not started sending data, the <a href="#ContentType">ContentType</a> is set to the MIME-type string found in the Windows registry by the file extention (HKEY_CLASSES_ROOT)</dd>
 
 <dt><code>procedure SendStream(s:TStream);</code></dt>
 <dd>sends the contents of the stream to the response</dd>
@@ -170,7 +170,7 @@ property ParameterCount:integer</code></dt>
 </code></dt>
 <dd>load an include fragment and call the Build method with provided Values and Objects. Use Context.Include in favor of creating an instance of the fragment class directly, to enable xxm's built-in exception handling and to enable performance enhancements provided by the fragment registry.</dd>
 
-<dt><code>function ContextString(cs:TXxmContextString):WideString;</code></dt>
+<dt><a name="ContextString"></a><code>function ContextString(cs:TXxmContextString):WideString;</code></dt>
 <dd>
 provides information about the incoming request
 <ul>
@@ -251,17 +251,17 @@ provides information about the incoming request
 <dt><code>function SaveToStream(Stream:TStream):integer;</code></dt>
 <dd>saves the uploaded content to a stream</dd>
 
-<dt><code>function XxmVersion:TXxmVersion;<br />
+<dt class="title"><a name="XxmVersion"></a><code>function XxmVersion:TXxmVersion;<br />
   TXxmVersion=record Major,Minor,Release,Build:integer; end;
 </code></dt>
 <dd>gets the xxm version, use the xxm version to check if newer features are available</dd>
 
-<dt><code>function HTMLEncode(Data:WideString):WideString; overload;<br />
+<dt class="title"><a name="HTMLEncode"></a><code>function HTMLEncode(Data:WideString):WideString; overload;<br />
 function HTMLEncode(Data:OleVariant):WideString; overload;
 </code></dt>
 <dd>encodes text for safe output into a HTML document</dd>
 
-<dt><code>function URLEncode(Data:OleVariant):string;<br />
+<dt class="title"><a name="URLEncode"></a><code>function URLEncode(Data:OleVariant):string;<br />
 function URLDecode(Data:string):WideString;
 </code></dt>
 <dd>encodes/decodes data to/from URL notation</dd>

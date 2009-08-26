@@ -129,13 +129,14 @@ LegalTrademarks=
 OriginalFilename=
 ProductName=xxm
 ProductVersion=1.0.0.0
-Comments=
+Comments=http://xxm.sf.net/
 [HistoryLists\hlUnitAliases]
 Count=1
 Item0=WinTypes=Windows;WinProcs=Windows;DbiTypes=BDE;DbiProcs=BDE;DbiErrs=BDE;
 [HistoryLists\hlSearchPath]
-Count=1
-Item0=..\..\public
+Count=2
+Item0=C:\Program Files\Indy9
+Item1=..\..\public
 [HistoryLists\hlUnitOutputDirectory]
 Count=2
 Item0=..\dcu

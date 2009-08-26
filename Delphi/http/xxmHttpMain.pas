@@ -104,7 +104,7 @@ procedure XxmRunServer;
 
 implementation
 
-uses Windows, Variants, ActiveX, ComObj, xxmCommonUtils, xxmReadHandler;
+uses Windows, Variants, ActiveX, ComObj, xxmCommonUtils, xxmReadHandler, xxmPReg;
 
 
 
