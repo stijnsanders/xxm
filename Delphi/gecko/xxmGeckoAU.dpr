@@ -1,4 +1,4 @@
-library xxmGecko;
+library xxmGeckoAU;
 
 {$R 'xxmData.res' 'xxmData.rc'}
 
@@ -16,9 +16,11 @@ uses
   xxmPRegLocal in '..\local\xxmPRegLocal.pas',
   xxmParams in '..\common\xxmParams.pas',
   xxmParUtils in '..\common\xxmParUtils.pas',
-  xxmGeckoStreams in 'xxmGeckoStreams.pas';
+  xxmGeckoStreams in 'xxmGeckoStreams.pas',
+  xxmAutoUpdate in '..\common\xxmAutoUpdate.pas';
 
 {$R *.res}
 
 begin
+  XxmAutoBuildHandler:=AutoUpdate;
 end.

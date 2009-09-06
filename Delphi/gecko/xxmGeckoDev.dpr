@@ -1,6 +1,7 @@
-library xxmGecko;
+library xxmGeckoDev;
 
 {$R 'xxmData.res' 'xxmData.rc'}
+{$R 'xxmDataDev.res' 'xxmDataDev.rc'}
 
 uses
   SysUtils,
@@ -16,9 +17,16 @@ uses
   xxmPRegLocal in '..\local\xxmPRegLocal.pas',
   xxmParams in '..\common\xxmParams.pas',
   xxmParUtils in '..\common\xxmParUtils.pas',
-  xxmGeckoStreams in 'xxmGeckoStreams.pas';
+  xxmGeckoStreams in 'xxmGeckoStreams.pas',
+  xxmAutoBuild in '..\common\xxmAutoBuild.pas',
+  xxmWebProject in '..\conv\xxmWebProject.pas',
+  MSXML2_TLB in '..\common\MSXML2_TLB.pas',
+  xxmUtilities in '..\conv\xxmUtilities.pas',
+  xxmPageParse in '..\conv\xxmPageParse.pas',
+  xxmProtoParse in '..\conv\xxmProtoParse.pas';
 
 {$R *.res}
 
 begin
+  XxmAutoBuildHandler:=AutoBuild;
 end.
