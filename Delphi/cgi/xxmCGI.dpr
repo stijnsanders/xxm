@@ -15,9 +15,11 @@ var
   PipeName,s:string;
   pIn:TForwardThread;
   running:boolean;
-  l:cardinal;
+  i,l:cardinal;
+  c:char;
   d:array[0..$FFF] of byte;
   ch:TxxmCGIHeader;
+  px:PChar;
 begin
   PipeName:='xxm';
   //TODO parse command line
@@ -29,7 +31,9 @@ begin
     not(ReadFile(hPipe,ch,SizeOf(ch),l,nil)) then
    begin
     //TODO: auto-start xxmHost?
-    s:='500 ERROR'#13#10'Content-type: text/plain'#13#10#13#10'Error connecting to xxm request handler process'#13#10;
+    //TODO: retry+timeout?
+    ExitCode:=500;
+    s:='Content-type: text/plain'#13#10#13#10'Error connecting to xxm request handler process'#13#10;
     l:=Length(s);
     WriteFile(hOut,s[1],l,l,nil);
    end
@@ -42,11 +46,24 @@ begin
     DuplicateHandle(hSProc,ch.PipeRequest,GetCurrentProcess,@hReq,0,true,DUPLICATE_CLOSE_SOURCE or DUPLICATE_SAME_ACCESS);
     DuplicateHandle(hSPRoc,ch.PipeResponse,GetCurrentProcess,@hRes,0,true,DUPLICATE_CLOSE_SOURCE or DUPLICATE_SAME_ACCESS);
 
+    px:=GetEnvironmentStrings;
+    c:=px[0];
+    i:=1;
+    while not((c=#0) and (px[i]=#0)) do
+     begin
+      c:=px[i];
+      inc(i);
+     end;
+    WriteFile(hReq,i,4,l,nil);
+    WriteFile(hReq,px[0],i,l,nil);
+
     //TODO: revise thread into async io
     pIn:=TForwardThread.Create(hIn,hReq);
     try
 
-      running:=true;
+      i:=500;//default
+      running:=ReadFile(hRes,i,4,l,nil);
+      ExitCode:=i;//i and $FFFF, upper word reserved
       while running do
        begin
         l:=$10000;
@@ -54,6 +71,7 @@ begin
        end;
 
     finally
+      FlushFileBuffers(hOut);
       CloseHandle(hReq);
       CloseHandle(hRes);
       CloseHandle(hIn);//force thread out of ReadFile on hIn

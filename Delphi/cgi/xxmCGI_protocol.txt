@@ -1,0 +1,15 @@
+xxmCGI.exe opens named pipe "\\.\pipe\xxm"
+
+xxmHost.exe answers a TxxmCGIHeader structure (defined in xxmCGIHeader.pas) with:
+- the xxmHost process ID (used by xxmCGI.exe for DuplicateHandle calls)
+- a request handle to send the request data to
+- a response handle to read the response from
+
+xxmCGI sends
+- the size in bytes (integer 4 bytes) of all environment name-value pairs, delimited by a null character, ending the list with an empty entry
+- the environment name-value pairs
+- any request data
+
+xxmHost sends
+- the HTTP response status code (integer 4 bytes)
+- the response data, starting with the HTTP header

@@ -144,27 +144,29 @@ begin
      end;
     inc(q);
 
-    //assert not(q-p=2)
-    r:=p;
-    while (r<=q) and (Value[r] in [#1..#32]) do inc(r);
-    if r=p then
+    if not(q-p=2) then
      begin
-      SetLength(Params,i+1);
-      Params[i].NameStart:=p;
       r:=p;
-      while (r<=q) and not(Value[r]=':') do inc(r);
-      Params[i].NameLength:=r-p;
-      inc(r);
       while (r<=q) and (Value[r] in [#1..#32]) do inc(r);
-      Params[i].ValueStart:=r;
-      Params[i].ValueLength:=q-r-2;//2 from Length(EOL)
-      inc(i);
-     end
-    else
-     begin
-      //assert not(i=0)
-      Params[i].ValueLength:=q-Params[i].ValueStart-2;
-      //TODO: kill EOF and whitespace?
+      if r=p then
+       begin
+        SetLength(Params,i+1);
+        Params[i].NameStart:=p;
+        r:=p;
+        while (r<=q) and not(Value[r]=':') do inc(r);
+        Params[i].NameLength:=r-p;
+        inc(r);
+        while (r<=q) and (Value[r] in [#1..#32]) do inc(r);
+        Params[i].ValueStart:=r;
+        Params[i].ValueLength:=q-r-2;//2 from Length(EOL)
+        inc(i);
+       end
+      else
+       begin
+        //assert not(i=0)
+        Params[i].ValueLength:=q-Params[i].ValueStart-2;
+        //TODO: kill EOF and whitespace?
+       end;
      end;
    end;
 end;

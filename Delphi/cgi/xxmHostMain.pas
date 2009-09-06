@@ -9,20 +9,35 @@ const
   XxmMaxIncludeDepth=64;//TODO: setting?
 
 type
+  TXxmPostDataStream=class(TCustomMemoryStream)
+  private
+    FInput:THandle;
+    FInputRead,FInputSize:cardinal;
+  public
+    constructor Create(Input:THandle;InputSize:cardinal);
+    destructor Destroy; override;
+    function Write(const Buffer; Count: Integer): Integer; override;
+    function Read(var Buffer; Count: Integer): Integer; override;
+    procedure SetSize(NewSize: Integer); override;
+  end;
+
   TXxmHostedContext=class(TInterfacedObject, IXxmContext, IxxmHttpHeaders)
   private
     FPipeIn,FPipeOut:THandle;
+    FCGIValues:array of record
+      Name,Value:string;
+    end;
     FReqHeaders:TRequestHeaders;
     FResHeaders:TResponseHeaders;
     FHeaderSent:boolean;
     FPage, FBuilding: IXxmFragment;
     FConnected:boolean;
-    FHTTPVersion,FVerb,FURI,FSessionID:string;
+    FURI,FRedirectPrefix,FSessionID:string;
     FProjectEntry:TXxmProjectCacheEntry;
     FParams: TXxmReqPars;
     FIncludeDepth:integer;
     FStatusCode:integer;
-    FStatusText,FProjectName,FFragmentName:string;
+    FProjectName,FFragmentName:string;
     FContentType: WideString;
     FAutoEncoding: TXxmAutoEncoding;
     FCookieParsed: boolean;
@@ -31,7 +46,7 @@ type
     FPostData:TStream;
     FPageClass:string;
     FQueryStringIndex:integer;
-    function PipeReadLine:string;
+    function GetCGIValue(Name:string):string;
     procedure HeaderOK;
     function CheckHeader: boolean;
     procedure SendRaw(Data: WideString);
@@ -131,13 +146,13 @@ begin
   FPage:=nil;
   FCookieParsed:=false;
   FStatusCode:=200;
-  FStatusText:='OK';
   FPostData:=nil;
   FIncludeDepth:=0;
   FPageClass:='';
   FQueryStringIndex:=1;
   FSessionID:='';//see GetSessionID
   FURI:='';//see Execute
+  FRedirectPrefix:='';//see Execute
 end;
 
 destructor TXxmHostedContext.Destroy;
@@ -156,6 +171,7 @@ begin
     (FResHeaders as IUnknown)._Release;
     FResHeaders:=nil;
    end;
+  SetLength(FCGIValues,0);
   FreeAndNil(FPostData);
   if not(FProjectEntry=nil) then
    begin
@@ -167,40 +183,55 @@ end;
 
 procedure TXxmHostedContext.Execute;
 var
-  i,j,l:integer;
+  i,j,k,l:integer;
+  l1:cardinal;
+  c:char;
   x,y:string;
   p:IxxmPage;
 begin
   try
-    //command line
-    x:=PipeReadLine;
-    l:=Length(x);
-    j:=l;
-    while (j>0) and not(x[j]=' ') do dec(j);
-    FHTTPVersion:=Copy(x,j+1,l-j);
-    dec(j);
-    i:=0;
-    while (i<l) and not(x[i]=' ') do inc(i);
-    FVerb:=UpperCase(Copy(x,1,i-1));
-    inc(i);
+    //read CGI values
+    if not(ReadFile(FPipeIn,l,4,l1,nil)) then RaiseLastOSError;
+    SetLength(x,l);
+    if not(ReadFile(FPipeIn,x[1],l,l1,nil)) then RaiseLastOSError;
+    //process values
+    i:=1;
+    while (i<l) do
+     begin
+      j:=i;
+      while (j<=l) and not(x[j]='=') do inc(j);
+      k:=j+1;
+      while (k<=l) and not(x[k]=#0) do inc(k);
+      if (j-i>4) and (Copy(x,i,5)='HTTP_') then
+       begin
+        y:=y+x[i+5]+LowerCase(StringReplace(Copy(x,i+6,j-i-6),'_','-',[rfReplaceAll]))+': '+Copy(x,j+1,k-j-1)+#13#10;
+       end
+      else
+       begin
+        SetLength(FCGIValues,i+1);
+        FCGIValues[i].Name:=Copy(x,i,j-i);
+        FCGIValues[i].Value:=Copy(x,j+1,k-j-1);
+        inc(i);
+        if i=HTTPMaxHeaderLines then
+          raise EXxmMaximumHeaderLines.Create(SXxmMaximumHeaderLines);
+       end;
+      i:=k+1;
+     end;
+    y:=y+#13#10;
 
-    FURI:=Copy(x,i,j-i+1);
-
-    //headers
-    i:=0;
-    x:='';
-    repeat
-     y:=PipeReadLine;
-     if not(y='') then
-      begin
-       inc(i);
-       if i=HTTPMaxHeaderLines then
-         raise EXxmMaximumHeaderLines.Create(SXxmMaximumHeaderLines);
-       x:=x+y+#13#10;
-      end;
-    until y='';
-    FReqHeaders:=TRequestHeaders.Create(x);
+    FReqHeaders:=TRequestHeaders.Create(y);
     (FReqHeaders as IUnknown)._AddRef;
+
+    x:=GetCGIValue('SCRIPT_NAME');
+    y:=GetCGIValue('REQUEST_URI');
+    l:=Length(x);
+    if x=Copy(y,1,l) then
+     begin
+      FURI:=Copy(y,l+1,Length(y)-l);
+      FRedirectPrefix:=x;
+     end
+    else
+      FURI:=y;
 
     //'Authorization' ?
     //'If-Modified-Since' ? 304
@@ -214,56 +245,37 @@ begin
 
     //TODO: RequestHeaders['Host']?
     l:=Length(FURI);
-    if not(FURI='') and (FURI[1]='/') then
+    i:=2;
+    if XxmProjectCache.SingleProject='' then
      begin
-      i:=2;
-      if XxmProjectCache.SingleProject='' then
+      while (i<=l) and not(FURI[i] in ['/','?','&','$','#']) do inc(i);
+      FProjectName:=Copy(FURI,2,i-2);
+      if FProjectName='' then
        begin
-        while (i<=l) and not(FURI[i] in ['/','?','&','$','#']) do inc(i);
-        FProjectName:=Copy(FURI,2,i-2);
-        if FProjectName='' then
-         begin
-          if (i<=l) and (FURI[i]='/') then x:='' else x:='/';
-          Redirect('/'+XxmProjectCache.DefaultProject+x+Copy(FURI,i,l-i+1),true);
-         end;
-        FPageClass:='['+FProjectName+']';
-        if (i<=l) then inc(i) else if l>1 then Redirect(FURI+'/',true);
-       end
-      else
-       begin
-        FProjectName:=XxmProjectCache.SingleProject;
-        FPageClass:='[SingleProject]';
+        if (i<=l) and (FURI[i]='/') then x:='' else x:='/';
+        Redirect('/'+XxmProjectCache.DefaultProject+x+Copy(FURI,i,l-i+1),true);
        end;
-      j:=i;
-      while (i<=l) and not(FURI[i] in ['?','&','$','#']) do inc(i);
-      FFragmentName:=Copy(FURI,j,i-j);
-      if (i<=l) then inc(i);
-      FQueryStringIndex:=i;
+      FPageClass:='['+FProjectName+']';
+      if (i<=l) then inc(i) else if l>1 then Redirect(FURI+'/',true);
+      FRedirectPrefix:=FRedirectPrefix+'/'+FProjectName;
      end
     else
      begin
-      FStatusCode:=400;
-      FStatusText:='Bad Request';
-      FProjectName:='';
-      FFragmentName:='';
-      SendError('error',[
-        'URL',HTMLEncode(FURI),
-        'CLASS','',
-        'POSTDATA','',
-        'QUERYSTRING','',
-        'ERROR','Bad Request',
-        'ERRORCLASS','',
-        'VERSION',ContextString(csVersion)
-      ]);
-      raise EXxmPageRedirected.Create(FHTTPVersion+' 400 Bad Request');
+      FProjectName:=XxmProjectCache.SingleProject;
+      FPageClass:='[SingleProject]';
      end;
+    j:=i;
+    while (i<=l) and not(FURI[i] in ['?','&','$','#']) do inc(i);
+    FFragmentName:=Copy(FURI,j,i-j);
+    if (i<=l) then inc(i);
+    FQueryStringIndex:=i;
 
     //assert headers read and parsed
     //TODO: HTTP/1.1 100 Continue?
 
     //if not(Verb='GET') then?
-    x:=FReqHeaders['Content-Length'];
-    if not(x='') then FPostData:=THandleStream.Create(FPipeIn);
+    x:=GetCGIValue('CONTENT_LENGTH');
+    if not(x='') then FPostData:=TXxmPostDataStream.Create(FPipeIn,StrToInt(x));
 
     FProjectEntry:=XxmProjectCache.GetProject(FProjectName);
     if not(@XxmAutoBuildHandler=nil) then
@@ -342,7 +354,6 @@ begin
      begin
       //TODO: get fragment 500.xxm?
       FStatusCode:=500;//TODO:setting?
-      FStatusText:='Internal Server Error';
       try
         if FPostData=nil then x:='none' else x:=IntToStr(FPostData.Size)+' bytes';
       except
@@ -370,27 +381,23 @@ end;
 function TXxmHostedContext.ContextString(cs: TXxmContextString): WideString;
 begin
   case cs of
-    csVersion:Result:=SelfVersion;
+    csVersion:Result:=SelfVersion+' '+GetCGIValue('SERVER_SOFTWARE');
     csExtraInfo:Result:='';//???
-    csVerb:Result:=FVerb;
+    csVerb:Result:=GetCGIValue('REQUEST_METHOD');
     csQueryString:Result:=Copy(FURI,FQueryStringIndex,Length(FURI)-FQueryStringIndex+1);
     csUserAgent:Result:=FReqHeaders['User-Agent'];
     csAcceptedMimeTypes:Result:=FReqHeaders['Accept'];//TODO:
-    csPostMimeType:Result:=FReqHeaders['Post-Mime'];//TODO:
+    csPostMimeType:Result:=GetCGIValue('CONTENT_TYPE');//TODO:
     csURL:Result:=GetURL;
     csProjectName:Result:=FProjectName;
     csLocalURL:Result:=FFragmentName;
     csReferer:Result:=FReqHeaders['Referer'];//TODO:
     csLanguage:Result:=FReqHeaders['Language'];//TODO:
 
-    csRemoteAddress:Result:='127.0.0.1';//TODO:??
-    csRemoteHost:
-     begin
-      Result:=FReqHeaders['Host'];//TODO:??
-      if Result='' then Result:='localhost';
-     end;
-    csAuthUser:Result:='';//TODO:
-    csAuthPassword:Result:='';//TODO:
+    csRemoteAddress:Result:=GetCGIValue('REMOTE_ADDR');
+    csRemoteHost:Result:=GetCGIValue('REMOTE_HOST');
+    csAuthUser:GetCGIValue('AUTH_USER');
+    csAuthPassword:GetCGIValue('AUTH_PASSWORD');
     else
       raise EXxmContextStringUnknown.Create(StringReplace(
         SXxmContextStringUnknown,'__',IntToHex(integer(cs),8),[]));
@@ -527,7 +534,7 @@ begin
       s:='localhost';//TODO: from binding? setting;
       //if not(Port='80') then s:=s+':'+IntToStr(Port);//TODO:?
      end;
-    Result:=Result+s+FURI;
+    Result:=Result+s+GetCGIValue('REQUEST_URI');//+FURI;
    end;
 end;
 
@@ -535,7 +542,7 @@ procedure TXxmHostedContext.SetStatus(Code: integer; Text: WideString);
 begin
   HeaderOK;
   FStatusCode:=Code;
-  FStatusText:=Text;
+  //FStatusText:=Text;
   //StatusSet:=true;
 end;
 
@@ -587,14 +594,15 @@ end;
 
 procedure TXxmHostedContext.Redirect(RedirectURL: WideString;
   Relative: boolean);
+var
+  s:string;
 begin
   inherited;
   HeaderOK;
   FStatusCode:=301;
-  FStatusText:='Moved Permanently';
-  //TODO: relative
-  FResHeaders['Location']:=RedirectURL;
-  //TODO: move this to execute's except?
+  s:=RedirectURL;
+  if Relative and not(RedirectURL='') and (RedirectURL[1]='/') then s:=FRedirectPrefix+s;
+  FResHeaders['Location']:=s;
   SendHTML('<a href="'+HTMLEncode(RedirectURL)+'">'+HTMLEncode(RedirectURL)+'</a>');
   raise EXxmPageRedirected.Create(RedirectURL);
 end;
@@ -661,22 +669,26 @@ procedure TXxmHostedContext.SendStream(s: TStream);
 var
   l:Int64;
   l1:cardinal;
-  d:array[0..$FFF] of byte;
+  d:array[0..$FFFF] of byte;
+  b:boolean;
 begin
+  b:=true;
   l:=s.Size;
-  FResHeaders['Content-Length']:=IntToStr(l);
-  FResHeaders['Accept-Ranges']:='bytes';
-  //TODO: keep-connection since content-length known?
-  //if not(s.Size=0) then
+  if not(FHeaderSent) then
    begin
-    CheckHeader;
-    while not(l=0) do
-     begin
-      if l>$1000 then l1:=$1000 else l1:=l;
-      l1:=s.Read(d[0],l1);
-      WriteFile(FPipeOut,d[0],l1,l1,nil);
-     end;
+    FResHeaders['Content-Length']:=IntToStr(l);
+    FResHeaders['Accept-Ranges']:='bytes';
    end;
+  //TODO: keep-connection since content-length known?
+  CheckHeader;
+  while not(l=0) and b do
+   begin
+    if l>$10000 then l1:=$10000 else l1:=l;
+    l1:=s.Read(d[0],l1);
+    b:=WriteFile(FPipeOut,d[0],l1,l1,nil);
+    l:=l-l1;
+   end;
+  if not(b) then RaiseLastOSError;
 end;
 
 function TXxmHostedContext.CheckHeader:boolean;
@@ -696,8 +708,8 @@ begin
       aeIso8859:FResHeaders['Content-Type']:=FContentType+'; charset="iso-8859-15"';
       else      FResHeaders['Content-Type']:=FContentType;
     end;
-    x:=FHTTPVersion+' '+IntToStr(FStatusCode)+' '+FStatusText+#13#10+
-      FResHeaders.Build+#13#10;
+    WriteFile(FPipeOut,FStatusCode,4,l,nil);
+    x:=FResHeaders.Build+#13#10;
     WriteFile(FPipeOut,x[1],Length(x),l,nil);
     FHeaderSent:=true;
    end;
@@ -770,21 +782,63 @@ begin
   Result:=FResHeaders;
 end;
 
-function TXxmHostedContext.PipeReadLine: string;
+function TXxmHostedContext.GetCGIValue(Name: string): string;
 var
-  dl,dx:integer;
-  l:cardinal;
+  i,l:integer;
 begin
-  dl:=$1000;
-  dx:=0;
-  SetLength(Result,dl);
-  while not((dx>1) and (Result[dx-1]=#13) and (Result[dx]=#10)) do
+  i:=0;
+  l:=Length(FCGIValues);
+  while (i<l) and not(Name=FCGIValues[i].Name) do inc(i); //TODO: case-insensitive?
+  if i=l then Result:='' else Result:=FCGIValues[i].Value;
+end;
+
+{ TXxmPostDataStream }
+
+constructor TXxmPostDataStream.Create(Input:THandle;InputSize:cardinal);
+begin
+  inherited Create;
+  FInput:=Input;
+  FInputRead:=0;
+  FInputSize:=InputSize;
+  SetPointer(GlobalAllocPtr(GMEM_MOVEABLE,FInputSize),FInputSize);
+end;
+
+destructor TXxmPostDataStream.Destroy;
+begin
+  GlobalFreePtr(Memory);
+  inherited;
+end;
+
+function TXxmPostDataStream.Read(var Buffer; Count: Integer): Integer;
+var
+  l:cardinal;
+  p:pointer;
+begin
+  l:=Position+Count;
+  if l>FInputSize then l:=FInputSize;
+  if l>FInputRead then
    begin
-    if not(ReadFile(FPipeIn,Result[dx+1],1,l,nil)) then RaiseLastOSError;
-    if l=0 then Sleep(1) else
-      inc(dx,l);
+    dec(l,FInputRead);
+    if not(l=0) then
+     begin
+      p:=Memory;
+      inc(cardinal(p),FInputRead);
+      if not(ReadFile(FInput,p^,l,l,nil)) then RaiseLastOSError;
+      inc(FInputRead,l);
+     end;
    end;
-  SetLength(Result,dx-2);
+    l:=inherited Read(Buffer,Count);
+  Result:=l;
+end;
+
+procedure TXxmPostDataStream.SetSize(NewSize: Integer);
+begin
+  raise Exception.Create('Post data is read-only.');
+end;
+
+function TXxmPostDataStream.Write(const Buffer; Count: Integer): Integer;
+begin
+  raise Exception.Create('Post data is read-only.');
 end;
 
 end.

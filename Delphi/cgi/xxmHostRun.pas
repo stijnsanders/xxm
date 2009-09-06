@@ -68,7 +68,7 @@ begin
     if h=INVALID_HANDLE_VALUE then
       h:=CreateNamedPipe(PChar('\\.\pipe\'+PipePath),
         PIPE_ACCESS_OUTBOUND,
-        PIPE_TYPE_BYTE or PIPE_NOWAIT,//PIPE_WAIT?
+        PIPE_TYPE_BYTE or PIPE_NOWAIT,
         PIPE_UNLIMITED_INSTANCES,//setting?
         $1000,//in buffer size
         $1000,//out buffer size
