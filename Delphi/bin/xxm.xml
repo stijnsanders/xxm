@@ -1,9 +1,12 @@
 <ProjectRegistry>
 	<Project Name="proto">
-		<ModulePath>C:\data\2008\xxm\bin\xxmProto.xxl</ModulePath>
+		<ModulePath>C:\data\2009\xxm\bin\xxmProto.xxl</ModulePath>
 	</Project>
 	<Project Name="demo" Signature="01C7C726FF61AEE8_645">
-		<ModulePath>C:\data\2008\xxm\demo\demo.xxl</ModulePath>
+		<!--<ModulePath>C:\data\2009\xxm\demo\demo.xxl</ModulePath>-->
+		<ModulePath>C:\Data\2009\xxm\demo2\demo\demo.xxl</ModulePath>
 	</Project>
-	<Project Name="tx"><ModulePath>C:\data\2008\xxm\tx\txWeb\tx.xxl</ModulePath></Project>
+	<Project Name="tx"><ModulePath>C:\data\2009\xxm\tx\txWeb\tx.xxl</ModulePath></Project>
+	<Project Name="wordpress"><ModulePath>C:\Data\2009\xxm\demo2\wordpress\wordpress.xxl</ModulePath></Project>
+	<Project Name="tcgi" Alias="proto"></Project>
 </ProjectRegistry>

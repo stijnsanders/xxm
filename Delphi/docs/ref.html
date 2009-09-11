@@ -14,11 +14,26 @@
 <a href="tips.html">tips&amp;tricks</a>
 </p>
 
-<p class="title">Introduction</p>
+<ul>
+<li><a href="#intro">Introduction</a></li>
+<li><a href="#project">Project</a></li>
+<li><a href="#syntax">Syntax</a></li>
+<li><a href="#proto">Proto</a></li>
+<li><a href="#interface">Interface</a></li>
+<li><a href="#xxmproject">TxxmProject</a></li>
+<li><a href="#xxmfragment">TxxmFragment, TxxmPage, TxxmInclude</a></li>
+<li><a href="#xxmcontext">IxxmContext</a></li>
+<li><a href="#xxmparameter">IxxmParameter</a></li>
+<li><a href="#xxmversion">XxmVersion</a></li>
+<li><a href="#htmlencode">HTMLEncode</a></li>
+<li><a href="#headers">Headers</a></li>
+</ul>
+
+<p class="title"><a name="intro"></a>Introduction</p>
 
 <p>xxm builds an xxm project into an xxm library. It does this by pre-parsing the xxm and xxmi files into pas files, generating other required Delphi project files, and calling the Delphi compiler. Depending on which installation you choose, you can either call the conversion utility to prepare a project for compiling, or use one of the development installations, to have the xxm library re-compiled when a source file changes.</p>
 
-<p class="title">Project</p>
+<p class="title"><a name="project"></a>Project</p>
 
 <p>An xxm project is a directory with:</p>
 <ul>
@@ -91,7 +106,7 @@ Context.SendHTML('&lt;/b&gt;');</code></p>
 <p>Each xxm project must export a function named "XxmProjectLoad", that creates an instance of the project. (by default provided in the xxmp.pas file)</p>
 
 <dl>
-<dt class="title"><a name="xxproject"></a><code>TXxmProject=class(TInterfacedObject, IXxmProject)</code></dt>
+<dt class="title"><a name="xxmproject"></a><code>TXxmProject=class(TInterfacedObject, IXxmProject)</code></dt>
 <dd>An xxm project implements the IXxmProject. (by default provided in the xxmp.pas file)</dd>
 
 <dt><code>function LoadPage(Context:IXxmContext;Address:WideString):IXxmFragment;</code></dt>

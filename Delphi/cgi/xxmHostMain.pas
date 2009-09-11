@@ -32,12 +32,12 @@ type
     FHeaderSent:boolean;
     FPage, FBuilding: IXxmFragment;
     FConnected:boolean;
-    FURI,FRedirectPrefix,FSessionID:string;
+    FURI,FURLPrefix,FRedirectPrefix,FSessionID:string;
     FProjectEntry:TXxmProjectCacheEntry;
     FParams: TXxmReqPars;
     FIncludeDepth:integer;
     FStatusCode:integer;
-    FProjectName,FFragmentName:string;
+    FStatusText,FProjectName,FFragmentName:string;
     FContentType: WideString;
     FAutoEncoding: TXxmAutoEncoding;
     FCookieParsed: boolean;
@@ -146,13 +146,15 @@ begin
   FPage:=nil;
   FCookieParsed:=false;
   FStatusCode:=200;
+  FStatusText:='OK';
   FPostData:=nil;
   FIncludeDepth:=0;
   FPageClass:='';
   FQueryStringIndex:=1;
   FSessionID:='';//see GetSessionID
   FURI:='';//see Execute
-  FRedirectPrefix:='';//see Execute
+  FURLPrefix:='';//see Execute
+  FRedirectPrefix:='';
 end;
 
 destructor TXxmHostedContext.Destroy;
@@ -183,9 +185,8 @@ end;
 
 procedure TXxmHostedContext.Execute;
 var
-  i,j,k,l:integer;
+  i,j,k,l,m:integer;
   l1:cardinal;
-  c:char;
   x,y:string;
   p:IxxmPage;
 begin
@@ -196,6 +197,7 @@ begin
     if not(ReadFile(FPipeIn,x[1],l,l1,nil)) then RaiseLastOSError;
     //process values
     i:=1;
+    m:=0;
     while (i<l) do
      begin
       j:=i;
@@ -207,14 +209,15 @@ begin
         y:=y+x[i+5]+LowerCase(StringReplace(Copy(x,i+6,j-i-6),'_','-',[rfReplaceAll]))+': '+Copy(x,j+1,k-j-1)+#13#10;
        end
       else
-       begin
-        SetLength(FCGIValues,i+1);
-        FCGIValues[i].Name:=Copy(x,i,j-i);
-        FCGIValues[i].Value:=Copy(x,j+1,k-j-1);
-        inc(i);
-        if i=HTTPMaxHeaderLines then
-          raise EXxmMaximumHeaderLines.Create(SXxmMaximumHeaderLines);
-       end;
+        if j<=l then
+         begin
+          SetLength(FCGIValues,m+1);
+          FCGIValues[m].Name:=Copy(x,i,j-i);
+          FCGIValues[m].Value:=Copy(x,j+1,k-j-1);
+          inc(m);
+          if i=HTTPMaxHeaderLines then
+            raise EXxmMaximumHeaderLines.Create(SXxmMaximumHeaderLines);
+         end;
       i:=k+1;
      end;
     y:=y+#13#10;
@@ -222,16 +225,27 @@ begin
     FReqHeaders:=TRequestHeaders.Create(y);
     (FReqHeaders as IUnknown)._AddRef;
 
+    x:=GetCGIValue('SERVER_PROTOCOL');//http or https
+    i:=1;
+    l:=Length(x);
+    while (i<=l) and not(x[i]='/') do inc(i);
+    y:=FReqHeaders['Host'];
+    if y='' then y:='localhost';//if not port=80 then +':'+?
+    FURLPrefix:=LowerCase(Copy(x,1,i-1))+'://'+y;
+
     x:=GetCGIValue('SCRIPT_NAME');
     y:=GetCGIValue('REQUEST_URI');
     l:=Length(x);
     if x=Copy(y,1,l) then
      begin
       FURI:=Copy(y,l+1,Length(y)-l);
-      FRedirectPrefix:=x;
+      FURLPrefix:=FURLPrefix+x;
      end
     else
+     begin
       FURI:=y;
+      //FURLPrefix:= should be ok
+     end;
 
     //'Authorization' ?
     //'If-Modified-Since' ? 304
@@ -253,11 +267,11 @@ begin
       if FProjectName='' then
        begin
         if (i<=l) and (FURI[i]='/') then x:='' else x:='/';
-        Redirect('/'+XxmProjectCache.DefaultProject+x+Copy(FURI,i,l-i+1),true);
+        Redirect(FURLPrefix+'/'+XxmProjectCache.DefaultProject+x+Copy(FURI,i,l-i+1),false);
        end;
       FPageClass:='['+FProjectName+']';
-      if (i<=l) then inc(i) else if l>1 then Redirect(FURI+'/',true);
-      FRedirectPrefix:=FRedirectPrefix+'/'+FProjectName;
+      if (i<=l) then inc(i) else if l>1 then Redirect(FURLPrefix+FURI+'/',false);
+      FRedirectPrefix:=FURLPrefix+'/'+FProjectName;
      end
     else
      begin
@@ -354,6 +368,7 @@ begin
      begin
       //TODO: get fragment 500.xxm?
       FStatusCode:=500;//TODO:setting?
+      FStatusText:='Internal Server Error';
       try
         if FPostData=nil then x:='none' else x:=IntToStr(FPostData.Size)+' bytes';
       except
@@ -522,27 +537,15 @@ begin
 end;
 
 function TXxmHostedContext.GetURL: WideString;
-var
-  s:string;
 begin
-  if FReqHeaders=nil then Result:='' else
-   begin
-    Result:='http://';//TODO: get from port? ssl?
-    s:=FReqHeaders['Host'];
-    if s='' then
-     begin
-      s:='localhost';//TODO: from binding? setting;
-      //if not(Port='80') then s:=s+':'+IntToStr(Port);//TODO:?
-     end;
-    Result:=Result+s+GetCGIValue('REQUEST_URI');//+FURI;
-   end;
+  Result:=FURLPrefix+FURI;
 end;
 
 procedure TXxmHostedContext.SetStatus(Code: integer; Text: WideString);
 begin
   HeaderOK;
   FStatusCode:=Code;
-  //FStatusText:=Text;
+  FStatusText:=Text;
   //StatusSet:=true;
 end;
 
@@ -600,11 +603,12 @@ begin
   inherited;
   HeaderOK;
   FStatusCode:=301;
+  FStatusText:='Moved Permamently';
   s:=RedirectURL;
   if Relative and not(RedirectURL='') and (RedirectURL[1]='/') then s:=FRedirectPrefix+s;
   FResHeaders['Location']:=s;
-  SendHTML('<a href="'+HTMLEncode(RedirectURL)+'">'+HTMLEncode(RedirectURL)+'</a>');
-  raise EXxmPageRedirected.Create(RedirectURL);
+  SendHTML('<a href="'+HTMLEncode(s)+'">'+HTMLEncode(s)+'</a>');
+  raise EXxmPageRedirected.Create(s);
 end;
 
 procedure TXxmHostedContext.Send(Data: OleVariant);
@@ -709,7 +713,8 @@ begin
       else      FResHeaders['Content-Type']:=FContentType;
     end;
     WriteFile(FPipeOut,FStatusCode,4,l,nil);
-    x:=FResHeaders.Build+#13#10;
+    x:=//GetCGIValue('SERVER_PROTOCOL')+' '+IntToStr(FStatusCode)+' '+FStatusText+#13#10+
+      FResHeaders.Build+#13#10;
     WriteFile(FPipeOut,x[1],Length(x),l,nil);
     FHeaderSent:=true;
    end;
