@@ -17,7 +17,8 @@ uses
   xxmParams in '..\common\xxmParams.pas',
   xxmParUtils in '..\common\xxmParUtils.pas',
   xxmGeckoStreams in 'xxmGeckoStreams.pas',
-  xxmAutoUpdate in '..\common\xxmAutoUpdate.pas';
+  xxmAutoUpdate in '..\common\xxmAutoUpdate.pas',
+  xxmCommonUtils in '..\common\xxmCommonUtils.pas';
 
 {$R *.res}
 

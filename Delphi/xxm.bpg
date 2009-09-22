@@ -9,9 +9,9 @@ MAKE = $(ROOT)\bin\make.exe -$(MAKEFLAGS) -f$**
 DCC = $(ROOT)\bin\dcc32.exe $**
 BRCC = $(ROOT)\bin\brcc32.exe $**
 #------------------------------------------------------------------------------
-PROJECTS = xxmConv.exe xxmProto.xxl xxmRun.exe xxmLocal.dll xxmLocalAU.dll xxmLocalDev.dll xxmIsapiEx.dll xxmIsapiAU.dll \
-  xxmIsapiDev.dll xxmHttp.exe xxmHttpAU.exe xxmHttpDev.exe xxmHttpSvc.exe xxmHttpSvcAU.exe xxmCGI.exe xxmHost.exe xxmHostAU.exe \
-  xxmHostDev.exe xxmHostSvc.exe xxmHostSvcAU.exe
+PROJECTS = xxmConv.exe xxmProto.xxl xxmRun.exe xxmLocal.dll xxmLocalAU.dll xxmLocalDev.dll xxmGecko.dll xxmGeckoAU.dll \
+  xxmGeckoDev.dll xxmIsapiEx.dll xxmIsapiAU.dll xxmIsapiDev.dll xxmApache.dll xxmHttp.exe xxmHttpAU.exe xxmHttpDev.exe \
+  xxmHttpSvc.exe xxmHttpSvcAU.exe xxmCGI.exe xxmHost.exe xxmHostAU.exe xxmHostDev.exe xxmHostSvc.exe xxmHostSvcAU.exe
 #------------------------------------------------------------------------------
 default: $(PROJECTS)
 #------------------------------------------------------------------------------
@@ -74,6 +74,18 @@ xxmHostSvc.exe: cgi\xxmHostSvc.dpr
   $(DCC)
 
 xxmHostSvcAU.exe: cgi\xxmHostSvcAU.dpr
+  $(DCC)
+
+xxmApache.dll: apache\xxmApache.dpr
+  $(DCC)
+
+xxmGecko.dll: gecko\xxmGecko.dpr
+  $(DCC)
+
+xxmGeckoAU.dll: gecko\xxmGeckoAU.dpr
+  $(DCC)
+
+xxmGeckoDev.dll: gecko\xxmGeckoDev.dpr
   $(DCC)
 
 

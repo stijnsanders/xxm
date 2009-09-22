@@ -457,8 +457,8 @@ begin
     csVerb:Result:=FVerb;
     csQueryString:Result:=Copy(FURI,FQueryStringIndex,Length(FURI)-FQueryStringIndex+1);
     csUserAgent:Result:=FReqHeaders['User-Agent'];
-    csAcceptedMimeTypes:Result:=FReqHeaders['Accept'];//TODO:
-    csPostMimeType:Result:=FReqHeaders['Post-Mime'];//TODO:
+    csAcceptedMimeTypes:Result:=FReqHeaders['Accept'];
+    csPostMimeType:Result:=FReqHeaders['Content-Type'];
     csURL:Result:=GetURL;
     csProjectName:Result:=FProjectName;
     csLocalURL:Result:=FFragmentName;
@@ -514,8 +514,8 @@ function TXxmHttpContext.GetCookie(Name: WideString): WideString;
 begin
   if not(FCookieParsed) then
    begin
-    FCookie:=';'+FReqHeaders['Cookie'];
-    SplitHeaderValue(FCookie,1,Length(FCookie),FCookieIdx);
+    FCookie:=FReqHeaders['Cookie'];
+    SplitHeaderValue(FCookie,0,Length(FCookie),FCookieIdx);
     FCookieParsed:=true;
    end;
   Result:=GetParamValue(FCookie,FCookieIdx,Name);
@@ -756,9 +756,12 @@ end;
 
 procedure TXxmHttpContext.SendStream(s: TStream);
 begin
-  FResHeaders['Content-Length']:=IntToStr(s.Size);
-  FResHeaders['Accept-Ranges']:='bytes';
-  //TODO: keep-connection since content-length known?
+  if not(FHeaderSent) then
+   begin
+    FResHeaders['Content-Length']:=IntToStr(s.Size);
+    FResHeaders['Accept-Ranges']:='bytes';
+    //TODO: keep-connection since content-length known?
+   end;
   //if not(s.Size=0) then
    begin
     CheckHeader;

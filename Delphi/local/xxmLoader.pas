@@ -331,7 +331,9 @@ begin
     while (i<=l) and not(Char(FURL[i]) in ['?','&','$','#']) do inc(i);
     FFragmentName:=Copy(FURL,j,i-j);
     if (FURL[i]='?') then inc(i);
-    FQueryString:=Copy(FURL,i,l-i+1);
+    j:=i;
+    while (j<=l) and not(FURL[j]='#') do inc(j);
+    FQueryString:=Copy(FURL,i,j-i);
 
     //IHttpNegotiate here? see GetRequestParam
 
@@ -1054,6 +1056,7 @@ begin
   HeaderOK;
   FProjectEntry.SetSessionCookie(Name,Value);
   //TODO: clear persistent one or change it's value?
+  //TODO: make this value 'unavailable' from GetCookie until next request
   DeleteFile(FProjectEntry.CookieFile(Name));
 end;
 

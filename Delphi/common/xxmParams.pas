@@ -43,7 +43,6 @@ type
   end;
 
   TXxmReqParPost=class(TXxmReqPar, IXxmParameterPost)
-    //TODO: store header?
   end;
 
   TXxmReqParPostFile=class(TXxmReqParPost, IXxmParameterPostFile)
@@ -233,7 +232,6 @@ begin
            end;
 
           //TODO: transfer encoding?
-          //TODO: store header (defined in xxm.pas?)
 
           if pm='' then Add(TXxmReqParPost.Create(Self,px,sn.GetString(pb))) else
            begin

@@ -225,7 +225,7 @@ provides information about the incoming request
 <dt><code>procedure SetCookie(Name,Value:WideString); overload;<br />
     procedure SetCookie(Name,Value:WideString; KeepSeconds:cardinal;<br />
       Comment,Domain,Path:WideString; Secure,HttpOnly:boolean); overload;</code></dt>
-<dd>includes a cookie in the response</dd>
+<dd>includes a cookie in the response, <b>Attention:</b> calling Cookie[] with the same Name as SetCookie has been called, will not return the same Value in the same request as SetCookie has been called.</dd>
 
 <dt><code>procedure DispositionAttach(FileName: WideString);</code></dt>
 <dd>notifies the browser to show a 'save as' dialog to store the contents of the response</dd>

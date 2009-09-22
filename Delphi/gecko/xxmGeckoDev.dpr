@@ -23,7 +23,8 @@ uses
   MSXML2_TLB in '..\common\MSXML2_TLB.pas',
   xxmUtilities in '..\conv\xxmUtilities.pas',
   xxmPageParse in '..\conv\xxmPageParse.pas',
-  xxmProtoParse in '..\conv\xxmProtoParse.pas';
+  xxmProtoParse in '..\conv\xxmProtoParse.pas',
+  xxmCommonUtils in '..\common\xxmCommonUtils.pas';
 
 {$R *.res}
 

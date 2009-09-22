@@ -825,8 +825,8 @@ function TXxmIsapiContext.GetCookie(Name: WideString): WideString;
 begin
   if not(FCookieParsed) then
    begin
-    FCookie:=';'+GetVar(ecb,'HTTP_COOKIE');
-    SplitHeaderValue(FCookie,1,Length(FCookie),FCookieIdx);
+    FCookie:=GetVar(ecb,'HTTP_COOKIE');
+    SplitHeaderValue(FCookie,0,Length(FCookie),FCookieIdx);
     FCookieParsed:=true;
    end;
   Result:=GetParamValue(FCookie,FCookieIdx,Name);

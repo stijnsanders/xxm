@@ -35,10 +35,10 @@
 <dd>HTML and embedded code are re-parsed into a Delphi project, which is compiled and run. This beats parsing the same code over and over again, even with cached parse-data. Light-weight libraries can get loaded by the web-server and even shared by instances on the same server. Also, Delphi's compiler is already known to be one of the fastest around.</dd>
 
 <dt>speed</dt>
-<dd>Not only will a compiled module perform better than scripting, the Delphi compiler is really fast, and only compiles changed source-files, which makes it as painless to code for xxm as any parsed platform.</dd>
+<dd>Not only will a compiled module perform better than scripting, the Delphi compiler is really fast, and only compiles changed source-files, which makes it as painless to code for xxm as any parsed platform. Also, xxm's internals are all geared towards getting data in and out as fast and as direct as possible. Other Delphi-Web-tools have the nasty habit of reading all of the request data first, and building all of the response data before sending it. xxm provides the PostData stream, with its position at zero, ready for you to read from, even with the client still sending data. Also all data that you send is sent to the client as soon as possible.</dd>
 
 <dt>portability</dt>
-<dd>In a develop-release-environment, only the compiled module needs to get published to the live server(s) for the web-application to run. This adds to security.</dd>
+<dd>In a develop-release-environment, only the compiled module needs to get published to the live server(s) for the web-application to run. This adds to security and is less data. Also no resources on the live servers are wasted on processing source-files (again).</dd>
 
 <dt>extensibility</dt>
 <dd>Since the embedded code is re-worked for the Delphi compiler to build, any code that would work in Delphi works. Which enables easy access to existing projects or platforms and re-use of code.</dd>

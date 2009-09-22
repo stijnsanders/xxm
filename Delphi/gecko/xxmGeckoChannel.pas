@@ -42,6 +42,9 @@ type
     FParams: TXxmReqPars;
     FAutoEncoding: TXxmAutoEncoding;
     FRequestHeaders,FResponseHeaders:TResponseHeaders;//both TResponseHeaders?! see Create
+    FCookie:string;
+    FCookieIdx: TParamIndexes;
+    FCookieParsed: boolean;
     FSingleFileSent: WideString;
     FTotalSize,FOutputSize,FExportSize,FReportSize:int64;
     FReportPending:boolean;
@@ -233,7 +236,6 @@ type
     FOwner:TxxmChannel;
     FCall:TxxmListenerCall;
     FOffset,FCount:cardinal;
-debugid:string;
   protected
     procedure run; safecall;
   public
@@ -263,7 +265,7 @@ var
 
 implementation
 
-uses ActiveX, Variants, Debug1, nsInit, nsNetUtil;
+uses ActiveX, Variants, nsInit, nsNetUtil, xxmCommonUtils;
 
 resourcestring
   SXxmContextStringUnknown='Unknown ContextString __';
@@ -303,6 +305,7 @@ begin
   (FRequestHeaders as IUnknown)._AddRef;
   FResponseHeaders:=TResponseHeaders.Create;
   (FResponseHeaders as IUnknown)._AddRef;
+  FCookieParsed:=false;
   FSuspendCount:=1;//see AsyncOpen, TxxmListenerCaller/lcActivate
   FConnected:=false;//see AsyncOpen
   FComplete:=false;
@@ -330,12 +333,10 @@ begin
   FRedirectionLimit:=32;//set later?
   FPostData:=nil;
   FRedirectChannel:=nil;
-Debug('++TxxmChannel.Create('+FURL);
 end;
 
 destructor TxxmChannel.Destroy;
 begin
-Debug('-->TxxmChannel.Destroying('+FURL);
   if not(FProjectEntry=nil) then FProjectEntry.CloseContext;
   FProjectEntry:=nil;
   FPage:=nil;
@@ -356,7 +357,6 @@ Debug('-->TxxmChannel.Destroying('+FURL);
   FResponseHeaders:=nil;
   FreeAndNil(FParams);
   FreeAndNil(FPostData);
-Debug('--<TxxmChannel.Destroy('+FURL);
   inherited;
 end;
 
@@ -364,21 +364,18 @@ function TxxmChannel.Open: nsIInputStream;
 begin
   //deprecated: use AsyncOpen
   Result:=nil;
-Debug('TxxmChannel.Open');
   raise EInvalidOperation.Create('Not implemented');
 end;
 
 procedure TxxmChannel.AsyncOpen(aListener: nsIStreamListener;
   aContext: nsISupports);
 begin
-Debug('>>TxxmChannel.AsyncOpen');
   FConnected:=true;
   FListener:=aListener;
   FListenerContext:=aContext;
   if not(FLoadGroup=nil) then FLoadGroup.AddRequest(Self as nsIRequest,nil);
   GeckoLoaderPool.Queue(Self);
   NS_DispatchToCurrentThread(TxxmListenerCaller.Create(Self,lcActivate,0,0));
-Debug('<<TxxmChannel.AsyncOpen');
 end;
 
 procedure TxxmChannel.Execute;
@@ -423,7 +420,9 @@ begin
     while (i<=l) and not(Char(FURL[i]) in ['?','&','$','#']) do inc(i);
     FFragmentName:=Copy(FURL,j,i-j);
     if (FURL[i]='?') then inc(i);
-    FQueryString:=Copy(FURL,i,l-i+1);
+    j:=i;
+    while (j<=l) and not(FURL[j]='#') do inc(j);
+    FQueryString:=Copy(FURL,i,j-i);
 
     //create page object
     if XxmProjectCache=nil then XxmProjectCache:=TXxmProjectCache.Create;
@@ -515,7 +514,6 @@ begin
 
     on e:Exception do
      begin
-Debug('ex:'+e.ClassName+':'+e.Message);
       FStatusCode:=StatusException;
       FStatusText:='ERROR';
       //TODO: get fragment 500.xxm?
@@ -548,7 +546,6 @@ Debug('ex:'+e.ClassName+':'+e.Message);
   end;
 
   FComplete:=true;
-Debug('execute done');
 end;
 
 procedure TxxmChannel.GetName(aName: nsAUTF8String);
@@ -566,8 +563,6 @@ end;
 
 function TxxmChannel.GetRequestSucceeded: PRBool;
 begin
-Debug('TxxmChannel.GetRequestSucceeded');
-  //TODO
   Result:=FStatusCode=200;//FStatus=NS_OK?
   //Result:=FStatusCode in [200,404,500]??
 end;
@@ -579,7 +574,6 @@ end;
 
 function TxxmChannel.GetResponseStatus: PRUint32;
 begin
-Debug('TxxmChannel.GetResponseStatus');
   //CheckHeader(true);?
   Result:=FStatusCode;
 end;
@@ -587,7 +581,6 @@ end;
 procedure TxxmChannel.GetResponseStatusText(
   aResponseStatusText: nsACString);
 begin
-Debug('TxxmChannel.GetResponseStatusText');
   //CheckHeader(true);?
   NS_CStringSetData(aResponseStatusText,PAnsiChar(FStatusText),Length(FStatusText));
 end;
@@ -602,20 +595,17 @@ function TxxmChannel.IsNoCacheResponse: PRBool;
 begin
   //TODO
   Result:=(FSingleFileSent='');
-Debug('TxxmChannel.IsNoCacheResponse:'+BoolToStr(Result,true));
 end;
 
 function TxxmChannel.IsNoStoreResponse: PRBool;
 begin
   //TODO: ?
   Result:=(FSingleFileSent='');
-Debug('TxxmChannel.IsNoStoreResponse:'+BoolToStr(Result,true));
 end;
 
 procedure TxxmChannel.Cancel(aStatus: nsresult);
 begin
   //TODO: test here
-Debug('TxxmChannel.Cancel('+IntToHex(aStatus,8));
   if FConnected then NS_DispatchToMainThread(TxxmListenerCaller.Create(Self,lcAbort,0,0));
   FStatus:=aStatus;
   FConnected:=false;
@@ -651,25 +641,20 @@ begin
   //TODO:
   //check FComplete?
   Result:=FTotalSize;
-Debug('TxxmChannel.GetContentLength:'+IntToStr(Result));
 end;
 
 procedure TxxmChannel.SetContentLength(aContentLength: Integer);
 begin
-Debug('TxxmChannel.SetContentLength:'+IntToStr(aContentLength));
-  //TODO:
   raise EInvalidOperation.Create('Not implemented');
 end;
 
 procedure TxxmChannel.GetContentType(aContentType: nsACString);
 begin
-  Debug('TxxmChannel.GetContentType('+FResponseHeaders['Content-Type']);
   SetCString(aContentType,FResponseHeaders['Content-Type']);
 end;
 
 procedure TxxmChannel.SetContentType(const aContentType: nsACString);
 begin
-  Debug('TxxmChannel.SetContentType('+GetCString(aContentType));
   CheckHeader(false);
   FResponseHeaders['Content-Type']:=GetCString(aContentType);
 end;
@@ -681,7 +666,6 @@ end;
 
 procedure TxxmChannel.SetLoadFlags(aLoadFlags: nsLoadFlags);
 begin
-Debug('TxxmChannel.SetLoadFlags('+IntToHex(aLoadFlags,8));
   FLoadFlags:=aLoadFlags;
 end;
 
@@ -692,21 +676,18 @@ end;
 
 procedure TxxmChannel.SetLoadGroup(aLoadGroup: nsILoadGroup);
 begin
-Debug('TxxmChannel.SetLoadGroup');
   //TODO: unregister if not nil?
   FLoadGroup:=aLoadGroup;
 end;
 
 function TxxmChannel.GetNotificationCallbacks: nsIInterfaceRequestor;
 begin
-Debug('TxxmChannel.GetNotificationCallbacks');
   Result:=FCallBacks;
 end;
 
 procedure TxxmChannel.SetNotificationCallbacks(
   aNotificationCallbacks: nsIInterfaceRequestor);
 begin
-Debug('TxxmChannel.SetNotificationCallbacks');
   FCallBacks:=aNotificationCallbacks;
   //TODO: nsIProgressEventSink, nsIPrompt, nsIAuthPrompt/nsIAuthPrompt2
   //if aNotificationCallbacks.GetInterface()=NS_NOINTERFACE then :=nil;
@@ -718,13 +699,8 @@ begin
 end;
 
 procedure TxxmChannel.SetOriginalURI(aOriginalURI: nsIURI);
-var
-  x:IInterfacedCString;
 begin
   FOrigURI:=aOriginalURI;
-x:=NewCString;
-FOrigURI.GetSpec(x.ACString);
-Debug('TxxmChannel.SetOriginalURI('+x.ToString);
 end;
 
 function TxxmChannel.GetOwner: nsISupports;
@@ -739,13 +715,11 @@ end;
 
 function TxxmChannel.GetRedirectionLimit: PRUint32;
 begin
-Debug('TxxmChannel.GetRedirectionLimit('+IntToStr(FRedirectionLimit));
   Result:=FRedirectionLimit;
 end;
 
 procedure TxxmChannel.SetRedirectionLimit(aRedirectionLimit: PRUint32);
 begin
-Debug('TxxmChannel.SetRedirectionLimit('+IntToStr(aRedirectionLimit));
   FRedirectionLimit:=aRedirectionLimit;
 end;
 
@@ -762,20 +736,17 @@ begin
   x:=NewUTF8String;
   aReferrer.GetSpec(x.AUTF8String);
   FRequestHeaders['Referer']:=UTF8Decode(x.ToString);
-Debug('TxxmChannel.SetReferrer('+x.ToString);
 end;
 
 function TxxmChannel.GetRequestHeader(
   const aHeader: nsACString): nsACString;
 begin
-Debug('TxxmChannel.GetRequestHeader('+GetCString(aHeader)+'='+FRequestHeaders[GetCString(aHeader)]);
   SetCString(Result,FRequestHeaders[GetCString(aHeader)]);
 end;
 
 procedure TxxmChannel.SetRequestHeader(const aHeader, aValue: nsACString;
   aMerge: PRBool);
 begin
-Debug('TxxmChannel.SetRequestHeader('+GetCString(aHeader)+'='+GetCString(aValue)+'|Merge='+BoolToSTr(aMerge));
   if aMerge then
     FRequestHeaders[GetCString(aHeader)]:=GetCString(aValue)
   else
@@ -790,40 +761,34 @@ end;
 procedure TxxmChannel.SetRequestMethod(const aRequestMethod: nsACString);
 begin
   FVerb:=GetCString(aRequestMethod);
-Debug('TxxmChannel.SetRequestMethod('+FVerb);
 end;
 
 function TxxmChannel.GetResponseHeader(
   const header: nsACString): nsACString;
 begin
-Debug('TxxmChannel.GetResponseHeader('+GetCString(header)+'='+FResponseHeaders[GetCString(header)]);
   SetCString(Result,FResponseHeaders[GetCString(header)]);
 end;
 
 procedure TxxmChannel.SetResponseHeader(const header, value: nsACString;
   merge: PRBool);
 begin
-Debug('TxxmChannel.SetResponseHeader('+GetCString(header)+'='+GetCString(value)+'|Merge='+BoolToStr(merge));
   if not(merge) then raise Exception.Create('set header without merge not supported');
   FResponseHeaders[GetCString(header)]:=GetCString(value);
 end;
 
 function TxxmChannel.IsPending: PRBool;
 begin
-Debug('TxxmChannel.IsPending');
   Result:=FComplete;
 end;
 
 procedure TxxmChannel.Suspend;
 begin
-Debug('TxxmChannel.Suspend');
   InterlockedIncrement(FSuspendCount);
   //raise EInvalidOperation.Create('Not implemented');
 end;
 
 procedure TxxmChannel.Resume;
 begin
-Debug('TxxmChannel.Resume');
   if FSuspendCount<=0 then raise Exception.Create('Can''t resume, not suspended') else
     InterlockedDecrement(FSuspendCount);
   //raise EInvalidOperation.Create('Not implemented');
@@ -833,24 +798,20 @@ procedure TxxmChannel.VisitRequestHeaders(aVisitor: nsIHttpHeaderVisitor);
 var
   i:integer;
 begin
-Debug('>TxxmChannel.VisitRequestHeaders');
   for i:=0 to FRequestHeaders.Count-1 do
     aVisitor.VisitHeader(
       NewCString(FRequestHeaders.Name[i]).ACString,
       NewCString(FRequestHeaders.Item[i]).ACString);
-Debug('<TxxmChannel.VisitRequestHeaders');
 end;
 
 procedure TxxmChannel.VisitResponseHeaders(aVisitor: nsIHttpHeaderVisitor);
 var
   i:integer;
 begin
-Debug('>TxxmChannel.VisitResponseHeaders');
   for i:=0 to FResponseHeaders.Count-1 do
     aVisitor.VisitHeader(
       NewCString(FResponseHeaders.Name[i]).ACString,
       NewCString(FResponseHeaders.Item[i]).ACString);
-Debug('<TxxmChannel.VisitResponseHeaders');
 end;
 
 //IxxmContext
@@ -925,7 +886,13 @@ end;
 
 function TxxmChannel.GetCookie(Name: WideString): WideString;
 begin
-  //TODO:
+  if not(FCookieParsed) then
+   begin
+    FCookie:=FRequestHeaders['Cookie'];
+    SplitHeaderValue(FCookie,0,Length(FCookie),FCookieIdx);
+    FCookieParsed:=true;
+   end;
+  Result:=GetParamValue(FCookie,FCookieIdx,Name);
 end;
 
 function TxxmChannel.GetPage: IXxmFragment;
@@ -1040,7 +1007,6 @@ begin
   NS_DispatchToMainThread(TxxmListenerCaller.Create(Self,lcRedirect,0,0));
 
   Cancel(NS_BINDING_REDIRECTED);
-Debug('TxxmChannel.Redirect('+x.ToString);
   raise EXxmPageRedirected.Create(x.ToString);
 
   //TODO: PromptTempRedirect?
@@ -1181,14 +1147,39 @@ end;
 
 procedure TxxmChannel.SetCookie(Name, Value: WideString);
 begin
-  //TODO:
+  CheckHeader(false);
+  //check name?
+  //TODO: "quoted string"?
+  FResponseHeaders['Cache-Control']:='no-cache="set-cookie"';
+  FResponseHeaders.Add('Set-Cookie',Name+'="'+Value+'"');
 end;
 
 procedure TxxmChannel.SetCookie(Name, Value: WideString;
   KeepSeconds: cardinal; Comment, Domain, Path: WideString; Secure,
   HttpOnly: boolean);
+var
+  x:WideString;
 begin
-  //TODO:
+  CheckHeader(false);
+  //check name?
+  //TODO: "quoted string"?
+  FResponseHeaders['Cache-Control']:='no-cache="set-cookie"';
+  x:=Name+'="'+Value+'"';
+  //'; Version=1';
+  if not(Comment='') then
+    x:=x+'; Comment="'+Comment+'"';
+  if not(Domain='') then
+    x:=x+'; Domain="'+Domain+'"';
+  if not(Path='') then
+    x:=x+'; Path="'+Path+'"';
+  x:=x+'; Max-Age='+IntToStr(KeepSeconds)+
+    '; Expires="'+RFC822DateGMT(Now+KeepSeconds/86400)+'"';
+  if Secure then
+    x:=x+'; Secure'+#13#10;
+  if HttpOnly then
+    x:=x+'; HttpOnly'+#13#10;
+  FResponseHeaders.Add('Set-Cookie',x);
+  //TODO: Set-Cookie2
 end;
 
 procedure TxxmChannel.SetStatus(Code: integer; Text: WideString);
@@ -1246,9 +1237,7 @@ end;
 
 procedure TxxmChannel.CheckSuspend;
 begin
-Debug('>CheckSuspend');
   while not(FSuspendCount=0) do Sleep(5);
-Debug('<CheckSuspend');
 end;
 
 const
@@ -1362,25 +1351,21 @@ end;
 
 function TxxmChannel.Available: Cardinal;
 begin
-Debug('TxxmInputStream.Available');
   Result:=FReportSize;
 end;
 
 procedure TxxmChannel.Close;
 begin
-Debug('TxxmInputStream.Close');
   raise Exception.Create('Closing stream not supported.');
 end;
 
 function TxxmChannel.IsNonBlocking: LongBool;
 begin
-Debug('TxxmInputStream.IsNonBlocking');
   Result:=true;//????
 end;
 
 function TxxmChannel.Read(aBuf: PAnsiChar; aCount: Cardinal): Cardinal;
 begin
-Debug('>TxxmInputStream.Read(,'+IntToStr(aCount));
   Lock;
   try
     //assert aCount is size of data reported
@@ -1399,7 +1384,6 @@ Debug('>TxxmInputStream.Read(,'+IntToStr(aCount));
   finally
     Unlock;
   end;
-Debug('<TxxmInputStream.Read()'+IntToStr(Result));
 end;
 
 function TxxmChannel.ReadSegments(aWriter: nsWriteSegmentFun;
@@ -1407,7 +1391,6 @@ function TxxmChannel.ReadSegments(aWriter: nsWriteSegmentFun;
 var
   p:pointer;
 begin
-Debug('TxxmInputStream.ReadSegments(,'+IntToStr(aCount));
   Lock;
   try
     //assert aCount is size of data reported
@@ -1462,7 +1445,6 @@ end;
 
 function TxxmChannel.GetUploadStream: nsIInputStream;
 begin
-Debug('GetUploadStream');
   Result:=FPostData.InputStream;
 end;
 
@@ -1472,7 +1454,6 @@ var
   ct:string;
 begin
   if @aContentType=nil then ct:='' else ct:=GetCString(aContentType);
-Debug('SetUploadStream(,"'+ct+'",'+IntToStr(aContentLength));
   FPostData:=TUploadStream.Create(aStream);
   if not(aContentLength=-1) then FRequestHeaders['Content-Length']:=IntToStr(aContentLength);
   //if aContentLength=-1 then aStream.Available?
@@ -1494,12 +1475,10 @@ begin
   FDocURI:=aDocumentURI;
 x:=NewCString;
 FDocURI.GetSpec(x.ACString);
-Debug('TxxmChannel.SetDocumentURI('+x.ToString);
 end;
 
 procedure TxxmChannel.getRequestVersion(var major, minor: PRUint32);
 begin
-  Debug('TxxmChannel.getRequestVersion');
   //fake HTTP/1.1
   major:=1;
   minor:=1;
@@ -1507,7 +1486,6 @@ end;
 
 procedure TxxmChannel.getResponseVersion(var major, minor: PRUint32);
 begin
-  Debug('TxxmChannel.getResponseVersion');
   //fake HTTP/1.1
   major:=1;
   minor:=1;
@@ -1515,14 +1493,12 @@ end;
 
 procedure TxxmChannel.SetCookieHttpInt(aCookieHeader: PChar);
 begin
-  Debug('TxxmChannel.SetCookieHttpInt('+aCookieHeader);
   //TODO:
   raise EInvalidOp.Create('Not implemented');
 end;
 
 procedure TxxmChannel.setupFallbackChannel(aFallbackKey: PChar);
 begin
-  Debug('TxxmChannel.setupFallbackChannel('+aFallbackKey);
   //TODO:
   raise EInvalidOp.Create('Not implemented');
 end;
@@ -1693,22 +1669,17 @@ begin
   FOffset:=Offset;
   FCount:=Count;
   inc(DebugListenerCount);
-  debugid:=' '+IntToStr(DebugListenerCount)+' '+FOwner.FURL+' '+IntToStr(FOffset)+' '+IntToStr(FCount);
-  Debug('++'+lcName[FCall]+debugid);
 end;
 
 destructor TxxmListenerCaller.Destroy;
 begin
   FOwner._Release;
   //if FCall=lcStop then FOwner._Release;
-  Debug('--'+lcName[FCall]+debugid);
   inherited;
 end;
 
 procedure TxxmListenerCaller.run;
 begin
-Debug('>>'+lcName[FCall]+debugid);
-try
   case FCall of
     lcActivate:FOwner.Resume;
     lcStart:FOwner.FListener.OnStartRequest(FOwner,FOwner.FListenerContext);
@@ -1718,11 +1689,6 @@ try
   end;
   if (FCall in [lcStop,lcAbort,lcRedirect]) and not(FOwner.FLoadGroup=nil) then
     FOwner.FLoadGroup.RemoveRequest(FOwner as nsIRequest,nil,NS_OK);
-Debug('<<'+lcName[FCall]+debugid);
-except
-  on e:Exception do
-Debug('<<'+lcName[FCall]+debugid+' !!! '+e.ClassName+':'+e.Message);
-end;
 end;
 
 initialization

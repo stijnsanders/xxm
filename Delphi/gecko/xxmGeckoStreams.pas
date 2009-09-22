@@ -2,7 +2,7 @@ unit xxmGeckoStreams;
 
 interface
 
-uses nsXPCOM, Classes, xxmParUtils;
+uses nsXPCOM, SysUtils, Classes, xxmParUtils;
 
 type
   //TODO: nsIInputStream impl for channel output?
@@ -28,7 +28,7 @@ type
 implementation
 
 uses
-  xxmGeckoInterfaces, SysUtils, Debug1;
+  xxmGeckoInterfaces;
 
 { TUploadStream }
 
@@ -63,7 +63,6 @@ var
   i,j,l:integer;
   c:cardinal;
 begin
-Debug('>UploadStream.ParseHeader');
   //TODO: use ReadSegment? use smoother way than read 1 by 1?
   //assert position=0
   repeat
@@ -87,14 +86,12 @@ Debug('>UploadStream.ParseHeader');
       Headers[Copy(s,1,i-1)]:=Copy(s,j,l-j+1);
      end;
   until l=0;
-Debug('<UploadStream.ParseHeader');
 end;
 
 function TUploadStream.Read(var Buffer; Count: Integer): Longint;
 begin
   //FUploadStream.ReadSegments?
   Result:=FUploadStream.Read(PAnsiChar(@Buffer),Count);
-Debug('UploadStream.Read(,'+IntToStr(Count)+')='+IntToStr(Result));
 end;
 
 function TUploadStream.Seek(const Offset: Int64;

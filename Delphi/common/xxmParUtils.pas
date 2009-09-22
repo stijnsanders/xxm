@@ -177,11 +177,11 @@ var
   i,j,l,q:integer;
 begin
   l:=ValueStart+ValueLength-1;
-  i:=ValueStart;
-  while (i<=l) and not(Value[i]=';') do inc(i);
+  i:=ValueStart;//set to 0 to start parsing sub-values
+  if i=0 then inc(l) else while (i<=l) and not(Value[i]=';') do inc(i);
   if (i<=l) then
    begin
-    Result:=Copy(Value,ValueStart,i-ValueStart);
+    if i=0 then Result:='' else Result:=Copy(Value,ValueStart,i-ValueStart);
     q:=0;
 
     while (i<=l) do
@@ -427,7 +427,7 @@ end;
 
 function TRequestHeaders.GetItem(Name: OleVariant): WideString;
 begin
-  if VarIsNull(Name) then
+  if VarIsNumeric(Name) then
     with FIdx[integer(Name)] do
       Result:=Copy(FData,ValueStart,ValueLength)
   else

@@ -458,8 +458,8 @@ function TXxmHostedContext.GetCookie(Name: WideString): WideString;
 begin
   if not(FCookieParsed) then
    begin
-    FCookie:=';'+FReqHeaders['Cookie'];
-    SplitHeaderValue(FCookie,1,Length(FCookie),FCookieIdx);
+    FCookie:=FReqHeaders['Cookie'];
+    SplitHeaderValue(FCookie,0,Length(FCookie),FCookieIdx);
     FCookieParsed:=true;
    end;
   Result:=GetParamValue(FCookie,FCookieIdx,Name);
@@ -713,7 +713,8 @@ begin
       else      FResHeaders['Content-Type']:=FContentType;
     end;
     WriteFile(FPipeOut,FStatusCode,4,l,nil);
-    x:=//GetCGIValue('SERVER_PROTOCOL')+' '+IntToStr(FStatusCode)+' '+FStatusText+#13#10+
+    x:=//GetCGIValue('SERVER_PROTOCOL')+' '+
+      'Status: '+IntToStr(FStatusCode)+' '+FStatusText+#13#10+
       FResHeaders.Build+#13#10;
     WriteFile(FPipeOut,x[1],Length(x),l,nil);
     FHeaderSent:=true;
