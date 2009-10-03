@@ -80,6 +80,7 @@ begin
   FProject:=nil;
   FHandle:=0;
   FContextCount:=0;
+  LastCheck:=GetTickCount-100000;
 end;
 
 procedure TXxmProjectCacheEntry.Release;

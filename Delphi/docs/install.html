@@ -42,7 +42,7 @@ Use <code>%SystemRoot%\system32\regsvr32.exe</code> to register the xxmLocal.dll
 <dd>xxmLocalDev checks the project's xxmp file if any files have changed. If so, it unloads the project, generates source code where needed, compiles the project and reloads it. If files ware added or removed, they are added to the xxmp file.<br />
 <b>Please don't use xxmLocalDev.dll in a live environment.</b></dd>
 <dt>xxmLocalAU.dll</dt>
-<dd>xxmLocalAU checks if there is a .xxu file in the directory of the .xxl file, and if so, unloads the project, replaces the xxl file and reloads the project.</dd>
+<dd>xxmLocalAU checks if there is a .xxu file in the directory of the .xxl file, and if so, unloads the project, replaces the xxl file and reloads the project (auto-update).</dd>
 </dl>
 <p>xxmLocal libraries resolve project by name using the registry. Project definitions are stored here:<br />
 <code>HKEY_LOCAL_MACHINE\SOFTWARE\xxm\local</code><br />
@@ -58,7 +58,7 @@ When an xxmLocal library is registered, the xxl file type registry also includes
 <b>Attention:</b> to compile a project, the current user may require access to common libraries and source files. Check as which user IIS runs, or which credentials are used to run the ISAPI extension (COM+).<br />
 <b>Please don't use xxmIsapiDev.dll in a live environment.</b></dd>
 <dt>xxmIsapiAU.dll</dt>
-<dd>xxmIsapiAU checks if there is a .xxu file in the directory of the .xxl file, and if so, unloads the project, replaces the xxl file and reloads the project.</dd>
+<dd>xxmIsapiAU checks if there is a .xxu file in the directory of the .xxl file, and if so, unloads the project, replaces the xxl file and reloads the project (auto-update).</dd>
 </dl>
 <p>There are a few options to configure IIS to use the xxmISAPI dll's</p>
 <dl>
@@ -106,7 +106,7 @@ SetHandler xxm-handler
 <dd>xxmHostDev checks the project's xxmp file if any files have changed. If so, it unloads the project, generates source code where needed, compiles the project and reloads it. If files ware added or removed, they are added to the xxmp file.<br />
 <b>Please don't use <code>xxmHostDev.exe</code> in a live environment.</b></dd>
 <dt>xxmHostAU.exe</dt>
-<dd>xxmHostAU checks if there is a .xxu file in the directory of the .xxl file, and if so, unloads the project, replaces the xxl file and reloads the project</dd>
+<dd>xxmHostAU checks if there is a .xxu file in the directory of the .xxl file, and if so, unloads the project, replaces the xxl file and reloads the project (auto-update).</dd>
 <dt>xxmHostSvc.exe</dt>
 <dd>similar to xxmHost, but runs as an NT-service. call "<code>xxmHostSvc /install</code>" to install the service ("</code>/uninstall</code>" to uninstall)</dd>
 <dt>xxmHostSvcAU.exe</dt>
@@ -163,7 +163,7 @@ SetHandler xxm-handler
 <dd>xxmHttpDev checks the project's xxmp file if any files have changed. If so, it unloads the project, generates source code where needed, compiles the project and reloads it. If files ware added or removed, they are added to the xxmp file.<br />
 <b>Please don't use <code>xxmHttpDev.exe</code> in a live environment.</b></dd>
 <dt>xxmHttpAU.exe</dt>
-<dd>xxmHttpAU checks if there is a .xxu file in the directory of the .xxl file, and if so, unloads the project, replaces the xxl file and reloads the project</dd>
+<dd>xxmHttpAU checks if there is a .xxu file in the directory of the .xxl file, and if so, unloads the project, replaces the xxl file and reloads the project (auto-update).</dd>
 <dt>xxmHttpSvc.exe</dt>
 <dd>similar to xxmHttp, but runs as an NT-service. call "<code>xxmHttpSvc /install</code>" to install the service ("</code>/uninstall</code>" to uninstall)</dd>
 <dt>xxmHttpSvcAU.exe</dt>

@@ -51,17 +51,23 @@ add to the response headers.</dd>
 When you're using xxmLocal (or xxmLocalDev), set the host application to Internet Explorer (typically <code>C:\Program Files\Internet Explorer\iexplore.exe</code>), optionally with an "xxm://" URL to open your project. (Update: to force IE8 to run in a single process, see <a href="http://blogs.msdn.com/askie/archive/2009/03/09/opening-a-new-tab-may-launch-a-new-process-with-internet-explorer-8-0.aspx">TabProcGrowth</a>)<br />
 When you're using xxmIsapiEx (or xxmIsapiDev) on your local IIS, switch IIS into stand-alone mode and use inetinfo.exe as host application, or create a virtual directory with high isolation (IIS 7: in an application pool of it's own), and use <code>%SystemRoot%\system32\dllhost.exe /ProcessID:<i>{AppID}</i></code> with the AppID you can pick up from the properties of the COM+ application in the 'Component Services' administrative tool</dd>
 
-<dt>why is it not possible to pass extra parameters with the directory delimiter<br />
+<dt>why is it not possible to pass extra parameters with the directory delimiter?<br />
 (e.g.: http://localhost/xxm/test/test.xxm/a/1/b/2 )</dt>
 <dd>The URL is parsed only to get a project name and a fragment address.
 no forward directory checking is done, since xxm files and directories may not be present,
 it's up to the project to provide a fragment or not for a fragment address.</dd>
 
-<dt>why can't IE download files directly, I get this error:<br />
+<dt>why can't IE download files directly? I get this error:<br />
 Internet Explorer cannot download <i>somefile.ext</i> from <i>site</i>.<br />
 Internet Explorer was not able to open this Internet site.  The requested site is either unavailable or cannot be found.  Please try again later.<br />
 </dt>
 <dd>the registry is used to determine which MIME-type to declare for the file. Look under HKEY_CLASSES_ROOT for a ContentType value under the key with the extension (e.g.: [HKEY_CLASSES_ROOT\.txt] @ContentType="text/plain")</dd>
+
+<dt>is it possible to update an xxm project without taking the webserver/webservice down?</dt>
+<dd>yes. When setting up an xxm environment, select one of the auto-update options (xxm*AU.*). These check the directory of the xxm project if a .xxu file is provided, then queues new requests until all current requests are completed, unloads the .xxl library, replaces it with the .xxu file, re-loads the library and continues processing requests.</dd>
+
+<dt>how do I know if auto-update has updated my xxl?</dt>
+<dd>you know because the .xxu file has been renamed to .xxl to replace the previous file. It is also recommended to have an internal version number display generated from code, somewhere in the project e.g. on an about page or on the page footer.</dd>
 
 <dt>why did you make another website development platform? think you could do better than the tried and tested ones out there?</dt>
 <dd><i>*sigh*</i> please read this: <a href="why.html">why</a></dd>
