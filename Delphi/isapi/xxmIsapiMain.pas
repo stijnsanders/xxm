@@ -126,11 +126,10 @@ const
 
 var
   IsapiHandlerPool:TXxmIsapiHandlerPool;
-  XxmAutoBuildHandler:TXxmAutoBuildHandler;
 
 implementation
 
-uses ActiveX, Variants, ComObj, xxmCommonUtils;
+uses ActiveX, Variants, ComObj, xxmCommonUtils, xxmPReg;
 
 resourcestring
   SXxmContextStringUnknown='Unknown ContextString __';
