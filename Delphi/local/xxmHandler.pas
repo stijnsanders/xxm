@@ -350,12 +350,25 @@ function TXxmLocalHandler.ParseUrl(pwzUrl: LPCWSTR;
 var
   i,j,l:integer;
   FURL,w:WideString;
+  wr:boolean;
 begin
+  wr:=false;//return w?
   case ParseAction of
     //PARSE_SECURITY_URL://TODO: strip context/param data from URL
-    PARSE_SECURITY_DOMAIN:
+    PARSE_SCHEMA:
+     begin
+      w:=URLSchema;
+      wr:=true;
+     end;
+    PARSE_SERVER:
+     begin
+      w:='localhost';
+      wr:=true;
+     end;
+    PARSE_DOMAIN, PARSE_SITE, PARSE_SECURITY_DOMAIN:
      begin
       //see also loader!!
+      //TODO: cache extracted value? (and what does setting document.domain?)
       FURL:=pwzUrl;
       l:=Length(FURL);
       i:=1;
@@ -368,16 +381,19 @@ begin
       j:=i;
       while (i<=Length(FURL)) and not(Char(FURL[i]) in ['/','?','&','$','#']) do inc(i);
       w:=w+Copy(FURL,j,i-j);
-      if cchResult<cardinal(Length(w)+1) then Result:=S_FALSE else
-       begin
-        Move(PWideChar(w)^,pwzResult^,Length(w)*2+2);
-        PDWORD(pcchResult)^:=Length(w)+1;
-        Result:=S_OK;
-       end;
+      wr:=true;
      end;
+    //TODO: other PARSE_*
     else
       Result:=INET_E_DEFAULT_ACTION;
   end;
+  if wr then //return string in w
+    if cchResult<cardinal(Length(w)+1) then Result:=S_FALSE else
+     begin
+      Move(PWideChar(w)^,pwzResult^,Length(w)*2+2);
+      PDWORD(pcchResult)^:=Length(w)+1;
+      Result:=S_OK;
+     end;
 end;
 
 { TXxmLocalHandlerFactory }
