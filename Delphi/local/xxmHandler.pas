@@ -352,6 +352,7 @@ var
   FURL,w:WideString;
   wr:boolean;
 begin
+  Result:=INET_E_DEFAULT_ACTION;//default value, counter warning
   wr:=false;//return w?
   case ParseAction of
     //PARSE_SECURITY_URL://TODO: strip context/param data from URL
@@ -385,7 +386,7 @@ begin
      end;
     //TODO: other PARSE_*
     else
-      Result:=INET_E_DEFAULT_ACTION;
+      ;//Result:=INET_E_DEFAULT_ACTION;
   end;
   if wr then //return string in w
     if cchResult<cardinal(Length(w)+1) then Result:=S_FALSE else

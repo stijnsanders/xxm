@@ -24,7 +24,8 @@ in the xxm ISAPI extension or other configurations.</dd>
 <dd>extensible expandable modules... or transportable transformation modules... anyway something fancy like that.</dd>
 
 <dt>how do I get started</dt>
-<dd>use xxmProject.exe to start a new project in a directory. register the project with xxmLocalDev.dll to use Internet Explorer to browse to it. add pages by creating extra .xxm (and .xxmi) files to the directory.
+<dd>use xxmProject.exe to start a new project in a directory. register the project with xxmLocalDev.dll to use Internet Explorer to browse to it. add pages by creating extra .xxm (and .xxmi) files to the directory.<br />
+There is also a <a href="tutorial01/index.html">step-by-step tutorial with screenshots</a> that shows how it's done.
 </dd>
 
 <dt>does an xxl module need to be an ActiveX/COM/OLE library</dt>
@@ -42,6 +43,9 @@ add to the response headers.</dd>
 
 <dt>is it better/faster/... to use Context.SendHTML whereever possible?</dt>
 <dd>No. HTML is parsed into Context.SendHTML calls for you, and doesn't take as much time extra as it would take you to type the HTML in Delphi string  syntax. By far. The compile time of both is virtually equal. The execution time is equal.</dd>
+
+<dt>can I use SaveToStream on object to write to the Context directly</dt>
+<dd>Not directly, but the <code>public</code> folder that holds the <code>xxm.pas</code> file defining the main xxm interfaces, also holds a file <code>xxmStream.pas</code> that defines a <code>TxxmOutputStream</code> object, that inherits from TStream and takes a IxxmContext pointer.</dd>
 
 <dt>does xxm work with <a href="http://jquery.com/">jQuery</a> and <a href="http://www.prototypejs.org/">prototype</a>?</dt>
 <dd>Yes. These are javascript libraries, and javascript is able to resolve relative URL's, even with an XmlHttpRequest. Prototype may need a minor tweak to work with the xxmLocal handler in InternetExplorer, since as a security measure the responseDocument property is undefined on non-http protocol handlers.</dd>

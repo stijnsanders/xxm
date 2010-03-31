@@ -1,5 +1,9 @@
 general
 
+- alle strings: AnsiString
+- alle PChar: PAnsiChar
+- alle ContextString(csVersion): SelfVersion
+
 - XxmProjectUnload
 
 - LastModified: toch bias! (uur minder dan IIS)

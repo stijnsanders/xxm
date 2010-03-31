@@ -150,9 +150,7 @@ type
     function tell:PRUint64;
     procedure setEOF();
 }
-    //nsIUploadChannel
-    //TODO:
-    //IxxmContext
+    //IxxmContext
     function GetURL:WideString;
     function GetPage:IXxmFragment;
     function GetContentType:WideString; overload;
@@ -589,6 +587,7 @@ function TxxmChannel.GetSecurityInfo: nsISupports;
 begin
   Result:=nil;
   //TODO: find out more!
+  //http://mxr.mozilla.org/firefox/source/netwerk/base/public/nsIChannel.idl#111
 end;
 
 function TxxmChannel.IsNoCacheResponse: PRBool;

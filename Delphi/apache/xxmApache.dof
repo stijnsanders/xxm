@@ -90,18 +90,18 @@ MaxStackSize=1048576
 ImageBase=4194304
 ExeDescription=
 [Directories]
-OutputDir=C:\Program Files\Mozilla Firefox\components
+OutputDir=..\bin
 UnitOutputDir=..\dcu
 PackageDLLOutputDir=
 PackageDCPOutputDir=
-SearchPath=sdk;..\public
-Packages=vcl;rtl;vclie;xmlrtl;inet;inetdbbde;inetdbxpress;vclx;dbrtl;soaprtl;dsnap;VclSmp;dbexpress;vcldb;dbxcds;adortl;ibxpress;vclactnband;bdertl;vclshlctrls;dclOfficeXP;Indy70
+SearchPath=
+Packages=vcl;rtl;dbrtl;adortl;vcldb;vclx;bdertl;vcldbx;ibxpress;dsnap;cds;bdecds;qrpt;teeui;teedb;tee;dss;teeqr;visualclx;visualdbclx;dsnapcrba;dsnapcon;VclSmp;vclshlctrls;vclie;xmlrtl;inet;inetdbbde;inetdbxpress;inetdb;nmfast;webdsnap;websnap;soaprtl;dbexpress;dbxcds;indy;dclOffice2k;dxEdtrD6;dxcomnd6;EQTLD6;ECQDBCD6;EQGridD6;dxGrEdD6;dxExELD6;dxELibD6;rbDAD66;rbDBDE66;rbDIDE66
 Conditionals=
 DebugSourceDirs=
 UsePackages=0
 [Parameters]
-RunParams=xxm://demo/a.html
-HostApplication=C:\Program Files\Mozilla Firefox\firefox.exe
+RunParams=-X
+HostApplication=C:\Program Files\Apache Software Foundation\Apache2.2\bin\httpd.exe
 Launcher=
 UseLauncher=0
 DebugCWD=
@@ -121,15 +121,15 @@ Locale=1033
 CodePage=1252
 [Version Info Keys]
 CompanyName=
-FileDescription=xxm Gecko Protocol Handler
+FileDescription=xxm Apache 2.2 Module
 FileVersion=1.0.1.250
-InternalName=xxmGecko
+InternalName=xxmApache
 LegalCopyright=
 LegalTrademarks=
 OriginalFilename=
 ProductName=xxm
 ProductVersion=1.0.0.0
-Comments=http://xxm.sf.net/
+Comments=
 [HistoryLists\hlUnitAliases]
 Count=1
 Item0=WinTypes=Windows;WinProcs=Windows;DbiTypes=BDE;DbiProcs=BDE;DbiErrs=BDE;
@@ -144,7 +144,7 @@ Item0=..\dcu
 Item1=dcu
 [HistoryLists\hlOutputDirectorry]
 Count=4
-Item0=C:\Program Files\Mozilla Firefox\components
-Item1=..\bin
+Item0=..\bin
+Item1=C:\Program Files\Mozilla Firefox\components
 Item2=C:\Inetpub\xxm
 Item3=..\
