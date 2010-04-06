@@ -4,6 +4,8 @@ general
 - alle PChar: PAnsiChar
 - alle ContextString(csVersion): SelfVersion
 
+- common BaseXxmContest (virtual SendRaw)
+
 - XxmProjectUnload
 
 - LastModified: toch bias! (uur minder dan IIS)

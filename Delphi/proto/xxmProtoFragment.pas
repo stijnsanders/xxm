@@ -33,7 +33,8 @@ begin
   inherited;
   Context.SendHTML('Hello world<br>'+
     DateTimeToStr(Now)+'<br>'+
-    Context.ContextString(csVersion));
+    Context.ContextString(csVersion)+'<br>'+
+    Context.URL);
 
   Context.SendHTML('<p><a href="default.xxm"><img src="http://yoy.be/yoy_bg.png"></a></p>');
 

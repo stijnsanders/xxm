@@ -13,7 +13,8 @@ uses
   xxmCommonUtils in '..\common\xxmCommonUtils.pas',
   xxmPReg in '..\common\xxmPReg.pas',
   xxmHttpPReg in '..\http\xxmHttpPReg.pas',
-  xxmApacheClientStream in 'xxmApacheClientStream.pas';
+  xxmApacheClientStream in 'xxmApacheClientStream.pas',
+  xxmApachePars in 'xxmApachePars.pas';
 
 {$R *.RES}
 

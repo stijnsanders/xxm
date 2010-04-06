@@ -15,6 +15,8 @@ type
     FProjectEntry:TXxmProjectCacheEntry;
     FPage, FBuilding: IXxmFragment;
     FPostData: TStream;
+    FIncludeDepth:integer;
+    FParams: TXxmReqPars;
 
     function CheckHeader:boolean;
     procedure HeaderOK;
@@ -80,14 +82,21 @@ type
   EXxmDirectInclude=class(Exception);
   EXxmAutoBuildFailed=class(Exception);
   EXxmPageRedirected=class(Exception);
+  EXxmIncludeStackFull=class(Exception);
+  EXxmIncludeFragmentNotFound=class(Exception);
 
 implementation
 
-uses Windows, Variants, xxmParUtils, xxmCommonUtils, xxmPReg, xxmApacheClientStream;
+uses Windows, Variants, xxmParUtils, xxmCommonUtils, xxmPReg, xxmApacheClientStream, xxmApachePars;
 
 resourcestring
   SXxmRWriteFailed='ap_rwrite failed';
   SXxmDirectInclude='Direct call to include fragment is not allowed.';
+  SXxmIncludeStackFull='Maximum level of includes exceeded';
+  SXxmIncludeFragmentNotFound='Include fragment not found "__"';
+
+const
+  XxmMaxIncludeDepth=64;//TODO: setting?
 
 { TxxmApacheContext }
 
@@ -107,12 +116,15 @@ begin
   FPage:=nil;
   FBuilding:=nil;
   FPostData:=nil;
+  FIncludeDepth:=0;
+  FParams:=nil;//see GetParameter
 end;
 
 destructor TxxmApacheContext.Destroy;
 begin
   rq:=nil;
   FreeAndNil(FPostData);
+  FreeAndNil(FParams);
   if not(FProjectEntry=nil) then
    begin
     FProjectEntry.CloseContext;
@@ -258,15 +270,15 @@ end;
 
 function TxxmApacheContext.Connected: boolean;
 begin
-  //Result:=rq.connection.aborted;
-  Result:=not((rq.connection.flags1 and 1)=0);
+  //Result:=not(rq.connection.aborted);
+  Result:=((rq.connection.flags1 and 1)=0);
 end;
 
 function TxxmApacheContext.ContextString(
   cs: TXxmContextString): WideString;
 begin
   case cs of
-    csVersion:Result:=SelfVersion+', '+'SERVER_SOFTWARE';//TODO
+    csVersion:Result:=SelfVersion;//+', '+apr_table_get(rq.headers_out,'Server');
     csExtraInfo:Result:='';//TODO?
     csVerb:Result:=rq.method;
     csQueryString:Result:=rq.args;
@@ -280,26 +292,33 @@ begin
     csRemoteHost:Result:=rq.main.connection.remote_host;
     csAuthUser:Result:=apr_table_get(rq.headers_in,'Auth-User');
     csAuthPassword:Result:=apr_table_get(rq.headers_in,'Auth-Password');
-    csProjectName:Result:='';//TODO FProjectName
-    csLocalURL:Result:='';//TODO FLocalURL
+    csProjectName:Result:=FProjectName;
+    csLocalURL:Result:=FFragmentName;
   end;
 end;
 
 procedure TxxmApacheContext.DispositionAttach(FileName: WideString);
+var
+  s:AnsiString;
 begin
-  //TODO: apr_table_set(rq.headers_out,'Content-Disposition',);
-  //'Content-disposition','attachment; filename="'+FileName+'"'
+  if FileName='' then
+    s:='attachment'
+  else
+    s:='attachment; filename="'+FileName+'"';
+  apr_table_set(rq.headers_out,
+    apr_pstrdup(rq.pool,PAnsiChar('Content-Disposition')),
+    apr_pstrdup(rq.pool,PAnsiChar(s)));
 end;
 
 function TxxmApacheContext.GetAutoEncoding: TXxmAutoEncoding;
 begin
   Result:=FAutoEncoding;
-  //TODO: rq.content_encoding
 end;
 
 function TxxmApacheContext.GetContentType: WideString;
 begin
-  Result:=rq.content_type;
+  //Result:=rq.content_type;//see CheckHeader
+  Result:=FContentType;
 end;
 
 function TxxmApacheContext.GetCookie(Name: WideString): WideString;
@@ -309,28 +328,32 @@ end;
 
 function TxxmApacheContext.GetPage: IXxmFragment;
 begin
-  //TODO:
+  Result:=FPage;
 end;
 
 function TxxmApacheContext.GetParameter(Key: OleVariant): IXxmParameter;
 begin
-  //TODO:
+  if FParams=nil then FParams:=TXxmReqPars.CreateNoSeek(Self);
+  if VarIsNumeric(Key) then Result:=FParams.GetItem(Key) else
+    Result:=FParams.Get(VarToWideStr(Key));
 end;
 
 function TxxmApacheContext.GetParameterCount: integer;
 begin
-  //TODO:
-  Result:=0;
+  if FParams=nil then FParams:=TXxmReqPars.CreateNoSeek(Self);
+  Result:=FParams.Count;
 end;
 
 function TxxmApacheContext.GetRequestHeaders: IxxmDictionaryEx;
 begin
-  //TODO:
+  //TODO: check freed by ref counting?
+  Result:=TxxmApacheTable.Create(rq.pool,rq.headers_in);
 end;
 
 function TxxmApacheContext.GetResponseHeaders: IxxmDictionaryEx;
 begin
-  //TODO:
+  //TODO: check freed by ref counting?
+  Result:=TxxmApacheTable.Create(rq.pool,rq.headers_out);
 end;
 
 function TxxmApacheContext.GetSessionID: WideString;
@@ -339,45 +362,66 @@ begin
 end;
 
 function TxxmApacheContext.GetURL: WideString;
-var
-  s:WideString;
-  i:integer;
 begin
-  s:=rq.protocol;
-  i:=1;
-  while (i<=Length(s)) and not(s[i]='/') do inc(i);
-  s:=LowerCase(Copy(s,1,i-1))+'://'+rq.hostname;
-  if not(rq.parsed_uri.port=80) then s:=s+':'+IntToStr(rq.parsed_uri.port);
-  Result:=s+rq.unparsed_uri;
+  Result:=ap_construct_url(rq.pool,rq.unparsed_uri,rq);
+end;
+
+procedure TxxmApacheContext.Include(Address: WideString);
+begin
+  Include(Address,[],[]);
 end;
 
 procedure TxxmApacheContext.Include(Address: WideString;
   const Values: array of OleVariant);
 begin
-  //TODO:
+  Include(Address,Values,[]);
 end;
 
 procedure TxxmApacheContext.Include(Address: WideString;
   const Values: array of OleVariant; const Objects: array of TObject);
+var
+  f,fb:IXxmFragment;
+  pc:string;
 begin
-  //TODO:
-end;
-
-procedure TxxmApacheContext.Include(Address: WideString);
-begin
-  //TODO:
+  if FIncludeDepth=XxmMaxIncludeDepth then
+    raise EXxmIncludeStackFull.Create(SXxmIncludeStackFull);
+  //FPage.Project??
+  f:=FProjectEntry.Project.LoadFragment(Address);
+  if f=nil then
+    raise EXxmIncludeFragmentNotFound.Create(StringReplace(
+      SXxmIncludeFragmentNotFound,'__',Address,[]));
+  fb:=FBuilding;
+  pc:=FPageClass;
+  FBuilding:=f;
+  inc(FIncludeDepth);
+  try
+    FPageClass:=f.ClassNameEx+' < '+pc;
+    f.Build(Self,fb,Values,Objects);//queue to avoid building up stack?
+  finally
+    dec(FIncludeDepth);
+    FBuilding:=fb;
+    FPageClass:=pc;
+    fb:=nil;
+    FProjectEntry.Project.UnloadFragment(f);
+    f:=nil;
+  end;
 end;
 
 function TxxmApacheContext.PostData: TStream;
 begin
-  //TODO:
-  Result:=nil;
+  Result:=FPostData;
 end;
 
 procedure TxxmApacheContext.Redirect(RedirectURL: WideString;
   Relative: boolean);
 begin
-  //TODO: 301?
+  //HeaderOK;//see SetStatus
+  SetStatus(301,'Moved Permanently');
+  //TODO: relative
+  apr_table_set(rq.headers_out,'Location',PAnsiChar(AnsiString(RedirectURL)));
+  //TODO: move this to execute's except?
+  SendHTML('<a href="'+HTMLEncode(RedirectURL)+'">'+HTMLEncode(RedirectURL)+'</a>');
+  raise EXxmPageRedirected.Create(RedirectURL);
 end;
 
 procedure TxxmApacheContext.SendRaw(Data: WideString);
@@ -509,8 +553,8 @@ end;
 
 procedure TxxmApacheContext.SetContentType(const Value: WideString);
 begin
-  //TODO:
-  rq.content_type:=apr_pstrdup(rq.pool,PAnsiChar(AnsiString(Value)));
+  HeaderOK;
+  FContentType:=Value;
 end;
 
 procedure TxxmApacheContext.SetCookie(Name, Value: WideString);
@@ -527,7 +571,6 @@ end;
 
 procedure TxxmApacheContext.SetStatus(Code: integer; Text: WideString);
 begin
-  //TODO: check code?
   HeaderOK;
   rq.status:=Code;
   rq.status_line:=apr_pstrdup(rq.pool,PAnsiChar(IntToStr(Code)+' '+AnsiString(Text)));
