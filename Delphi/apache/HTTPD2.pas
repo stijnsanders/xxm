@@ -2256,6 +2256,14 @@ function ap_get_server_port(const r: Prequest_rec): apr_port_t;
 {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
 {$EXTERNALSYM ap_get_server_port}
 (*
+ * Get the server version
+ * @return The server software version
+ * @deffunc const char *ap_get_server_version()
+ *)
+function ap_get_server_version: PChar;
+{$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
+{$EXTERNALSYM ap_get_server_version}
+(*
  * Return the limit on bytes in request msg body
  * @param r The current request
  * @return the maximum number of bytes in the request msg body
@@ -3572,6 +3580,7 @@ function ap_get_remote_logname; external LibHTTPD name LibNamePrefix + 'ap_get_r
 function ap_construct_url; external LibHTTPD name LibNamePrefix + 'ap_construct_url' + LibSuff12;
 function ap_get_server_name; external LibHTTPD name LibNamePrefix + 'ap_get_server_name' + LibSuff4;
 function ap_get_server_port; external LibHTTPD name LibNamePrefix + 'ap_get_server_port' + LibSuff4;
+function ap_get_server_version; external LibHTTPD name LibNamePrefix + 'ap_get_server_version' + LibSuff0;
 function ap_get_limit_req_body; external LibHTTPD name LibNamePrefix + 'ap_get_limit_req_body' + LibSuff4;
 function ap_get_limit_xml_body; external LibHTTPD name LibNamePrefix + 'ap_get_limit_xml_body' + LibSuff4;
 procedure ap_custom_response; external LibHTTPD name LibNamePrefix + 'ap_custom_response' + LibSuff12;

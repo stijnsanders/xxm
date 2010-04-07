@@ -1,4 +1,4 @@
-library xxmApache;
+library xxmApacheAU;
 
 {$R 'xxmData.res' 'xxmData.rc'}
 
@@ -15,8 +15,11 @@ uses
   xxmHttpPReg in '..\http\xxmHttpPReg.pas',
   xxmApacheClientStream in 'xxmApacheClientStream.pas',
   xxmApachePars in 'xxmApachePars.pas',
+  xxmAutoUpdate in '..\common\xxmAutoUpdate.pas',
   MSXML2_TLB in '..\common\MSXML2_TLB.pas';
 
 {$R *.RES}
 
+begin
+  XxmAutoBuildHandler:=AutoUpdate;
 end.

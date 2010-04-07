@@ -1,6 +1,7 @@
-library xxmApache;
+library xxmApacheDev;
 
 {$R 'xxmData.res' 'xxmData.rc'}
+{$R 'xxmDataDev.res' 'xxmDataDev.rc'}
 
 uses
   HTTPD2 in 'HTTPD2.pas',
@@ -15,8 +16,15 @@ uses
   xxmHttpPReg in '..\http\xxmHttpPReg.pas',
   xxmApacheClientStream in 'xxmApacheClientStream.pas',
   xxmApachePars in 'xxmApachePars.pas',
+  xxmAutoBuild in '..\common\xxmAutoBuild.pas',
+  xxmWebProject in '..\conv\xxmWebProject.pas',
+  xxmPageParse in '..\conv\xxmPageParse.pas',
+  xxmProtoParse in '..\conv\xxmProtoParse.pas',
+  xxmUtilities in '..\conv\xxmUtilities.pas',
   MSXML2_TLB in '..\common\MSXML2_TLB.pas';
 
 {$R *.RES}
 
+begin
+  XxmAutoBuildHandler:=AutoBuild;
 end.

@@ -2,7 +2,7 @@ unit xxmApacheContext;
 
 interface
 
-uses SysUtils, Classes, HTTPD2, xxm, xxmHeaders, xxmParams, xxmHttpPReg;
+uses SysUtils, Classes, HTTPD2, xxm, xxmHeaders, xxmParams, xxmHttpPReg, xxmParUtils;
 
 type
   TxxmApacheContext=class(TInterfacedObject, IxxmContext, IxxmHttpHeaders)
@@ -11,17 +11,20 @@ type
 
     FConnected,FHeaderSent:boolean;
     FAutoEncoding: TXxmAutoEncoding;
-    FContentType,FRedirectPrefix,FPageClass,FProjectName,FFragmentName: AnsiString;
+    FContentType,FRedirectPrefix,FPageClass,FProjectName,FFragmentName,FSessionID: AnsiString;
     FProjectEntry:TXxmProjectCacheEntry;
     FPage, FBuilding: IXxmFragment;
     FPostData: TStream;
     FIncludeDepth:integer;
     FParams: TXxmReqPars;
+    FCookieParsed: boolean;
+    FCookie: AnsiString;
+    FCookieIdx: TParamIndexes;
 
     function CheckHeader:boolean;
     procedure HeaderOK;
     procedure SendRaw(Data: WideString);
-    procedure SendError(res:string;vals:array of string);
+    procedure SendError(res:AnsiString;vals:array of AnsiString);
 
   private
     //IxxmContext
@@ -87,7 +90,7 @@ type
 
 implementation
 
-uses Windows, Variants, xxmParUtils, xxmCommonUtils, xxmPReg, xxmApacheClientStream, xxmApachePars;
+uses Windows, Variants, ComObj, xxmCommonUtils, xxmPReg, xxmApacheClientStream, xxmApachePars;
 
 resourcestring
   SXxmRWriteFailed='ap_rwrite failed';
@@ -118,6 +121,8 @@ begin
   FPostData:=nil;
   FIncludeDepth:=0;
   FParams:=nil;//see GetParameter
+  FCookieParsed:=false;
+  FSessionID:='';//see GetSessionID
 end;
 
 destructor TxxmApacheContext.Destroy;
@@ -278,7 +283,7 @@ function TxxmApacheContext.ContextString(
   cs: TXxmContextString): WideString;
 begin
   case cs of
-    csVersion:Result:=SelfVersion;//+', '+apr_table_get(rq.headers_out,'Server');
+    csVersion:Result:=SelfVersion+', '+ap_get_server_version;
     csExtraInfo:Result:='';//TODO?
     csVerb:Result:=rq.method;
     csQueryString:Result:=rq.args;
@@ -323,7 +328,58 @@ end;
 
 function TxxmApacheContext.GetCookie(Name: WideString): WideString;
 begin
-  //TODO:
+  if not(FCookieParsed) then
+   begin
+    FCookie:=apr_table_get(rq.headers_in,'Cookie');
+    SplitHeaderValue(FCookie,0,Length(FCookie),FCookieIdx);
+    FCookieParsed:=true;
+   end;
+  Result:=GetParamValue(FCookie,FCookieIdx,Name);
+end;
+
+procedure TxxmApacheContext.SetCookie(Name, Value: WideString);
+begin
+  HeaderOK;
+  //check name?
+  //TODO: "quoted string"?
+  apr_table_set(rq.headers_out,
+    apr_pstrdup(rq.pool,'Cache-Control'),
+    apr_pstrdup(rq.pool,'no-cache="set-cookie"'));
+  apr_table_set(rq.headers_out,
+    apr_pstrdup(rq.pool,'Set-Cookie'),
+    apr_pstrdup(rq.pool,PAnsiChar(AnsiString(Name+'="'+Value+'"'))));
+end;
+
+procedure TxxmApacheContext.SetCookie(Name, Value: WideString;
+  KeepSeconds: cardinal; Comment, Domain, Path: WideString; Secure,
+  HttpOnly: boolean);
+var
+  x:AnsiString;
+begin
+  HeaderOK;
+  //check name?
+  //TODO: "quoted string"?
+  apr_table_set(rq.headers_out,
+    apr_pstrdup(rq.pool,'Cache-Control'),
+    apr_pstrdup(rq.pool,'no-cache="set-cookie"'));
+  x:=Name+'="'+Value+'"';
+  //'; Version=1';
+  if not(Comment='') then
+    x:=x+'; Comment="'+Comment+'"';
+  if not(Domain='') then
+    x:=x+'; Domain="'+Domain+'"';
+  if not(Path='') then
+    x:=x+'; Path="'+Path+'"';
+  x:=x+'; Max-Age='+IntToStr(KeepSeconds)+
+    '; Expires="'+RFC822DateGMT(Now+KeepSeconds/86400)+'"';
+  if Secure then
+    x:=x+'; Secure'+#13#10;
+  if HttpOnly then
+    x:=x+'; HttpOnly'+#13#10;
+  apr_table_set(rq.headers_out,
+    apr_pstrdup(rq.pool,'Set-Cookie'),
+    apr_pstrdup(rq.pool,PAnsiChar(x)));
+  //TODO: Set-Cookie2
 end;
 
 function TxxmApacheContext.GetPage: IXxmFragment;
@@ -357,8 +413,19 @@ begin
 end;
 
 function TxxmApacheContext.GetSessionID: WideString;
+const
+  SessionCookie='xxmSessionID';
 begin
-  //TODO:
+  if FSessionID='' then
+   begin
+    FSessionID:=GetCookie(SessionCookie);
+    if FSessionID='' then
+     begin
+      FSessionID:=Copy(CreateClassID,2,32);
+      SetCookie(SessionCookie,FSessionID);//expiry?
+     end;
+   end;
+  Result:=FSessionID;
 end;
 
 function TxxmApacheContext.GetURL: WideString;
@@ -466,7 +533,7 @@ begin
         if not(ap_rwrite(s[1],l,rq)=l) then raise EXxmRWriteFailed.Create(SXxmRWriteFailed);
        end;
     end;
-    //ReportData;
+    ap_rflush(rq);//? only every x bytes?
    end;
 end;
 
@@ -536,6 +603,7 @@ begin
   repeat
     l:=s.Read(d[0],$1000);
     if not(ap_rwrite(d[0],l,rq)=l) then raise EXxmRWriteFailed.Create(SXxmRWriteFailed);
+    ap_rflush(rq);//?
   until not(l=$1000);//s.Position=s.Size?
 end;
 
@@ -555,18 +623,6 @@ procedure TxxmApacheContext.SetContentType(const Value: WideString);
 begin
   HeaderOK;
   FContentType:=Value;
-end;
-
-procedure TxxmApacheContext.SetCookie(Name, Value: WideString);
-begin
-  //TODO:
-end;
-
-procedure TxxmApacheContext.SetCookie(Name, Value: WideString;
-  KeepSeconds: cardinal; Comment, Domain, Path: WideString; Secure,
-  HttpOnly: boolean);
-begin
-  //TODO:
 end;
 
 procedure TxxmApacheContext.SetStatus(Code: integer; Text: WideString);
@@ -594,7 +650,7 @@ begin
    end;
 end;
 
-procedure TxxmApacheContext.SendError(res: string; vals: array of string);
+procedure TxxmApacheContext.SendError(res: AnsiString; vals: array of AnsiString);
 var
   s:string;
   i:integer;
