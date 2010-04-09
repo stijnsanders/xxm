@@ -80,7 +80,7 @@
 
 <p><b>Attention:</b> please avoid declaring (nested) procedures and functions in header, footer and definition blocks, use include fragments or plain pascal units for that. One reason to avoid them is because closing the current Delphi code block to output HTML doesn't work, because all HTML is parsed onto <code>Context.SendHTML();</code> calls <i>inside of</i> the fragment's Build method implementation, and breaks Delphi syntax.</i>
 
-<p>Within a Delphi code block (including comment blocks), the number of opening and closing brackets and braces is counted (disregarding those in strings), this enables code like this: <code><span style="background-color:#CCFFCC">[[</span>Context.Send('<span style="background-color:#FFCCCC;">]]</span>');<span style="background-color:#CCFFCC">]]</span></code> and <code><span style="background-color:#CCFFCC">[[</span>=MyArray[x<span style="background-color:#FFCCCC">]</span><span style="background-color:#FFFFCC">]</span><span style="background-color:#CCFFCC">]</span></code>, but also enables a comment block to 'comment out' a full block of both HTML and code blocks.</p>
+<p>Within a Delphi code block (including comment blocks), the number of opening and closing brackets and braces is counted (disregarding those in strings), this enables code like this: <code style="background-color:#FFFFFF;"><span style="background-color:#CCFFCC">[[</span>Context.Send('<span style="background-color:#FFCCCC;">]]</span>');<span style="background-color:#CCFFCC">]]</span></code> and <code><span style="background-color:#CCFFCC">[[</span>=MyArray[x<span style="background-color:#FFCCCC">]</span><span style="background-color:#FFFFCC">]</span><span style="background-color:#CCFFCC">]</span></code>, but also enables a comment block to 'comment out' a full block of both HTML and code blocks.</p>
 
 <p class="title"><a name="proto"></a>Proto</p>
 
@@ -96,7 +96,7 @@ Context.SendHTML('&lt;b&gt;priority:');<br />
 Context.Send(PriorityLevel);<br />
 Context.SendHTML('&lt;/b&gt;');</code></p>
 <p>so be sure to use <code>begin</code> and <code>end</code>:</p>
-<p><code>if MyBoolean then <span style="background-color:#CCFFCC">begin</span>]]&lt;b&gt;priority:[[=PriorityLevel]]&lt;/b&gt;[[<span style="background-color:#CCFFCC">end</span>;</code></p>
+<p><code style="background-color:#FFFFFF;">if MyBoolean then <span style="background-color:#CCFFCC">begin</span>]]&lt;b&gt;priority:[[=PriorityLevel]]&lt;/b&gt;[[<span style="background-color:#CCFFCC">end</span>;</code></p>
 
 <p class="title"><a name="interface"></a>Interface</p>
 

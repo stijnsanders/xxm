@@ -595,7 +595,7 @@ var
 begin
   if not(FHeaderSent) then
    begin
-    //TODO:
+    //TODO: (Apache does 'Transfer-Encoding: chunked' for us!)
     //'Content-Length':=IntToStr(s.Size);
     //'Accept-Ranges':='bytes';
    end;

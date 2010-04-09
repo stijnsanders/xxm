@@ -2,6 +2,7 @@ BODY {font-family: sans-serif;font-size: 10pt;color: black;background-color: whi
 .nav {background-color: #CCCCCC;padding: 2pt;}
 DL DT {font-weight: bold;margin-bottom: 0.5em;}
 DL DD {margin-bottom: 1em;}
+CODE {background-color: #CCFFCC;}
 .title {background-color: #CCFFFF;border-bottom: 1px solid #99CCCC;padding: 0.2em;}
 .title2 {background-color: #FFFFCC;border-bottom: 1px solid #CCCC99;padding: 0.2em;}
 .warning {border:1px solid red;padding:0.5em;background-color:#FFFFCC;font-style:italic;}

@@ -466,7 +466,7 @@ begin
       ProtSink.ReportResult(S_OK,FStatusCode,nil)
     else
       ProtSink.ReportResult(S_OK,FStatusCode,PWideChar(FStatusText))
-    //TODO: find out why iexplore keeps couting up progress sometimes (even after terminate+unlock)
+    //TODO: find out why iexplore keeps counting up progress sometimes (even after terminate+unlock)
    end;
 end;
 

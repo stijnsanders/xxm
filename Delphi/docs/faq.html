@@ -41,6 +41,9 @@ when a new session is started, a session cookie is set. When you don't use
 Context.SessionID from LoadPage, and use it later on, the SetCookie can't
 add to the response headers.</dd>
 
+<dt>why do I get this error: <code>Error: ',' or ';' expected but identifier 'xxmFReg' found</code></dt>
+<dd>You need to end the list of units in a <code>[[@Unit1,Unit2,]]</code> section with a comma. This is because in <code>proto/xxm.pas</code> and <code>proto/xxmi.pas</code> templates, this section is inserted here:<br /><code>uses SysUtils, [[UsesClause]] xxmFReg;</code><br />syntax requires a comma after each unit, so of you provide one or more units, you have to provide the closing comma.</dd>
+
 <dt>is it better/faster/... to use Context.SendHTML whereever possible?</dt>
 <dd>No. HTML is parsed into Context.SendHTML calls for you, and doesn't take as much time extra as it would take you to type the HTML in Delphi string  syntax. By far. The compile time of both is virtually equal. The execution time is equal.</dd>
 
