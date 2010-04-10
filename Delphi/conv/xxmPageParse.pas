@@ -23,7 +23,7 @@ type
 
   TXxmPageParser=class(TObject)
   private
-    FData:string;
+    FData:AnsiString;
     SectionsCount,SectionsSize:integer;
     Sections:array of record
       Index,Length:integer;
@@ -34,11 +34,11 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-    procedure Parse(Data:string);
+    procedure Parse(Data:AnsiString);
     //function GetNext:;
     //function Done:boolean;
-    function AllSections(ps:TXxmPageSection):string;
-    function BuildBody:string;
+    function AllSections(ps:TXxmPageSection):AnsiString;
+    function BuildBody:AnsiString;
   end;
 
 implementation
@@ -62,7 +62,7 @@ begin
   inherited;
 end;
 
-procedure TXxmPageParser.Parse(Data: string);
+procedure TXxmPageParser.Parse(Data: AnsiString);
 var
   b,instr:boolean;
   a,i,j,l,k,sqd,incom:integer;
@@ -167,7 +167,7 @@ begin
    end;
 end;
 
-function TXxmPageParser.AllSections(ps: TXxmPageSection): string;
+function TXxmPageParser.AllSections(ps: TXxmPageSection): AnsiString;
 var
   i,j,l:integer;
 begin
@@ -184,7 +184,7 @@ begin
      end;
 end;
 
-function TXxmPageParser.BuildBody: string;
+function TXxmPageParser.BuildBody: AnsiString;
 var
   ss:TStringStream;
   InSend,InString:boolean;

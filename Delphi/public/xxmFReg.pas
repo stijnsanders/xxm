@@ -16,15 +16,15 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-    procedure RegisterClass(FName:string;FType:TXxmFragmentClass);
-    function GetClass(FName:string):TXxmFragmentClass;
+    procedure RegisterClass(FName:AnsiString;FType:TXxmFragmentClass);
+    function GetClass(FName:AnsiString):TXxmFragmentClass;
   end;
 
 var
   XxmFragmentRegistry:TXxmFragmentRegistry;
 
 const
-  XXmDefaultPage:string='default.xxm';
+  XXmDefaultPage:AnsiString='default.xxm';
 
 implementation
 
@@ -48,13 +48,13 @@ begin
   inherited;
 end;
 
-procedure TXxmFragmentRegistry.RegisterClass(FName: string;
+procedure TXxmFragmentRegistry.RegisterClass(FName: AnsiString;
   FType: TXxmFragmentClass);
 begin
   Registry.AddObject(FName,TObject(FType));
 end;
 
-function TXxmFragmentRegistry.GetClass(FName: string): TXxmFragmentClass;
+function TXxmFragmentRegistry.GetClass(FName: AnsiString): TXxmFragmentClass;
 var
   i:integer;
 begin

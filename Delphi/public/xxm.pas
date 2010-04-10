@@ -77,7 +77,7 @@ type
     function GetMimeType:WideString;
     property Size:integer read GetSize;
     property MimeType:WideString read GetMimeType;
-    procedure SaveToFile(FilePath:string);//TODO: WideString
+    procedure SaveToFile(FilePath:AnsiString);//TODO: WideString
     function SaveToStream(Stream:TStream):integer;//TODO: IStream
   end;
 
@@ -205,8 +205,8 @@ type
 function XxmVersion:TXxmVersion;
 function HTMLEncode(Data:WideString):WideString; overload;
 function HTMLEncode(Data:OleVariant):WideString; overload;
-function URLEncode(Data:OleVariant):string;
-function URLDecode(Data:string):WideString;
+function URLEncode(Data:OleVariant):AnsiString;
+function URLDecode(Data:AnsiString):WideString;
 
 implementation
 
@@ -242,9 +242,9 @@ end;
 const
   Hex: array[0..15] of char='0123456789ABCDEF';
 
-function URLEncode(Data:OleVariant):string;
+function URLEncode(Data:OleVariant):AnsiString;
 var
-  s,t:string;
+  s,t:AnsiString;
   p,q,l:integer;
 begin
   if VarIsNull(Data) then Result:='' else
@@ -280,9 +280,9 @@ begin
    end;
 end;
 
-function URLDecode(Data:string):WideString;
+function URLDecode(Data:AnsiString):WideString;
 var
-  t:string;
+  t:AnsiString;
   p,q,l:integer;
   b:byte;
 begin
@@ -323,7 +323,7 @@ end;
 
 function XxmVersion: TXxmVersion;
 var
-  s:string;
+  s:AnsiString;
 begin
   s:=XxmRevision;
   Result.Major:=1;

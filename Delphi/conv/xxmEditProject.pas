@@ -65,10 +65,10 @@ type
     procedure actRefreshExecute(Sender: TObject);
   private
     Modified:boolean;
-    ProjectPath,ProjectFolder:string;
+    ProjectPath,ProjectFolder:AnsiString;
     ProjectData:DOMDocument;
     function CheckModified:boolean;
-    function LoadProject(Path:string;CreateNew:boolean):boolean;
+    function LoadProject(Path:AnsiString;CreateNew:boolean):boolean;
     procedure SaveProject;
     function GetNode(element:IXMLDOMElement;xpath:WideString):IXMLDOMElement;
     procedure ExpandNode(node:TTreeNode);
@@ -99,7 +99,7 @@ uses DateUtils, xxmUtilities, Registry, ShellAPI, ComObj;
 
 procedure TEditProjectMainForm.DoCreate;
 var
-  s:string;
+  s:AnsiString;
 begin
   inherited;
   ProjectData:=CoDOMDocument.Create;
@@ -132,10 +132,10 @@ begin
     end;
 end;
 
-function TEditProjectMainForm.LoadProject(Path: string;
+function TEditProjectMainForm.LoadProject(Path: AnsiString;
   CreateNew: boolean): boolean;
 var
-  fn:string;
+  fn:AnsiString;
   fe:boolean;
   i,j:integer;
 begin
@@ -244,7 +244,7 @@ end;
 procedure TEditProjectMainForm.btnRegisterLocalClick(Sender: TObject);
 var
   r:TRegistry;
-  s:string;
+  s:AnsiString;
 begin
   if CheckModified then
    begin
@@ -259,7 +259,7 @@ begin
     finally
       r.Free;
     end;
-    MessageBox(GetDesktopWindow,PChar('Project "'+s+'" registered.'),
+    MessageBoxA(GetDesktopWindow,PAnsiChar('Project "'+s+'" registered.'),
       'xxm Project',MB_OK or MB_ICONINFORMATION);
    end;
 end;
@@ -283,8 +283,8 @@ const
 procedure TEditProjectMainForm.ExpandNode(node: TTreeNode);
 var
   fh:THandle;
-  fd:TWin32FindData;
-  d,fn,fe:string;
+  fd:TWin32FindDataA;
+  d,fn,fe:AnsiString;
   n:TTreeNode;
   i:integer;
   x:IXMLDOMElement;
@@ -300,7 +300,7 @@ begin
       d:=n.Text+PathDelim+d;
       n:=n.Parent;
      end;
-    fh:=FindFirstFile(PChar(ProjectFolder+d+'*.*'),fd);
+    fh:=FindFirstFileA(PAnsiChar(ProjectFolder+d+'*.*'),fd);
     if not(fh=INVALID_HANDLE_VALUE) then
       try
         repeat
@@ -421,9 +421,9 @@ end;
 
 procedure TEditProjectMainForm.actDeleteExecute(Sender: TObject);
 var
-  so:TSHFileOpStruct;
+  so:TSHFileOpStructA;
   n,nx:TTreeNode;
-  s:string;
+  s:AnsiString;
   x:IXMLDOMElement;
 begin
   nx:=tvFiles.Selected;
@@ -436,13 +436,13 @@ begin
    end;
   so.Wnd:=Handle;
   so.wFunc:=FO_DELETE;
-  so.pFrom:=PChar(ProjectFolder+Copy(s,2,Length(s)-1));
+  so.pFrom:=PAnsiChar(ProjectFolder+Copy(s,2,Length(s)-1));
   so.pTo:=nil;
   so.fFlags:=FOF_ALLOWUNDO;
   so.fAnyOperationsAborted:=false;
   so.hNameMappings:=nil;
   so.lpszProgressTitle:=nil;
-  OleCheck(SHFileOperation(so));
+  OleCheck(SHFileOperationA(so));
   if not(so.fAnyOperationsAborted) then
    begin
     x:=(nx as TFileNode).ProjectNode;
@@ -469,7 +469,7 @@ procedure TEditProjectMainForm.actIncludeExecute(Sender: TObject);
 var
   n,nx:TTreeNode;
   x,y:IXMLDOMElement;
-  s:string;
+  s:AnsiString;
   i,j:integer;
 begin
   n:=tvFiles.Selected;

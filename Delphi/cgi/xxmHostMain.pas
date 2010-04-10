@@ -25,32 +25,32 @@ type
   private
     FPipeIn,FPipeOut:THandle;
     FCGIValues:array of record
-      Name,Value:string;
+      Name,Value:AnsiString;
     end;
     FReqHeaders:TRequestHeaders;
     FResHeaders:TResponseHeaders;
     FHeaderSent:boolean;
     FPage, FBuilding: IXxmFragment;
     FConnected:boolean;
-    FURI,FURLPrefix,FRedirectPrefix,FSessionID:string;
+    FURI,FURLPrefix,FRedirectPrefix,FSessionID:AnsiString;
     FProjectEntry:TXxmProjectCacheEntry;
     FParams: TXxmReqPars;
     FIncludeDepth:integer;
     FStatusCode:integer;
-    FStatusText,FProjectName,FFragmentName:string;
+    FStatusText,FProjectName,FFragmentName:AnsiString;
     FContentType: WideString;
     FAutoEncoding: TXxmAutoEncoding;
     FCookieParsed: boolean;
-    FCookie: string;
+    FCookie: AnsiString;
     FCookieIdx: TParamIndexes;
     FPostData:TStream;
-    FPageClass:string;
+    FPageClass:AnsiString;
     FQueryStringIndex:integer;
-    function GetCGIValue(Name:string):string;
+    function GetCGIValue(Name:AnsiString):AnsiString;
     procedure HeaderOK;
     function CheckHeader: boolean;
     procedure SendRaw(Data: WideString);
-    procedure SendError(res:string;vals:array of string);
+    procedure SendError(res:AnsiString;vals:array of AnsiString);
   public
     Queue:TXxmHostedContext;
 
@@ -187,7 +187,7 @@ procedure TXxmHostedContext.Execute;
 var
   i,j,k,l,m:integer;
   l1:cardinal;
-  x,y:string;
+  x,y:AnsiString;
   p:IxxmPage;
 begin
   try
@@ -564,7 +564,7 @@ procedure TXxmHostedContext.Include(Address: WideString;
   const Values: array of OleVariant; const Objects: array of TObject);
 var
   f,fb:IXxmFragment;
-  pc:string;
+  pc:AnsiString;
 begin
   if FIncludeDepth=XxmMaxIncludeDepth then
     raise EXxmIncludeStackFull.Create(SXxmIncludeStackFull);
@@ -598,7 +598,7 @@ end;
 procedure TXxmHostedContext.Redirect(RedirectURL: WideString;
   Relative: boolean);
 var
-  s:string;
+  s:AnsiString;
 begin
   inherited;
   HeaderOK;
@@ -639,7 +639,7 @@ const
   Utf8ByteOrderMark=#$EF#$BB#$BF;
   Utf16ByteOrderMark=#$FF#$FE;
 var
-  s:string;
+  s:AnsiString;
   l:cardinal;
 begin
   //TODO: catch WriteFile returned values!
@@ -697,7 +697,7 @@ end;
 
 function TXxmHostedContext.CheckHeader:boolean;
 var
-  x:string;
+  x:AnsiString;
   l:cardinal;
 begin
   Result:=not(FHeaderSent);
@@ -721,9 +721,9 @@ begin
    end;
 end;
 
-procedure TXxmHostedContext.SendError(res: string; vals: array of string);
+procedure TXxmHostedContext.SendError(res: AnsiString; vals: array of AnsiString);
 var
-  s:string;
+  s:AnsiString;
   i:integer;
   r:TResourceStream;
   l:Int64;
@@ -788,7 +788,7 @@ begin
   Result:=FResHeaders;
 end;
 
-function TXxmHostedContext.GetCGIValue(Name: string): string;
+function TXxmHostedContext.GetCGIValue(Name: AnsiString): AnsiString;
 var
   i,l:integer;
 begin

@@ -448,7 +448,7 @@ procedure TxxmApacheContext.Include(Address: WideString;
   const Values: array of OleVariant; const Objects: array of TObject);
 var
   f,fb:IXxmFragment;
-  pc:string;
+  pc:AnsiString;
 begin
   if FIncludeDepth=XxmMaxIncludeDepth then
     raise EXxmIncludeStackFull.Create(SXxmIncludeStackFull);
@@ -496,7 +496,7 @@ const
   Utf8ByteOrderMark=#$EF#$BB#$BF;
   Utf16ByteOrderMark=#$FF#$FE;
 var
-  s:string;
+  s:AnsiString;
   l:integer;
 begin
   if not(Data='') then
@@ -652,7 +652,7 @@ end;
 
 procedure TxxmApacheContext.SendError(res: AnsiString; vals: array of AnsiString);
 var
-  s:string;
+  s:AnsiString;
   i:integer;
   r:TResourceStream;
   l:Int64;

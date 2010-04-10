@@ -55,17 +55,17 @@ type
     function GetMimeType: WideString;
   public
     constructor Create(Owner:TXxmReqPars;Name:WideString;
-      Origin,MimeType:string; Stream:TStream;Pos,Len:integer);
+      Origin,MimeType:AnsiString; Stream:TStream;Pos,Len:integer);
     property Size:integer read GetSize;
     property MimeType:WideString read GetMimeType;
-    procedure SaveToFile(FilePath: String);
+    procedure SaveToFile(FilePath: AnsiString);
     function SaveToStream(Stream: TStream):integer;
   end;
 
   EXxmUnknownPostMime=class(Exception);
 
 var
-  SelfVersion:string;
+  SelfVersion:AnsiString;
 
 const
   MimeFormUrlEncoded='application/x-www-form-urlencoded';
@@ -81,7 +81,7 @@ procedure GetSelfVersion;
 var
   verblock:PVSFIXEDFILEINFO;
   verlen:cardinal;
-  p:PChar;
+  p:PAnsiChar;
   r:TResourceStream;
   m:TMemoryStream;
 begin
@@ -95,7 +95,7 @@ begin
       r.Free;
     end;
     m.Position:=0;
-    if VerQueryValue(m.Memory,'\',pointer(verblock),verlen) then
+    if VerQueryValueA(m.Memory,'\',pointer(verblock),verlen) then
       SelfVersion:=
         IntToStr(HiWord(verblock.dwFileVersionMS))+'.'+
         IntToStr(LoWord(verblock.dwFileVersionMS))+'.'+
@@ -103,7 +103,7 @@ begin
         IntToStr(LoWord(verblock.dwFileVersionLS))
     else
       SelfVersion:='v???';
-    if VerQueryValue(m.Memory,'\StringFileInfo\040904E4\FileDescription',pointer(p),verlen) then
+    if VerQueryValueA(m.Memory,'\StringFileInfo\040904E4\FileDescription',pointer(p),verlen) then
       SelfVersion:=p+' '+SelfVersion;
   finally
     m.Free;
@@ -138,7 +138,7 @@ procedure TXxmReqPars.Fill(Context: IXxmContext; DoSeek: boolean);
 var
   i,p,q,r,l:integer;
   ps:TStream;
-  pm,pn,pb,pd,pf,px:string;
+  pm,pn,pb,pd,pf,px:AnsiString;
   pa,pax:TParamIndexes;
   sn:TStreamNozzle;
 begin
@@ -343,7 +343,7 @@ end;
 { TXxmReqParPostFile }
 
 constructor TXxmReqParPostFile.Create(Owner: TXxmReqPars; Name: WideString;
-  Origin, MimeType: string; Stream: TStream; Pos, Len: integer);
+  Origin, MimeType: AnsiString; Stream: TStream; Pos, Len: integer);
 begin
   inherited Create(Owner,Name,Origin);
   FMimeType:=MimeType;
@@ -362,7 +362,7 @@ begin
   Result:=FLen;
 end;
 
-procedure TXxmReqParPostFile.SaveToFile(FilePath: String);
+procedure TXxmReqParPostFile.SaveToFile(FilePath: AnsiString);
 var
   f:TFileStream;
 begin

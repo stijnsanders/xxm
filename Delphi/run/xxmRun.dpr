@@ -15,12 +15,12 @@ var
   sl:TStringList;
   Actions:array of record
     ActionType:TActionType;
-    Param,FileName:string;
+    Param,FileName:AnsiString;
     Cleanup:boolean;
     Handle:cardinal;
   end;
   i,j,k:integer;
-  s:string;
+  s:AnsiString;
   r:TRegistry;
   si:TStartupInfo;
   pi:TProcessInformation;

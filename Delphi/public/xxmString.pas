@@ -13,9 +13,10 @@ type
   private
     FContext:IXxmContext;
     FBuilding:IXxmFragment;
-    FIncludeDepth:integer;
-    FOutput:TStringStream;
-    function GetResult:string;
+    FIncludeDepth,FIndex:integer;
+    FResult:WideString;
+    function GetResult:WideString;
+    procedure WriteString(Value:WideString);
   protected
     function Connected: Boolean;
     function ContextString(cs: TXxmContextString): WideString;
@@ -56,8 +57,8 @@ type
       const Objects: array of TObject); overload;
   	procedure Reset;
 
-    property Result:string read GetResult;
-    procedure SaveToFile(FileName:string);
+    property Result:WideString read GetResult;
+    procedure SaveToFile(FileName:AnsiString);
   end;
 
   EXxmUnsupported=class(Exception);
@@ -81,16 +82,53 @@ begin
   FContext:=AContext;
   FBuilding:=ACaller;
   FIncludeDepth:=0;
-  FOutput:=TStringStream.Create('');
-  //TODO: encoding!!
+  Reset;
 end;
 
 destructor TStringContext.Destroy;
 begin
   FContext:=nil;
   FBuilding:=nil;
-  FOutput.Free;
   inherited;
+end;
+
+function TStringContext.GetResult: WideString;
+begin
+  Result:=Copy(FResult,1,FIndex);
+end;
+
+procedure TStringContext.WriteString(Value: WideString);
+const
+  GrowStep=$10000;
+var
+  l,x:integer;
+begin
+  l:=Length(FResult);
+  x:=Length(Value);
+  if FIndex+x>l then SetLength(FResult,l+((x div GrowStep)+1)*GrowStep);
+  Move(Value[1],FResult[FIndex+1],x*2);
+  inc(FIndex,x);
+end;
+
+procedure TStringContext.Reset;
+begin
+  FIndex:=0;
+  FResult:='';
+end;
+
+procedure TStringContext.SaveToFile(FileName: AnsiString);
+const
+  Utf16ByteOrderMark=#$FF#$FE;
+var
+  f:TFileStream;
+begin
+  f:=TFileStream.Create(FileName,fmCreate);
+  try
+    f.Write(Utf16ByteOrderMark,2);
+    f.Write(FResult[1],FIndex*2);
+  finally
+    f.Free;
+  end;
 end;
 
 function TStringContext.Connected: Boolean;
@@ -220,38 +258,22 @@ end;
 
 procedure TStringContext.Send(Data: OleVariant);
 begin
-  FOutput.WriteString(HTMLEncode(Data));
-end;
-
-procedure TStringContext.SendFile(FilePath: WideString);
-var
-  f:TFileStream;
-begin
-  f:=TFileStream.Create(FilePath, fmOpenRead or fmShareDenyNone);
-  try
-    SendStream(f);
-  finally
-    Free;
-  end;
+  WriteString(HTMLEncode(Data));
 end;
 
 procedure TStringContext.SendHTML(Data: OleVariant);
 begin
-  FOutput.WriteString(VarToStr(Data));
+  WriteString(VarToStr(Data));
+end;
+
+procedure TStringContext.SendFile(FilePath: WideString);
+begin
+  raise EXxmUnsupported.Create('StringContext doesn''t support SendFile');
 end;
 
 procedure TStringContext.SendStream(s: TStream);
-const
-  BufferSize=$10000;
-var
-  d:array[0..BufferSize-1] of byte;
-  i:integer;
 begin
-  //FOutput.CopyFrom(s,s.Size);
-  repeat
-    i:=s.Read(d[0],BufferSize);
-    if not(i=0) then FOutput.Write(d[0],i);
-  until not(i=BufferSize);
+  raise EXxmUnsupported.Create('StringContext doesn''t support SendStream');
 end;
 
 procedure TStringContext.SetCookie(Name, Value: WideString);
@@ -267,36 +289,14 @@ begin
     Secure, HttpOnly);
 end;
 
-function TStringContext.GetResult: string;
-begin
-  Result:=FOutput.DataString;
-end;
-
-procedure TStringContext.Reset;
-begin
-  FOutput.Size:=0;
-end;
-
-procedure TStringContext.SaveToFile(FileName: string);
-var
-  f:TFileStream;
-begin
-  f:=TFileStream.Create(FileName,fmCreate);
-  try
-    f.Write(FOutput.DataString[1],Length(FOutput.DataString));
-  finally
-    f.Free;
-  end;
-end;
-
 procedure TStringContext.Send(Value: int64);
 begin
-  FOutput.WriteString(IntToStr(Value));
+  WriteString(IntToStr(Value));
 end;
 
 procedure TStringContext.Send(Value: integer);
 begin
-  FOutput.WriteString(IntToStr(Value));
+  WriteString(IntToStr(Value));
 end;
 
 procedure TStringContext.Send(const Values: array of OleVariant);
@@ -304,12 +304,12 @@ var
   i:integer;
 begin
   for i:=0 to Length(Values)-1 do
-    FOutput.WriteString(HTMLEncode(Values[i]));
+    WriteString(HTMLEncode(Values[i]));
 end;
 
 procedure TStringContext.Send(Value: cardinal);
 begin
-  FOutput.WriteString(IntToStr(Value));
+  WriteString(IntToStr(Value));
 end;
 
 procedure TStringContext.SendHTML(const Values: array of OleVariant);
@@ -317,7 +317,7 @@ var
   i:integer;
 begin
   for i:=0 to Length(Values)-1 do
-    FOutput.WriteString(VarToStr(Values[i]));
+    WriteString(VarToStr(Values[i]));
 end;
 
 end.

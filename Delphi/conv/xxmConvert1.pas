@@ -4,7 +4,7 @@ interface
 
 procedure WelcomeMessage;
 procedure RegisterCompileOption;
-procedure DoWrite(Msg:string);
+procedure DoWrite(Msg:AnsiString);
 
 implementation
 
@@ -14,10 +14,10 @@ procedure WelcomeMessage;
 var
   verblock:PVSFIXEDFILEINFO;
   verlen:cardinal;
-  p:PChar;
+  p:PAnsiChar;
   r:TResourceStream;
   m:TMemoryStream;
-  s:string;
+  s:AnsiString;
 begin
   m:=TMemoryStream.Create;
   try
@@ -28,7 +28,7 @@ begin
       r.Free;
     end;
     m.Position:=0;
-    if VerQueryValue(m.Memory,'\',pointer(verblock),verlen) then
+    if VerQueryValueA(m.Memory,'\',pointer(verblock),verlen) then
       s:=
         IntToStr(HiWord(verblock.dwFileVersionMS))+'.'+
         IntToStr(LoWord(verblock.dwFileVersionMS))+'.'+
@@ -36,7 +36,7 @@ begin
         IntToStr(LoWord(verblock.dwFileVersionLS))
     else
       s:='v???';
-    if VerQueryValue(m.Memory,'\StringFileInfo\040904E4\FileDescription',pointer(p),verlen) then
+    if VerQueryValueA(m.Memory,'\StringFileInfo\040904E4\FileDescription',pointer(p),verlen) then
       s:=p+' '+s;
     Writeln(s);
   finally
@@ -63,7 +63,7 @@ begin
   Writeln('Compile option registered on xxmp filetype');
 end;
 
-procedure DoWrite(Msg:string);
+procedure DoWrite(Msg:AnsiString);
 begin
   Write(Msg);//stdout
 end;

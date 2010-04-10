@@ -32,11 +32,11 @@ end;
 
 constructor TXxmdemo.Create(AProjectName: WideString);
 var
-  s:string;
+  s:AnsiString;
 begin
   inherited Create(AProjectName);
   SetLength(s,1024);
-  SetLength(s,GetModuleFileName(HInstance,PChar(s),1024));
+  SetLength(s,GetModuleFileNameA(HInstance,PAnsiChar(s),1024));
   SetCurrentDir(ExtractFilePath(s));
 end;
 

@@ -13,14 +13,14 @@ type
     FContextCount:integer;
     function GetProject: IXxmProject;
   protected
-    procedure SetSignature(const Value: string); override;
+    procedure SetSignature(const Value: AnsiString); override;
     function GetModulePath: WideString; override;
   published
     constructor Create(Name,FilePath:WideString);
   public
     procedure Release; override;
     destructor Destroy; override;
-    procedure GetFilePath(Address:WideString;var Path,MimeType:string);
+    procedure GetFilePath(Address:WideString;var Path,MimeType:AnsiString);
     procedure OpenContext;
     procedure CloseContext;
     property Name:WideString read FName;
@@ -31,11 +31,11 @@ type
   private
     ProjectCacheSize:integer;
     ProjectCache:array of TXxmProjectCacheEntry;
-    FRegFilePath,FDefaultProject,FSingleProject:string;
+    FRegFilePath,FDefaultProject,FSingleProject:AnsiString;
     FRegFileLoaded:boolean;
     procedure ClearAll;
     function Grow:integer;
-    function FindOpenProject(LowerCaseName:string):integer;
+    function FindOpenProject(LowerCaseName:AnsiString):integer;
   public
     constructor Create;
     destructor Destroy; override;
@@ -44,8 +44,8 @@ type
 
     function GetProject(Name:WideString):TXxmProjectCacheEntry;
     procedure ReleaseProject(Name:WideString);
-    property DefaultProject:string read FDefaultProject;
-    property SingleProject:string read FSingleProject;
+    property DefaultProject:AnsiString read FDefaultProject;
+    property SingleProject:AnsiString read FSingleProject;
   end;
 
   TXxmAutoBuildHandler=function(pce:TXxmProjectCacheEntry;
@@ -114,9 +114,9 @@ begin
 end;
 
 procedure TXxmProjectCacheEntry.GetFilePath(Address:WideString;
-  var Path, MimeType: string);
+  var Path, MimeType: AnsiString);
 var
-  rf,sf,s:string;
+  rf,sf,s:AnsiString;
   i,j,l:integer;
   r:TRegistry;
 begin
@@ -204,7 +204,7 @@ begin
   Result:=FProject;
 end;
 
-procedure TXxmProjectCacheEntry.SetSignature(const Value: string);
+procedure TXxmProjectCacheEntry.SetSignature(const Value: AnsiString);
 var
   doc:DOMDocument;
   x:IXMLDOMElement;
@@ -258,7 +258,7 @@ begin
   FSingleProject:='';
 
   SetLength(FRegFilePath,$400);
-  SetLength(FRegFilePath,GetModuleFileName(HInstance,PChar(FRegFilePath),$400));
+  SetLength(FRegFilePath,GetModuleFileNameA(HInstance,PAnsiChar(FRegFilePath),$400));
   if Copy(FRegFilePath,1,4)='\\?\' then FRegFilePath:=Copy(FRegFilePath,5,Length(FRegFilePath)-4);
   i:=Length(FRegFilePath);
   while not(i=0) and not(FRegFilePath[i]=PathDelim) do dec(i);
@@ -289,7 +289,7 @@ begin
    end;
 end;
 
-function TXxmProjectCache.FindOpenProject(LowerCaseName: string): integer;
+function TXxmProjectCache.FindOpenProject(LowerCaseName: AnsiString): integer;
 begin
   Result:=0;
   //assert cache stores ProjectName already LowerCase!
@@ -324,7 +324,7 @@ end;
 function TXxmProjectCache.GetProject(Name: WideString): TXxmProjectCacheEntry;
 var
   i,d:integer;
-  n:string;
+  n:AnsiString;
   found:boolean;
   doc:DOMDocument;
   xl:IXMLDOMNodeList;

@@ -45,7 +45,7 @@ type
     constructor Create(AOwner:TxxmGeckoModule;AClass:TxxmGeckoComponentClass);
   end;
 
-procedure RegisterComponent(AName,AContract:string;ACID:TGUID;AClass:TxxmGeckoComponentClass);
+procedure RegisterComponent(AName,AContract:AnsiString;ACID:TGUID;AClass:TxxmGeckoComponentClass);
 
 function NSGetModule(aCompMgr: nsIComponentManager; location: nsIFile; out return_cobj: nsIModule): nsresult; cdecl;
 
@@ -58,12 +58,12 @@ uses nsInit, nsError, ComObj, SysUtils;
 
 var
   RegisteredComponents:array of record
-    Name,Contract:string;
+    Name,Contract:AnsiString;
     CID:TGUID;
     CCl:TxxmGeckoComponentClass;
   end;
 
-procedure RegisterComponent(AName,AContract:string;ACID:TGUID;AClass:TxxmGeckoComponentClass);
+procedure RegisterComponent(AName,AContract:AnsiString;ACID:TGUID;AClass:TxxmGeckoComponentClass);
 var
   l:integer;
 begin

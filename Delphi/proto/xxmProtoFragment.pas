@@ -22,7 +22,7 @@ procedure TXxmFragment1.Build(const Context: IXxmContext;
   const Caller: IXxmFragment;  const Values:array of OleVariant;
   const Objects: array of TObject);
 var
-  s:string;
+  s:AnsiString;
   w:WideString;
   i,j:integer;
   p,q:IXxmParameter;

@@ -19,7 +19,7 @@ function xxm_handler(r:Prequest_rec): integer; cdecl;
 var
   ctx:TxxmApacheContext;
 begin
-  if not(string(r.handler)='xxm-handler') then Result:=DECLINED else
+  if not(AnsiString(r.handler)='xxm-handler') then Result:=DECLINED else
    begin
     CoInitialize(nil);//TODO: keep threadvar flag?
 
@@ -42,14 +42,14 @@ begin
 end;
 
 var
-  XxmModuleName:string;
+  XxmModuleName:AnsiString;
 
 procedure InitXxmApacheModule;
 var
   i:integer;
 begin
   SetLength(XxmModuleName,MAX_PATH+1);
-  i:=GetModuleFileName(HInstance,PChar(XxmModuleName),MAX_PATH);
+  i:=GetModuleFileNameA(HInstance,PAnsiChar(XxmModuleName),MAX_PATH);
   SetLength(XxmModuleName,i);
   while not(i=0) and not(XxmModuleName[i]='\') do dec(i);
   XxmModuleName:=Copy(XxmModuleName,i+1,Length(XxmModuleName)-i);
@@ -59,7 +59,7 @@ begin
     version := MODULE_MAGIC_NUMBER_MAJOR;
     minor_version := MODULE_MAGIC_NUMBER_MINOR;
     module_index := -1;
-    name := PChar(XxmModuleName);
+    name := PAnsiChar(XxmModuleName);
     magic := MODULE_MAGIC_COOKIE;
     register_hooks := xxm_register_hooks;
    end;

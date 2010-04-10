@@ -15,12 +15,12 @@ var
   BuildOutput:TStringStream;
   BuildLock:TRTLCriticalSection;
 
-procedure DoBuildOutput(Msg:string);
+procedure DoBuildOutput(Msg:AnsiString);
 begin
   BuildOutput.WriteString(Msg);
 end;
 
-function BuildError(res: string; vals: array of string):string;
+function BuildError(res: AnsiString; vals: array of AnsiString):AnsiString;
 var
   i:integer;
   r:TResourceStream;
@@ -44,7 +44,7 @@ function AutoBuild(pce:TXxmProjectEntry;
   Context:IXxmContext; ProjectName:WideString):boolean;
 var
   WebProject:TXxmWebProject;
-  wsig,fn:string;
+  wsig,fn:AnsiString;
   b:boolean;
   tc:cardinal;
 const

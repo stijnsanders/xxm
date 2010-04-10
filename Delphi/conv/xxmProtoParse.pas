@@ -35,7 +35,7 @@ type
 
   TXxmProtoParser=class(TObject)
   private
-    FData:string;
+    FData:AnsiString;
     FOutput:TMemoryStream;
     PointsCount,PointsSize:integer;
     Points:array of record
@@ -49,13 +49,13 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-    procedure Parse(Data:string);
+    procedure Parse(Data:AnsiString);
     function GetNext:TXxmProtoParseTag;
-    procedure Output(Data:string);
+    procedure Output(Data:AnsiString);
     procedure IterateBegin(Condition:boolean);
     procedure IterateNext(Condition:boolean);
     function Done:boolean;
-    procedure Save(FilePath:string);
+    procedure Save(FilePath:AnsiString);
   end;
 
   EXxmParseUnknownTag=class(Exception);
@@ -64,7 +64,7 @@ type
 implementation
 
 const
-  ProtoParseTag:array[TXxmProtoParseTag] of string=(
+  ProtoParseTag:array[TXxmProtoParseTag] of AnsiString=(
     'ProjectName',
     'ProjectHeader',
     'ProjectBody',
@@ -117,11 +117,11 @@ begin
   inherited;
 end;
 
-procedure TXxmProtoParser.Parse(Data: string);
+procedure TXxmProtoParser.Parse(Data: AnsiString);
 var
   a,i,j,l:integer;
   b:boolean;
-  s:string;
+  s:AnsiString;
   pt:TXxmProtoParseTag;
 begin
   FData:=Data;
@@ -235,12 +235,12 @@ begin
   inc(PointsCount);
 end;
 
-procedure TXxmProtoParser.Output(Data: string);
+procedure TXxmProtoParser.Output(Data: AnsiString);
 begin
   FOutput.Write(Data[1],Length(Data));
 end;
 
-procedure TXxmProtoParser.Save(FilePath: string);
+procedure TXxmProtoParser.Save(FilePath: AnsiString);
 begin
   FOutput.Position:=0;
   FOutput.SaveToFile(FilePath);

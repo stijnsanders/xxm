@@ -19,7 +19,7 @@ type
     procedure SetName(Idx: integer; Value: WideString);
     function GetCount:integer;
   public
-    constructor Create(Data:string);
+    constructor Create(Data:AnsiString);
     destructor Destroy; override;
     property Item[Name:OleVariant]:WideString read GetItem write SetItem; default;
     property Name[Idx: integer]:WideString read GetName write SetName;
@@ -66,7 +66,7 @@ type
     property Name[Idx: integer]:WideString read GetName write SetName;
     property Count:integer read GetCount;
     function Complex(Name:OleVariant;out Items:IxxmDictionary):WideString;
-    function Build:string;
+    function Build:AnsiString;
     procedure Add(Name,Value:WideString);
     procedure Remove(Name:WideString);
     function SetComplex(Name,Value:WideString):TResponseSubValues;
@@ -95,17 +95,17 @@ type
   private
     FSource: TStream;
     SourceAtEnd: boolean;
-    Data: string;
+    Data: AnsiString;
     Size,Index,Done:integer;
     function Ensure(EnsureSize:integer):boolean;
     procedure Flush;
     procedure SkipWhiteSpace;
   public
     constructor Create(Source:TStream);
-    procedure CheckBoundary(var Boundary:string);
-    function GetHeader(var Params:TParamIndexes):string;
-    function GetString(Boundary:string):string;
-    procedure GetData(Boundary:string;var Pos:integer;var Len:integer);
+    procedure CheckBoundary(var Boundary:AnsiString);
+    function GetHeader(var Params:TParamIndexes):AnsiString;
+    function GetString(Boundary:AnsiString):AnsiString;
+    procedure GetData(Boundary:AnsiString;var Pos:integer;var Len:integer);
     function MultiPartDone:boolean;
   end;
 
@@ -116,16 +116,17 @@ const //resourcestring
   SxxmRequestHeadersReadOnly='Request headers are read-only.';
   SXxmResponseHeaderAlreadySent='Response header has already been send.';
 
-procedure SplitHeader(Value:string; var Params:TParamIndexes);
-function SplitHeaderValue(Value:string;ValueStart,ValueLength:integer;
-   var Params:TParamIndexes):string;
-function GetParamValue(Data:string; Params:TParamIndexes; Name:string):string;
+procedure SplitHeader(Value:AnsiString; var Params:TParamIndexes);
+function SplitHeaderValue(Value:AnsiString;ValueStart,ValueLength:integer;
+  var Params:TParamIndexes):AnsiString;
+function GetParamValue(Data:AnsiString;
+  Params:TParamIndexes; Name:AnsiString):AnsiString;
 
 implementation
 
 uses Variants;
 
-procedure SplitHeader(Value:string; var Params:TParamIndexes);
+procedure SplitHeader(Value:AnsiString; var Params:TParamIndexes);
 var
   b:boolean;
   p,q,l,r,i:integer;
@@ -171,8 +172,8 @@ begin
    end;
 end;
 
-function SplitHeaderValue(Value:string;ValueStart,ValueLength:integer;
-  var Params:TParamIndexes):string;
+function SplitHeaderValue(Value:AnsiString;ValueStart,ValueLength:integer;
+  var Params:TParamIndexes):AnsiString;
 var
   i,j,l,q:integer;
 begin
@@ -224,7 +225,8 @@ begin
    end;
 end;
 
-function GetParamValue(Data:string; Params:TParamIndexes; Name:string):string;
+function GetParamValue(Data:AnsiString;
+  Params:TParamIndexes; Name:AnsiString):AnsiString;
 var
   l,i:integer;
 begin
@@ -292,7 +294,7 @@ begin
   while Ensure(1) and (Data[Index] in [#0..#31]) do inc(Index);
 end;
 
-procedure TStreamNozzle.CheckBoundary(var Boundary: string);
+procedure TStreamNozzle.CheckBoundary(var Boundary: AnsiString);
 var
   bl:integer;
 begin
@@ -308,7 +310,7 @@ begin
   //Flush;?
 end;
 
-function TStreamNozzle.GetHeader(var Params: TParamIndexes): string;
+function TStreamNozzle.GetHeader(var Params: TParamIndexes): AnsiString;
 const
   GrowStep=$1000;
 var
@@ -357,7 +359,7 @@ begin
   Flush;
 end;
 
-function TStreamNozzle.GetString(Boundary: string): string;
+function TStreamNozzle.GetString(Boundary: AnsiString): AnsiString;
 var
   l,p,q:integer;
 begin
@@ -377,7 +379,7 @@ begin
   Flush;
 end;
 
-procedure TStreamNozzle.GetData(Boundary: string; var Pos: integer; var Len: integer);
+procedure TStreamNozzle.GetData(Boundary: AnsiString; var Pos: integer; var Len: integer);
 var
   l,p:integer;
 begin
@@ -406,7 +408,7 @@ end;
 
 { TRequestHeaders }
 
-constructor TRequestHeaders.Create(Data: string);
+constructor TRequestHeaders.Create(Data: AnsiString);
 begin
   inherited Create;
   FData:=Data;
@@ -597,7 +599,7 @@ begin
   Items:=FItems[i].SubValues;
 end;
 
-function TResponseHeaders.Build: string;
+function TResponseHeaders.Build: AnsiString;
 var
   ss:TStringStream;
   i:integer;

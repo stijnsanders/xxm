@@ -2,20 +2,20 @@ unit xxmCommonUtils;
 
 interface
 
-function RFC822DateGMT(dd: TDateTime): string;
-function GetFileModifiedDateTime(FilePath:string):TDateTime;
+function RFC822DateGMT(dd: TDateTime): AnsiString;
+function GetFileModifiedDateTime(FilePath:AnsiString):TDateTime;
 
 implementation
 
 uses Windows, SysUtils;
 
-function RFC822DateGMT(dd: TDateTime): string;
+function RFC822DateGMT(dd: TDateTime): AnsiString;
 const
-  Days:array [1..7] of string=
+  Days:array [1..7] of AnsiString=
     ('Sun','Mon','Tue','Wed','Thu','Fri','Sat');
-  Months:array [1..12] of string=
+  Months:array [1..12] of AnsiString=
     ('Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec');
-//  SignStr:array[boolean] of string=('-','+');
+//  SignStr:array[boolean] of AnsiString=('-','+');
 var
   dg:TDateTime;
   y,m,d,wd,th,tm,ts,tms:Word;
@@ -29,15 +29,15 @@ begin
     [Days[wd],d,Months[m],y,th,tm,ts]);
 end;
 
-function GetFileModifiedDateTime(FilePath:string):TDateTime;
+function GetFileModifiedDateTime(FilePath:AnsiString):TDateTime;
 var
   fh:THandle;
-  fd:TWin32FindData;
+  fd:TWin32FindDataA;
   st:TSystemTime;
 begin
   if FilePath='' then Result:=0 else
    begin
-    fh:=FindFirstFile(PChar(FilePath),fd);
+    fh:=FindFirstFileA(PAnsiChar(FilePath),fd);
     if fh=INVALID_HANDLE_VALUE then Result:=0 else
      begin
       Windows.FindClose(fh);

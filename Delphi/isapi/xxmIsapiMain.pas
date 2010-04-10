@@ -22,23 +22,23 @@ type
     FPage, FBuilding: IXxmFragment;
     FHeaderSent:boolean;
     FStatusCode:integer;
-    FStatusText,FProjectName,FFragmentName,FRedirectPrefix,FSessionID:string;
+    FStatusText,FProjectName,FFragmentName,FRedirectPrefix,FSessionID:AnsiString;
     FIncludeDepth:integer;
     ecb:PEXTENSION_CONTROL_BLOCK;
     FPostData: TStream;
-    FPostTempFile,FPageClass:string;
+    FPostTempFile,FPageClass:AnsiString;
     FParams: TXxmReqPars;
     FReqHeaders:TRequestHeaders;
     FResHeaders:TResponseHeaders;
     FCookieParsed: boolean;
-    FCookie: string;
+    FCookie: AnsiString;
     FCookieIdx: TParamIndexes;
     procedure SendRaw(Data:WideString);
-    procedure SendError(res:string;vals:array of string);
+    procedure SendError(res:AnsiString;vals:array of AnsiString);
     procedure HeaderOK;
     function CheckHeader:boolean;
     procedure ServerFunction(HSERRequest: DWORD; Buffer: Pointer; Size, DataType: LPDWORD);
-    function GetURLPrefix:string;
+    function GetURLPrefix:AnsiString;
   protected
     function GetURL: WideString;
     function GetPage: IXxmFragment;
@@ -143,7 +143,7 @@ var
   verlen:cardinal;
   r:TResourceStream;
   m:TMemoryStream;
-  p:PChar;
+  p:PAnsiChar;
 begin
   m:=TMemoryStream.Create;
   try
@@ -154,9 +154,9 @@ begin
       r.Free;
     end;
     m.Position:=0;
-    if VerQueryValue(m.Memory,'\',pointer(verblock),verlen) then
+    if VerQueryValueA(m.Memory,'\',pointer(verblock),verlen) then
       Ver.dwExtensionVersion:=verblock.dwFileVersionMS;
-    if VerQueryValue(m.Memory,'\StringFileInfo\040904E4\FileDescription',pointer(p),verlen) then
+    if VerQueryValueA(m.Memory,'\StringFileInfo\040904E4\FileDescription',pointer(p),verlen) then
       Move(p^,Ver.lpszExtensionDesc[0],verlen);
   finally
     m.Free;
@@ -196,14 +196,14 @@ end;
 
 { TXxmIsapiContext }
 
-function GetVar(pecb: PEXTENSION_CONTROL_BLOCK; key:string):string;
+function GetVar(pecb: PEXTENSION_CONTROL_BLOCK; key:AnsiString):AnsiString;
 var
   l:cardinal;
 begin
   l:=$10000;
   SetLength(Result,l);
   //TODO: 'UNICODE_'+
-  if not(pecb.GetServerVariable(pecb.ConnID,PChar(key),PChar(Result),l)) then
+  if not(pecb.GetServerVariable(pecb.ConnID,PAnsiChar(key),PAnsiChar(Result),l)) then
     if GetLastError=ERROR_INVALID_INDEX then l:=1 else RaiseLastOSError;
   SetLength(Result,l-1);
 end;
@@ -280,7 +280,7 @@ end;
 procedure TXxmIsapiContext.Execute;
 var
   c,l:cardinal;
-  x,y:string;
+  x,y:AnsiString;
   i,j:integer;
   p:IXxmPage;//for directinclude check
   d:TDateTime;
@@ -417,7 +417,7 @@ begin
           else
            begin
             SetLength(FPostTempFile,$400);
-            SetLength(FPostTempFile,GetTempPath($400,PChar(FPostTempFile)));//TODO: setting
+            SetLength(FPostTempFile,GetTempPathA($400,PAnsiChar(FPostTempFile)));//TODO: setting
             FPostTempFile:=FPostTempFile+'xxm_'+IntToHex(ecb.ConnID,8)+'.dat';
             FPostData:=TFileStream.Create(FPostTempFile,fmCreate);
             FPostData.Write(ecb.lpbData^,c);
@@ -526,7 +526,7 @@ const
   Utf8ByteOrderMark=#$EF#$BB#$BF;
   Utf16ByteOrderMark=#$FF#$FE;
 var
-  s:string;
+  s:AnsiString;
   l:cardinal;
 begin
   if not(Data='') then
@@ -536,13 +536,13 @@ begin
         aeUtf8:
          begin
           l:=3;
-          if not(ecb.WriteClient(ecb.ConnID,PChar(Utf8ByteOrderMark),l,HSE_IO_SYNC)) then
+          if not(ecb.WriteClient(ecb.ConnID,PAnsiChar(Utf8ByteOrderMark),l,HSE_IO_SYNC)) then
             RaiseLastOSError;
          end;
         aeUtf16:
          begin
           l:=2;
-          if not(ecb.WriteClient(ecb.ConnID,PChar(Utf16ByteOrderMark),l,HSE_IO_SYNC)) then
+          if not(ecb.WriteClient(ecb.ConnID,PAnsiChar(Utf16ByteOrderMark),l,HSE_IO_SYNC)) then
             RaiseLastOSError;
          end;
       end;
@@ -557,14 +557,14 @@ begin
        begin
         s:=UTF8Encode(Data);
         l:=Length(s);
-        if not(ecb.WriteClient(ecb.ConnID,PChar(s),l,HSE_IO_SYNC)) then
+        if not(ecb.WriteClient(ecb.ConnID,PAnsiChar(s),l,HSE_IO_SYNC)) then
           RaiseLastOSError;
        end;
       else
        begin
         s:=Data;
         l:=Length(s);
-        if not(ecb.WriteClient(ecb.ConnID,PChar(s),l,HSE_IO_SYNC)) then
+        if not(ecb.WriteClient(ecb.ConnID,PAnsiChar(s),l,HSE_IO_SYNC)) then
           RaiseLastOSError;
        end;
     end;
@@ -660,13 +660,13 @@ end;
 function TXxmIsapiContext.CheckHeader:boolean;
 var
   head:THSE_SEND_HEADER_EX_INFO;
-  s,t:string;
+  s,t:AnsiString;
 begin
   Result:=not(FHeaderSent);
   if Result then
    begin
     s:=IntToStr(FStatusCode)+' '+FStatusText;
-    head.pszStatus:=PChar(s);
+    head.pszStatus:=PAnsiChar(s);
     head.cchStatus:=Length(s);
     //use FResHeader.Complex?
     case FAutoEncoding of
@@ -677,7 +677,7 @@ begin
     end;
     t:=FResHeaders.Build+#13#10;
     //TODO cookies? redirect?
-    head.pszHeader:=PChar(t);
+    head.pszHeader:=PAnsiChar(t);
     head.cchHeader:=Length(t);
     head.fKeepConn:=false;//TODO: true if content-length known?
     ServerFunction(HSE_REQ_SEND_RESPONSE_HEADER_EX,@head,nil,nil);
@@ -709,7 +709,7 @@ procedure TXxmIsapiContext.Include(Address: WideString;
   const Objects: array of TObject);
 var
   f,fb:IXxmFragment;
-  pc:string;
+  pc:AnsiString;
 begin
   if FIncludeDepth=XxmMaxIncludeDepth then
     raise EXxmIncludeStackFull.Create(SXxmIncludeStackFull);
@@ -745,9 +745,9 @@ begin
   //ecb.
 end;
 
-procedure TXxmIsapiContext.SendError(res: string; vals: array of string);
+procedure TXxmIsapiContext.SendError(res: AnsiString; vals: array of AnsiString);
 var
-  s:string;
+  s:AnsiString;
   i:integer;
 const
   RT_HTML = MakeIntResource(23);
@@ -768,7 +768,7 @@ begin
   SendHTML(s);
 end;
 
-function TXxmIsapiContext.GetURLPrefix: string;
+function TXxmIsapiContext.GetURLPrefix: AnsiString;
 begin
   Result:='http://'+GetVar(ecb,'HTTP_HOST');
   //TODO: https? other? port?
@@ -797,7 +797,7 @@ begin
   else
     s:=RedirectURL;
   //utf?
-  ServerFunction(HSE_REQ_SEND_URL_REDIRECT_RESP,PChar(UTF8Encode(s)),nil,nil);
+  ServerFunction(HSE_REQ_SEND_URL_REDIRECT_RESP,PAnsiChar(UTF8Encode(s)),nil,nil);
   raise EXxmPageRedirected.Create(s);
 end;
 

@@ -29,7 +29,7 @@ type
 
     //TODO: full properties?
     Authenticated:boolean;
-    Name:string;
+    Name:AnsiString;
 
     constructor Create(Context: IXxmContext);
     property SessionID:WideString read FSessionID;

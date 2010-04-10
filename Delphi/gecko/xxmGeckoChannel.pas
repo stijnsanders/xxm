@@ -36,13 +36,13 @@ type
     FConnected,FComplete,FHeaderSent,FAllowPipelining:boolean;
     FStatus,FSuspendCount,FIncludeDepth,FRedirectionLimit:integer;
     FStatusCode:word;
-    FStatusText,FVerb,FProjectName,FFragmentName,FPageClass,FQueryString:string;
+    FStatusText,FVerb,FProjectName,FFragmentName,FPageClass,FQueryString:AnsiString;
     FProjectEntry:TXxmProjectCacheEntry;
     FPage, FBuilding: IXxmFragment;
     FParams: TXxmReqPars;
     FAutoEncoding: TXxmAutoEncoding;
     FRequestHeaders,FResponseHeaders:TResponseHeaders;//both TResponseHeaders?! see Create
-    FCookie:string;
+    FCookie:AnsiString;
     FCookieIdx: TParamIndexes;
     FCookieParsed: boolean;
     FSingleFileSent: WideString;
@@ -59,7 +59,7 @@ type
     procedure ReportData;//call within lock!
     function Write(const Buffer; Count: Longint): Longint;//call within lock!
     procedure SendRaw(Data: WideString);
-    procedure SendError(res:string;vals:array of string);
+    procedure SendError(res:AnsiString;vals:array of AnsiString);
     procedure ReadCheck;
     procedure RedirectSync;
   protected
@@ -131,8 +131,8 @@ type
     procedure getRequestVersion(var major:PRUint32; var minor:PRUint32); safecall;
     procedure getResponseVersion(var major:PRUint32; var minor:PRUint32); safecall;
     procedure nsIHttpChannelInternal.setCookie=SetCookieHttpInt;
-    procedure SetCookieHttpInt(aCookieHeader:PChar); safecall;//string?
-    procedure setupFallbackChannel(aFallbackKey:PChar); safecall;//string?
+    procedure SetCookieHttpInt(aCookieHeader:PAnsiChar); safecall;//string?
+    procedure setupFallbackChannel(aFallbackKey:PAnsiChar); safecall;//string?
     //nsIUploadChannel
     procedure SetUploadStream(aStream: nsIInputStream; const aContentType: nsACString; aContentLength: PRInt32); safecall;
     function GetUploadStream(): nsIInputStream; safecall;
@@ -259,7 +259,7 @@ var
   GeckoLoaderPool:TXxmGeckoLoaderPool;
   //see xxmSettings
   StatusBuildError,StatusException,StatusFileNotFound:integer;
-  DefaultProjectName:string;
+  DefaultProjectName:AnsiString;
 
 implementation
 
@@ -622,7 +622,7 @@ end;
 
 procedure TxxmChannel.GetContentCharset(aContentCharset: nsACString);
 var
-  x:string;
+  x:AnsiString;
 begin
   x:=FResponseHeaders['Content-Charset'];
   NS_CStringSetData(aContentCharset,PAnsiChar(x),Length(x));
@@ -933,7 +933,7 @@ procedure TxxmChannel.Include(Address: WideString;
   const Values: array of OleVariant; const Objects: array of TObject);
 var
   f,fb:IXxmFragment;
-  pc:string;
+  pc:AnsiString;
 begin
   if FIncludeDepth=XxmMaxIncludeDepth then
     raise EXxmIncludeStackFull.Create(SXxmIncludeStackFull);
@@ -1245,7 +1245,7 @@ const
 
 procedure TxxmChannel.SendRaw(Data: WideString);
 var
-  s:string;
+  s:AnsiString;
   startdata:boolean;
 begin
   inherited;
@@ -1300,9 +1300,9 @@ begin
    end;
 end;
 
-procedure TxxmChannel.SendError(res: string; vals: array of string);
+procedure TxxmChannel.SendError(res: AnsiString; vals: array of AnsiString);
 var
-  s:string;
+  s:AnsiString;
   i:integer;
   r:TResourceStream;
   l:Int64;
@@ -1450,7 +1450,7 @@ end;
 procedure TxxmChannel.SetUploadStream(aStream: nsIInputStream;
   const aContentType: nsACString; aContentLength: PRInt32);
 var
-  ct:string;
+  ct:AnsiString;
 begin
   if @aContentType=nil then ct:='' else ct:=GetCString(aContentType);
   FPostData:=TUploadStream.Create(aStream);
@@ -1490,13 +1490,13 @@ begin
   minor:=1;
 end;
 
-procedure TxxmChannel.SetCookieHttpInt(aCookieHeader: PChar);
+procedure TxxmChannel.SetCookieHttpInt(aCookieHeader: PAnsiChar);
 begin
   //TODO:
   raise EInvalidOp.Create('Not implemented');
 end;
 
-procedure TxxmChannel.setupFallbackChannel(aFallbackKey: PChar);
+procedure TxxmChannel.setupFallbackChannel(aFallbackKey: PAnsiChar);
 begin
   //TODO:
   raise EInvalidOp.Create('Not implemented');

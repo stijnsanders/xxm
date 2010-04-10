@@ -150,10 +150,10 @@ type
   Pap_directive_t = ^ap_directive_t;
   ap_directive_t = {$IFDEF LINUX}packed{$ENDIF} record
     (* The current directive *)
-    directive: PChar;
+    directive: PAnsiChar;
     (* The arguments for the current directive, stored as a space
      *  separated list *)
-    args: PChar;
+    args: PAnsiChar;
     (* The next directive node in the tree
      *  @defvar ap_directive_t *next *)
     next: Pap_directive_t;
@@ -167,7 +167,7 @@ type
     data: Pointer;
     (* ### these may go away in the future, but are needed for now *)
     (* The name of the file this directive was found in *)
-    filename: PChar;
+    filename: PAnsiChar;
     (* The line number the directive was on *)
     line_num: Integer;
   end;
@@ -198,7 +198,7 @@ type
     (* The number of elements allocated in the array *)
     nalloc: Integer;
     (* The elements in the array *)
-    elts: PChar;
+    elts: PAnsiChar;
   end;
   Papr_array_header_t = ^apr_array_header_t;
   {$EXTERNALSYM apr_array_header_t} 
@@ -211,11 +211,11 @@ type
 (* The type for each entry in a string-content table *)
   apr_table_entry_t = {$IFDEF LINUX}packed{$ENDIF} record
     (* The key for the current table entry *)
-    key: PChar;          (* maybe NULL in future;
+    key: PAnsiChar;          (* maybe NULL in future;
                          * check when iterating thru table_elts
                          *)
     (* The value for the current table entry *)
-    val: PChar;
+    val: PAnsiChar;
     (* A checksum for the key, for use by the apr_table internals *)
     key_checksum: apr_uint32_t;
   end;
@@ -295,7 +295,7 @@ type
  * to carry a large variety of miscellaneous data which is all of
  * use to *somebody*...
  *)
-  cmd_func = function: PChar; cdecl;
+  cmd_func = function: PAnsiChar; cdecl;
   {$EXTERNALSYM cmd_func} 
   // typedef const char *(*cmd_func) ();
 
@@ -306,7 +306,7 @@ type
 
   command_struct  = {$IFDEF LINUX}packed{$ENDIF} record
     (* Name of this command *)
-    name: PChar;
+    name: PAnsiChar;
     (* The function to be called when this directive is parsed *)
     func: cmd_func;
     (* Extra data, for functions which implement multiple commands... *)
@@ -317,7 +317,7 @@ type
      *  @defvar cmd_how args_how*)
     args_how: cmd_how;
     (* 'usage' message, in case of syntax errors *)
-    errmsg: PChar;
+    errmsg: PAnsiChar;
   end;
   {$EXTERNALSYM command_struct}
   Pcommand_struct = ^command_struct;
@@ -553,7 +553,7 @@ type
 				    (*< a fgets()-like function *)
     close: function(param: Pointer): Integer;	    (*< a close handler function *)
     param: Pointer;                    (*< the argument passed to getch/getstr/close *)
-    name: PChar;               (*< the filename / description *)
+    name: PAnsiChar;               (*< the filename / description *)
     line_number: Cardinal;           (*< current line number, starting at 1 *)
   end;
   {$EXTERNALSYM ap_configfile_t}
@@ -592,7 +592,7 @@ type
      * derived from this field is whether a command is being called in a
      * server context (path == NULL) or being called in a dir context
      * (path != NULL).  *)
-    path: PChar;
+    path: PAnsiChar;
     (* configuration command *)
     cmd: Pcommand_rec;
     (* per_dir_config vector passed to handle_command *)
@@ -622,7 +622,7 @@ type
     (* Index to this modules structures in config vectors.  *)
     module_index: Integer;
     (* The name of the module's C file *)
-    name: PChar;
+    name: PAnsiChar;
     (* The handle for the DSO.  Internal use only *)
     dynamic_load_handle: Pointer;
     (* A pointer to the next module in the list
@@ -642,7 +642,7 @@ type
      *  @param dir The directory currently being processed.
      *  @return The per-directory structure created
      *)
-    create_dir_config: function(p: Papr_pool_t; dir: PChar): Pointer; cdecl;
+    create_dir_config: function(p: Papr_pool_t; dir: PAnsiChar): Pointer; cdecl;
     (* Function to allow all modules to merge the per directory configuration
      *  structures for two directories.
      *  @param p The pool to use for all allocations.
@@ -688,9 +688,9 @@ type
     (* The pool to use... *)
     pool: Papr_pool_t;
     (* The hostname *)
-    hostname: PChar;
+    hostname: PAnsiChar;
     (* Either a string of the port number or the service name for the port *)
-    servname: PChar;
+    servname: PAnsiChar;
     (* The numeric port *)
     port: apr_port_t;
     (* The family *)
@@ -735,14 +735,14 @@ type
     remote_addr: Papr_sockaddr_t;
 
     (** Client's IP address *)
-    remote_ip: PChar;
+    remote_ip: PAnsiChar;
     (** Client's DNS name, if known.  NULL if DNS hasn't been checked,
      *  "" if it has and no address was found.  N.B. Only access this though
      * get_remote_host() *)
-    remote_host: PChar;
+    remote_host: PAnsiChar;
     (** Only ever set if doing rfc1413 lookups.  N.B. Only access this through
      *  get_remote_logname() *)
-    remote_logname: PChar;
+    remote_logname: PAnsiChar;
 
     (** Are we still talking? *)
     flags1: Cardinal;
@@ -762,10 +762,10 @@ type
     (** How many times have we used it? *)
     keepalives: Integer;
     (** server IP address *)
-    local_ip: PChar;
+    local_ip: PAnsiChar;
     (** used for ap_get_server_name when UseCanonicalName is set to DNS
      *  (ignores setting of HostnameLookups) *)
-    local_host: PChar;
+    local_host: PAnsiChar;
 
     (** ID of this connection; unique at any point in time *)
     id: LongInt;
@@ -838,23 +838,23 @@ type
  *)
   apr_uri_t = {$IFDEF LINUX}packed{$ENDIF} record
     (* scheme ("http"/"ftp"/...) *)
-    scheme: PChar;
+    scheme: PAnsiChar;
     (* combined [user[:password]@]host[:port] *)
-    hostinfo: PChar;
+    hostinfo: PAnsiChar;
     (* user name, as in http://user:passwd@host:port/ *)
-    user: PChar;
+    user: PAnsiChar;
     (* password, as in http://user:passwd@host:port/ *)
-    password: PChar;
+    password: PAnsiChar;
     (* hostname from URI (or from Host: header) *)
-    hostname: PChar;
+    hostname: PAnsiChar;
     (* port string (integer representation is in "port") *)
-    port_str: PChar;
+    port_str: PAnsiChar;
     (* the request path (or "/" if only scheme://host was given) *)
-    path: PChar;
+    path: PAnsiChar;
     (* Everything after a '?' in the path, if present *)
-    query: PChar;
+    query: PAnsiChar;
     (* Trailing "#fragment" string, if present *)
-    fragment: PChar;
+    fragment: PAnsiChar;
 
     (* structure returned from gethostbyname()
      *  @defvar struct hostent *hostent *)
@@ -911,9 +911,9 @@ type
     (* The time the file was last changed *)
     ctime: apr_time_t;
     (* The full pathname of the file *)
-    fname: PChar;
+    fname: PAnsiChar;
     (* The file's name (no path) in filesystem case *)
-    name: PChar;
+    name: PAnsiChar;
     (* The file's handle, if accessed (can be submitted to apr_duphandle) *)
     filehand: Papr_file_t;
   end;
@@ -926,7 +926,7 @@ type
   Phtaccess_result = ^htaccess_result;
   htaccess_result = {$IFDEF LINUX}packed{$ENDIF} record
     (* the directory to which this applies *)
-    dir: PChar;
+    dir: PAnsiChar;
     (* the overrides allowed for the .htaccess file *)
     override: Integer;
     (* the configuration directives *)
@@ -1069,7 +1069,7 @@ type
   Pap_filter_rec_t = ^ap_filter_rec_t;
   ap_filter_rec_t = {$IFDEF LINUX}packed{$ENDIF} record
     (* The registered name for this filter *)
-    name: PChar;
+    name: PAnsiChar;
     (* The function to call when this filter is invoked. *)
     filter_func: ap_filter_func;
     (* The type of filter, either AP_FTYPE_CONTENT or AP_FTYPE_CONNECTION.
@@ -1143,9 +1143,9 @@ type
     (** How many command line arguments were pass to the program *)
     argc: Integer;
     (** The command line arguments *)
-    argv: PPChar;
+    argv: PPAnsiChar;
     (** The program name used to execute the program *)
-    short_name: PChar;
+    short_name: PAnsiChar;
   end;
   {$EXTERNALSYM process_rec}
 
@@ -1173,7 +1173,7 @@ type
      * protocol.c should ever touch...
      *)
     (** First line of request, so we can log it *)
-    the_request: PChar;
+    the_request: PAnsiChar;
     (** HTTP/0.9, "simple" request (e.g. GET /foo\n w/no headers) *)
     assbackwards: Integer;
     (** A proxy request (calculated during post_read_request/translate_name)
@@ -1184,17 +1184,17 @@ type
     (** HEAD request, as opposed to GET *)
     header_only: Integer;
     (** Protocol, as given to us, or HTTP/0.9 *)
-    protocol: PChar;
+    protocol: PAnsiChar;
     (** Number version of protocol; 1.1 = 1001 *)
     proto_num: Integer;
     (** Host, as set by full URI or Host: *)
-    hostname: PChar;
+    hostname: PAnsiChar;
 
     (** When the request started *)
     request_time: apr_time_t;
 
     (** Status line, if set by script *)
-    status_line: PChar;
+    status_line: PAnsiChar;
     (** In any case *)
     status: Integer;
 
@@ -1203,7 +1203,7 @@ type
      *)
 
     (** GET, HEAD, POST, etc. *)
-    method: PChar;
+    method: PAnsiChar;
     (** M_GET, M_POST, etc. *)
     method_number: Integer;
 
@@ -1245,7 +1245,7 @@ type
     (** sending chunked transfer-coding *)
     chunked: Integer;
     (** The Range: header *)
-    range: PChar;
+    range: PAnsiChar;
     (** The "real" content length *)
     clength: apr_off_t;
 
@@ -1291,22 +1291,22 @@ type
      * they should not be modified in place.
      *)
     (** The content-type for the current request *)
-    content_type: PChar;	(* Break these out --- we dispatch on 'em *)
+    content_type: PAnsiChar;	(* Break these out --- we dispatch on 'em *)
     (** The handler string that we use to call a handler function *)
-    handler: PChar;	(* What we *really* dispatch on           *)
+    handler: PAnsiChar;	(* What we *really* dispatch on           *)
 
     (** How to encode the data *)
-    content_encoding: PChar;
-    (** array of (PChar) representing the content languages *)
+    content_encoding: PAnsiChar;
+    (** array of (PAnsiChar) representing the content languages *)
     content_languages: Papr_array_header_t;
 
     (** variant list validator (if negotiated) *)
-    vlist_validator: PChar;
+    vlist_validator: PAnsiChar;
 
     (** If an authentication check was made, this gets set to the user name. *)
-    user: PChar;
+    user: PAnsiChar;
     (** If an authentication check was made, this gets set to the auth type. *)
-    ap_auth_type: PChar;
+    ap_auth_type: PAnsiChar;
 
     (** This response is non-cache-able *)
     no_cache: Integer;
@@ -1318,17 +1318,17 @@ type
      *)
 
     (** the uri without any parsing performed *)
-    unparsed_uri: PChar;
+    unparsed_uri: PAnsiChar;
     (** the path portion of the URI *)
-    uri: PChar;
+    uri: PAnsiChar;
     (** The filename on disk that this response corresponds to *)
-    filename: PChar;
+    filename: PAnsiChar;
     (** The true filename, we canonicalize r->filename if these don't match *)
-    canonical_filename: PChar;
+    canonical_filename: PAnsiChar;
     (** The path_info for this request if there is any. *)
-    path_info: PChar;
+    path_info: PAnsiChar;
     (** QUERY_ARGS, if any *)
-    args: PChar;
+    args: PAnsiChar;
     (** ST_MODE set to zero if no such file *)
     finfo: apr_finfo_t;
     (** components of uri, dismantled *)
@@ -1395,7 +1395,7 @@ type
     (* The bound port, for this server *)
     host_port: apr_port_t;
     (* The name given in <VirtualHost> *)
-    virthost: PChar;
+    virthost: PAnsiChar;
   end;
   {$EXTERNALSYM server_addr_rec}
 
@@ -1406,23 +1406,23 @@ type
     (* The next server in the list *)
     next: Pserver_rec;
     (* The name of the server *)
-    defn_name: PChar;
+    defn_name: PAnsiChar;
     (* The line of the config file that the server was defined on *)
     defn_line_number: Cardinal;
 
     (* Contact information *)
 
     (* The admin's contact information *)
-    server_admin: PChar;
+    server_admin: PAnsiChar;
     (* The server hostname *)
-    server_hostname: PChar;
+    server_hostname: PAnsiChar;
     (* for redirects, etc. *)
     port: apr_port_t;
 
     (* Log files --- note that transfer log is now in the modules... *)
 
     (* The name of the error log *)
-    error_fname: PChar;
+    error_fname: PAnsiChar;
     (* A file descriptor that references the error log *)
     error_log: Papr_file_t;
     (* The log level for this server *)
@@ -1451,7 +1451,7 @@ type
     keep_alive: Integer;
 
     (* Pathname for ServerPath *)
-    path: PChar;
+    path: PAnsiChar;
     (* Length of path *)
     pathlen: Integer;
 
@@ -1477,7 +1477,7 @@ type
  * @return An error string or NULL on success
  *)
 function ap_set_string_slot(cmd: Pcmd_parms; struct_ptr: Pointer;
-  const arg: PChar): PChar; cdecl;
+  const arg: PAnsiChar): PAnsiChar; cdecl;
 {$EXTERNALSYM ap_set_string_slot}
 
 (*
@@ -1488,7 +1488,7 @@ function ap_set_string_slot(cmd: Pcmd_parms; struct_ptr: Pointer;
  * @return An error string or NULL on success
  *)
 function ap_set_int_slot(cmd: Pcmd_parms; struct_ptr: Pointer;
-  arg: PChar): PChar; cdecl;
+  arg: PAnsiChar): PAnsiChar; cdecl;
 {$EXTERNALSYM ap_set_int_slot}
 
 (*
@@ -1501,7 +1501,7 @@ function ap_set_int_slot(cmd: Pcmd_parms; struct_ptr: Pointer;
  *                  directive handler.
  * @return  0 if the method is not limited in the current scope
  *)
-function ap_method_is_limited(cmd: Pcmd_parms; const method: PChar): Integer;
+function ap_method_is_limited(cmd: Pcmd_parms; const method: PAnsiChar): Integer;
   {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
 {$EXTERNALSYM ap_method_is_limited}
 
@@ -1514,7 +1514,7 @@ function ap_method_is_limited(cmd: Pcmd_parms; const method: PChar): Integer;
  * @return An error string or NULL on success
  *)
 function ap_set_string_slot_lower(cmd: Pcmd_parms; struct_ptr: Pointer;
-  const arg: PChar): PChar; cdecl;
+  const arg: PAnsiChar): PAnsiChar; cdecl;
 {$EXTERNALSYM ap_set_string_slot_lower}
 
 const
@@ -1917,7 +1917,7 @@ function apr_array_append(p: Papr_pool_t; const first: Papr_array_header_t;
  * @return A string containing all of the data in the array.
  *)
 function apr_array_pstrcat(p: Papr_pool_t; const arr: Papr_array_header_t;
-	const sep: Char): PChar; {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
+	const sep: Char): PAnsiChar; {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
 {$EXTERNALSYM apr_array_pstrcat}
 
 (*
@@ -1955,7 +1955,7 @@ procedure apr_table_clear(t: Papr_table_t); {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{
  * @param key The key to search for
  * @return The value associated with the key
  *)
-function apr_table_get(const t: Papr_table_t; key: PChar): PChar;
+function apr_table_get(const t: Papr_table_t; key: PAnsiChar): PAnsiChar;
   {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
 {$EXTERNALSYM apr_table_get}
 (*
@@ -1967,7 +1967,7 @@ function apr_table_get(const t: Papr_table_t; key: PChar): PChar;
  * @remark When adding data, this function makes a copy of both the key and the
  *         value.
  *)
-procedure apr_table_set(t: Papr_table_t; const key: PChar; const val: PChar);
+procedure apr_table_set(t: Papr_table_t; const key: PAnsiChar; const val: PAnsiChar);
   {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
 {$EXTERNALSYM apr_table_set}
 
@@ -1981,8 +1981,8 @@ procedure apr_table_set(t: Papr_table_t; const key: PChar; const val: PChar);
  *          the value, so care should be taken to ensure that the values will
  *          not change after they have been added..
  *)
-procedure apr_table_setn(t: Papr_table_t; const key: PChar;
-                                 const val: PChar);
+procedure apr_table_setn(t: Papr_table_t; const key: PAnsiChar;
+                                 const val: PAnsiChar);
   {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
 {$EXTERNALSYM apr_table_setn}
 
@@ -1991,7 +1991,7 @@ procedure apr_table_setn(t: Papr_table_t; const key: PChar;
  * @param t The table to remove data from
  * @param key The key of the data being removed
  *)
-procedure apr_table_unset(t: Papr_table_t; const key: PChar);
+procedure apr_table_unset(t: Papr_table_t; const key: PAnsiChar);
   {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
 {$EXTERNALSYM apr_table_unset}
 
@@ -2003,7 +2003,7 @@ procedure apr_table_unset(t: Papr_table_t; const key: PChar);
  * @param val The data to add
  * @remark If the key is not found; then this function acts like apr_table_add
  *)
-procedure apr_table_merge(t: Papr_table_t; const key: PChar; const val: PChar);
+procedure apr_table_merge(t: Papr_table_t; const key: PAnsiChar; const val: PAnsiChar);
   {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
 {$EXTERNALSYM apr_table_merge}
 
@@ -2015,7 +2015,7 @@ procedure apr_table_merge(t: Papr_table_t; const key: PChar; const val: PChar);
  * @param val The data to add
  * @remark If the key is not found; then this function acts like apr_table_addn
  *)
-procedure apr_table_mergen(t: Papr_table_t; const key: PChar; const val: PChar);
+procedure apr_table_mergen(t: Papr_table_t; const key: PAnsiChar; const val: PAnsiChar);
   {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
 {$EXTERNALSYM apr_table_mergen}
 
@@ -2028,8 +2028,8 @@ procedure apr_table_mergen(t: Papr_table_t; const key: PChar; const val: PChar);
  * @remark When adding data; this function makes a copy of both the key and the
  *         value.
  *)
-procedure apr_table_add(t: Papr_table_t; const key: PChar;
-                                const val: PChar);
+procedure apr_table_add(t: Papr_table_t; const key: PAnsiChar;
+                                const val: PAnsiChar);
   {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
 {$EXTERNALSYM apr_table_add}
 
@@ -2043,7 +2043,7 @@ procedure apr_table_add(t: Papr_table_t; const key: PChar;
  *         value; so care should be taken to ensure that the values will not
  *         change after they have been added..
  *)
-procedure apr_table_addn(t: Papr_table_t; const key: PChar; const val: PChar);
+procedure apr_table_addn(t: Papr_table_t; const key: PAnsiChar; const val: PAnsiChar);
   {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
 {$EXTERNALSYM apr_table_addn}
 
@@ -2091,7 +2091,7 @@ function apr_table_overlay(p: Papr_pool_t; const overlay: Papr_table_t;
  *                whose key matches are run.
  *)
 type
-  TCompFunc = function(P: Pointer; PC: PChar; PC2: PChar): Integer; cdecl;
+  TCompFunc = function(P: Pointer; PC: PAnsiChar; PC2: PAnsiChar): Integer; cdecl;
 procedure apr_table_vdo(comp: TCompFunc; rec: Pointer; const t: Papr_table_t;
   list: va_list);
   {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
@@ -2167,7 +2167,7 @@ function ap_allow_overrides(r: Prequest_rec): Integer;
  * @return The default type
  * @deffunc const char *ap_default_type(r: Prequest_rec)
  *)
-function ap_default_type(r: Prequest_rec): PChar;
+function ap_default_type(r: Prequest_rec): PAnsiChar;
 {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
 {$EXTERNALSYM ap_default_type}
 
@@ -2179,7 +2179,7 @@ function ap_default_type(r: Prequest_rec): PChar;
  * @return The document root
  * @deffunc const char *ap_document_root(r: Prequest_rec)
  *)
-function ap_document_root(r: Prequest_rec): PChar;
+function ap_document_root(r: Prequest_rec): PAnsiChar;
 {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
 {$EXTERNALSYM ap_document_root}
 
@@ -2208,7 +2208,7 @@ function ap_document_root(r: Prequest_rec): PChar;
  * @deffunc const char *ap_get_remote_host(conn_rec *conn, void *dir_config, int type, int *str_is_ip)
  *)
 function ap_get_remote_host(conn: Pconn_rec; dir_config: Pointer;
-  _type: Integer; str_is_ip: PInteger): PChar;
+  _type: Integer; str_is_ip: PInteger): PAnsiChar;
 {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
 {$EXTERNALSYM ap_get_remote_host}
 
@@ -2219,7 +2219,7 @@ function ap_get_remote_host(conn: Pconn_rec; dir_config: Pointer;
  * @return The user logged in to the client machine
  * @deffunc const char *ap_get_remote_logname(r: Prequest_rec)
  *)
-function ap_get_remote_logname(r: Prequest_rec): PChar;
+function ap_get_remote_logname(r: Prequest_rec): PAnsiChar;
 {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
 {$EXTERNALSYM ap_get_remote_logname}
 
@@ -2234,7 +2234,7 @@ function ap_get_remote_logname(r: Prequest_rec): PChar;
  * @return A fully qualified URL
  * @deffunc char *ap_construct_url(apr_pool_t *p, const char *uri, r: Prequest_rec)
  *)
-function ap_construct_url(p: Papr_pool_t; const uri: PChar; r: Prequest_rec): PChar;
+function ap_construct_url(p: Papr_pool_t; const uri: PAnsiChar; r: Prequest_rec): PAnsiChar;
 {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
 {$EXTERNALSYM ap_construct_url}
 (*
@@ -2243,7 +2243,7 @@ function ap_construct_url(p: Papr_pool_t; const uri: PChar; r: Prequest_rec): PC
  * @return the server name
  * @deffunc const char *ap_get_server_name(r: Prequest_rec)
  *)
-function  ap_get_server_name(r: Prequest_rec): PChar;
+function  ap_get_server_name(r: Prequest_rec): PAnsiChar;
 {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
 {$EXTERNALSYM ap_get_server_name}
 (*
@@ -2260,7 +2260,7 @@ function ap_get_server_port(const r: Prequest_rec): apr_port_t;
  * @return The server software version
  * @deffunc const char *ap_get_server_version()
  *)
-function ap_get_server_version: PChar;
+function ap_get_server_version: PAnsiChar;
 {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
 {$EXTERNALSYM ap_get_server_version}
 (*
@@ -2288,7 +2288,7 @@ function ap_get_limit_xml_body(const r: Prequest_rec): size_t;
  * @param string The custom response.  This can be a static string, a file
  *               or a URL
  *)
-procedure ap_custom_response(r: Prequest_rec; status: Integer; const str: PChar);
+procedure ap_custom_response(r: Prequest_rec; status: Integer; const str: PAnsiChar);
 {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
 {$EXTERNALSYM ap_custom_response}
 (*
@@ -2297,7 +2297,7 @@ procedure ap_custom_response(r: Prequest_rec; status: Integer; const str: PChar)
  * @return 1 if defined, 0 otherwise
  * @deffunc int ap_exists_config_define(const char *name)
  *)
-function ap_exists_config_define(const name: PChar): Integer;
+function ap_exists_config_define(const name: PAnsiChar): Integer;
 {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
 {$EXTERNALSYM ap_exists_config_define}
 (* FIXME! See STATUS about how *)
@@ -2317,7 +2317,7 @@ function ap_core_translate(r: Prequest_rec): Integer; cdecl;
  * @return The authorization required
  * @deffunc const char *ap_auth_type(r: Prequest_rec)
  *)
-function ap_auth_type(r: Prequest_rec): PChar;
+function ap_auth_type(r: Prequest_rec): PAnsiChar;
 {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
 {$EXTERNALSYM ap_auth_type}
 
@@ -2327,7 +2327,7 @@ function ap_auth_type(r: Prequest_rec): PChar;
  * @return The current authorization realm
  * @deffunc const char *ap_auth_name(r: Prequest_rec)
  *)
-function ap_auth_name(r: Prequest_rec): PChar;
+function ap_auth_name(r: Prequest_rec): PAnsiChar;
 {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
 {$EXTERNALSYM ap_auth_name}
 
@@ -2437,7 +2437,7 @@ function ap_rationalize_mtime(r: Prequest_rec; mtime: apr_time_t): apr_time_t;
  * @return The content-type
  * @deffunc const char *ap_make_content_type(r: Prequest_rec; const char *type);
  *)
-function ap_make_content_type(r: Prequest_rec; const _type: PChar): PChar;
+function ap_make_content_type(r: Prequest_rec; const _type: PAnsiChar): PAnsiChar;
 {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
 {$EXTERNALSYM ap_make_content_type}
 
@@ -2450,7 +2450,7 @@ function ap_make_content_type(r: Prequest_rec; const _type: PChar): PChar;
  * @return The entity tag
  * @deffunc char *ap_make_etag(r: Prequest_rec; int force_weak)
  *)
-function ap_make_etag(r: Prequest_rec; force_weak: Integer): PChar;
+function ap_make_etag(r: Prequest_rec; force_weak: Integer): PAnsiChar;
 {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
 {$EXTERNALSYM ap_make_etag}
 
@@ -2519,7 +2519,7 @@ function ap_send_fd(fdL: Papr_file_t; r: Prequest_rec; offset: apr_off_t;
  * @param methname The name of the new method to register.
  * @return         Ab int value representing an offset into a bitmask.
  *)
-function ap_method_register(p: Papr_pool_t; const methname: PChar): Integer;
+function ap_method_register(p: Papr_pool_t; const methname: PAnsiChar): Integer;
 {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
 {$EXTERNALSYM ap_method_register}
 
@@ -2558,7 +2558,7 @@ procedure ap_copy_method_list(dest: Pap_method_list_t; src: Pap_method_list_t);
  * @return  1 if method is in the list; otherwise 0
  * @deffunc int ap_method_in_list(const char *method; ap_method_list_t *l)
  *)
-function ap_method_in_list(l: Pap_method_list_t; const method: PChar): Integer;
+function ap_method_in_list(l: Pap_method_list_t; const method: PAnsiChar): Integer;
 {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
 {$EXTERNALSYM ap_method_in_list}
 
@@ -2571,7 +2571,7 @@ function ap_method_in_list(l: Pap_method_list_t; const method: PChar): Integer;
  * @return  None.
  * @deffunc void ap_method_in_list(l: Pap_method_list_t; const char *method)
  *)
-procedure ap_method_list_add(l: Pap_method_list_t; const method: PChar);
+procedure ap_method_list_add(l: Pap_method_list_t; const method: PAnsiChar);
 {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
 {$EXTERNALSYM ap_method_list_add}
 (*
@@ -2582,7 +2582,7 @@ procedure ap_method_list_add(l: Pap_method_list_t; const method: PChar);
  * @return  None.
  * @deffunc void ap_method_list_remove(l: Pap_method_list_t; const char *method)
  *)
-procedure ap_method_list_remove(l: Pap_method_list_t; const method: PChar);
+procedure ap_method_list_remove(l: Pap_method_list_t; const method: PAnsiChar);
 {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
 {$EXTERNALSYM ap_method_list_remove}
 
@@ -2605,7 +2605,7 @@ procedure ap_clear_method_list(l: Pap_method_list_t);
  * @param length The new content type
  * @deffunc void ap_set_content_type(r: Prequest_rec; const char* ct)
  *)
-procedure ap_set_content_type(r: Prequest_rec; const ct: PChar);
+procedure ap_set_content_type(r: Prequest_rec; const ct: PAnsiChar);
 {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
 {$EXTERNALSYM ap_set_content_type}
 (* Hmmm... could macrofy these for now; and maybe forever; though the
@@ -2629,7 +2629,7 @@ function ap_rputc(c: Integer; r: Prequest_rec): Integer;
  * @return The number of bytes sent
  * @deffunc int ap_rputs(const char *str; r: Prequest_rec)
  *)
-function ap_rputs(const str: PChar; r: Prequest_rec): Integer;
+function ap_rputs(const str: PAnsiChar; r: Prequest_rec): Integer;
 {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
 {$EXTERNALSYM ap_rputs}
 (*
@@ -2661,7 +2661,7 @@ function ap_rwrite(var buf; nbyte: Integer; r: Prequest_rec): Integer;
  * @return The number of bytes sent
  * @deffunc int ap_vrprintf(r: Prequest_rec; const char *fmt; va_list vlist)
  *)
-function ap_vrprintf(r: Prequest_rec; const fmt: PChar; vlist: va_list): Integer;
+function ap_vrprintf(r: Prequest_rec; const fmt: PAnsiChar; vlist: va_list): Integer;
 {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
 {$EXTERNALSYM ap_vrprintf}
 
@@ -2692,7 +2692,7 @@ function  ap_index_of_response(status: Integer): Integer;
  * @return The Status-Line
  * @deffunc const char *ap_get_status_line(int status)
  *)
-function ap_get_status_line(status: Integer): PChar;
+function ap_get_status_line(status: Integer): PAnsiChar;
 {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
 {$EXTERNALSYM ap_get_status_line}
 
@@ -2737,7 +2737,7 @@ function ap_should_client_block(r: Prequest_rec): Integer;
  *         if EOF; or -1 if there was an error
  * @deffunc long ap_get_client_block(r: Prequest_rec; char *buffer; apr_size_t bufsiz)
  *)
-function ap_get_client_block(r: Prequest_rec; buffer: PChar; bufsiz: apr_size_t): LongInt;
+function ap_get_client_block(r: Prequest_rec; buffer: PAnsiChar; bufsiz: apr_size_t): LongInt;
   {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
 {$EXTERNALSYM ap_get_client_block}
 
@@ -2803,7 +2803,7 @@ procedure ap_note_digest_auth_failure(r: Prequest_rec);
  *         decline as well).
  * @deffunc int ap_get_basic_auth_pw(r: Prequest_rec; const char **pw)
  *)
-function ap_get_basic_auth_pw(r: Prequest_rec; const pw: PPChar): Integer;
+function ap_get_basic_auth_pw(r: Prequest_rec; const pw: PPAnsiChar): Integer;
   {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
 {$EXTERNALSYM ap_get_basic_auth_pw}
 
@@ -2818,7 +2818,7 @@ function ap_get_basic_auth_pw(r: Prequest_rec; const pw: PPChar): Integer;
  *         -1 for miscellaneous errors
  * @deffunc int ap_method_number_of(const char *method)
  *)
-function ap_getline(s: PChar; n: integer; r: Prequest_rec; fold: Integer): Integer;
+function ap_getline(s: PAnsiChar; n: integer; r: Prequest_rec; fold: Integer): Integer;
   {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
 {$EXTERNALSYM ap_getline}
 
@@ -2828,7 +2828,7 @@ function ap_getline(s: PChar; n: integer; r: Prequest_rec; fold: Integer): Integ
  * @param method A string containing a valid HTTP method
  * @return The method number
  *)
-function ap_method_number_of(const method: PChar): Integer;
+function ap_method_number_of(const method: PAnsiChar): Integer;
   {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
 {$EXTERNALSYM ap_method_number_of}
 
@@ -2839,7 +2839,7 @@ function ap_method_number_of(const method: PChar): Integer;
  * @param methnum An integer value corresponding to an internal method number
  * @return The name corresponding to the method number
  *)
-function ap_method_name_of(p: Papr_pool_t; methnum: Integer): PChar;
+function ap_method_name_of(p: Papr_pool_t; methnum: Integer): PAnsiChar;
   {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
 {$EXTERNALSYM ap_method_name_of}
 
@@ -2853,7 +2853,7 @@ function ap_method_name_of(p: Papr_pool_t; methnum: Integer): PChar;
  * @param p pool to allocate data from
  * @param fname The file name
  *)
-function ap_server_root_relative(p: Papr_pool_t; const fname: PChar): PChar;
+function ap_server_root_relative(p: Papr_pool_t; const fname: PAnsiChar): PAnsiChar;
   {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
 {$EXTERNALSYM ap_server_root_relative}
 
@@ -2863,8 +2863,8 @@ type
   ap_HOOK_header_parser_t = function(r: Prequest_rec): Integer; cdecl;
 {$EXTERNALSYM ap_HOOK_header_parser_t}
 procedure ap_hook_header_parser(pf: ap_HOOK_header_parser_t;
-  const aszPre: PPChar; const aszSucc:
-  PPChar; nOrder: Integer);
+  const aszPre: PPAnsiChar; const aszSucc:
+  PPAnsiChar; nOrder: Integer);
   {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
 {$EXTERNALSYM ap_hook_header_parser}
 function ap_run_header_parser(r: Prequest_rec): Integer;
@@ -2876,9 +2876,9 @@ function ap_hook_get_header_parser: Papr_array_header_t;
 type
   ap_LINK_header_parser_t = {$IFDEF LINUX}packed{$ENDIF} record
     pFunc: ap_HOOK_header_parser_t;
-    szName: PChar;
+    szName: PAnsiChar;
     aszPredecessors:
-    PPChar; aszSuccessors: PPChar;
+    PPAnsiChar; aszSuccessors: PPAnsiChar;
     nOrder: Integer;
   end;
   {$EXTERNALSYM ap_LINK_header_parser_t}
@@ -2887,8 +2887,8 @@ type
   ap_HOOK_pre_config_t = function(pconf: Papr_pool_t; plog: Papr_pool_t;
     ptemp: Papr_pool_t): Integer; cdecl;
   {$EXTERNALSYM ap_HOOK_pre_config_t}
-procedure ap_hook_pre_config(pf: ap_HOOK_pre_config_t; const aszPre: PPChar;
-  const aszSucc: PPChar; nOrder: Integer);
+procedure ap_hook_pre_config(pf: ap_HOOK_pre_config_t; const aszPre: PPAnsiChar;
+  const aszSucc: PPAnsiChar; nOrder: Integer);
   {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
   {$EXTERNALSYM ap_hook_pre_config}
 function ap_run_pre_config(pconf: Papr_pool_t; plog: Papr_pool_t; ptemp: Papr_pool_t): Integer;
@@ -2900,9 +2900,9 @@ function ap_hook_get_pre_config: Papr_array_header_t;
 type
   ap_LINK_pre_config_t = {$IFDEF LINUX}packed{$ENDIF} record
     pFunc: ap_HOOK_pre_config_t;
-    szName: PChar;
-    aszPredecessors: PPChar;
-    aszSuccessors: PPChar;
+    szName: PAnsiChar;
+    aszPredecessors: PPAnsiChar;
+    aszSuccessors: PPAnsiChar;
     nOrder: Integer;
   end;
   {$EXTERNALSYM ap_LINK_pre_config_t}
@@ -2911,8 +2911,8 @@ type
   ap_HOOK_post_config_t = function(pconf: Papr_pool_t; plog: Papr_pool_t;
     ptemp: Papr_pool_t; s: Pserver_rec): Integer; cdecl;
     {$EXTERNALSYM ap_HOOK_post_config_t}
-procedure ap_hook_post_config(pf: ap_HOOK_post_config_t; const aszPre: PPChar;
-  const aszSucc: PPChar; nOrder: Integer);
+procedure ap_hook_post_config(pf: ap_HOOK_post_config_t; const aszPre: PPAnsiChar;
+  const aszSucc: PPAnsiChar; nOrder: Integer);
   {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
   {$EXTERNALSYM ap_hook_post_config}
 function ap_run_post_config(pconf: Papr_pool_t; plog: Papr_pool_t;
@@ -2925,9 +2925,9 @@ function ap_hook_get_post_config: Papr_array_header_t;
 type
   ap_LINK_post_config_t = {$IFDEF LINUX}packed{$ENDIF} record
     pFunc: ap_HOOK_post_config_t;
-    szName: PChar;
-    aszPredecessors: PPChar;
-    aszSuccessors: PPChar;
+    szName: PAnsiChar;
+    aszPredecessors: PPAnsiChar;
+    aszSuccessors: PPAnsiChar;
     nOrder: Integer;
   end;
   {$EXTERNALSYM ap_LINK_post_config_t}
@@ -2935,8 +2935,8 @@ type
   ap_HOOK_open_logs_t = function(pconf: Papr_pool_t; plog: Papr_pool_t;
     ptemp: Papr_pool_t; s: Pserver_rec): Integer; cdecl;
     {$EXTERNALSYM ap_HOOK_open_logs_t}
-procedure ap_hook_open_logs(pf: ap_HOOK_open_logs_t; const aszPre: PPChar;
-  const aszSucc: PPChar; nOrder: Integer);
+procedure ap_hook_open_logs(pf: ap_HOOK_open_logs_t; const aszPre: PPAnsiChar;
+  const aszSucc: PPAnsiChar; nOrder: Integer);
   {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
   {$EXTERNALSYM ap_hook_open_logs}
 function ap_run_open_logs(pconf: Papr_pool_t ;plog: Papr_pool_t; ptemp:
@@ -2949,9 +2949,9 @@ function ap_hook_get_open_logs: Papr_array_header_t;
 type
   ap_LINK_open_logs_t = {$IFDEF LINUX}packed{$ENDIF} record
     pFunc: ap_HOOK_open_logs_t;
-    szName: PChar;
-    aszPredecessors: PPChar;
-    aszSuccessors: PPChar;
+    szName: PAnsiChar;
+    aszPredecessors: PPAnsiChar;
+    aszSuccessors: PPAnsiChar;
     nOrder: Integer;
   end;
   {$EXTERNALSYM ap_LINK_open_logs_t}
@@ -2959,8 +2959,8 @@ type
 type
   ap_HOOK_child_init_t = procedure(pchild: Papr_pool_t; s: Pserver_rec); cdecl;
   {$EXTERNALSYM ap_HOOK_child_init_t}
-procedure ap_hook_child_init(pf: ap_HOOK_child_init_t; const aszPre: PPChar;
-  const aszSucc: PPChar; nOrder: Integer);
+procedure ap_hook_child_init(pf: ap_HOOK_child_init_t; const aszPre: PPAnsiChar;
+  const aszSucc: PPAnsiChar; nOrder: Integer);
   {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
   {$EXTERNALSYM ap_hook_child_init}
 procedure ap_run_child_init(pchild: Papr_pool_t; s: Pserver_rec);
@@ -2972,9 +2972,9 @@ function ap_hook_get_child_init: Papr_array_header_t;
 type
   ap_LINK_child_init_t = {$IFDEF LINUX}packed{$ENDIF} record
     pFunc: ap_HOOK_child_init_t;
-    szName: PChar;
-    aszPredecessors: PPChar;
-    aszSuccessors: PPChar;
+    szName: PAnsiChar;
+    aszPredecessors: PPAnsiChar;
+    aszSuccessors: PPAnsiChar;
     nOrder: Integer;
   end;
   {$EXTERNALSYM ap_LINK_child_init_t}
@@ -2982,8 +2982,8 @@ type
 type
   ap_HOOK_handler_t = function(r: Prequest_rec): Integer; cdecl;
   {$EXTERNALSYM ap_HOOK_handler_t}
-procedure ap_hook_handler(pf: ap_HOOK_handler_t; const aszPre: PPChar;
-  const aszSucc: PPChar; nOrder: Integer);
+procedure ap_hook_handler(pf: ap_HOOK_handler_t; const aszPre: PPAnsiChar;
+  const aszSucc: PPAnsiChar; nOrder: Integer);
   {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
   {$EXTERNALSYM ap_hook_handler}
 function ap_run_handler(r: Prequest_rec): Integer;
@@ -2995,9 +2995,9 @@ function ap_hook_get_handler: Papr_array_header_t;
 type
   ap_LINK_handler_t = {$IFDEF LINUX}packed{$ENDIF} record
     pFunc: ap_HOOK_handler_t;
-    szName: PChar;
-    aszPredecessors: PPChar;
-    aszSuccessors: PPChar;
+    szName: PAnsiChar;
+    aszPredecessors: PPAnsiChar;
+    aszSuccessors: PPAnsiChar;
     nOrder: Integer;
   end;
   {$EXTERNALSYM ap_LINK_handler_t}
@@ -3007,7 +3007,7 @@ type
     lookup_uri: Integer): Integer; cdecl;
     {$EXTERNALSYM ap_HOOK_quick_handler_t}
 procedure ap_hook_quick_handler(pf: ap_HOOK_quick_handler_t;
-  const aszPre: PPChar; const aszSucc: PPChar; nOrder: Integer);
+  const aszPre: PPAnsiChar; const aszSucc: PPAnsiChar; nOrder: Integer);
   {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
   {$EXTERNALSYM ap_hook_quick_handler}
 function ap_run_quick_handler(r: Prequest_rec; lookup_uri: Integer): Integer;
@@ -3019,9 +3019,9 @@ function ap_hook_get_quick_handler: Papr_array_header_t;
 type
   ap_LINK_quick_handler_t = {$IFDEF LINUX}packed{$ENDIF} record
     pFunc: ap_HOOK_quick_handler_t;
-    szName: PChar;
-    aszPredecessors: PPChar;
-    aszSuccessors: PPChar;
+    szName: PAnsiChar;
+    aszPredecessors: PPAnsiChar;
+    aszSuccessors: PPAnsiChar;
     nOrder: Integer;
   end;
   {$EXTERNALSYM ap_LINK_quick_handler_t}
@@ -3030,7 +3030,7 @@ type
   ap_HOOK_optional_fn_retrieve_t = procedure; cdecl;
   {$EXTERNALSYM ap_HOOK_optional_fn_retrieve_t}
 procedure ap_hook_optional_fn_retrieve(pf: ap_HOOK_optional_fn_retrieve_t;
-  const aszPre: PPChar; const aszSucc: PPChar; nOrder: Integer);
+  const aszPre: PPAnsiChar; const aszSucc: PPAnsiChar; nOrder: Integer);
   {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
   {$EXTERNALSYM ap_hook_optional_fn_retrieve}
 procedure ap_run_optional_fn_retrieve;
@@ -3042,9 +3042,9 @@ function ap_hook_get_optional_fn_retrieve: Papr_array_header_t;
 type
   ap_LINK_optional_fn_retrieve_t = {$IFDEF LINUX}packed{$ENDIF} record
     pFunc: ap_HOOK_optional_fn_retrieve_t;
-    szName: PChar;
-    aszPredecessors: PPChar;
-    aszSuccessors: PPChar;
+    szName: PAnsiChar;
+    aszPredecessors: PPAnsiChar;
+    aszSuccessors: PPAnsiChar;
     nOrder: Integer;
   end;
   {$EXTERNALSYM ap_LINK_optional_fn_retrieve_t}
@@ -3061,7 +3061,7 @@ type
     alloc: Papr_bucket_alloc_t): Pconn_rec; cdecl;
     {$EXTERNALSYM ap_HOOK_create_connection_t}
 procedure ap_hook_create_connection(pf: ap_HOOK_create_connection_t;
-  const aszPre: PPChar; const aszSucc: PPChar; nOrder: Integer);
+  const aszPre: PPAnsiChar; const aszSucc: PPAnsiChar; nOrder: Integer);
   {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
   {$EXTERNALSYM ap_hook_create_connection}
 function ap_run_create_connection(p: Papr_pool_t; server: Pserver_rec;
@@ -3075,9 +3075,9 @@ function ap_hook_get_create_connection: Papr_array_header_t;
 type
   ap_LINK_create_connection_t = {$IFDEF LINUX}packed{$ENDIF} record
     pFunc: ap_HOOK_create_connection_t;
-    szName: PChar;
-    aszPredecessors: PPChar;
-    aszSuccessors: PPChar;
+    szName: PAnsiChar;
+    aszPredecessors: PPAnsiChar;
+    aszSuccessors: PPAnsiChar;
     nOrder: Integer;
   end;
   {$EXTERNALSYM ap_LINK_create_connection_t}
@@ -3086,7 +3086,7 @@ type
   ap_HOOK_pre_connection_t = function(c: Pconn_rec; csd: Pointer): Integer; cdecl;
   {$EXTERNALSYM ap_HOOK_pre_connection_t}
 procedure ap_hook_pre_connection(pf: ap_HOOK_pre_connection_t;
-  const aszPre: PPChar; const aszSucc: PPChar; nOrder: Integer);
+  const aszPre: PPAnsiChar; const aszSucc: PPAnsiChar; nOrder: Integer);
   {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
   {$EXTERNALSYM ap_hook_pre_connection}
 function ap_run_pre_connection(c: Pconn_rec; csd: Pointer): Integer;
@@ -3098,9 +3098,9 @@ function ap_hook_get_pre_connection: Papr_array_header_t;
 type
   ap_LINK_pre_connection_t = {$IFDEF LINUX}packed{$ENDIF} record
     pFunc: ap_HOOK_pre_connection_t;
-    szName: PChar;
-    aszPredecessors: PPChar;
-    aszSuccessors: PPChar;
+    szName: PAnsiChar;
+    aszPredecessors: PPAnsiChar;
+    aszSuccessors: PPAnsiChar;
     nOrder: Integer;
   end;
   {$EXTERNALSYM ap_LINK_pre_connection_t}
@@ -3109,7 +3109,7 @@ type
   ap_HOOK_process_connection_t = function(c: Pconn_rec): Integer; cdecl;
   {$EXTERNALSYM ap_HOOK_process_connection_t}
 procedure ap_hook_process_connection(pf: ap_HOOK_process_connection_t;
-  const aszPre: PPChar; const aszSucc: PPChar; nOrder: Integer);
+  const aszPre: PPAnsiChar; const aszSucc: PPAnsiChar; nOrder: Integer);
   {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
   {$EXTERNALSYM ap_hook_process_connection}
 function ap_run_process_connection(c: Pconn_rec): Integer;
@@ -3121,9 +3121,9 @@ function ap_hook_get_process_connection: Papr_array_header_t;
 type
   ap_LINK_process_connection_t = {$IFDEF LINUX}packed{$ENDIF} record
     pFunc: ap_HOOK_process_connection_t;
-    szName: PChar;
-    aszPredecessors: PPChar;
-    aszSuccessors: PPChar;
+    szName: PAnsiChar;
+    aszPredecessors: PPAnsiChar;
+    aszSuccessors: PPAnsiChar;
     nOrder: Integer;
   end;
   {$EXTERNALSYM ap_LINK_process_connection_t}
@@ -3131,14 +3131,14 @@ type
 {$HPPEMIT '#include <http_core.h>'}
 (* Hooks from http_core.h *)
 type
-  ap_HOOK_get_mgmt_items_t = function(p: Papr_pool_t; const val: PChar;
+  ap_HOOK_get_mgmt_items_t = function(p: Papr_pool_t; const val: PAnsiChar;
     ht: Papr_hash_t): Integer; cdecl;
     {$EXTERNALSYM ap_HOOK_get_mgmt_items_t}
 procedure ap_hook_get_mgmt_items(pf: ap_HOOK_get_mgmt_items_t;
-  const aszPre: PPChar; const aszSucc: PPChar; nOrder: Integer);
+  const aszPre: PPAnsiChar; const aszSucc: PPAnsiChar; nOrder: Integer);
   {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
   {$EXTERNALSYM ap_hook_get_mgmt_items}
-function ap_run_get_mgmt_items(p: Papr_pool_t; const val: PChar; ht: Papr_hash_t): Integer;
+function ap_run_get_mgmt_items(p: Papr_pool_t; const val: PAnsiChar; ht: Papr_hash_t): Integer;
   {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
   {$EXTERNALSYM ap_run_get_mgmt_items}
 function ap_hook_get_get_mgmt_items: Papr_array_header_t;
@@ -3147,9 +3147,9 @@ function ap_hook_get_get_mgmt_items: Papr_array_header_t;
 type
   ap_LINK_get_mgmt_items_t = {$IFDEF LINUX}packed{$ENDIF} record
     pFunc: ap_HOOK_get_mgmt_items_t;
-    szName: PChar;
-    aszPredecessors: PPChar;
-    aszSuccessors: PPChar;
+    szName: PAnsiChar;
+    aszPredecessors: PPAnsiChar;
+    aszSuccessors: PPAnsiChar;
     nOrder: Integer;
   end;
   {$EXTERNALSYM ap_LINK_get_mgmt_items_t}
@@ -3159,17 +3159,17 @@ type
 {$HPPEMIT '#include <http_log.h>'}
 (* Hooks from http_log.h *)
 type
-  ap_HOOK_error_log_t = procedure(const _file: PChar; line: Integer;
+  ap_HOOK_error_log_t = procedure(const _file: PAnsiChar; line: Integer;
     level: Integer; status: apr_status_t; const s: Pserver_rec;
-    const r: Prequest_rec; p: Papr_pool_t; const errstr: PChar); cdecl;
+    const r: Prequest_rec; p: Papr_pool_t; const errstr: PAnsiChar); cdecl;
     {$EXTERNALSYM ap_HOOK_error_log_t}
-procedure ap_hook_error_log(pf: ap_HOOK_error_log_t; const aszPre: PPChar;
-  const aszSucc: PPChar; nOrder: Integer);
+procedure ap_hook_error_log(pf: ap_HOOK_error_log_t; const aszPre: PPAnsiChar;
+  const aszSucc: PPAnsiChar; nOrder: Integer);
   {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
   {$EXTERNALSYM ap_hook_error_log}
-procedure ap_run_error_log(const _file: PChar; line: Integer; level: Integer;
+procedure ap_run_error_log(const _file: PAnsiChar; line: Integer; level: Integer;
   status: apr_status_t; const s: Pserver_rec; const r: Prequest_rec;
-  p: Papr_pool_t; const errstr: PChar);
+  p: Papr_pool_t; const errstr: PAnsiChar);
   {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
   {$EXTERNALSYM ap_run_error_log}
 function ap_hook_get_error_log: Papr_array_header_t;
@@ -3178,9 +3178,9 @@ function ap_hook_get_error_log: Papr_array_header_t;
 type
   ap_LINK_error_log_t = {$IFDEF LINUX}packed{$ENDIF} record
     pFunc: ap_HOOK_error_log_t;
-    szName: PChar;
-    aszPredecessors: PPChar;
-    aszSuccessors: PPChar;
+    szName: PAnsiChar;
+    aszPredecessors: PPAnsiChar;
+    aszSuccessors: PPAnsiChar;
     nOrder: Integer;
   end;
   {$EXTERNALSYM ap_LINK_error_log_t}
@@ -3192,7 +3192,7 @@ type
   ap_HOOK_post_read_request_t = function(r: Prequest_rec): Integer; cdecl;
   {$EXTERNALSYM ap_HOOK_post_read_request_t}
 procedure ap_hook_post_read_request(pf: ap_HOOK_post_read_request_t;
-  const aszPre: PPChar; const aszSucc: PPChar; nOrder: Integer);
+  const aszPre: PPAnsiChar; const aszSucc: PPAnsiChar; nOrder: Integer);
   {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
   {$EXTERNALSYM ap_hook_post_read_request}
 function ap_run_post_read_request(r: Prequest_rec): Integer;
@@ -3204,9 +3204,9 @@ function ap_hook_get_post_read_request: Papr_array_header_t;
 type
   ap_LINK_post_read_request_t = {$IFDEF LINUX}packed{$ENDIF} record
     pFunc: ap_HOOK_post_read_request_t;
-    szName: PChar;
-    aszPredecessors: PPChar;
-    aszSuccessors: PPChar;
+    szName: PAnsiChar;
+    aszPredecessors: PPAnsiChar;
+    aszSuccessors: PPAnsiChar;
     nOrder: Integer;
   end;
   {$EXTERNALSYM ap_LINK_post_read_request_t}
@@ -3215,7 +3215,7 @@ type
   ap_HOOK_log_transaction_t = function(r: Prequest_rec): Integer; cdecl;
   {$EXTERNALSYM ap_HOOK_log_transaction_t}
 procedure ap_hook_log_transaction(pf: ap_HOOK_log_transaction_t;
-  const aszPre: PPChar; const aszSucc: PPChar; nOrder: Integer);
+  const aszPre: PPAnsiChar; const aszSucc: PPAnsiChar; nOrder: Integer);
   {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
   {$EXTERNALSYM ap_hook_log_transaction}
   function ap_run_log_transaction(r: Prequest_rec): Integer;
@@ -3227,21 +3227,21 @@ function ap_hook_get_log_transaction: Papr_array_header_t;
 type
   ap_LINK_log_transaction_t = {$IFDEF LINUX}packed{$ENDIF} record
     pFunc: ap_HOOK_log_transaction_t;
-    szName: PChar;
-    aszPredecessors: PPChar;
-    aszSuccessors: PPChar;
+    szName: PAnsiChar;
+    aszPredecessors: PPAnsiChar;
+    aszSuccessors: PPAnsiChar;
     nOrder: Integer;
   end;
   {$EXTERNALSYM ap_LINK_log_transaction_t}
 
 type
-  ap_HOOK_http_method_t = function(const r: Prequest_rec): PChar; cdecl;
+  ap_HOOK_http_method_t = function(const r: Prequest_rec): PAnsiChar; cdecl;
   {$EXTERNALSYM ap_HOOK_http_method_t}
-procedure ap_hook_http_method(pf: ap_HOOK_http_method_t; const aszPre: PPChar;
-  const aszSucc: PPChar; nOrder: Integer);
+procedure ap_hook_http_method(pf: ap_HOOK_http_method_t; const aszPre: PPAnsiChar;
+  const aszSucc: PPAnsiChar; nOrder: Integer);
   {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
   {$EXTERNALSYM ap_hook_http_method}
-function ap_run_http_method(const r: Prequest_rec): PChar;
+function ap_run_http_method(const r: Prequest_rec): PAnsiChar;
   {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
   {$EXTERNALSYM ap_run_http_method}
 function ap_hook_get_http_method: Papr_array_header_t;
@@ -3250,9 +3250,9 @@ function ap_hook_get_http_method: Papr_array_header_t;
 type
   ap_LINK_http_method_t = {$IFDEF LINUX}packed{$ENDIF} record
     pFunc: ap_HOOK_http_method_t;
-    szName: PChar;
-    aszPredecessors: PPChar;
-    aszSuccessors: PPChar;
+    szName: PAnsiChar;
+    aszPredecessors: PPAnsiChar;
+    aszSuccessors: PPAnsiChar;
     nOrder: Integer;
   end;
   {$EXTERNALSYM ap_LINK_http_method_t}
@@ -3260,8 +3260,8 @@ type
 type
   ap_HOOK_default_port_t = function(const r: Prequest_rec): apr_port_t; cdecl;
   {$EXTERNALSYM ap_HOOK_default_port_t}
-procedure ap_hook_default_port(pf: ap_HOOK_default_port_t; const aszPre: PPChar;
-  const aszSucc: PPChar; nOrder: Integer);
+procedure ap_hook_default_port(pf: ap_HOOK_default_port_t; const aszPre: PPAnsiChar;
+  const aszSucc: PPAnsiChar; nOrder: Integer);
   {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
   {$EXTERNALSYM ap_hook_default_port}
 function ap_run_default_port(const r: Prequest_rec): apr_port_t;
@@ -3273,9 +3273,9 @@ function ap_hook_get_default_port: Papr_array_header_t;
 type
   ap_LINK_default_port_t = {$IFDEF LINUX}packed{$ENDIF} record
     pFunc: ap_HOOK_default_port_t;
-    szName: PChar;
-    aszPredecessors: PPChar;
-    aszSuccessors: PPChar;
+    szName: PAnsiChar;
+    aszPredecessors: PPAnsiChar;
+    aszSuccessors: PPAnsiChar;
     nOrder: Integer;
   end;
   {$EXTERNALSYM ap_LINK_default_port_t}
@@ -3286,8 +3286,8 @@ type
 type
   ap_HOOK_create_request_t = function(r: Prequest_rec): Integer; cdecl;
   {$EXTERNALSYM ap_HOOK_create_request_t}
-procedure ap_hook_create_request(pf: ap_HOOK_create_request_t; const aszPre: PPChar;
-  const aszSucc: PPChar; nOrder: Integer);
+procedure ap_hook_create_request(pf: ap_HOOK_create_request_t; const aszPre: PPAnsiChar;
+  const aszSucc: PPAnsiChar; nOrder: Integer);
   {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
   {$EXTERNALSYM ap_hook_create_request}
 function ap_run_create_request(r: Prequest_rec): Integer;
@@ -3299,9 +3299,9 @@ function ap_hook_get_create_request: Papr_array_header_t;
 type
   ap_LINK_create_request_t = {$IFDEF LINUX}packed{$ENDIF} record
     pFunc: ap_HOOK_create_request_t;
-    szName: PChar;
-    aszPredecessors: PPChar;
-    aszSuccessors: PPChar;
+    szName: PAnsiChar;
+    aszPredecessors: PPAnsiChar;
+    aszSuccessors: PPAnsiChar;
     nOrder: Integer;
   end;
   {$EXTERNALSYM ap_LINK_create_request_t}
@@ -3309,8 +3309,8 @@ type
 type
   ap_HOOK_translate_name_t = function(r: Prequest_rec): Integer; cdecl;
   {$EXTERNALSYM ap_HOOK_translate_name_t}
-procedure ap_hook_translate_name(pf: ap_HOOK_translate_name_t; const aszPre: PPChar;
-  const aszSucc: PPChar; nOrder: Integer);
+procedure ap_hook_translate_name(pf: ap_HOOK_translate_name_t; const aszPre: PPAnsiChar;
+  const aszSucc: PPAnsiChar; nOrder: Integer);
   {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
   {$EXTERNALSYM ap_hook_translate_name}
 function ap_run_translate_name(r: Prequest_rec): Integer;
@@ -3322,9 +3322,9 @@ function ap_hook_get_translate_name: Papr_array_header_t;
 type
   ap_LINK_translate_name_t = {$IFDEF LINUX}packed{$ENDIF} record
     pFunc: ap_HOOK_translate_name_t;
-    szName: PChar;
-    aszPredecessors: PPChar;
-    aszSuccessors: PPChar;
+    szName: PAnsiChar;
+    aszPredecessors: PPAnsiChar;
+    aszSuccessors: PPAnsiChar;
     nOrder: Integer;
   end;
   {$EXTERNALSYM ap_LINK_translate_name_t}
@@ -3332,8 +3332,8 @@ type
 type
   ap_HOOK_map_to_storage_t = function(r: Prequest_rec): Integer; cdecl;
   {$EXTERNALSYM ap_HOOK_map_to_storage_t}
-procedure ap_hook_map_to_storage(pf: ap_HOOK_map_to_storage_t; const aszPre: PPChar;
-  const aszSucc: PPChar; nOrder: Integer);
+procedure ap_hook_map_to_storage(pf: ap_HOOK_map_to_storage_t; const aszPre: PPAnsiChar;
+  const aszSucc: PPAnsiChar; nOrder: Integer);
   {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
   {$EXTERNALSYM ap_hook_map_to_storage}
 function ap_run_map_to_storage(r: Prequest_rec): Integer;
@@ -3345,9 +3345,9 @@ function ap_hook_get_map_to_storage: Papr_array_header_t;
 type
   ap_LINK_map_to_storage_t = {$IFDEF LINUX}packed{$ENDIF} record
     pFunc: ap_HOOK_map_to_storage_t;
-    szName: PChar;
-    aszPredecessors: PPChar;
-    aszSuccessors: PPChar;
+    szName: PAnsiChar;
+    aszPredecessors: PPAnsiChar;
+    aszSuccessors: PPAnsiChar;
     nOrder: Integer;
   end;
   {$EXTERNALSYM ap_LINK_map_to_storage_t}
@@ -3355,8 +3355,8 @@ type
 type
   ap_HOOK_check_user_id_t = function(r: Prequest_rec): Integer; cdecl;
   {$EXTERNALSYM ap_HOOK_check_user_id_t}
-procedure ap_hook_check_user_id(pf: ap_HOOK_check_user_id_t; const aszPre: PPChar;
-  const aszSucc: PPChar; nOrder: Integer);
+procedure ap_hook_check_user_id(pf: ap_HOOK_check_user_id_t; const aszPre: PPAnsiChar;
+  const aszSucc: PPAnsiChar; nOrder: Integer);
   {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
   {$EXTERNALSYM ap_hook_check_user_id}
 function ap_run_check_user_id(r: Prequest_rec): Integer;
@@ -3368,9 +3368,9 @@ function ap_hook_get_check_user_id: Papr_array_header_t;
 type
   ap_LINK_check_user_id_t = {$IFDEF LINUX}packed{$ENDIF} record
     pFunc: ap_HOOK_check_user_id_t;
-    szName: PChar;
-    aszPredecessors: PPChar;
-    aszSuccessors: PPChar;
+    szName: PAnsiChar;
+    aszPredecessors: PPAnsiChar;
+    aszSuccessors: PPAnsiChar;
     nOrder: Integer;
   end;
   {$EXTERNALSYM ap_LINK_check_user_id_t}
@@ -3378,8 +3378,8 @@ type
 type
   ap_HOOK_fixups_t = function(r: Prequest_rec): Integer; cdecl;
   {$EXTERNALSYM ap_HOOK_fixups_t}
-procedure ap_hook_fixups(pf: ap_HOOK_fixups_t; const aszPre: PPChar;
-  const aszSucc: PPChar; nOrder: Integer);
+procedure ap_hook_fixups(pf: ap_HOOK_fixups_t; const aszPre: PPAnsiChar;
+  const aszSucc: PPAnsiChar; nOrder: Integer);
   {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
   {$EXTERNALSYM ap_hook_fixups}
 function ap_run_fixups(r: Prequest_rec): Integer;
@@ -3391,9 +3391,9 @@ function ap_hook_get_fixups: Papr_array_header_t;
 type
   ap_LINK_fixups_t = {$IFDEF LINUX}packed{$ENDIF} record
     pFunc: ap_HOOK_fixups_t;
-    szName: PChar;
-    aszPredecessors: PPChar;
-    aszSuccessors: PPChar;
+    szName: PAnsiChar;
+    aszPredecessors: PPAnsiChar;
+    aszSuccessors: PPAnsiChar;
     nOrder: Integer;
   end;
   {$EXTERNALSYM ap_LINK_fixups_t}
@@ -3401,8 +3401,8 @@ type
 type
   ap_HOOK_type_checker_t = function(r: Prequest_rec): Integer; cdecl;
   {$EXTERNALSYM ap_HOOK_type_checker_t}
-procedure ap_hook_type_checker(pf: ap_HOOK_type_checker_t; const aszPre: PPChar;
-  const aszSucc: PPChar; nOrder: Integer);
+procedure ap_hook_type_checker(pf: ap_HOOK_type_checker_t; const aszPre: PPAnsiChar;
+  const aszSucc: PPAnsiChar; nOrder: Integer);
   {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
   {$EXTERNALSYM ap_hook_type_checker}
 function ap_run_type_checker(r: Prequest_rec): Integer;
@@ -3414,17 +3414,17 @@ function ap_hook_get_type_checker: Papr_array_header_t;
 type
   ap_LINK_type_checker_t = {$IFDEF LINUX}packed{$ENDIF} record
     pFunc: ap_HOOK_type_checker_t;
-    szName: PChar;
-    aszPredecessors: PPChar;
-    aszSuccessors: PPChar;
+    szName: PAnsiChar;
+    aszPredecessors: PPAnsiChar;
+    aszSuccessors: PPAnsiChar;
     nOrder: Integer;
   end;
   {$EXTERNALSYM ap_LINK_type_checker_t}
 type
   ap_HOOK_access_checker_t = function(r: Prequest_rec): Integer; cdecl;
   {$EXTERNALSYM ap_HOOK_access_checker_t}
-procedure ap_hook_access_checker(pf: ap_HOOK_access_checker_t; const aszPre: PPChar;
-  const aszSucc: PPChar; nOrder: Integer);
+procedure ap_hook_access_checker(pf: ap_HOOK_access_checker_t; const aszPre: PPAnsiChar;
+  const aszSucc: PPAnsiChar; nOrder: Integer);
   {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
   {$EXTERNALSYM ap_hook_access_checker}
 function ap_run_access_checker(r: Prequest_rec): Integer;
@@ -3436,9 +3436,9 @@ function ap_hook_get_access_checker: Papr_array_header_t;
 type
   ap_LINK_access_checker_t = {$IFDEF LINUX}packed{$ENDIF} record
     pFunc: ap_HOOK_access_checker_t;
-    szName: PChar;
-    aszPredecessors: PPChar;
-    aszSuccessors: PPChar;
+    szName: PAnsiChar;
+    aszPredecessors: PPAnsiChar;
+    aszSuccessors: PPAnsiChar;
     nOrder: Integer;
   end;
   {$EXTERNALSYM ap_LINK_access_checker_t}
@@ -3446,8 +3446,8 @@ type
 type
   ap_HOOK_auth_checker_t = function(r: Prequest_rec): Integer; cdecl;
   {$EXTERNALSYM ap_HOOK_auth_checker_t}
-procedure ap_hook_auth_checker(pf: ap_HOOK_auth_checker_t; const aszPre: PPChar;
-  const aszSucc: PPChar; nOrder: Integer);
+procedure ap_hook_auth_checker(pf: ap_HOOK_auth_checker_t; const aszPre: PPAnsiChar;
+  const aszSucc: PPAnsiChar; nOrder: Integer);
   {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
   {$EXTERNALSYM ap_hook_auth_checker}
 function ap_run_auth_checker(r: Prequest_rec): Integer;
@@ -3459,9 +3459,9 @@ function ap_hook_get_auth_checker: Papr_array_header_t;
 type
   ap_LINK_auth_checker_t = {$IFDEF LINUX}packed{$ENDIF} record
     pFunc: ap_HOOK_auth_checker_t;
-    szName: PChar;
-    aszPredecessors: PPChar;
-    aszSuccessors: PPChar;
+    szName: PAnsiChar;
+    aszPredecessors: PPAnsiChar;
+    aszSuccessors: PPAnsiChar;
     nOrder: Integer;
   end;
   {$EXTERNALSYM ap_LINK_auth_checker_t}
@@ -3469,8 +3469,8 @@ type
 type
   ap_HOOK_insert_filter_t = procedure(r: Prequest_rec); cdecl;
   {$EXTERNALSYM ap_HOOK_insert_filter_t}
-procedure ap_hook_insert_filter(pf: ap_HOOK_insert_filter_t; const aszPre: PPChar;
-  const aszSucc: PPChar; nOrder: Integer);
+procedure ap_hook_insert_filter(pf: ap_HOOK_insert_filter_t; const aszPre: PPAnsiChar;
+  const aszSucc: PPAnsiChar; nOrder: Integer);
   {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
   {$EXTERNALSYM ap_hook_insert_filter}
 procedure ap_run_insert_filter(r: Prequest_rec);
@@ -3482,9 +3482,9 @@ function ap_hook_get_insert_filter: Papr_array_header_t;
 type
   ap_LINK_insert_filter_t = {$IFDEF LINUX}packed{$ENDIF} record
     pFunc: ap_HOOK_insert_filter_t;
-    szName: PChar;
-    aszPredecessors: PPChar;
-    aszSuccessors: PPChar;
+    szName: PAnsiChar;
+    aszPredecessors: PPAnsiChar;
+    aszSuccessors: PPAnsiChar;
     nOrder: Integer;
   end;
   {$EXTERNALSYM ap_LINK_insert_filter_t}
@@ -3493,7 +3493,7 @@ type
 
 {$HPPEMIT '#include <apr_strings.h>'}
 (* From apr_strings.h *)
-function apr_pstrdup(p: Papr_pool_t; s: PChar): PChar;
+function apr_pstrdup(p: Papr_pool_t; s: PAnsiChar): PAnsiChar;
   {$IFDEF MSWINDOWS}stdcall; {$ENDIF}{$IFDEF LINUX}cdecl;{$ENDIF}
   {$EXTERNALSYM apr_pstrdup}
 (* End from apr_strings.h *)

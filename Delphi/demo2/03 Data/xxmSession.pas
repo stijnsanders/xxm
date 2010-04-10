@@ -80,14 +80,14 @@ end;
 
 constructor TXxmSession.Create(Context: IXxmContext);
 var
-  s:string;
+  s:AnsiString;
 begin
   inherited Create;
   FSessionID:=Context.SessionID;
   //TODO: initiate expiry
 
   SetLength(s,1024);
-  SetLength(s,GetModuleFileName(HInstance,PChar(s),1024));
+  SetLength(s,GetModuleFileNameA(HInstance,PAnsiChar(s),1024));
   SetCurrentDir(ExtractFilePath(s));
 
   if QueryStore=nil then QueryStore:=TQueryStore.Create;

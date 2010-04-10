@@ -17,7 +17,7 @@ var
 function AutoUpdate(pce:TXxmProjectEntry;
   Context:IXxmContext; ProjectName:WideString):boolean;
 var
-  fn,fn1:string;
+  fn,fn1:AnsiString;
   tc:cardinal;
   i:integer;
 const
@@ -39,8 +39,8 @@ begin
         if FileExists(fn1) then
          begin
           pce.Release;
-          if not(DeleteFile(PChar(fn))) then MoveFile(PChar(fn),PChar(fn+'.bak'));
-          if not(MoveFile(PChar(fn1),PChar(fn))) then
+          if not(DeleteFileA(PAnsiChar(fn))) then MoveFileA(PAnsiChar(fn),PAnsiChar(fn+'.bak'));
+          if not(MoveFileA(PAnsiChar(fn1),PAnsiChar(fn))) then
            begin
             Result:=false;
             Context.Send('AutoUpdate failed "'+fn1+'"'#13#10+

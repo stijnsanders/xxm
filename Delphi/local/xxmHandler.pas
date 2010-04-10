@@ -259,7 +259,7 @@ end;
 function TXxmLocalHandler.QueryInfo(dwOption: DWORD; Buffer: Pointer;
   var cbBuf, dwFlags, dwReserved: DWORD): HResult;
 var
-  s:string;
+  s:AnsiString;
   f:HFILE;
   dt1,dt2,dt3:TFileTime;
   st:TSystemTime;
@@ -274,7 +274,7 @@ begin
             Result:=S_FALSE;//default
             if not(s='') then
              begin
-              f:=CreateFile(PChar(s),GENERIC_READ,7,nil,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,0);
+              f:=CreateFileA(PAnsiChar(s),GENERIC_READ,7,nil,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,0);
               if not(f=INVALID_HANDLE_VALUE) then
                begin
                 if GetFileTime(f,@dt1,@dt2,@dt3) and FileTimeToSystemTime(dt3,st) then
@@ -402,9 +402,9 @@ end;
 procedure TXxmLocalHandlerFactory.UpdateRegistry(Register: Boolean);
 var
   r:TRegistry;
-  fn,fn1:string;
+  fn,fn1:AnsiString;
   i:integer;
-  procedure SimpleAdd(Key,Value:string);
+  procedure SimpleAdd(Key,Value:AnsiString);
   begin
     r.OpenKey(Key,true);
     r.WriteString('',Value);

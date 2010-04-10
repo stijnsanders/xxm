@@ -20,13 +20,13 @@ type
   TQueryStore=class(TObject)
   private
     FQueries:array of record
-      ID,SQL:string;
+      ID,SQL:AnsiString;
     end;
     procedure ReadQueriesXML;
   public
     constructor Create;
     destructor Destroy; override;
-    function GetSQL(QueryName:string):string;
+    function GetSQL(QueryName:AnsiString):AnsiString;
   end;
 
   TQueryResult=class(TObject)
@@ -36,9 +36,9 @@ type
     function GetValue(Idx:OleVariant):OleVariant;
     function IsEof:boolean;
   public
-    constructor Create(QueryName: string; const Values: array of Variant); overload;
+    constructor Create(QueryName: AnsiString; const Values: array of Variant); overload;
     constructor Create(Recordset: Recordset); overload;
-    constructor Create(SQL:string); overload;
+    constructor Create(SQL:AnsiString); overload;
     destructor Destroy; override;
 
     procedure Reset;
@@ -58,10 +58,10 @@ type
     function GetValue(Idx:OleVariant):OleVariant;
     procedure SetValue(Idx,Value:OleVariant);
   public
-    constructor Create(TableName: string; Id:integer);
+    constructor Create(TableName: AnsiString; Id:integer);
     destructor Destroy; override;
 
-    class function Perform(QueryName:string; const Values: array of Variant): integer; overload;
+    class function Perform(QueryName:AnsiString; const Values: array of Variant): integer; overload;
 
     procedure Update;
     procedure Cancel;
@@ -94,7 +94,7 @@ begin
   inherited;
 end;
 
-function TQueryStore.GetSQL(QueryName: string): string;
+function TQueryStore.GetSQL(QueryName: AnsiString): AnsiString;
 var
   i,l:integer;
 begin
@@ -143,7 +143,7 @@ end;
 
 { TQueryResult }
 
-constructor TQueryResult.Create(QueryName: string;
+constructor TQueryResult.Create(QueryName: AnsiString;
   const Values: array of Variant);
 var
   cmd:Command;
@@ -173,7 +173,7 @@ begin
   FRecordSet:=Recordset;//Clone?
 end;
 
-constructor TQueryResult.Create(SQL: string);
+constructor TQueryResult.Create(SQL: AnsiString);
 begin
   inherited Create;
   FFirstRead:=true;
@@ -303,7 +303,7 @@ end;
 
 { TDataChanger }
 
-constructor TDataChanger.Create(TableName: string; Id: integer);
+constructor TDataChanger.Create(TableName: AnsiString; Id: integer);
 begin
   inherited Create;
   FRecordSet:=CoRecordset.Create;
@@ -362,7 +362,7 @@ begin
   end;
 end;
 
-class function TDataChanger.Perform(QueryName: string;
+class function TDataChanger.Perform(QueryName: AnsiString;
   const Values: array of Variant): integer;
 var
   cmd:Command;

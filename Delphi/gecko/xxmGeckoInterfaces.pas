@@ -71,24 +71,24 @@ type
     procedure SetDocumentURI(aDocumentURI: nsIURI); safecall;
     procedure getRequestVersion(var major:PRUint32; var minor:PRUint32); safecall;
     procedure getResponseVersion(var major:PRUint32; var minor:PRUint32); safecall;
-    procedure setCookie(aCookieHeader:PChar); safecall;//string?
-    procedure setupFallbackChannel(aFallbackKey:PChar); safecall;//string?
+    procedure setCookie(aCookieHeader:PAnsiChar); safecall;//string?
+    procedure setupFallbackChannel(aFallbackKey:PAnsiChar); safecall;//string?
   end;
 
-procedure SetCString(x:nsACString;v:string);
-function GetCString(const x:nsACString):string;
+procedure SetCString(x:nsACString;v:AnsiString);
+function GetCString(const x:nsACString):AnsiString;
 
 implementation
 
 uses
   nsInit;
 
-procedure SetCString(x:nsACString;v:string);
+procedure SetCString(x:nsACString;v:AnsiString);
 begin
   NS_CStringSetData(x,PAnsiChar(v),Length(v));
 end;
 
-function GetCString(const x:nsACString):string;
+function GetCString(const x:nsACString):AnsiString;
 var
   l: Longword;
   p: PAnsiChar;

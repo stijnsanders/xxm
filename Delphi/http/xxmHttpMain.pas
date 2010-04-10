@@ -25,24 +25,24 @@ type
     FHeaderSent:boolean;
     FPage, FBuilding: IXxmFragment;
     FConnected:boolean;
-    FHTTPVersion,FVerb,FURI,FSessionID:string;
+    FHTTPVersion,FVerb,FURI,FSessionID:AnsiString;
     FProjectEntry:TXxmProjectCacheEntry;
     FParams: TXxmReqPars;
     FIncludeDepth:integer;
     FStatusCode:integer;
-    FStatusText,FProjectName,FFragmentName:string;
+    FStatusText,FProjectName,FFragmentName:AnsiString;
     FContentType: WideString;
     FAutoEncoding: TXxmAutoEncoding;
     FCookieParsed: boolean;
-    FCookie: string;
+    FCookie: AnsiString;
     FCookieIdx: TParamIndexes;
     FPostData:TStream;
-    FPageClass:string;
+    FPageClass:AnsiString;
     FQueryStringIndex:integer;
     procedure HeaderOK;
     function CheckHeader: boolean;
     procedure SendRaw(Data: WideString);
-    procedure SendError(res:string;vals:array of string);
+    procedure SendError(res:AnsiString;vals:array of AnsiString);
   public
     constructor Create(Socket:TCustomIpClient);
     destructor Destroy; override;
@@ -124,7 +124,7 @@ type
   //add new here
   cp_Unknown);
 const
-  ParameterKey:array[TParameters] of string=(
+  ParameterKey:array[TParameters] of AnsiString=(
     'port',
     //add new here (lowercase)
     '');
@@ -132,7 +132,7 @@ const
 var
   Server:TxxmHttpServer;
   i,j,Port:integer;
-  s,t:string;
+  s,t:AnsiString;
   Msg:TMsg;
   par:TParameters;
 begin
@@ -250,7 +250,7 @@ end;
 procedure TXxmHttpContext.Execute;
 var
   i,j,l:integer;
-  x,y:string;
+  x,y:AnsiString;
   p:IxxmPage;
 begin
   try
@@ -594,7 +594,7 @@ end;
 
 function TXxmHttpContext.GetURL: WideString;
 var
-  s:string;
+  s:AnsiString;
 begin
   Result:='http://';//TODO: get from port? ssl?
   s:=FReqHeaders['Host'];
@@ -630,7 +630,7 @@ procedure TXxmHttpContext.Include(Address: WideString;
   const Values: array of OleVariant; const Objects: array of TObject);
 var
   f,fb:IXxmFragment;
-  pc:string;
+  pc:AnsiString;
 begin
   if FIncludeDepth=XxmMaxIncludeDepth then
     raise EXxmIncludeStackFull.Create(SXxmIncludeStackFull);
@@ -703,7 +703,7 @@ const
   Utf8ByteOrderMark=#$EF#$BB#$BF;
   Utf16ByteOrderMark=#$FF#$FE;
 var
-  s:string;
+  s:AnsiString;
   l:cardinal;
   d:array of byte;
 begin
@@ -772,7 +772,7 @@ end;
 
 function TXxmHttpContext.CheckHeader:boolean;
 var
-  x:string;
+  x:AnsiString;
   l:cardinal;
   d:array of byte;
 begin
@@ -798,9 +798,9 @@ begin
    end;
 end;
 
-procedure TXxmHttpContext.SendError(res: string; vals: array of string);
+procedure TXxmHttpContext.SendError(res: AnsiString; vals: array of AnsiString);
 var
-  s:string;
+  s:AnsiString;
   i:integer;
   r:TResourceStream;
   l:Int64;

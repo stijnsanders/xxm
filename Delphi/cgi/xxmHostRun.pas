@@ -19,14 +19,14 @@ type
     //add new here
     cp_Unknown);
 const
-  ParameterKey:array[TParameters] of string=(
+  ParameterKey:array[TParameters] of AnsiString=(
     'pipe',
     //add new here (lowercase)
     '');
   FILE_FLAG_FIRST_PIPE_INSTANCE=$00080000;
 var
   i,j:integer;
-  s,t,PipePath:string;
+  s,t,PipePath:AnsiString;
   h,h1,h2:THandle;
   par:TParameters;
   QuitApp:boolean;
@@ -66,7 +66,7 @@ begin
   while not(QuitApp) do
    begin
     if h=INVALID_HANDLE_VALUE then
-      h:=CreateNamedPipe(PChar('\\.\pipe\'+PipePath),
+      h:=CreateNamedPipeA(PAnsiChar('\\.\pipe\'+PipePath),
         PIPE_ACCESS_OUTBOUND,
         PIPE_TYPE_BYTE or PIPE_NOWAIT,
         PIPE_UNLIMITED_INSTANCES,//setting?

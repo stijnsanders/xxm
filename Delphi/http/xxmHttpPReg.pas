@@ -13,14 +13,14 @@ type
     FContextCount:integer;
     function GetProject: IXxmProject;
   protected
-    procedure SetSignature(const Value: string); override;
+    procedure SetSignature(const Value: AnsiString); override;
     function GetModulePath: WideString; override;
   published
     constructor Create(Name,FilePath:WideString);
   public
     procedure Release; override;
     destructor Destroy; override;
-    procedure GetFilePath(Address:WideString;var Path,MimeType:string);
+    procedure GetFilePath(Address:WideString;var Path,MimeType:AnsiString);
     procedure OpenContext;
     procedure CloseContext;
     property Name:WideString read FName;
@@ -32,7 +32,7 @@ type
     FLock:TRTLCriticalSection;
     ProjectCacheSize:integer;
     ProjectCache:array of TXxmProjectCacheEntry;
-    FRegFilePath,FRegSignature:string;
+    FRegFilePath,FRegSignature:AnsiString;
     FRegDoc:DOMDocument;
     procedure ClearAll;
     function Grow:integer;
@@ -43,8 +43,8 @@ type
     destructor Destroy; override;
 
     function GetProject(Name:WideString):TXxmProjectCacheEntry;
-    function DefaultProject:string;
-    function SingleProject:string;
+    function DefaultProject:AnsiString;
+    function SingleProject:AnsiString;
     procedure ReleaseProject(Name:WideString);
   end;
 
@@ -111,9 +111,9 @@ begin
 end;
 
 procedure TXxmProjectCacheEntry.GetFilePath(Address:WideString;
-  var Path, MimeType: string);
+  var Path, MimeType: AnsiString);
 var
-  rf,sf,s:string;
+  rf,sf,s:AnsiString;
   i,j,l:integer;
   r:TRegistry;
 begin
@@ -201,7 +201,7 @@ begin
   Result:=FProject;
 end;
 
-procedure TXxmProjectCacheEntry.SetSignature(const Value: string);
+procedure TXxmProjectCacheEntry.SetSignature(const Value: AnsiString);
 var
   x:IXMLDOMElement;
 begin
@@ -244,7 +244,7 @@ begin
   FRegSignature:='-';
 
   SetLength(FRegFilePath,$400);
-  SetLength(FRegFilePath,GetModuleFileName(HInstance,PChar(FRegFilePath),$400));
+  SetLength(FRegFilePath,GetModuleFileNameA(HInstance,PAnsiChar(FRegFilePath),$400));
   if Copy(FRegFilePath,1,4)='\\?\' then FRegFilePath:=Copy(FRegFilePath,5,Length(FRegFilePath)-4);
   i:=Length(FRegFilePath);
   while not(i=0) and not(FRegFilePath[i]=PathDelim) do dec(i);
@@ -278,7 +278,7 @@ end;
 
 function TXxmProjectCache.FindProject(Name: WideString): integer;
 var
-  l:string;
+  l:AnsiString;
 begin
   Result:=0;
   l:=LowerCase(Name);
@@ -291,11 +291,11 @@ end;
 function TXxmProjectCache.LoadRegistry: IXMLDOMElement;
 var
   fh:THandle;
-  fd:TWin32FindData;
-  s:string;
+  fd:TWin32FindDataA;
+  s:AnsiString;
 begin
   //signature
-  fh:=FindFirstFile(PChar(FRegFilePath),fd);
+  fh:=FindFirstFileA(PAnsiChar(FRegFilePath),fd);
   if fh=INVALID_HANDLE_VALUE then s:='' else
    begin
     s:=IntToHex(fd.ftLastWriteTime.dwHighDateTime,8)+
@@ -387,13 +387,13 @@ begin
   ProjectCacheSize:=0;
 end;
 
-function TXxmProjectCache.DefaultProject: string;
+function TXxmProjectCache.DefaultProject: AnsiString;
 begin
   Result:=VarToStr(LoadRegistry.getAttribute('DefaultProject'));
   if Result='' then Result:='xxm';
 end;
 
-function TXxmProjectCache.SingleProject: string;
+function TXxmProjectCache.SingleProject: AnsiString;
 begin
   Result:=VarToStr(LoadRegistry.getAttribute('SingleProject'));
 end;

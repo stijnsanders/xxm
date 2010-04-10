@@ -24,7 +24,7 @@ type
     FStatusText,FProjectName,FFragmentName,FExtraInfo,FQueryString:WideString;
     FirstData,StatusSet,Aborted:boolean;
     FPostData:TStream;
-    FPostTempFile,FPageClass:string;
+    FPostTempFile,FPageClass:AnsiString;
     FSingleFileSent:WideString;
     FMimeTypeSent,FGotSessionID:boolean;
     FIncludeDepth:integer;
@@ -36,7 +36,7 @@ type
     procedure ReportData;
     function CheckSendStart:boolean;
     procedure SendRaw(Data: WideString);
-    procedure SendError(res:string;vals:array of string);
+    procedure SendError(res:AnsiString;vals:array of AnsiString);
     function StgMediumAsStream(stgmed:TStgMedium):TStream;
     procedure HeaderOK;
     procedure CheckReqHeaders;
@@ -52,8 +52,8 @@ type
     procedure SetAutoEncoding(const Value: TXxmAutoEncoding);
     function GetParameter(Key: OleVariant): IXxmParameter;
     function GetParameterCount: Integer;
-    function LocaleLanguage: string;
-    function GetRequestParam(Name: string):string;
+    function LocaleLanguage: AnsiString;
+    function GetRequestParam(Name: AnsiString):AnsiString;
     function GetSessionID: WideString;
     function GetRequestHeaders:IxxmDictionaryEx;
     function GetResponseHeaders:IxxmDictionaryEx;
@@ -130,7 +130,7 @@ type
 var
   //see xxmSettings
   StatusBuildError,StatusException,StatusFileNotFound:integer;
-  DefaultProjectName:string;
+  DefaultProjectName:AnsiString;
 
 implementation
 
@@ -533,7 +533,7 @@ const
 
 procedure TXxmLocalContext.SendRaw(Data: WideString);
 var
-  s:string;
+  s:AnsiString;
   b:boolean;
 begin
   inherited;
@@ -625,7 +625,7 @@ var
   d:array[0..255] of POleStr;
   r:HResult;
   ss:TStringStream;
-  def:string;
+  def:AnsiString;
 begin
   st:=0;
   def:='';
@@ -694,9 +694,9 @@ begin
   Result:=FPostData;
 end;
 
-procedure TXxmLocalContext.SendError(res: string; vals: array of string);
+procedure TXxmLocalContext.SendError(res: AnsiString; vals: array of AnsiString);
 var
-  s:string;
+  s:AnsiString;
   i:integer;
   r:TResourceStream;
   l:Int64;
@@ -802,7 +802,7 @@ procedure TXxmLocalContext.Include(Address: WideString;
   const Objects: array of TObject);
 var
   f,fb:IXxmFragment;
-  pc:string;
+  pc:AnsiString;
 begin
   if FIncludeDepth=XxmMaxIncludeDepth then
     raise EXxmIncludeStackFull.Create(SXxmIncludeStackFull);
@@ -862,7 +862,7 @@ begin
         if l=StreamTreshold then
          begin
           SetLength(FPostTempFile,$400);
-          SetLength(FPostTempFile,GetTempPath($400,PChar(FPostTempFile)));//TODO: setting
+          SetLength(FPostTempFile,GetTempPathA($400,PAnsiChar(FPostTempFile)));//TODO: setting
           FPostTempFile:=FPostTempFile+'xxm_'+IntToHex(integer(Self),8)+'.dat';
           f:=TFileStream.Create(FPostTempFile,fmCreate);
           f.Write(m.Memory^,l);
@@ -940,17 +940,17 @@ begin
   raise EXxmPageRedirected.Create(s);
 end;
 
-function TXxmLocalContext.LocaleLanguage: string;
+function TXxmLocalContext.LocaleLanguage: AnsiString;
 var
   i:integer;
-  s,t:string;
+  s,t:AnsiString;
 begin
   i:=$10;
   SetLength(s,i);
-  SetLength(s,GetLocaleInfo(GetThreadLocale,LOCALE_SISO639LANGNAME,PChar(s),i));
+  SetLength(s,GetLocaleInfoA(GetThreadLocale,LOCALE_SISO639LANGNAME,PAnsiChar(s),i));
   i:=$10;
   SetLength(t,i);
-  SetLength(t,GetLocaleInfo(GetThreadLocale,LOCALE_SISO3166CTRYNAME,PChar(t),i));
+  SetLength(t,GetLocaleInfoA(GetThreadLocale,LOCALE_SISO3166CTRYNAME,PAnsiChar(t),i));
   Result:=LowerCase(s+'-'+t);
 end;
 
@@ -971,13 +971,13 @@ begin
    end;
 end;
 
-function TXxmLocalContext.GetRequestParam(Name: string): string;
+function TXxmLocalContext.GetRequestParam(Name: AnsiString): AnsiString;
 begin
   CheckReqHeaders;
   Result:=FReqHeaders.Item[Name];
 end;
 
-function XmlDate(s:string):TDateTime;
+function XmlDate(s:AnsiString):TDateTime;
 var
   i,l,dy,dm,dd,th,tm,ts:word;
   function next:integer;
@@ -1005,7 +1005,7 @@ end;
 
 function TXxmLocalContext.GetCookie(Name: WideString): WideString;
 var
-  fn,s:string;
+  fn,s:AnsiString;
   f:TFileStream;
   b,b1:boolean;
   i,j,l:integer;
@@ -1064,9 +1064,9 @@ procedure TXxmLocalContext.SetCookie(Name,Value:WideString;
   KeepSeconds:cardinal; Comment,Domain,Path:WideString;
   Secure,HttpOnly:boolean);
 var
-  fn,s:string;
+  fn,s:AnsiString;
   f:TFileStream;
-  function CookieEncode(x:WideString):string;
+  function CookieEncode(x:WideString):AnsiString;
   begin
     Result:=StringReplace(StringReplace(UTF8Encode(x),
       '%','%_',[rfReplaceAll]),#13#10,'%|',[rfReplaceAll])+#13#10;

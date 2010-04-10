@@ -59,7 +59,7 @@ end;
 
 procedure TUploadStream.ParseHeader(Headers: TResponseHeaders);
 var
-  s:string;
+  s:AnsiString;
   i,j,l:integer;
   c:cardinal;
 begin

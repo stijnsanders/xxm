@@ -10,7 +10,7 @@ type
     FName,FFilePath,FCookiePath:WideString;
     FProject:IXxmProject;
     FHandle:THandle;
-    FUserName:string;
+    FUserName:AnsiString;
     FCookies:array of record
       Name,Value:WideString;
       //TODO: expiry, domain, path...
@@ -20,7 +20,7 @@ type
     function GetProject:IXxmProject;
   protected
     function GetModulePath:WideString; override;
-    procedure SetSignature(const Value: string); override;
+    procedure SetSignature(const Value: AnsiString); override;
   published
     constructor Create(Name:WideString);
   public
@@ -33,7 +33,7 @@ type
     procedure SetSessionCookie(Name: WideString; Value: WideString);
     property Name:WideString read FName;
     property Project:IXxmProject read GetProject;
-    function CookieFile(Name:string):string;
+    function CookieFile(Name:AnsiString):AnsiString;
   end;
 
   TXxmProjectCache=class(TObject)
@@ -87,7 +87,7 @@ procedure XxmProjectRegister(
 ); stdcall;
 var
   r:TRegistry;
-  s,t:string;
+  s,t:AnsiString;
   i,j:integer;
 begin
   s:=lpCmdLine;
@@ -99,7 +99,7 @@ begin
   inc(j);
   t:=Copy(s,j,i-j);
 
-  if MessageBox(GetDesktopWindow,PChar('Register xxm project "'+t+'" for local handler?'),
+  if MessageBoxA(GetDesktopWindow,PAnsiChar('Register xxm project "'+t+'" for local handler?'),
     'xxm Local Handler',MB_OKCANCEL or MB_ICONQUESTION)=idOk then
    begin
     r:=TRegistry.Create;
@@ -112,7 +112,7 @@ begin
     finally
       r.Free;
     end;
-    MessageBox(GetDesktopWindow,PChar('Project "'+t+'" registered.'),
+    MessageBoxA(GetDesktopWindow,PAnsiChar('Project "'+t+'" registered.'),
       'xxm Local Handler',MB_OK or MB_ICONINFORMATION);
    end;
 end;
@@ -188,7 +188,7 @@ end;
 procedure TXxmProjectCacheEntry.GetFilePath(Address:WideString;
   var Path, MimeType: WideString);
 var
-  rf,sf,s:string;
+  rf,sf,s:AnsiString;
   i,j,l:integer;
   r:TRegistry;
 begin
@@ -276,7 +276,7 @@ begin
    end;
 end;
 
-function TXxmProjectCacheEntry.CookieFile(Name: string): string;
+function TXxmProjectCacheEntry.CookieFile(Name: AnsiString): AnsiString;
 var
   l:cardinal;
 begin
@@ -284,7 +284,7 @@ begin
    begin
     l:=1024;
     SetLength(FUserName,l);
-    if GetUserName(PChar(FUserName),l) then
+    if GetUserNameA(PAnsiChar(FUserName),l) then
       SetLength(FUserName,l-1)
     else
       FUserName:=GetEnvironmentVariable('USERNAME');
@@ -293,10 +293,10 @@ begin
   Result:=FCookiePath+FUserName+'_'+Name+'.txt';
 end;
 
-procedure TXxmProjectCacheEntry.SetSignature(const Value: string);
+procedure TXxmProjectCacheEntry.SetSignature(const Value: AnsiString);
 var
   r:TRegistry;
-  k:string;
+  k:AnsiString;
 begin
   FSignature:=Value;
   k:='\Software\xxm\local\'+FName;
@@ -319,7 +319,7 @@ end;
 procedure TXxmProjectCacheEntry.GetRegisteredPath;
 var
   r:TRegistry;
-  k:string;
+  k:AnsiString;
   i:integer;
 begin
   k:='\Software\xxm\local\'+FName;
@@ -408,7 +408,7 @@ end;
 
 function TXxmProjectCache.FindProject(Name: WideString): integer;
 var
-  l:string;
+  l:AnsiString;
 begin
   Result:=0;
   l:=LowerCase(Name);

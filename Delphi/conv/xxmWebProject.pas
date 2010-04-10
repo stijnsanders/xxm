@@ -5,29 +5,29 @@ interface
 uses Windows, SysUtils, Classes, MSXML2_TLB;
 
 type
-  TXxmWebProjectOutput=procedure(Msg:string);
+  TXxmWebProjectOutput=procedure(Msg:AnsiString);
 
   TXxmWebProject=class(TObject)
   private
     Data:DOMDocument;
     DataStartSize:integer;
-    DataFileName,FProjectName,FRootFolder,FSrcFolder,FProtoPathDef,FProtoPath:string;
+    DataFileName,FProjectName,FRootFolder,FSrcFolder,FProtoPathDef,FProtoPath:AnsiString;
     RootNode,DataFiles:IXMLDOMElement;
     Modified:boolean;
     Signatures:TStringList;
     FOnOutput:TXxmWebProjectOutput;
 
-    function GetNode(element:IXMLDOMElement;xpath:string):IXMLDOMElement;
-    function GetNodeText(element:IXMLDOMElement;xpath:string):string;
-    function ForceNode(element:IXMLDOMElement;tagname:string):IXMLDOMElement;
-    function ForceNodeID(element:IXMLDOMElement;tagname,id:string):IXMLDOMElement;
-    function NodesText(element:IXMLDOMElement;xpath:string):string;
+    function GetNode(element:IXMLDOMElement;xpath:AnsiString):IXMLDOMElement;
+    function GetNodeText(element:IXMLDOMElement;xpath:AnsiString):AnsiString;
+    function ForceNode(element:IXMLDOMElement;tagname:AnsiString):IXMLDOMElement;
+    function ForceNodeID(element:IXMLDOMElement;tagname,id:AnsiString):IXMLDOMElement;
+    function NodesText(element:IXMLDOMElement;xpath:AnsiString):AnsiString;
 
-    function ReadString(FilePath:string):string;
-    procedure BuildOutput(Msg:string);
+    function ReadString(FilePath:AnsiString):AnsiString;
+    procedure BuildOutput(Msg:AnsiString);
   public
 
-    constructor Create(SourcePath:string;
+    constructor Create(SourcePath:AnsiString;
       OnOutput:TXxmWebProjectOutput; CanCreate:boolean);
     destructor Destroy; override;
 
@@ -37,9 +37,9 @@ type
     function Compile:boolean;
     procedure Update;
 
-    property ProjectName:string read FProjectName;
-    property RootFolder:string read FRootFolder;
-    property ProjectFile:string read DataFileName;
+    property ProjectName:AnsiString read FProjectName;
+    property RootFolder:AnsiString read FRootFolder;
+    property ProjectFile:AnsiString read DataFileName;
   end;
 
   EXxmWebProjectNotFound=class(Exception);
@@ -56,12 +56,12 @@ const
   SXxmWebProjectNotFound='Web Project File not found for "__"';
   SXxmWebProjectLoad='Could not read "__"';
 
-constructor TXxmWebProject.Create(SourcePath: string;
+constructor TXxmWebProject.Create(SourcePath: AnsiString;
   OnOutput:TXxmWebProjectOutput; CanCreate:boolean);
 var
   x:IXMLDOMElement;
   i:integer;
-  s:string;
+  s:AnsiString;
   f:TFileStream;
 begin
   inherited Create;
@@ -189,7 +189,7 @@ end;
 
 procedure TXxmWebProject.Update;
 var
-  fn:string;
+  fn:AnsiString;
 begin
   if Modified then
    begin
@@ -204,9 +204,9 @@ begin
     //save signatures
     try
       fn:=FRootFolder+DataFileName+SignaturesExtension;
-      SetFileAttributes(PChar(fn),0);
+      SetFileAttributesA(PAnsiChar(fn),0);
       Signatures.SaveToFile(fn);
-      SetFileAttributes(PChar(fn),FILE_ATTRIBUTE_HIDDEN or FILE_ATTRIBUTE_SYSTEM);
+      SetFileAttributesA(PAnsiChar(fn),FILE_ATTRIBUTE_HIDDEN or FILE_ATTRIBUTE_SYSTEM);
     except
       //silent?
     end;
@@ -220,7 +220,7 @@ var
   q:TXxmPageParser;
   xl:IXMLDOMNodeList;
   xFile,x:IXMLDOMElement;
-  fn,fnu,s,cid,uname,upath,uext:string;
+  fn,fnu,s,cid,uname,upath,uext:AnsiString;
   sl,sl1:TStringList;
   sl_i,i,cPathIndex,fExtIndex,fPathIndex:integer;
 begin
@@ -394,8 +394,8 @@ var
   x:IXMLDOMElement;
   xl:IXMLDOMNodeList;
   fh:THandle;
-  fd:TWin32FindData;
-  fn1,fn2,s:string;
+  fd:TWin32FindDataA;
+  fn1,fn2,s:AnsiString;
   i:integer;
 begin
   Result:=false;
@@ -467,7 +467,7 @@ begin
        end;
 
       //copy other files the first time (cfg,dof,res...)
-      fh:=FindFirstFile(PChar(FProtoPath+ProtoProjectMask),fd);
+      fh:=FindFirstFileA(PAnsiChar(FProtoPath+ProtoProjectMask),fd);
       if not(fh=INVALID_HANDLE_VALUE) then
        begin
         repeat
@@ -480,14 +480,14 @@ begin
             if not(FileExists(fn1)) then
              begin
               BuildOutput(fn1+#13#10);
-              CopyFile(PChar(FProtoPath+s),PChar(fn1),false);
+              CopyFileA(PAnsiChar(FProtoPath+s),PAnsiChar(fn1),false);
              end;
            end;
         until not(FindNextFile(fh,fd));
         Windows.FindClose(fh);
        end;
 
-      fh:=FindFirstFile(PChar(FProtoPathDef+ProtoProjectMask),fd);
+      fh:=FindFirstFileA(PAnsiChar(FProtoPathDef+ProtoProjectMask),fd);
       if not(fh=INVALID_HANDLE_VALUE) then
        begin
         repeat
@@ -500,7 +500,7 @@ begin
             if not(FileExists(fn1)) then
              begin
               BuildOutput(fn1+#13#10);
-              CopyFile(PChar(FProtoPathDef+s),PChar(fn1),false);
+              CopyFileA(PAnsiChar(FProtoPathDef+s),PAnsiChar(fn1),false);
              end;
            end;
         until not(FindNextFile(fh,fd));
@@ -517,13 +517,13 @@ begin
 end;
 
 function TXxmWebProject.GetNode(element: IXMLDOMElement;
-  xpath: string): IXMLDOMElement;
+  xpath: AnsiString): IXMLDOMElement;
 begin
   Result:=element.selectSingleNode(xpath) as IXMLDOMElement;
 end;
 
 function TXxmWebProject.GetNodeText(element: IXMLDOMElement;
-  xpath: string): string;
+  xpath: AnsiString): AnsiString;
 var
   x:IXMLDOMNode;
 begin
@@ -531,7 +531,7 @@ begin
   if x=nil then Result:='' else Result:=x.text;
 end;
 
-function TXxmWebProject.ForceNode(element:IXMLDOMElement;tagname:string): IXMLDOMElement;
+function TXxmWebProject.ForceNode(element:IXMLDOMElement;tagname:AnsiString): IXMLDOMElement;
 begin
   Result:=element.selectSingleNode(tagname) as IXMLDOMElement;
   if Result=nil then
@@ -549,7 +549,7 @@ begin
 end;
 
 function TXxmWebProject.ForceNodeID(element: IXMLDOMElement; tagname,
-  id: string): IXMLDOMElement;
+  id: AnsiString): IXMLDOMElement;
 begin
   Result:=element.selectSingleNode(tagname+'[@ID="'+id+'"]') as IXMLDOMElement;
   if Result=nil then
@@ -567,7 +567,7 @@ begin
    end;
 end;
 
-function TXxmWebProject.ReadString(FilePath: string): string;
+function TXxmWebProject.ReadString(FilePath: AnsiString): AnsiString;
 var
   f:TFileStream;
   l:int64;
@@ -582,7 +582,7 @@ begin
   end;
 end;
 
-function TXxmWebProject.NodesText(element: IXMLDOMElement;xpath:string): string;
+function TXxmWebProject.NodesText(element:IXMLDOMElement;xpath:AnsiString):AnsiString;
 var
   xl:IXMLDOMNodeList;
   x:IXMLDOMElement;
@@ -611,7 +611,7 @@ end;
 
 function TXxmWebProject.Compile:boolean;
 var
-  cl1,cl2,cl3:string;
+  cl1,cl2,cl3:AnsiString;
   pi:TProcessInformation;
   si:TStartupInfo;
   h1,h2:THandle;
@@ -620,15 +620,15 @@ var
   f:TFileStream;
   c:cardinal;
   d:array[0..$FFF] of char;
-  function DoCommand(cmd:string):boolean;
+  function DoCommand(cmd:AnsiString):boolean;
   begin
-    if not(CreateProcess(nil,PChar(
+    if not(CreateProcessA(nil,PAnsiChar(
       StringReplace(
         cmd,
           '[[ProjectName]]',FProjectName,[rfReplaceAll])
           //more?
       ),
-      nil,nil,true,NORMAL_PRIORITY_CLASS,nil,PChar(FSrcFolder),si,pi)) then
+      nil,nil,true,NORMAL_PRIORITY_CLASS,nil,PAnsiChar(FSrcFolder),si,pi)) then
       RaiseLastOSError;
     CloseHandle(pi.hThread);
     try
@@ -683,7 +683,7 @@ begin
    end;
 end;
 
-procedure TXxmWebProject.BuildOutput(Msg: string);
+procedure TXxmWebProject.BuildOutput(Msg: AnsiString);
 begin
   FOnOutput(Msg);
 end;

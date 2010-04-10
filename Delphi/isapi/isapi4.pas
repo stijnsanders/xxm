@@ -136,7 +136,7 @@ type
 
 type
   TGetServerVariableProc = function ( hConn: HCONN;
-                                      VariableName: PChar;
+                                      VariableName: PAnsiChar;
                                       Buffer: Pointer;
                                       var Size: DWORD ): BOOL stdcall;
 
@@ -168,14 +168,14 @@ type
     dwHttpStatusCode: DWORD;          // HTTP Status code
                      // null terminated log info specific to this Extension DLL
     lpszLogData: array [0..HSE_LOG_BUFFER_LEN-1] of Char;
-    lpszMethod: PChar;                // REQUEST_METHOD
-    lpszQueryString: PChar;           // QUERY_STRING
-    lpszPathInfo: PChar;              // PATH_INFO
-    lpszPathTranslated: PChar;        // PATH_TRANSLATED
+    lpszMethod: PAnsiChar;                // REQUEST_METHOD
+    lpszQueryString: PAnsiChar;           // QUERY_STRING
+    lpszPathInfo: PAnsiChar;              // PATH_INFO
+    lpszPathTranslated: PAnsiChar;        // PATH_TRANSLATED
     cbTotalBytes: DWORD;              // Total bytes indicated from client
     cbAvailable: DWORD;               // Available number of bytes
     lpbData: Pointer;                 // pointer to cbAvailable bytes
-    lpszContentType: PChar;           // Content type of client data
+    lpszContentType: PAnsiChar;           // Content type of client data
 
     GetServerVariable: TGetServerVariableProc;
     WriteClient: TWriteClientProc;
@@ -268,7 +268,7 @@ type
     // These fields are used only if HSE_IO_SEND_HEADERS is present in dwFlags
     //
 
-    pszStatusCode: PChar; // HTTP Status Code  eg: "200 OK"
+    pszStatusCode: PAnsiChar; // HTTP Status Code  eg: "200 OK"
 
     BytesToWrite: DWORD;  // special value of "0" means write entire file.
     Offset: DWORD;        // offset value within the file to start from
@@ -293,8 +293,8 @@ type
     //
     // HTTP status code and header
     //
-    pszStatus: PChar;  // HTTP status code  eg: "200 OK"
-    pszHeader: PChar;  // HTTP header
+    pszStatus: PAnsiChar;  // HTTP status code  eg: "200 OK"
+    pszHeader: PAnsiChar;  // HTTP header
 
     cchStatus: DWORD;  // number of characters in status code
     cchHeader: DWORD;  // number of characters in header
@@ -501,10 +501,10 @@ const
 type
 
   TFilterGetServerVariableProc = function (var pfc{: THTTP_FILTER_CONTEXT};
-    VariableName: PChar; Buffer: Pointer; var Size: DWORD ): BOOL stdcall;
+    VariableName: PAnsiChar; Buffer: Pointer; var Size: DWORD ): BOOL stdcall;
 
   TFilterAddResponseHeadersProc = function (var pfc{: THTTP_FILTER_CONTEXT};
-    lpszHeaders: PChar; dwReserved: DWORD): BOOL stdcall;
+    lpszHeaders: PAnsiChar; dwReserved: DWORD): BOOL stdcall;
 
   TFilterWriteClientProc = function (var pfc{: THTTP_FILTER_CONTEXT};
     Buffer: Pointer; var Bytes: DWORD; dwReserved: DWORD ): BOOL stdcall;
@@ -580,14 +580,14 @@ type
   //  process the client headers
   //
 
-  TGetHeaderProc = function (var pfc: THTTP_FILTER_CONTEXT; lpszName: PChar;
+  TGetHeaderProc = function (var pfc: THTTP_FILTER_CONTEXT; lpszName: PAnsiChar;
     var lpvBuffer; var lpdwSize: DWORD): BOOL stdcall;
 
   TSetHeaderProc = function (var pfc: THTTP_FILTER_CONTEXT; lpszName,
-    lpszValue: PChar): BOOL stdcall;
+    lpszValue: PAnsiChar): BOOL stdcall;
 
   TAddHeaderProc = function (var pfc: THTTP_FILTER_CONTEXT; lpszName,
-    lpszValue: PChar): BOOL stdcall;
+    lpszValue: PAnsiChar): BOOL stdcall;
 
   PHTTP_FILTER_PREPROC_HEADERS = ^THTTP_FILTER_PREPROC_HEADERS;
   THTTP_FILTER_PREPROC_HEADERS = record
@@ -630,10 +630,10 @@ type
     //  least SF_MAX_USERNAME and SF_MAX_PASSWORD bytes large.
     //
 
-    pszUser: PChar;
+    pszUser: PAnsiChar;
     cbUserBuff: DWORD;
 
-    pszPassword: PChar;
+    pszPassword: PAnsiChar;
     cbPasswordBuff: DWORD;
   end;
   THTTP_FILTER_AUTHENT = HTTP_FILTER_AUTHENT;
@@ -646,8 +646,8 @@ type
 
   PHTTP_FILTER_URL_MAP = ^HTTP_FILTER_URL_MAP;
   HTTP_FILTER_URL_MAP = record
-    pszURL: PChar;
-    pszPhysicalPath: PChar;
+    pszURL: PAnsiChar;
+    pszPhysicalPath: PAnsiChar;
     cbPathBuff: DWORD;
   end;
   THTTP_FILTER_URL_MAP = HTTP_FILTER_URL_MAP;
@@ -672,8 +672,8 @@ const
 type
   PHTTP_FILTER_ACCESS_DENIED = ^HTTP_FILTER_ACCESS_DENIED;
   HTTP_FILTER_ACCESS_DENIED = record
-    pszURL: PChar;            // Requesting URL
-    pszPhysicalPath: PChar;   // Physical path of resource
+    pszURL: PAnsiChar;            // Requesting URL
+    pszPhysicalPath: PAnsiChar;   // Physical path of resource
     dwReason: DWORD;          // Bitfield of SF_DENIED flags
   end;
   THTTP_FILTER_ACCESS_DENIED = HTTP_FILTER_ACCESS_DENIED;
@@ -687,12 +687,12 @@ type
 
   PHTTP_FILTER_LOG = ^HTTP_FILTER_LOG;
   HTTP_FILTER_LOG = record
-    pszClientHostName: PChar;
-    pszClientUserName: PChar;
-    pszServerName: PChar;
-    pszOperation: PChar;
-    pszTarget: PChar;
-    pszParameters: PChar;
+    pszClientHostName: PAnsiChar;
+    pszClientUserName: PAnsiChar;
+    pszServerName: PAnsiChar;
+    pszOperation: PAnsiChar;
+    pszTarget: PAnsiChar;
+    pszParameters: PAnsiChar;
     dwHttpStatus: DWORD;
     dwWin32Status: DWORD;
     dwBytesSent: DWORD;             // IIS 4.0 and later
