@@ -412,7 +412,7 @@ begin
       FURI.SetSpec(NewCString(FURL).ACString);
       inc(l);
      end;
-    inc(i);
+    if (FURL[i]='/') then inc(i);
 
     j:=i;
     while (i<=l) and not(Char(FURL[i]) in ['?','&','$','#']) do inc(i);

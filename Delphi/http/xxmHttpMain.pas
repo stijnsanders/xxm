@@ -309,7 +309,8 @@ begin
           Redirect('/'+XxmProjectCache.DefaultProject+x+Copy(FURI,i,l-i+1),true);
          end;
         FPageClass:='['+FProjectName+']';
-        if (i<=l) then inc(i) else if l>1 then Redirect(FURI+'/',true);
+        if (i>l) and (l>1) then Redirect(FURI+'/',true) else
+          if (FURI[i]='/') then inc(i);
        end
       else
        begin

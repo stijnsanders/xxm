@@ -325,7 +325,7 @@ begin
       inc(l);
       OleCheck(ProtSink.ReportProgress(BINDSTATUS_REDIRECTING,PWideChar(FURL)));
      end;
-    inc(i);
+    if (FURL[i]='/') then inc(i);
 
     j:=i;
     while (i<=l) and not(Char(FURL[i]) in ['?','&','$','#']) do inc(i);

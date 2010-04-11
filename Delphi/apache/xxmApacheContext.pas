@@ -165,7 +165,8 @@ begin
         Redirect('/'+XxmProjectCache.DefaultProject+x,true);
        end;
       FPageClass:='['+FProjectName+']';
-      if i<=l then inc(i) else if l>1 then Redirect(x+'/',true);
+      if (i>l) and (l>1) then Redirect(x+'/',true) else
+        if (x[i]='/') then inc(i);
      end
     else
      begin
