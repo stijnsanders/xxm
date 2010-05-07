@@ -33,6 +33,7 @@ type
 
     function CheckFiles(Rebuild:boolean):boolean;
     function GenerateProjectFiles(Rebuild: boolean):boolean;
+    function ResolveErrorLines(BuildOutput:AnsiString):AnsiString;
 
     function Compile:boolean;
     procedure Update;
@@ -40,6 +41,9 @@ type
     property ProjectName:AnsiString read FProjectName;
     property RootFolder:AnsiString read FRootFolder;
     property ProjectFile:AnsiString read DataFileName;
+
+    property SrcFolder:AnsiString read FSrcFolder write FSrcFolder;
+    property ProtoFolder:AnsiString read FProtoPath write FProtoPath;
   end;
 
   EXxmWebProjectNotFound=class(Exception);
@@ -218,6 +222,7 @@ function TXxmWebProject.CheckFiles(Rebuild:boolean): boolean;
 var
   p:TXxmProtoParser;
   q:TXxmPageParser;
+  m:TXxmLineNumbersMap;
   xl:IXMLDOMNodeList;
   xFile,x:IXMLDOMElement;
   fn,fnu,s,cid,uname,upath,uext:AnsiString;
@@ -231,6 +236,7 @@ begin
 
   p:=TXxmProtoParser.Create;
   q:=TXxmPageParser.Create;
+  m:=TXxmLineNumbersMap.Create;
   try
     sl:=TStringList.Create;
     sl1:=TStringList.Create;
@@ -254,18 +260,13 @@ begin
        begin
         fn:=sl[sl_i];
         cid:=GetInternalIdentifier(fn,cPathIndex,fExtIndex,fPathIndex);
-
         xFile:=ForceNodeID(DataFiles,' File',cid);
         i:=sl1.IndexOf(cid);
         if not(i=-1) then sl1.Delete(i);
-
         //fn fit for URL
         fnu:=StringReplace(fn,'\','/',[rfReplaceAll]);
         x:=ForceNode(xFile,'Path');
         x.text:=fnu;
-
-        //BuildFile(xFile,fn,cid,Rebuild);
-
         //pascal unit name
         upath:=VarToStr(xFile.getAttribute('UnitPath'));
         uname:=VarToStr(xFile.getAttribute('UnitName'));
@@ -311,28 +312,29 @@ begin
 
           p.Parse(ReadString(s));
           q.Parse(ReadString(FRootFolder+fn));
+          m.Clear;
           repeat
+            m.MapLine(p.NextEOLs,0);
             case p.GetNext of
               ptProjectName:p.Output(FProjectName);
               ptProtoFile:p.Output(FProtoPath+uext+DelphiExtension);
               ptFragmentID:p.Output(cid);
               ptFragmentUnit:p.Output(uname);
               ptFragmentAddress:p.Output(fnu);
-              ptUsesClause:p.Output(q.AllSections(psUses));//TODO: check comma's?
-              ptFragmentDefinitions:p.Output(q.AllSections(psDefinitions));
-              ptFragmentHeader:p.Output(q.AllSections(psHeader));
-              ptFragmentBody:p.Output(q.BuildBody);
-              ptFragmentFooter:p.Output(q.AllSections(psFooter));
+              ptUsesClause:p.Output(q.AllSections(psUses,m));//TODO: check comma's?
+              ptFragmentDefinitions:p.Output(q.AllSections(psDefinitions,m));
+              ptFragmentHeader:p.Output(q.AllSections(psHeader,m));
+              ptFragmentBody:p.Output(q.BuildBody(m));
+              ptFragmentFooter:p.Output(q.AllSections(psFooter,m));
               //else raise?
             end;
           until p.Done;
           ForceDirectories(FSrcFolder+upath);
           p.Save(FSrcFolder+upath+uname+DelphiExtension);
+          m.Save(FSrcFolder+upath+uname+LinesMapExtension);
 
           Result:=true;
          end;
-
-
        end;
 
       //delete missing files
@@ -409,7 +411,6 @@ begin
 
     p:=TXxmProtoParser.Create;
     try
-
       //[[ProjectName]].dpr
       BuildOutput(FProjectName+DelphiProjectExtension+#13#10);
       s:=FProtoPath+ProtoProjectDpr;
@@ -686,6 +687,48 @@ end;
 procedure TXxmWebProject.BuildOutput(Msg: AnsiString);
 begin
   FOnOutput(Msg);
+end;
+
+function TXxmWebProject.ResolveErrorLines(
+  BuildOutput: AnsiString): AnsiString;
+var
+  sl_in,sl_out:TStringList;
+  sl_x:integer;
+  s:string;
+  i,j,l:integer;
+  map:TXxmLineNumbersMap;
+begin
+  //TODO: call ResolveErrorLines from xxmConv also
+  map:=TXxmLineNumbersMap.Create;
+  sl_in:=TStringList.Create;
+  sl_out:=TStringList.Create;
+  try
+    sl_in.Text:=BuildOutput;
+    for sl_x:=0 to sl_in.Count-1 do
+     begin
+      s:=sl_in[sl_x];
+      i:=Pos('.pas(',s);
+      if i<>0 then
+       begin
+        inc(i,5);
+        j:=i;
+        l:=Length(s);
+        while (j<=l) and (s[j]<>')') do inc(j);
+        try
+          map.Load(ChangeFileExt(FSrcFolder+Copy(s,1,i-2),LinesMapExtension));
+          s:=Copy(s,1,i-2)+'['+map.GetXxmLines(StrToInt(Copy(s,i,j-i)))+']'+Copy(s,j+1,Length(s)-j);
+        except
+          //silent
+        end;
+       end;
+      sl_out.Add(s);
+     end;
+    Result:=sl_out.Text;
+  finally
+    sl_in.Free;
+    sl_out.Free;
+    map.Free;
+  end;
 end;
 
 end.

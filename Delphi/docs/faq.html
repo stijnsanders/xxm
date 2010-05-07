@@ -53,6 +53,9 @@ add to the response headers.</dd>
 <dt>does xxm work with <a href="http://jquery.com/">jQuery</a> and <a href="http://www.prototypejs.org/">prototype</a>?</dt>
 <dd>Yes. These are javascript libraries, and javascript is able to resolve relative URL's, even with an XmlHttpRequest. Prototype may need a minor tweak to work with the xxmLocal handler in InternetExplorer, since as a security measure the responseDocument property is undefined on non-http protocol handlers.</dd>
 
+<dt>when using an AutoBuild handler, pascal compile errors get shown with the line-number of the parsed source file, not the xxm source file, how do I map between the two?</dt>
+<dd>as of version 1.0.2.260, the xxm parser keeps line-number maps for each file, and AutoBuild handlers use these to replace the line number of the compiler output (shown between parentheses "<code>()</code>") with the corresponding line-number(s) of the xxm source file (shown between square brackets "<code>[]</code>"). Since several tags from different places in the xxm-sourcefile could end up on the same line (e.g. all <code>[[@someunit,]]</code> tags are added to the implementation uses clause) more than one xxm source line-number could be displayed.</dd>
+
 <dt><a name="debug"></a>how do I debug an xxm project</dt>
 <dd>an xxm project is still a Delphi project, so you can open the project's dpr in Delphi, just remember to edit the xxm and xxmi files, and not the pas files directly (unless for temporary debugging behaviour).<br />
 When you're using xxmLocal (or xxmLocalDev), set the host application to Internet Explorer (typically <code>C:\Program Files\Internet Explorer\iexplore.exe</code>), optionally with an "xxm://" URL to open your project. (Update: to force IE8 to run in a single process, see <a href="http://blogs.msdn.com/askie/archive/2009/03/09/opening-a-new-tab-may-launch-a-new-process-with-internet-explorer-8-0.aspx">TabProcGrowth</a>)<br />

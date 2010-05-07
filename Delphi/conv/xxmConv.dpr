@@ -16,13 +16,16 @@ uses
 
 var
   i:integer;
-  s:string;
-  wait,rebuild:boolean;
+  s,protodir,srcdir:string;
+  wait,rebuild,docompile:boolean;
 begin
   CoInitialize(nil);
   WelcomeMessage;
   wait:=false;
   rebuild:=false;
+  docompile:=true;
+  protodir:='';
+  srcdir:='';
 
   if ParamCount=0 then
    begin
@@ -31,20 +34,39 @@ begin
     Writeln('  registers a compile option on xxmp file type');
    end;
 
-  for i:=1 to ParamCount do
+  i:=1;
+  while i<=ParamCount do
    begin
     s:=ParamStr(i);
     if LowerCase(s)='/install' then RegisterCompileOption else
     if LowerCase(s)='/wait' then wait:=true else
     if LowerCase(s)='/rebuild' then rebuild:=true else
+    if LowerCase(s)='/nocompile' then docompile:=false else
+    if LowerCase(s)='/proto' then
+     begin
+      inc(i);
+      protodir:=ParamStr(i);
+     end
+    else
+    if LowerCase(s)='/src' then
+     begin
+      inc(i);
+      srcdir:=ParamStr(i);
+     end
+    else
       try
         s:=ExpandFileName(s);
         Writeln('--- '+s);
         with TXxmWebProject.Create(s,DoWrite,true) do
           try
+            if protodir<>'' then ProtoFolder:=protodir;
+            if srcdir<>'' then SrcFolder:=srcdir;
             CheckFiles(rebuild);
-            Compile;
-            Update;
+            if docompile then
+             begin
+              Compile;
+              Update;
+             end;
           finally
             Free;
           end;
@@ -55,6 +77,7 @@ begin
           Writeln(e.Message);
          end;
       end;
+    inc(i);
    end;
 
   if wait then

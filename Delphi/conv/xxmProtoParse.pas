@@ -39,17 +39,18 @@ type
     FOutput:TMemoryStream;
     PointsCount,PointsSize:integer;
     Points:array of record
-      Index,Length:integer;
+      Index,Length,EOLs:integer;
       Tag:TXxmProtoParseTag;
     end;
     FIndex:integer;
     StackPosition,StackSize:integer;
     Stack:array of integer;
-    procedure AddPoint(Index,Length:integer;Tag:TXxmProtoParseTag);
+    procedure AddPoint(Index,Length,EOLs:integer;Tag:TXxmProtoParseTag);
   public
     constructor Create;
     destructor Destroy; override;
     procedure Parse(Data:AnsiString);
+    function NextEOLs:integer;
     function GetNext:TXxmProtoParseTag;
     procedure Output(Data:AnsiString);
     procedure IterateBegin(Condition:boolean);
@@ -107,6 +108,7 @@ begin
   StackPosition:=0;
   PointsSize:=0;
   PointsCount:=0;
+  //TODO: flag enable/disable keep line-numbers?
 end;
 
 destructor TXxmProtoParser.Destroy;
@@ -119,7 +121,7 @@ end;
 
 procedure TXxmProtoParser.Parse(Data: AnsiString);
 var
-  a,i,j,l:integer;
+  a,i,j,l,nx:integer;
   b:boolean;
   s:AnsiString;
   pt:TXxmProtoParseTag;
@@ -137,13 +139,20 @@ begin
   l:=Length(FData);
   i:=1;
   a:=1;
+  nx:=0;
   while (i<=l) do
    begin
+    //search for a open tag
     a:=i;
     b:=false;
     while (i<=l) and not(b and (FData[i]='[')) do
      begin
       b:=FData[i]='[';
+      if FData[i] in [#13,#10] then
+       begin
+        inc(nx);
+        if (FData[i]=#13) and (i<l) and (FData[i+1]=#10) then inc(i);
+       end;
       inc(i);
      end;
     if b then
@@ -165,12 +174,13 @@ begin
         if pt=pt_Unknown then
           raise EXxmParseUnknownTag.Create(
             StringReplace(SXxmParseUnknownTag,'__',s,[]));
-        AddPoint(a,i-a-1,pt);
+        AddPoint(a,i-a-1,nx,pt);
         i:=j+1;
+        nx:=0;
        end;
      end;
    end;
-  AddPoint(a,l-a+1,pt_Unknown);
+  AddPoint(a,l-a+1,nx,pt_Unknown);
 end;
 
 function TXxmProtoParser.GetNext: TXxmProtoParseTag;
@@ -222,7 +232,7 @@ begin
     dec(StackPosition);//IterateEnd
 end;
 
-procedure TXxmProtoParser.AddPoint(Index, Length: integer; Tag: TXxmProtoParseTag);
+procedure TXxmProtoParser.AddPoint(Index, Length, EOLs: integer; Tag: TXxmProtoParseTag);
 begin
   if PointsCount=PointsSize then
    begin
@@ -231,6 +241,7 @@ begin
    end;
   Points[PointsCount].Index:=Index;
   Points[PointsCount].Length:=Length;
+  Points[PointsCount].EOLs:=EOLs;
   Points[PointsCount].Tag:=Tag;
   inc(PointsCount);
 end;
@@ -249,6 +260,12 @@ end;
 function TXxmProtoParser.Done: boolean;
 begin
   Result:=FIndex>=PointsCount;
+end;
+
+function TXxmProtoParser.NextEOLs: integer;
+begin
+  //assert FIndex<PointsCount;
+  Result:=Points[FIndex].EOLs;
 end;
 
 end.

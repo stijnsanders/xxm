@@ -91,7 +91,7 @@ begin
                 Context.SendHTML(BuildError('bfail',[
                   'URL',HTMLEncode(Context.URL),
                   'ProjectName',ProjectName,
-                  'Log',BuildOutput.DataString,
+                  'Log',WebProject.ResolveErrorLines(BuildOutput.DataString),
                   'DateTime',DateTimeToStr(Now)
                 ]));
                 //TODO: rig lastcheck to fail waiting threads?
