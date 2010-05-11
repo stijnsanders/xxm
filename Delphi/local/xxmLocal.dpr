@@ -14,7 +14,8 @@ uses
   xxmParams in '..\common\xxmParams.pas',
   xxmParUtils in '..\common\xxmParUtils.pas',
   xxmHeaders in '..\public\xxmHeaders.pas',
-  xxmThreadPool in 'xxmThreadPool.pas';
+  xxmThreadPool in 'xxmThreadPool.pas',
+  xxmCommonUtils in '..\common\xxmCommonUtils.pas';
 
 exports
   DllGetClassObject,

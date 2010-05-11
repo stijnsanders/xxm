@@ -143,6 +143,8 @@ var
   x,y:AnsiString;
   i,l:integer;
   p:IXxmPage;
+  f:TFileStream;
+  d:TDateTime;
 begin
   try
     apr_table_set(rq.headers_out,'X-Powered-By',PAnsiChar(SelfVersion));
@@ -191,12 +193,21 @@ begin
       //ask project to translate? project should have given a fragment!
       FPageClass:='['+FProjectName+']GetFilePath';
       FProjectEntry.GetFilePath(FFragmentName,x,y);
-      if FileExists(x) then
+      d:=GetFileModifiedDateTime(x);
+      if d<>0 then //FileExists(x)
        begin
         //TODO: Last Modified
         //TODO: if directory file-list?
         FContentType:=y;
-        SendFile(x);
+        f:=TFileStream.Create(x,fmOpenRead or fmShareDenyNone);
+        try
+          apr_table_set(rq.headers_out,'Last-Modified',PAnsiChar(RFC822DateGMT(d)));
+          apr_table_set(rq.headers_out,'Content-Length',PAnsiChar(IntToStr(f.Size)));
+          apr_table_set(rq.headers_out,'Accept-Ranges','bytes');
+          SendStream(f);
+        finally
+          f.Free;
+        end;
        end
       else
        begin

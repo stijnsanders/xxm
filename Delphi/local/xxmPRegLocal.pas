@@ -188,51 +188,41 @@ end;
 procedure TXxmProjectCacheEntry.GetFilePath(Address:WideString;
   var Path, MimeType: WideString);
 var
-  rf,sf,s:AnsiString;
+  rf,sf,s:WideString;
   i,j,l:integer;
   r:TRegistry;
 begin
-  //TODO: widestring all the way?
-
   //TODO: virtual directories?
   rf:=FFilePath;
   i:=Length(rf);
   while not(i=0) and not(rf[i]=PathDelim) do dec(i);
   SetLength(rf,i);
   sf:='';
-
   i:=1;
   l:=Length(Address);
   while (i<=l) do
    begin
-
     j:=i;
     while (j<=l) and not(char(Address[j]) in ['/','\']) do inc(j);
     s:=Copy(Address,i,j-i);
-    i:=j+1;
-
     if (s='') or (s='.') then
-     begin
       //nothing
-     end
     else
     if (s='..') then
      begin
       //try to go back, but not into rf (raise?)
-      j:=Length(sf)-1;
-      while (j>0) and not(sf[j]=PathDelim) do dec(j);
-      SetLength(sf,j);
+      i:=Length(sf)-1;
+      while (i>0) and not(sf[i]=PathDelim) do dec(i);
+      SetLength(sf,i);
      end
     else
-     begin
-      sf:=sf+s+PathDelim;
-      //DirectoryExists()??
-     end;
-
+      sf:=sf+s;//DirectoryExists()??
+    if (j<=l) and (char(Address[j]) in ['/','\']) then sf:=sf+PathDelim;
+    i:=j+1;
    end;
+  Path:=rf+sf;
 
-  Path:=rf+Copy(sf,1,Length(sf)-1);
-
+  //find a MIME-type from registry
   i:=Length(sf)-1;
   while (i>0) and not(sf[i]='.') do dec(i);
   s:=LowerCase(copy(sf,i,Length(sf)-i));
@@ -250,7 +240,6 @@ begin
   finally
     r.Free;
   end;
-
 end;
 
 function TXxmProjectCacheEntry.GetSessionCookie(Name: WideString): WideString;

@@ -134,7 +134,7 @@ var
 
 implementation
 
-uses Variants, ComObj, AxCtrls, xxmThreadPool;
+uses Variants, ComObj, AxCtrls, xxmThreadPool, xxmCommonUtils;
 
 const //resourcestring?
   SXxmDirectInclude='Direct call to include fragment is not allowed.';
@@ -241,6 +241,8 @@ var
   ba:TBindInfoF;
   bi:TBindInfo;
   p:IXxmPage;
+  f:TFileStream;
+  d:TDateTime;
 begin
   try
     //bind parameters
@@ -357,11 +359,20 @@ begin
       //ask project to translate? project should have given a fragment!
       FPageClass:='['+FProjectName+']GetFilePath';
       FProjectEntry.GetFilePath(FFragmentName,FSingleFileSent,x);
-      if FileExists(FSingleFileSent) then
+      d:=GetFileModifiedDateTime(FSingleFileSent);
+      if d<>0 then //FileExists(FSingleFileSent)
        begin
         //TODO: if directory file-list?
         FContentType:=x;
-        if not(Aborted) then SendFile(FSingleFileSent);
+        f:=TFileStream.Create(x,fmOpenRead or fmShareDenyNone);
+        try
+          FResHeaders['Last-Modified']:=RFC822DateGMT(d);
+          FResHeaders['Content-Length']:=IntToStr(f.Size);
+          FResHeaders['Accept-Ranges']:='bytes';
+          SendStream(f);
+        finally
+          f.Free;
+        end;
        end
       else
        begin
@@ -614,7 +625,7 @@ begin
         Unlock;
       end;
       ReportData;
-    until not(l=SendBufferSize);
+    until not(l=SendBufferSize) or Aborted;
    end;
 end;
 

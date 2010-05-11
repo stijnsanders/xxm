@@ -189,6 +189,8 @@ var
   l1:cardinal;
   x,y:AnsiString;
   p:IxxmPage;
+  f:TFileStream;
+  d:TDateTime;
 begin
   try
     //read CGI values
@@ -305,12 +307,21 @@ begin
       //ask project to translate? project should have given a fragment!
       FPageClass:='['+FProjectName+']GetFilePath';
       FProjectEntry.GetFilePath(FFragmentName,x,y);
-      if FileExists(x) then
+      d:=GetFileModifiedDateTime(x);
+      if d<>0 then //FileExists(x)
        begin
         //TODO: Last Modified
         //TODO: if directory file-list?
         FContentType:=y;
-        SendFile(x);
+        f:=TFileStream.Create(x,fmOpenRead or fmShareDenyNone);
+        try
+          FResHeaders['Last-Modified']:=RFC822DateGMT(d);
+          FResHeaders['Content-Length']:=IntToStr(f.Size);
+          FResHeaders['Accept-Ranges']:='bytes';
+          SendStream(f);
+        finally
+          f.Free;
+        end;
        end
       else
        begin
@@ -679,11 +690,6 @@ var
 begin
   b:=true;
   l:=s.Size;
-  if not(FHeaderSent) then
-   begin
-    FResHeaders['Content-Length']:=IntToStr(l);
-    FResHeaders['Accept-Ranges']:='bytes';
-   end;
   //TODO: keep-connection since content-length known?
   CheckHeader;
   while not(l=0) and b do

@@ -381,6 +381,8 @@ var
   i,j,l:integer;
   x:WideString;
   p:IxxmPage;
+  f:TFileStream;
+  d:TDateTime;
 begin
   //called from TXxmGeckoLoader
   try
@@ -437,11 +439,20 @@ begin
       //ask project to translate? project should have given a fragment!
       FPageClass:='['+FProjectName+']GetFilePath';
       FProjectEntry.GetFilePath(FFragmentName,FSingleFileSent,x);
-      if FileExists(FSingleFileSent) then
+      d:=GetFileModifiedDateTime(FSingleFileSent);
+      if d<>0 then //FileExists(FSingleFileSent)
        begin
         //TODO: if directory file-list?
         FResponseHeaders['Content-Type']:=x;
-        if FConnected then SendFile(FSingleFileSent);
+        f:=TFileStream.Create(FSingleFileSent,fmOpenRead or fmShareDenyNone);
+        try
+          FResponseHeaders['Last-Modified']:=RFC822DateGMT(d);
+          FResponseHeaders['Content-Length']:=IntToStr(f.Size);
+          FResponseHeaders['Accept-Ranges']:='bytes';
+          SendStream(f);
+        finally
+          f.Free;
+        end;
        end
       else
        begin

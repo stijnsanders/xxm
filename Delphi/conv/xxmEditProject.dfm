@@ -137,6 +137,9 @@ object EditProjectMainForm: TEditProjectMainForm
       object Exclude2: TMenuItem
         Action = actExclude
       end
+      object Includeunit2: TMenuItem
+        Action = actIncludePas
+      end
       object N3: TMenuItem
         Caption = '-'
       end
@@ -835,6 +838,9 @@ object EditProjectMainForm: TEditProjectMainForm
     object Exclude1: TMenuItem
       Action = actExclude
     end
+    object Includeunit1: TMenuItem
+      Action = actIncludePas
+    end
     object N2: TMenuItem
       Caption = '-'
     end
@@ -869,5 +875,17 @@ object EditProjectMainForm: TEditProjectMainForm
       Enabled = False
       OnExecute = actDeleteExecute
     end
+    object actIncludePas: TAction
+      Category = 'Files'
+      Caption = 'Include unit...'
+      OnExecute = actIncludePasExecute
+    end
+  end
+  object OpenDialog2: TOpenDialog
+    DefaultExt = 'pas'
+    Filter = 'Pascal Unit|*.pas|All files (*.*)|*.*'
+    InitialDir = '.'
+    Left = 272
+    Top = 8
   end
 end

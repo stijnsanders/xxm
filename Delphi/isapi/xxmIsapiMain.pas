@@ -284,6 +284,7 @@ var
   i,j:integer;
   p:IXxmPage;//for directinclude check
   d:TDateTime;
+  f:TFileStream;
 begin
   //ServerFunction(HSE_REQ_IO_COMPLETION,@ContextIOCompletion,nil,PDWORD(Self));
   try
@@ -354,16 +355,20 @@ begin
       //ask project to translate? project should have given a fragment!
       FProjectEntry.GetFilePath(FFragmentName,x,y);
       d:=GetFileModifiedDateTime(x);
-      if not(d=0) then
+      if d<>0 then //FileExists(x)
        begin
         //TODO: if directory file-list?
         FContentType:=y;
         FAutoEncoding:=aeContentDefined;
-
-        FResHeaders['Last-Modified']:=RFC822DateGMT(d);
-        //TODO:Content-Length
-
-        SendFile(x);
+        f:=TFileStream.Create(x,fmOpenRead or fmShareDenyNone);
+        try
+          FResHeaders['Last-Modified']:=RFC822DateGMT(d);
+          FResHeaders['Content-Length']:=IntToStr(f.Size);
+          FResHeaders['Accept-Ranges']:='bytes';
+          SendStream(f);
+        finally
+          f.Free;
+        end;
        end
       else
        begin
@@ -601,11 +606,6 @@ var
   d:array[0..$FFFF] of byte;
 begin
   inherited;
-  if not(FHeaderSent) then
-   begin
-    FResHeaders['Content-Length']:=IntToStr(s.Size);
-    FResHeaders['Accept-Ranges']:='bytes';
-   end;
   //TODO: keep-connection since content-length known?
   //if not(s.Size=0) then
    begin

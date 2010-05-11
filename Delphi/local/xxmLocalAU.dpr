@@ -15,7 +15,8 @@ uses
   xxmParUtils in '..\common\xxmParUtils.pas',
   xxmHeaders in '..\public\xxmHeaders.pas',
   xxmThreadPool in 'xxmThreadPool.pas',
-  xxmAutoUpdate in '..\common\xxmAutoUpdate.pas';
+  xxmAutoUpdate in '..\common\xxmAutoUpdate.pas',
+  xxmCommonUtils in '..\common\xxmCommonUtils.pas';
 
 exports
   DllGetClassObject,

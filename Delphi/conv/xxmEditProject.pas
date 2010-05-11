@@ -43,6 +43,10 @@ type
     actRefresh: TAction;
     N4: TMenuItem;
     Refresh1: TMenuItem;
+    actIncludePas: TAction;
+    OpenDialog2: TOpenDialog;
+    Includeunit1: TMenuItem;
+    Includeunit2: TMenuItem;
     procedure Exit1Click(Sender: TObject);
     procedure txtChange(Sender: TObject);
     procedure tvFilesCreateNodeClass(Sender: TCustomTreeView;
@@ -63,6 +67,7 @@ type
     procedure actExcludeExecute(Sender: TObject);
     procedure tvFilesChange(Sender: TObject; Node: TTreeNode);
     procedure actRefreshExecute(Sender: TObject);
+    procedure actIncludePasExecute(Sender: TObject);
   private
     Modified:boolean;
     ProjectPath,ProjectFolder:AnsiString;
@@ -72,6 +77,7 @@ type
     procedure SaveProject;
     function GetNode(element:IXMLDOMElement;xpath:WideString):IXMLDOMElement;
     procedure ExpandNode(node:TTreeNode);
+    function GetFilesNode:IXMLDOMElement;
   protected
     procedure DoCreate; override;
     procedure DoClose(var Action: TCloseAction); override;
@@ -425,6 +431,7 @@ var
   n,nx:TTreeNode;
   s:AnsiString;
   x:IXMLDOMElement;
+  y:IXMLDOMNode;
 begin
   nx:=tvFiles.Selected;
   n:=nx;
@@ -448,6 +455,8 @@ begin
     x:=(nx as TFileNode).ProjectNode;
     if not(x=nil) then
      begin
+      y:=x.previousSibling;
+      if (y<>nil) and (y.nodeType=NODE_TEXT) then x.parentNode.removeChild(y);//whitespace
       x.parentNode.removeChild(x);
       x:=nil;
      end;
@@ -481,7 +490,7 @@ begin
       s:='';
       while not(nx=nil) do
        begin
-        s:=PathDelim+nx.Text;
+        s:=PathDelim+nx.Text+s;
         nx:=nx.Parent;
        end;
       i:=Length(s);
@@ -490,15 +499,12 @@ begin
       while not(j=0) and not(s[j]=PathDelim) do dec(j);
       x:=ProjectData.createElement('Unit');
       x.setAttribute('UnitName',Copy(s,j+1,i-j-1));
-      if (j>1) then x.setAttribute('UnitPath',Copy(s,2,j));
+      if (j>1) then x.setAttribute('UnitPath',Copy(s,2,j-1));
       (n as TFileNode).ProjectNode:=x;
-      y:=ProjectData.documentElement.selectSingleNode('Files') as IXMLDOMElement;
-      if y=nil then
-       begin
-        y:=ProjectData.createElement('Files');
-        ProjectData.documentElement.appendChild(y);
-       end;
+      y:=GetFilesNode;
+      y.appendChild(ProjectData.createTextNode(#13#10#9#9));
       y.appendChild(x);
+      y.appendChild(ProjectData.createTextNode(#13#10#9));
       n.ImageIndex:=iiPasIncluded;
       n.SelectedIndex:=iiPasIncluded;
       Modified:=true;
@@ -543,6 +549,69 @@ end;
 procedure TEditProjectMainForm.actRefreshExecute(Sender: TObject);
 begin
   ExpandNode(nil);
+end;
+
+procedure TEditProjectMainForm.actIncludePasExecute(Sender: TObject);
+var
+  x,y:IXMLDOMElement;
+  s,t:AnsiString;
+  i,j,l:integer;
+begin
+  if OpenDialog2.Execute then
+   begin
+      s:=OpenDialog2.FileName;
+    if LowerCase(Copy(s,1,Length(ProjectFolder)))=LowerCase(ProjectFolder) then
+      raise Exception.Create('Use include on a tree node to include a file in the project folder.');//TODO
+    //build relative to ProjectFolder
+    l:=Length(ProjectFolder);
+    j:=Length(s);
+    i:=1;
+    while (i<=l) and (i<=j) and (UpCase(s[i])=UpCase(ProjectFolder[i])) do inc(i);
+    //assert (i<=l)
+    s:=Copy(s,i,j-i+1);
+    while i<=l do
+     begin
+      if ProjectFolder[i]=PathDelim then s:='..'+PathDelim+s;
+      inc(i);
+     end;
+    //strip extension, path
+    i:=Length(s);
+    while not(i=0) and not(s[i]='.') do dec(i);
+    j:=i;
+    while not(j=0) and not(s[j]=PathDelim) do dec(j);
+    //TODO check already included
+    t:='@UnitName="'+Copy(s,j+1,i-j-1)+'"';
+    if j>0 then t:=t+'&&@UnitPath="'+StringReplace(Copy(s,1,j),'\','\\',[rfReplaceAll])+'"';
+    if ProjectData.documentElement.selectSingleNode('Files/Unit['+t+']')=nil then
+     begin
+      x:=ProjectData.createElement('Unit');
+      x.setAttribute('UnitName',Copy(s,j+1,i-j-1));
+      if j>1 then x.setAttribute('UnitPath',Copy(s,1,j));
+      //(n as TFileNode).ProjectNode:=x;
+      y:=GetFilesNode;
+      y.appendChild(ProjectData.createTextNode(#13#10#9#9));
+      y.appendChild(x);
+      y.appendChild(ProjectData.createTextNode(#13#10#9));
+      Modified:=true;
+      MessageBoxA(Handle,PChar('Unit "'+s+'" added'),
+        'xxm Project',MB_OK or MB_ICONINFORMATION);
+     end
+    else
+      MessageBoxA(Handle,PChar('Unit "'+s+'" is aready added to the project'),
+        'xxm Project',MB_OK or MB_ICONERROR);
+   end;
+end;
+
+function TEditProjectMainForm.GetFilesNode: IXMLDOMElement;
+begin
+  Result:=ProjectData.documentElement.selectSingleNode('Files') as IXMLDOMElement;
+  if Result=nil then
+   begin
+    Result:=ProjectData.createElement('Files');
+    ProjectData.documentElement.appendChild(ProjectData.createTextNode(#13#10#9));
+    ProjectData.documentElement.appendChild(Result);
+    ProjectData.documentElement.appendChild(ProjectData.createTextNode(#13#10));
+   end;
 end;
 
 end.

@@ -252,6 +252,8 @@ var
   i,j,l:integer;
   x,y:AnsiString;
   p:IxxmPage;
+  f:TFileStream;
+  d:TDateTime;
 begin
   try
     //command line
@@ -361,12 +363,21 @@ begin
       //ask project to translate? project should have given a fragment!
       FPageClass:='['+FProjectName+']GetFilePath';
       FProjectEntry.GetFilePath(FFragmentName,x,y);
-      if FileExists(x) then
+      d:=GetFileModifiedDateTime(x);
+      if d<>0 then //FileExists(x)
        begin
         //TODO: Last Modified
         //TODO: if directory file-list?
         FContentType:=y;
-        SendFile(x);
+        f:=TFileStream.Create(x,fmOpenRead or fmShareDenyNone);
+        try
+          FResHeaders['Last-Modified']:=RFC822DateGMT(d);
+          FResHeaders['Content-Length']:=IntToStr(f.Size);
+          FResHeaders['Accept-Ranges']:='bytes';
+          SendStream(f);
+        finally
+          f.Free;
+        end;
        end
       else
        begin
@@ -757,12 +768,6 @@ end;
 
 procedure TXxmHttpContext.SendStream(s: TStream);
 begin
-  if not(FHeaderSent) then
-   begin
-    FResHeaders['Content-Length']:=IntToStr(s.Size);
-    FResHeaders['Accept-Ranges']:='bytes';
-    //TODO: keep-connection since content-length known?
-   end;
   //if not(s.Size=0) then
    begin
     CheckHeader;
