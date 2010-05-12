@@ -364,7 +364,7 @@ begin
        begin
         //TODO: if directory file-list?
         FContentType:=x;
-        f:=TFileStream.Create(x,fmOpenRead or fmShareDenyNone);
+        f:=TFileStream.Create(FSingleFileSent,fmOpenRead or fmShareDenyNone);
         try
           FResHeaders['Last-Modified']:=RFC822DateGMT(d);
           FResHeaders['Content-Length']:=IntToStr(f.Size);

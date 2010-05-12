@@ -11,7 +11,6 @@ uses
   xxmGeckoChannel in 'xxmGeckoChannel.pas',
   xxmGeckoModule in 'xxmGeckoModule.pas',
   xxmGeckoInterfaces in 'xxmGeckoInterfaces.pas',
-  Debug1 in 'debug\Debug1.pas',
   xxmSettings in 'xxmSettings.pas',
   xxmPReg in '..\common\xxmPReg.pas',
   xxmPRegLocal in '..\local\xxmPRegLocal.pas',

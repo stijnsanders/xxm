@@ -1,7 +1,5 @@
 general
 
-- alle strings: AnsiString
-- alle PChar: PAnsiChar
 - alle ContextString(csVersion): SelfVersion
 
 - common BaseXxmContest (virtual SendRaw)
@@ -44,6 +42,7 @@ Conv
 - support a respurces file (zlib?) and auto update (using extension list?)
 
 ISAPI
+- keep-connection, chunked
 - authentication?
 - custom errors?
 - reg: <ModulePath> relative to something? (combinepath?)
@@ -53,6 +52,7 @@ ISAPI
 
 http
 - logging
+- keep-connection, chunked
 
 local
 - bug: .log files? (mime type)
