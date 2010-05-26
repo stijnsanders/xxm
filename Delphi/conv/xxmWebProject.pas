@@ -19,8 +19,7 @@ type
 
     function GetNode(element:IXMLDOMElement;xpath:AnsiString):IXMLDOMElement;
     function GetNodeText(element:IXMLDOMElement;xpath:AnsiString):AnsiString;
-    function ForceNode(element:IXMLDOMElement;tagname:AnsiString):IXMLDOMElement;
-    function ForceNodeID(element:IXMLDOMElement;tagname,id:AnsiString):IXMLDOMElement;
+    function ForceNode(element:IXMLDOMElement;tagname,id:AnsiString;indentlevel:integer):IXMLDOMElement;
     function NodesText(element:IXMLDOMElement;xpath:AnsiString):AnsiString;
 
     function ReadString(FilePath:AnsiString):AnsiString;
@@ -147,10 +146,10 @@ begin
 
   DataStartSize:=Length(Data.xml);
 
-  x:=ForceNode(RootNode,' UUID');
+  x:=ForceNode(RootNode,'UUID','',1);
   if x.text='' then x.text:=CreateClassID;//other random info?
 
-  x:=ForceNode(RootNode,' ProjectName');
+  x:=ForceNode(RootNode,'ProjectName','',1);
   if x.text='' then
    begin
     if FProjectName='' then
@@ -164,7 +163,7 @@ begin
   else
     FProjectName:=x.text;
 
-  DataFiles:=ForceNode(RootNode,' Files');
+  DataFiles:=ForceNode(RootNode,'Files','',1);
 
   //TODO: setting protopath?
 
@@ -199,7 +198,7 @@ begin
    begin
     if not(DataStartSize=Length(Data.xml)) then
      begin
-      ForceNode(RootNode,' LastModified').text:=
+      ForceNode(RootNode,'LastModified','',1).text:=
         FormatDateTime('yyyy-mm-dd"T"hh:nn:ss',Now);//timezone?
       Data.save(FRootFolder+DataFileName);
       Modified:=false;
@@ -225,6 +224,7 @@ var
   m:TXxmLineNumbersMap;
   xl:IXMLDOMNodeList;
   xFile,x:IXMLDOMElement;
+  xn:IXMLDOMNode;
   fn,fnu,s,cid,uname,upath,uext:AnsiString;
   sl,sl1:TStringList;
   sl_i,i,cPathIndex,fExtIndex,fPathIndex:integer;
@@ -260,12 +260,12 @@ begin
        begin
         fn:=sl[sl_i];
         cid:=GetInternalIdentifier(fn,cPathIndex,fExtIndex,fPathIndex);
-        xFile:=ForceNodeID(DataFiles,' File',cid);
+        xFile:=ForceNode(DataFiles,'File',cid,2);
         i:=sl1.IndexOf(cid);
         if not(i=-1) then sl1.Delete(i);
         //fn fit for URL
         fnu:=StringReplace(fn,'\','/',[rfReplaceAll]);
-        x:=ForceNode(xFile,'Path');
+        x:=ForceNode(xFile,'Path','',-1);
         x.text:=fnu;
         //pascal unit name
         upath:=VarToStr(xFile.getAttribute('UnitPath'));
@@ -342,11 +342,16 @@ begin
       for sl_i:=0 to sl1.Count-1 do
        begin
         cid:=sl1[sl_i];
-        xFile:=ForceNodeID(DataFiles,'File',cid);
+        xFile:=ForceNode(DataFiles,'File',cid,2);
         //TODO: setting keep pas?
         uname:=VarToStr(xFile.getAttribute('UnitName'));
         upath:=VarToStr(xFile.getAttribute('UnitPath'));
         DeleteFile(FSrcFolder+upath+uname+DelphiExtension);
+        DeleteFile(FSrcFolder+upath+uname+LinesMapExtension);
+        //remove whitespace
+        xn:=xFile.previousSibling;
+        if xn.nodeType=NODE_TEXT then xFile.parentNode.removeChild(xn);
+        //remove file tag
         xFile.parentNode.removeChild(xFile);
         Modified:=true;
         Result:=true;
@@ -533,38 +538,37 @@ begin
   if x=nil then Result:='' else Result:=x.text;
 end;
 
-function TXxmWebProject.ForceNode(element:IXMLDOMElement;tagname:AnsiString): IXMLDOMElement;
+function TXxmWebProject.ForceNode(element:IXMLDOMElement;tagname,id:AnsiString;indentlevel:integer): IXMLDOMElement;
+var
+  ind:string;
+  i:integer;
+  isfirst:boolean;
 begin
-  Result:=element.selectSingleNode(tagname) as IXMLDOMElement;
+  if id='' then
+    Result:=element.selectSingleNode(tagname) as IXMLDOMElement
+  else
+    Result:=element.selectSingleNode(tagname+'[@ID="'+id+'"]') as IXMLDOMElement;
   if Result=nil then
    begin
-    if tagname[1]=' ' then
+    //not found: add
+    if indentlevel>-1 then
      begin
-      element.appendChild(element.ownerDocument.createTextNode(#13#10));
-      Result:=element.ownerDocument.createElement(Copy(tagname,2,Length(tagname)-1));
-     end
-    else
-      Result:=element.ownerDocument.createElement(tagname);
+      isfirst:=element.firstChild=nil;
+      ind:=#13#10;
+      SetLength(ind,1+indentlevel);
+      for i:=1 to indentlevel-1 do ind[2+i]:=#9;
+      if isfirst then
+        element.appendChild(element.ownerDocument.createTextNode(ind+#9))
+      else
+        element.appendChild(element.ownerDocument.createTextNode(#9));
+     end;
+    //then tag
+    Result:=element.ownerDocument.createElement(tagname);
+    if id<>'' then Result.setAttribute('ID',id);
     element.appendChild(Result);
-    Modified:=true;
-   end;
-end;
-
-function TXxmWebProject.ForceNodeID(element: IXMLDOMElement; tagname,
-  id: AnsiString): IXMLDOMElement;
-begin
-  Result:=element.selectSingleNode(tagname+'[@ID="'+id+'"]') as IXMLDOMElement;
-  if Result=nil then
-   begin
-    if tagname[1]=' ' then
-     begin
-      element.appendChild(element.ownerDocument.createTextNode(#13#10));
-      Result:=element.ownerDocument.createElement(Copy(tagname,2,Length(tagname)-1));
-     end
-    else
-      Result:=element.ownerDocument.createElement(tagname);
-    Result.setAttribute('ID',id);
-    element.appendChild(Result);
+    //and suffix whitespace on first elem
+    if indentlevel>-1 then
+      element.appendChild(element.ownerDocument.createTextNode(ind));
     Modified:=true;
    end;
 end;
