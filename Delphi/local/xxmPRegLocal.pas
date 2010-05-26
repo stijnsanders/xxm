@@ -225,7 +225,7 @@ begin
   //find a MIME-type from registry
   i:=Length(sf)-1;
   while (i>0) and not(sf[i]='.') do dec(i);
-  s:=LowerCase(copy(sf,i,Length(sf)-i));
+  s:=LowerCase(copy(sf,i,Length(sf)-i+1));
   //TODO: get from settings or list? or project?
   r:=TRegistry.Create;
   try
@@ -233,7 +233,7 @@ begin
     if r.OpenKeyReadOnly(s) and r.ValueExists('Content Type') then
       MimeType:=r.ReadString('Content Type')
     else
-      if (s='.log') then //override default for a few known types
+      if (s='.log') or (s='.ini') then //override default for a few known types
         MimeType:='text/plain'
       else
         MimeType:='application/octet-stream';

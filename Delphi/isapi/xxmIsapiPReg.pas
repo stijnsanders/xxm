@@ -163,9 +163,9 @@ begin
 
   i:=Length(sf)-1;
   while (i>0) and not(sf[i]='.') do dec(i);
-  sf:=LowerCase(copy(sf,i,Length(sf)-i));
+  sf:=LowerCase(copy(sf,i,Length(sf)-i+1));
 
-  if (sf='.xxl') or (sf='.exe') or (sf='.dll') or (sf='.xxmp') then //more? settings?
+  if (sf='.xxl') or (sf='.exe') or (sf='.dll') or (sf='.xxmp') or (sf='.udl') then //more? settings?
     raise EXxmFileTypeAccessDenied.Create(SXxmFileTypeAccessDenied);
 
   r:=TRegistry.Create;
