@@ -142,20 +142,19 @@ begin
   i:=0;
   Result:='';
   while (i<LineNrsIndex) and (LineNrs[i].PasLineNr<PasLineNr) do inc(i);
-  if i<LineNrsIndex then
-    if LineNrs[i].PasLineNr=PasLineNr then
-      while (i<LineNrsIndex) and (LineNrs[i].PasLineNr=PasLineNr) do
-       begin
-        if Result<>'' then Result:=Result+',';
-        Result:=Result+IntToStr(LineNrs[i].XxmLineNr);
-        inc(i);
-       end
-    else
-      if i>0 then
-       begin
-        dec(i);
-        Result:=IntToStr(LineNrs[i].XxmLineNr+PasLineNr-LineNrs[i].PasLineNr);
-       end;
+  if (i<LineNrsIndex) and (LineNrs[i].PasLineNr=PasLineNr) then
+    while (i<LineNrsIndex) and (LineNrs[i].PasLineNr=PasLineNr) do
+     begin
+      if Result<>'' then Result:=Result+',';
+      Result:=Result+IntToStr(LineNrs[i].XxmLineNr);
+      inc(i);
+     end
+  else
+    if i>0 then
+     begin
+      dec(i);
+      Result:=IntToStr(LineNrs[i].XxmLineNr+PasLineNr-LineNrs[i].PasLineNr);
+     end;
 end;
 
 { TXxmPageParser }

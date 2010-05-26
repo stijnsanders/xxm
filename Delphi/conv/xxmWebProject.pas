@@ -329,6 +329,7 @@ begin
               //else raise?
             end;
           until p.Done;
+          //m.MapLine(0,q.TotalLines);//map EOF?
           ForceDirectories(FSrcFolder+upath);
           p.Save(FSrcFolder+upath+uname+DelphiExtension);
           m.Save(FSrcFolder+upath+uname+LinesMapExtension);

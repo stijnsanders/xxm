@@ -42,17 +42,16 @@ Conv
 - support a respurces file (zlib?) and auto update (using extension list?)
 
 ISAPI
-- keep-connection, chunked
 - authentication?
 - custom errors?
 - reg: <ModulePath> relative to something? (combinepath?)
 - compile-time user (runas)
 - IP(range) to show compile log to
 - check project cache cleanup code
+- separate set of proto's to render pure ISAPI extension dpr
 
 http
 - logging
-- keep-connection, chunked
 
 local
 - bug: .log files? (mime type)
@@ -65,20 +64,21 @@ local
 - history by xxm project
 - register project: worn overwriting registration
 
+grand rework
+- interface to add custom parameters with (e.g. from parsing URL by fragment registry)
+- GetParameter supporting ContextString enum
+- buffering? chunking? keep-connection?
+- include from other projects?
+
 idea's
 - cascaded loading of xxl's
 - limit threads per session
-- GetParameter supporting ContextString enum
 - 401 auth & windows auth (IHttpAuthenticate on local?)
 - add files into rc for dll/xxl (tlb?)
-- buffering?
 - XML whitespace sanitation
 - bpg support? (to what purpose?)
-- separate unit for exceptions?
-- include from other projects?
+- separate fragment for exceptions?
 - line for line: xxm header rigged 20 lines, then pas line per xxm line?
-- isapi: extra unit to make xxl an extension on its own
-- isapi: need rebuild? rebuild and redirect to same page
 - translatepath refactor into context
 - force trailing "," on "[[@ ]]"
 - create src dir hidden (difficult, since using ForceDirectories now)
