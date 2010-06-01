@@ -1,0 +1,67 @@
+<html>
+<head>
+<title>xxm - about security</title>
+<link rel="stylesheet" type="text/css" href="xxm.css" />
+</head>
+<body>
+<p><a href="http://sourceforge.net"><img src="http://sflogo.sourceforge.net/sflogo.php?group_id=230065&amp;type=5" width="210" height="62" border="0" alt="SourceForge.net Logo" align="right" /></a><img src="xxm.png" alt="xxm" /></p>
+<p class="nav">
+<a href="index.html">about</a> |
+<a href="download.html">download</a> |
+<a href="install.html">install</a> |
+<a href="ref.html">reference</a> |
+<a href="faq.html">faq</a> |
+<a href="tips.html">tips&amp;tricks</a> |
+<b>about security</b>
+</p>
+
+<p>It's important to pay attention to security in just about everything we do as developers. It's impossible to check everything from within the middle layer without making sacrifices to performance and features. xxm has a few design choices and features added to help build secure applications, but in the end it still takes a bit of work and attention from your end. Here are a few known issues, tips and tricks, but new soft spots may appear, both in xxm and in other applications out there on the web, so keep an eye and ear open.</p>
+
+<p class="title"><b>things xxm does</b></p>
+
+<p class="title">XSS (cross-site-scripting)</p>	
+
+<p>Most cross-site-scripting can be prevented by choosing correctly between <code>Context.Send(x)</code> (or <code>[[=x]]</code>) and <code>Context.SendHTML(x)</code> (or <code>[[#x]]</code>). In fact, it's strongly advised to use <i>normal</i> Send (<code>[[=x]]</code>) in most cases, and <i>only</i> use SendHTML (<code>[[#x]]</code>) in those cases where it's neccessary, and even then never on strings retrieved from database or a <code>Context.Parameter[]</code> unless it's properly stripped from any possibly malicous code (HTML and JavaScript).</p>
+
+<p>You might worry about performance when HTMLEncode gets called on almost everything, but xxm's several overload functions don't call HTMLEncode on variable types (variant types) where it doesn't matter, such as numeric values.</p>
+
+<p class="title">SQL injection</p>
+
+<p><code>xxmData.pas</code> uses ADO command parameters to run queries. This encapsulates parameter values safely into the SQL to perform.</p>
+
+<p class="title">scripted posting</p>
+
+<p>The default <code>xxmSession.pas</code> denies page access if a new session is created on a POST request.</p>
+
+<p><b>//TODO:</b> The default <code>xxmFReg.pas</code> denies page access if the referer URL is missing or not from the same website.</p>
+
+<p class="title"><b>things xxm doesn't do</b></p>
+
+<p class="title">when to pass values over form fields, url parameters, session data, cookies</p>
+
+<p>The default <code>xxmSession.pas</code> uses <code>Context.SessionID</code> which creates an XxmSession cookie. This value is used to retrieve a session data object into a <code>Session</code> threadvar from the session store. Add identifying information to the session object (such as a user ID as used in the database) but only allow changes under proper authentication (such as login and password).</p>
+
+<p><b>//TODO:</b> alternative proto templates could add a Session local variable to the default TxxmFragment class inherited from by each fragment/page.</p>
+
+<p>Never pass values that are not supposed to change over URL parameters or form fields. By passing them to the browser and picking up the values when they return, you enable the user to modify the values. One exception may be acceptable to this rule: identifying values (see also re-validate posted forms).</p>
+
+<p>A method to protect data stored in (persistent) cookies (that is a cookie with an expiry date in the future) is encryption, or using an id refering to data in the database.</p>
+
+<p class="title">check a <code>Context.Parameter</code> is a POST parameter from a form field (not a GET parameter from the query string in the URL)</p>
+
+<p><code>Context.Parameter</code> provides access to all parameters of the page request, all parameters expose the IXxmParameter interface, but a POST parameter does expose the IXxmPostParameter interface. Check this by using <code>as</code> or <code>QueryInterface</code></p>
+
+<p class="title">re-validate posted forms</p>
+
+<p>If you perform client-side validation, or have sections of the form that are hidden depending on authentication or priveleges, re-check values and permissions when processing posted values.</p>
+
+<p class="title"><b>more reading</b></p>
+
+<ul>
+<li><a href="http://jarlsberg.appspot.com/">http://jarlsberg.appspot.com/</a></li>
+<li><a href="http://code.google.com/edu/security/index.html">http://code.google.com/edu/security/index.html</a></li>
+<li><a href="http://www.w3.org/Security/">http://www.w3.org/Security/</a></li>
+</ul>
+
+</body>
+</html>

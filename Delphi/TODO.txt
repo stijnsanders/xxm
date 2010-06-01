@@ -54,7 +54,6 @@ http
 - logging
 
 local
-- bug: .log files? (mime type)
 - CritSection in loader, not context (saves on resources)
 - fix directory traversal to fire on //page.xxm//
 - error/builderror response codes from registry (default 500?)
@@ -72,6 +71,7 @@ grand rework
 
 idea's
 - cascaded loading of xxl's
+- find something better than a threadvar for the session data object reference
 - limit threads per session
 - 401 auth & windows auth (IHttpAuthenticate on local?)
 - add files into rc for dll/xxl (tlb?)
