@@ -380,7 +380,7 @@ begin
       if (i<=l) and (FURL[i]='/') then inc(i);
       if (i<=l) and (FURL[i]='/') then inc(i);
       j:=i;
-      while (i<=Length(FURL)) and not(Char(FURL[i]) in ['/','?','&','$','#']) do inc(i);
+      while (i<=Length(FURL)) and not(AnsiChar(FURL[i]) in ['/','?','&','$','#']) do inc(i);
       w:=w+Copy(FURL,j,i-j);
       wr:=true;
      end;

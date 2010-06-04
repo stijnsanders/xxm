@@ -314,7 +314,7 @@ begin
     inc(i);
     if XxmProjectCache.SingleProject='' then
      begin
-      while (i<=Length(x)) and not(Char(x[i]) in ['/','?','&','$','#']) do inc(i);
+      while (i<=Length(x)) and not(AnsiChar(x[i]) in ['/','?','&','$','#']) do inc(i);
       FProjectName:=Copy(x,2,i-2);
       if FProjectName='' then
        begin

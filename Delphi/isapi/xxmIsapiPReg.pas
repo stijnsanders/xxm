@@ -135,7 +135,7 @@ begin
    begin
 
     j:=i;
-    while (j<=l) and not(char(Address[j]) in ['/','\']) do inc(j);
+    while (j<=l) and not(AnsiChar(Address[j]) in ['/','\']) do inc(j);
     s:=Copy(Address,i,j-i);
     i:=j+1;
 

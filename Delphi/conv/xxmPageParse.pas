@@ -418,17 +418,17 @@ begin
                 case byte(FData[p]) of
                   0..9:
                    begin
-                    ss.WriteString('#'+char($30+b));
+                    ss.WriteString('#'+AnsiChar($30+b));
                     inc(l,2);
                    end;
                   10..99:
                    begin
-                    ss.WriteString('#'+char($30+(b div 10))+char($30+(b mod 10)));
+                    ss.WriteString('#'+AnsiChar($30+(b div 10))+AnsiChar($30+(b mod 10)));
                     inc(l,3);
                    end;
                   100..255:
                    begin
-                    ss.WriteString('#'+char($30+(b div 100))+char($30+(b div 10 mod 10))+char($30+(b mod 10)));
+                    ss.WriteString('#'+AnsiChar($30+(b div 100))+AnsiChar($30+(b div 10 mod 10))+AnsiChar($30+(b mod 10)));
                     inc(l,4);
                    end;
                 end;

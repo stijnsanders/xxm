@@ -23,7 +23,7 @@
 
 <p>Most cross-site-scripting can be prevented by choosing correctly between <code>Context.Send(x)</code> (or <code>[[=x]]</code>) and <code>Context.SendHTML(x)</code> (or <code>[[#x]]</code>). In fact, it's strongly advised to use <i>normal</i> Send (<code>[[=x]]</code>) in most cases, and <i>only</i> use SendHTML (<code>[[#x]]</code>) in those cases where it's neccessary, and even then never on strings retrieved from database or a <code>Context.Parameter[]</code> unless it's properly stripped from any possibly malicous code (HTML and JavaScript).</p>
 
-<p>You might worry about performance when HTMLEncode gets called on almost everything, but xxm's several overload functions don't call HTMLEncode on variable types (variant types) where it doesn't matter, such as numeric values.</p>
+<p>You might worry about performance when <a href="http://xxm.sourceforge.net/ref.html#htmlencode">HTMLEncode</a> gets called on almost everything, but xxm's several overload functions don't call HTMLEncode on variant types where it doesn't matter, such as numeric values.</p>
 
 <p class="title">SQL injection</p>
 

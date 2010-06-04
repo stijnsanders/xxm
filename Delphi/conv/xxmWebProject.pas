@@ -302,14 +302,12 @@ begin
          begin
           Signatures.Values[uname]:=s;
           Modified:=true;
-
           BuildOutput(':'+FProjectName+':'+fn+':'+uname+':'+cid+#13#10);
 
           //TODO: alternate proto? either XML tag or default file.
           s:=FRootFolder+fn+XxmProtoExtension;
           if not(FileExists(s)) then s:=FProtoPath+uext+DelphiExtension;
           if not(FileExists(s)) then s:=FProtoPathDef+uext+DelphiExtension;
-
           p.Parse(ReadString(s));
           q.Parse(ReadString(FRootFolder+fn));
           m.Clear;
@@ -333,7 +331,6 @@ begin
           ForceDirectories(FSrcFolder+upath);
           p.Save(FSrcFolder+upath+uname+DelphiExtension);
           m.Save(FSrcFolder+upath+uname+LinesMapExtension);
-
           Result:=true;
          end;
        end;

@@ -238,7 +238,7 @@ begin
         fExtIndex:=i;
        end;
       'A'..'Z':
-        Result:=Result+char(byte(FileName[i])+$20);
+        Result:=Result+AnsiChar(byte(FileName[i])+$20);
       '0'..'9','_','a'..'z':
         Result:=Result+FileName[i];
       else

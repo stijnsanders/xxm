@@ -220,23 +220,49 @@ begin
 end;
 
 function HTMLEncode(Data:WideString):WideString;
+const
+  GrowStep=$1000;
+var
+  i,di,ri,dl,rl:integer;
+  x:WideString;
 begin
-  if Data='' then Result:='' else
-    Result:=
-      UTF8Decode(
-      StringReplace(
-      StringReplace(
-      StringReplace(
-      StringReplace(
-      StringReplace(
-      UTF8Encode(
-        Data),
-        '&','&amp;',[rfReplaceAll]),
-        '<','&lt;',[rfReplaceAll]),
-        '>','&gt;',[rfReplaceAll]),
-        '"','&quot;',[rfReplaceAll]),
-        #13#10,'<br />'#13#10,[rfReplaceAll])
-      );
+  Result:=Data;
+  di:=1;
+  dl:=Length(Data);
+  while (di<=dl) and not(AnsiChar(Data[di]) in ['&','<','"','>',#13,#10]) do inc(di);
+  if di<=dl then
+   begin
+    ri:=di;
+    rl:=((dl div GrowStep)+1)*GrowStep;
+    SetLength(Result,rl);
+    while (di<=dl) do
+     begin
+      case Data[di] of
+        '&':x:='&amp;';
+        '<':x:='&lt;';
+        '>':x:='&gt;';
+        '"':x:='&quot;';
+        #13,#10:
+         begin
+          if (di<dl) and (Data[di]=#13) and (Data[di+1]=#10) then inc(di);
+          x:='<br />'#13#10;
+         end;
+        else x:=Data[di];
+      end;
+      if ri+Length(x)>rl then
+       begin
+        inc(rl,GrowStep);
+        SetLength(Result,rl);
+       end;
+      for i:=1 to Length(x) do
+       begin
+        Result[ri]:=x[i];
+        inc(ri);
+       end;
+      inc(di);
+     end;
+    SetLength(Result,ri-1);
+   end;
 end;
 
 const
@@ -308,7 +334,7 @@ begin
           '0'..'9':inc(b,byte(Data[p]) and $F);
           'A'..'F','a'..'f':inc(b,(byte(Data[p]) and $F)+9);
         end;
-        t[q]:=char(b);
+        t[q]:=AnsiChar(b);
        end
       else
         t[q]:=Data[p];

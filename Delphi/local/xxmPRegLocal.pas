@@ -203,7 +203,7 @@ begin
   while (i<=l) do
    begin
     j:=i;
-    while (j<=l) and not(char(Address[j]) in ['/','\']) do inc(j);
+    while (j<=l) and not(AnsiChar(Address[j]) in ['/','\']) do inc(j);
     s:=Copy(Address,i,j-i);
     if (s='') or (s='.') then
       //nothing
@@ -217,7 +217,7 @@ begin
      end
     else
       sf:=sf+s;//DirectoryExists()??
-    if (j<=l) and (char(Address[j]) in ['/','\']) then sf:=sf+PathDelim;
+    if (j<=l) and (AnsiChar(Address[j]) in ['/','\']) then sf:=sf+PathDelim;
     i:=j+1;
    end;
   Path:=rf+sf;
