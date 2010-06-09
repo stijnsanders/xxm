@@ -9,9 +9,9 @@
 		<File ID="default_xxm" UnitName="default_xxm1" UnitPath=""><Path>Default.xxm</Path></File>
 		<File ID="backlinks_xxm" UnitName="backlinks_xxm1" UnitPath=""><Path>BackLinks.xxm</Path></File>
 		<File ID="search_xxm" UnitName="search_xxm1" UnitPath=""><Path>Search.xxm</Path></File>
-	
-<File ID="ihead_xxmi" UnitName="ihead_xxmi1" UnitPath=""><Path>iHead.xxmi</Path></File>
-<File ID="ifoot_xxmi" UnitName="ifoot_xxmi1" UnitPath=""><Path>iFoot.xxmi</Path></File></Files>
+		<File ID="ihead_xxmi" UnitName="ihead_xxmi1" UnitPath=""><Path>iHead.xxmi</Path></File>
+		<File ID="ifoot_xxmi" UnitName="ifoot_xxmi1" UnitPath=""><Path>iFoot.xxmi</Path></File>
+	</Files>
 	<UUID>{B8898B9C-FE13-4037-9476-71CD77828A08}</UUID>
 	<LastModified>2009-03-16T22:24:15</LastModified>
 </XxmWebProject>

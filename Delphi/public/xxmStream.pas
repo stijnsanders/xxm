@@ -5,10 +5,10 @@ interface
 uses xxm, Classes;
 
 type
-  TxxmOutputStream=class(TCustomMemoryStream)
+  TxxmOutputStream=class(TStream)
   private
-    FWriting:boolean;
     FContext:IXxmContext;
+    FForwardStream:TStream;
   protected
     procedure SetSize(const NewSize: Int64); override;
   public
@@ -25,17 +25,24 @@ implementation
 
 uses SysUtils;
 
+type
+  TxxmForwardStream=class(TCustomMemoryStream)
+  public
+    function Write(const Buffer; Count: Integer): Integer; override;
+  end;
+
 { TxxmOutputStream }
 
 constructor TxxmOutputStream.Create(Context: IXxmContext);
 begin
   inherited Create;
   FContext:=Context;
-  FWriting:=false;
+  FForwardStream:=TxxmForwardStream.Create;
 end;
 
 destructor TxxmOutputStream.Destroy;
 begin
+  FForwardStream.Free;
   FContext:=nil;
   inherited;
 end;
@@ -43,10 +50,7 @@ end;
 function TxxmOutputStream.Seek(const Offset: Int64;
   Origin: TSeekOrigin): Int64;
 begin
-  if FWriting then
-    Result:=inherited Seek(Offset,Origin)
-  else
-    raise Exception.Create('[TxxmOutputStream]Seek not supported');
+  raise Exception.Create('[TxxmOutputStream]Seek not supported');
 end;
 
 procedure TxxmOutputStream.SetSize(const NewSize: Int64);
@@ -56,24 +60,23 @@ end;
 
 function TxxmOutputStream.Read(var Buffer; Count: Integer): Integer;
 begin
-  if FWriting then
-    Result:=inherited Read(Buffer,Count)
-  else
-    raise Exception.Create('[TxxmOutputStream]Read not supported');
+  raise Exception.Create('[TxxmOutputStream]Read not supported');
 end;
 
 function TxxmOutputStream.Write(const Buffer; Count: Integer): Integer;
 begin
   //TODO: thread-safe, locking?
-  FWriting:=true;
-  try
-    Position:=0;
-    SetPointer(@Buffer,Count);
-    FContext.SendStream(Self);
-    Result:=Count;
-  finally
-    FWriting:=false;
-  end;
+  FForwardStream.Position:=0;
+  (FForwardStream as TxxmForwardStream).SetPointer(@Buffer,Count);
+  FContext.SendStream(FForwardStream);
+  Result:=Count;
+end;
+
+{ TxxmForwardStream }
+
+function TxxmForwardStream.Write(const Buffer; Count: Integer): Integer;
+begin
+  raise Exception.Create('[TxxmForwardStream]Write not supported');
 end;
 
 end.

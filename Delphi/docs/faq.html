@@ -57,6 +57,16 @@ add to the response headers.</dd>
 <dt>when using an AutoBuild handler, pascal compile errors get shown with the line-number of the parsed source file, not the xxm source file, how do I map between the two?</dt>
 <dd>as of version 1.0.2.260, the xxm parser keeps line-number maps for each file, and AutoBuild handlers use these to replace the line number of the compiler output (shown between parentheses "<code>()</code>") with the corresponding line-number(s) of the xxm source file (shown between square brackets "<code>[]</code>"). Since several tags from different places in the xxm-sourcefile could end up on the same line (e.g. all <code>[[@someunit,]]</code> tags are added to the implementation uses clause) more than one xxm source line-number could be displayed.</dd>
 
+<dt>why would I use <code>Context.Include</code>, when I can create a fragment and call its <code>Build(Context,Self,[],[]);</code> myself?</dt>
+<dd>I'll give three good reasons:<br />
+<u>Exception handling</u>: xxm handlers keeps track of which fragment is building, and adapts the default exception display to display information about the fragment the exception occurred in.<br />
+<u>Include depth checking</u>: xxm handlers keep a count of 'include depth' and disallows includes beyond a certain depth, this protects you from 'include loops', a scenario that just might pop up when which fragment to include is getting a but elaborate.<br />
+<u>Fragment registry</u>: xxm handlers use the fragment registry (actually <code>IxxmProject.LoadFragment</code>) to get hold of a fragment object, and doing so allows the fragment registry to handle object-pooling and object-reuse (if you'd like, in fact you're free to choose the fragment registry implementation for an xxm project).<br />
+<u>Then again</u>, if you really don't care about the above, you're totally free to call <code>TxxmFragment.Build</code> yourself.</dd>
+
+<dt>why does my website show a build failed error message on one page when I'm browsing to another page?</dt>
+<dd>it's a side-effect of using a compiled library to run the website for you. If the auto-build fails (auto-build is triggered by any page-refresh to the site, even AJAX-calls and image-loads), the library isn't loaded and the build failed page is shown, for every request to the site. It's strongly advised to use a single instance of the website source-files to work on for each developer. If you work on the same set of files with a number of developer's, each build failed error caused by one developer will interrupt the testing of the other developers. (It's also strongly advised to use a version control system on the source-files between multiple developers. e.g. <a href="http://subversion.tigris.org/">SVN</a> or <a href="http://git-scm.com/">Git</a>)</dd>
+
 <dt><a name="debug"></a>how do I debug an xxm project</dt>
 <dd>an xxm project is still a Delphi project, so you can open the project's dpr in Delphi, just remember to edit the xxm and xxmi files, and not the pas files directly (unless for temporary debugging behaviour).<br />
 When you're using xxmLocal (or xxmLocalDev), set the host application to Internet Explorer (typically <code>C:\Program Files\Internet Explorer\iexplore.exe</code>), optionally with an "xxm://" URL to open your project. (Update: to force IE8 to run in a single process, see <a href="http://blogs.msdn.com/askie/archive/2009/03/09/opening-a-new-tab-may-launch-a-new-process-with-internet-explorer-8-0.aspx">TabProcGrowth</a>)<br />
@@ -66,7 +76,7 @@ When you're using xxmIsapiEx (or xxmIsapiDev) on your local IIS, switch IIS into
 (e.g.: http://localhost/xxm/test/test.xxm/a/1/b/2 )</dt>
 <dd>The URL is parsed only to get a project name and a fragment address.
 no forward directory checking is done, since xxm files and directories may not be present,
-it's up to the project to provide a fragment or not for a fragment address.</dd>
+it's up to the project to provide a fragment or not for a fragment address. (see xxmp.pas' <code>TxxmProject.LoadFragment</code> and xxmFReg.pas)</dd>
 
 <dt>why can't IE download files directly? I get this error:<br />
 Internet Explorer cannot download <i>somefile.ext</i> from <i>site</i>.<br />

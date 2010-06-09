@@ -1,13 +1,14 @@
 <XxmWebProject>
 	<ProjectName>demo</ProjectName>
 	<CompileCommand>dcc32 -U..\..\..\public -Q [[ProjectName]].dpr</CompileCommand>
-
-<UUID>{433EF75A-F240-4367-A75B-DD91AC2A9F66}</UUID>
-<Files>
-<File ID="aadd_xxm" UnitName="aadd_xxm1" UnitPath=""><Path>aAdd.xxm</Path></File>
-<File ID="default_xxm" UnitName="default_xxm1" UnitPath=""><Path>Default.xxm</Path></File>
-<File ID="fadd_xxm" UnitName="fadd_xxm1" UnitPath=""><Path>fAdd.xxm</Path></File>
-<File ID="ifoot_xxmi" UnitName="ifoot_xxmi1" UnitPath=""><Path>iFoot.xxmi</Path></File>
-<File ID="ihead_xxmi" UnitName="ihead_xxmi1" UnitPath=""><Path>iHead.xxmi</Path></File>
-<File ID="files__default_xxm" UnitName="default_xxm2" UnitPath="files\"><Path>files/Default.xxm</Path></File></Files>
-<LastModified>2008-07-01T20:53:28</LastModified></XxmWebProject>
+	<UUID>{433EF75A-F240-4367-A75B-DD91AC2A9F66}</UUID>
+	<Files>
+		<File ID="aadd_xxm" UnitName="aadd_xxm1" UnitPath=""><Path>aAdd.xxm</Path></File>
+		<File ID="default_xxm" UnitName="default_xxm1" UnitPath=""><Path>Default.xxm</Path></File>
+		<File ID="fadd_xxm" UnitName="fadd_xxm1" UnitPath=""><Path>fAdd.xxm</Path></File>
+		<File ID="ifoot_xxmi" UnitName="ifoot_xxmi1" UnitPath=""><Path>iFoot.xxmi</Path></File>
+		<File ID="ihead_xxmi" UnitName="ihead_xxmi1" UnitPath=""><Path>iHead.xxmi</Path></File>
+		<File ID="files__default_xxm" UnitName="default_xxm2" UnitPath="files\"><Path>files/Default.xxm</Path></File>
+	</Files>
+	<LastModified>2008-07-01T20:53:28</LastModified>
+</XxmWebProject>
