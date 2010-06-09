@@ -43,6 +43,15 @@ type
     function CheckHeader: boolean;
     procedure SendRaw(Data: WideString);
     procedure SendError(res:AnsiString;vals:array of AnsiString);
+  protected
+    procedure ProcessRequestHeaders; virtual;
+    procedure PreProcessRequest; virtual;
+    procedure PreProcessRequestPage; virtual;
+    procedure PostProcessRequest; virtual;
+    property HTTPVersion: AnsiString read FHTTPVersion;
+    property ReqHeaders:TRequestHeaders read FReqHeaders;
+    property ResHeaders:TResponseHeaders read FResHeaders;
+    property ProjectEntry:TXxmProjectCacheEntry read FProjectEntry;
   public
     constructor Create(Socket:TCustomIpClient);
     destructor Destroy; override;
@@ -76,7 +85,7 @@ type
       const Objects: array of TObject); overload;
     procedure DispositionAttach(FileName: WideString);
 
-    function ContextString(cs:TXxmContextString):WideString;
+    function ContextString(cs:TXxmContextString):WideString; dynamic;
     function PostData:TStream;
     function Connected:boolean;
 
@@ -286,13 +295,7 @@ begin
     FReqHeaders:=TRequestHeaders.Create(x);
     (FReqHeaders as IUnknown)._AddRef;
 
-    //'Authorization' ?
-    //'If-Modified-Since' ? 304
-    //'Connection: Keep-alive' ? with sent Content-Length
-
-    //data (Content-Length
-
-    FResHeaders['X-Powered-By']:=SelfVersion;
+    ProcessRequestHeaders;
 
     if XxmProjectCache=nil then XxmProjectCache:=TXxmProjectCache.Create;
 
@@ -346,6 +349,8 @@ begin
     //assert headers read and parsed
     //TODO: HTTP/1.1 100 Continue?
 
+    PreProcessRequest;
+
     //if not(Verb='GET') then?
     x:=FReqHeaders['Content-Length'];
     if not(x='') then FPostData:=THandlerReadStreamAdapter.Create(FSocket,StrToInt(x));
@@ -356,6 +361,8 @@ begin
         raise EXxmAutoBuildFailed.Create(FProjectName);
     FProjectEntry.OpenContext;
     FPage:=FProjectEntry.Project.LoadPage(Self,FFragmentName);
+
+    PreProcessRequestPage;
 
     if FPage=nil then
      begin
@@ -410,16 +417,13 @@ begin
         //mime type moved to CheckSendStart;
         //OleCheck(ProtSink.ReportProgress(BINDSTATUS_CACHEFILENAMEAVAILABLE,));
         //TODO: cache output?
-
         //TODO: setting?
         if not(FPage.QueryInterface(IID_IXxmPage,p)=S_OK) then
           raise EXxmDirectInclude.Create(SXxmDirectInclude);
         p:=nil;
-
         //build page
         FBuilding:=FPage;
         FPage.Build(Self,nil,[],[]);//any parameters?
-
       finally
         FBuilding:=nil;
         //let project decide to free or not
@@ -453,6 +457,7 @@ begin
       ]);
      end;
   end;
+  PostProcessRequest;
 end;
 
 function TXxmHttpContext.Connected: boolean;
@@ -476,7 +481,6 @@ begin
     csLocalURL:Result:=FFragmentName;
     csReferer:Result:=FReqHeaders['Referer'];//TODO:
     csLanguage:Result:=FReqHeaders['Language'];//TODO:
-
     csRemoteAddress:Result:=FSocket.RemoteHost;//TODO: name to address?
     csRemoteHost:Result:=FSocket.RemoteHost;
     csAuthUser:Result:='';//TODO:
@@ -869,6 +873,32 @@ end;
 function TXxmHttpContext.GetResponseHeaders: IxxmDictionaryEx;
 begin
   Result:=FResHeaders;
+end;
+
+procedure TXxmHttpContext.ProcessRequestHeaders;
+begin
+  //'Authorization' ?
+  //'If-Modified-Since' ? 304
+  //'Connection: Keep-alive' ? with sent Content-Length
+
+  //data (Content-Length
+
+  FResHeaders['X-Powered-By']:=SelfVersion;
+end;
+
+procedure TXxmHttpContext.PreProcessRequest;
+begin
+  //inheritants can perform post-page logging here
+end;
+
+procedure TXxmHttpContext.PreProcessRequestPage;
+begin
+  //similar to PreProcessRequest, but right after project and fragment load
+end;
+
+procedure TXxmHttpContext.PostProcessRequest;
+begin
+  //inheritants can perform pre-page-build logging or checking here
 end;
 
 end.
