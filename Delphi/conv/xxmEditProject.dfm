@@ -21,7 +21,6 @@ object EditProjectMainForm: TEditProjectMainForm
     Width = 417
     Height = 423
     ActivePage = TabSheet1
-    Align = alClient
     TabOrder = 0
     object TabSheet1: TTabSheet
       BorderWidth = 4
@@ -46,7 +45,7 @@ object EditProjectMainForm: TEditProjectMainForm
       object txtProjectName: TEdit
         Left = 0
         Top = 16
-        Width = 305
+        Width = 401
         Height = 21
         Anchors = [akLeft, akTop, akRight]
         TabOrder = 0
@@ -56,7 +55,7 @@ object EditProjectMainForm: TEditProjectMainForm
       object txtCompileCommand: TEdit
         Left = 0
         Top = 56
-        Width = 305
+        Width = 401
         Height = 21
         Anchors = [akLeft, akTop, akRight]
         TabOrder = 1

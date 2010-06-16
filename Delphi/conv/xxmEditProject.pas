@@ -120,6 +120,7 @@ begin
     LoadProject(s,false);
    end;
   //assert Modified=false
+  PageControl1.Align:=alClient;//fix!
 end;
 
 procedure TEditProjectMainForm.Exit1Click(Sender: TObject);
@@ -261,6 +262,7 @@ begin
       r.RootKey:=HKEY_LOCAL_MACHINE;
       r.OpenKey('\Software\xxm\local\'+s,true);
       r.WriteString('',ProjectFolder+s+'.xxl');
+      r.DeleteValue('Signature');
       //TODO: default settings?
     finally
       r.Free;
