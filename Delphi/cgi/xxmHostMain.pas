@@ -3,7 +3,7 @@ unit xxmHostMain;
 interface
 
 uses
-  SysUtils, xxm, Classes, xxmHttpPReg, xxmParams, xxmParUtils, xxmHeaders;
+  SysUtils, ActiveX, xxm, Classes, xxmHttpPReg, xxmParams, xxmParUtils, xxmHeaders;
 
 const
   XxmMaxIncludeDepth=64;//TODO: setting?
@@ -77,7 +77,7 @@ type
     procedure SendHTML(Data: OleVariant); overload;
     procedure SendHTML(const Values:array of OleVariant); overload;
     procedure SendFile(FilePath: WideString);
-    procedure SendStream(s:TStream);
+    procedure SendStream(s:IStream);
     procedure Include(Address: WideString); overload;
     procedure Include(Address: WideString;
       const Values: array of OleVariant); overload;
@@ -87,7 +87,7 @@ type
     procedure DispositionAttach(FileName: WideString);
 
     function ContextString(cs:TXxmContextString):WideString;
-    function PostData:TStream;
+    function PostData:IStream;
     function Connected:boolean;
 
     procedure SetStatus(Code:integer;Text:WideString);
@@ -112,7 +112,7 @@ type
 
 implementation
 
-uses Windows, Variants, ActiveX, ComObj, xxmCommonUtils, xxmThreadPool, xxmPReg;
+uses Windows, Variants, ComObj, xxmCommonUtils, xxmThreadPool, xxmPReg;
 
 resourcestring
   SXxmMaximumHeaderLines='Maximum header lines exceeded.';
@@ -189,7 +189,8 @@ var
   l1:cardinal;
   x,y:AnsiString;
   p:IxxmPage;
-  f:TFileStream;
+  f:TStreamAdapter;
+  fs:Int64;
   d:TDateTime;
 begin
   try
@@ -307,20 +308,21 @@ begin
       //ask project to translate? project should have given a fragment!
       FPageClass:='['+FProjectName+']GetFilePath';
       FProjectEntry.GetFilePath(FFragmentName,x,y);
-      d:=GetFileModifiedDateTime(x);
+      d:=GetFileModifiedDateTime(x,fs);
       if d<>0 then //FileExists(x)
        begin
         //TODO: Last Modified
         //TODO: if directory file-list?
         FContentType:=y;
-        f:=TFileStream.Create(x,fmOpenRead or fmShareDenyNone);
+        f:=TStreamAdapter.Create(TFileStream.Create(x,fmOpenRead or fmShareDenyNone),soOwned);
+        (f as IUnknown)._AddRef;
         try
           FResHeaders['Last-Modified']:=RFC822DateGMT(d);
-          FResHeaders['Content-Length']:=IntToStr(f.Size);
+          FResHeaders['Content-Length']:=IntToStr(fs);
           FResHeaders['Accept-Ranges']:='bytes';
           SendStream(f);
         finally
-          f.Free;
+          (f as IUnknown)._Release;
         end;
        end
       else
@@ -521,14 +523,14 @@ end;
 
 function TXxmHostedContext.GetParameter(Key: OleVariant): IXxmParameter;
 begin
-  if FParams=nil then FParams:=TXxmReqPars.Create(Self);
+  if FParams=nil then FParams:=TXxmReqPars.Create(Self,FPostData);
   if VarIsNumeric(Key) then Result:=FParams.GetItem(Key) else
     Result:=FParams.Get(VarToWideStr(Key));
 end;
 
 function TXxmHostedContext.GetParameterCount: integer;
 begin
-  if FParams=nil then FParams:=TXxmReqPars.Create(Self);
+  if FParams=nil then FParams:=TXxmReqPars.Create(Self,FPostData);
   Result:=FParams.Count;
 end;
 
@@ -602,9 +604,9 @@ begin
   end;
 end;
 
-function TXxmHostedContext.PostData: TStream;
+function TXxmHostedContext.PostData: IStream;
 begin
-  Result:=FPostData;
+  Result:=TStreamAdapter.Create(FPostData,soReference);
 end;
 
 procedure TXxmHostedContext.Redirect(RedirectURL: WideString;
@@ -634,16 +636,8 @@ begin
 end;
 
 procedure TXxmHostedContext.SendFile(FilePath: WideString);
-var
-  f:TFileStream;
 begin
-  inherited;
-  f:=TFileStream.Create(FilePath,fmOpenRead or fmShareDenyNone);
-  try
-    SendStream(f);
-  finally
-    f.Free;
-  end;
+  SendStream(TStreamAdapter.Create(TFileStream.Create(FilePath,fmOpenRead or fmShareDenyNone),soOwned));
 end;
 
 procedure TXxmHostedContext.SendRaw(Data:WideString);
@@ -681,25 +675,21 @@ begin
    end;
 end;
 
-procedure TXxmHostedContext.SendStream(s: TStream);
+procedure TXxmHostedContext.SendStream(s: IStream);
+const
+  dSize=$10000;
 var
-  l:Int64;
-  l1:cardinal;
-  d:array[0..$FFFF] of byte;
-  b:boolean;
+  l,l1:cardinal;
+  d:array[0..dSize-1] of byte;
 begin
-  b:=true;
-  l:=s.Size;
-  //TODO: keep-connection since content-length known?
   CheckHeader;
-  while not(l=0) and b do
+  l:=dSize;
+  while l=dSize do
    begin
-    if l>$10000 then l1:=$10000 else l1:=l;
-    l1:=s.Read(d[0],l1);
-    b:=WriteFile(FPipeOut,d[0],l1,l1,nil);
-    l:=l-l1;
+    OleCheck(s.Read(@d[0],l,@l));
+    if not(WriteFile(FPipeOut,d[0],l,l1,nil)) then RaiseLastOSError;
+    if l<>l1 then raise Exception.Create('Stream Write Failed');
    end;
-  if not(b) then RaiseLastOSError;
 end;
 
 function TXxmHostedContext.CheckHeader:boolean;

@@ -8,7 +8,7 @@ type
   TxxmOutputStream=class(TStream)
   private
     FContext:IXxmContext;
-    FForwardStream:TStream;
+    FForwardStream:TStreamAdapter;
   protected
     procedure SetSize(const NewSize: Int64); override;
   public
@@ -37,12 +37,13 @@ constructor TxxmOutputStream.Create(Context: IXxmContext);
 begin
   inherited Create;
   FContext:=Context;
-  FForwardStream:=TxxmForwardStream.Create;
+  FForwardStream:=TStreamAdapter.Create(TxxmForwardStream.Create,soOwned);
+  (FForwardStream as IUnknown)._AddRef;
 end;
 
 destructor TxxmOutputStream.Destroy;
 begin
-  FForwardStream.Free;
+  (FForwardStream as IUnknown)._Release;
   FContext:=nil;
   inherited;
 end;
@@ -66,8 +67,11 @@ end;
 function TxxmOutputStream.Write(const Buffer; Count: Integer): Integer;
 begin
   //TODO: thread-safe, locking?
-  FForwardStream.Position:=0;
-  (FForwardStream as TxxmForwardStream).SetPointer(@Buffer,Count);
+  with FForwardStream.Stream as TxxmForwardStream do
+   begin
+    Position:=0;
+    SetPointer(@Buffer,Count);
+   end;
   FContext.SendStream(FForwardStream);
   Result:=Count;
 end;

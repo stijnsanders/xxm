@@ -2,7 +2,7 @@ unit xxm;
 
 interface
 
-uses SysUtils, Classes;
+uses SysUtils, Classes, ActiveX;
 
 const
   //$Date$
@@ -78,7 +78,7 @@ type
     property Size:integer read GetSize;
     property MimeType:WideString read GetMimeType;
     procedure SaveToFile(FilePath:AnsiString);//TODO: WideString
-    function SaveToStream(Stream:TStream):integer;//TODO: IStream
+    function SaveToStream(Stream:IStream):integer;
   end;
 
   IXxmContext=interface
@@ -97,7 +97,7 @@ type
     procedure Send(Data: OleVariant); overload;
     procedure SendHTML(Data: OleVariant); overload;
     procedure SendFile(FilePath: WideString);
-    procedure SendStream(s:TStream); //TODO: IStream
+    procedure SendStream(s:IStream);
     procedure Include(Address: WideString); overload;
     procedure Include(Address: WideString;
       const Values: array of OleVariant); overload;
@@ -107,7 +107,7 @@ type
     procedure DispositionAttach(FileName: WideString);
 
     function ContextString(cs:TXxmContextString):WideString;
-    function PostData:TStream; //TODO: IStream
+    function PostData:IStream;
     function Connected:boolean;
 
     //(local:)progress

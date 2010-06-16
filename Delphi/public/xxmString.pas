@@ -3,7 +3,7 @@ unit xxmString;
 interface
 
 uses
-  SysUtils, Classes, xxm;
+  SysUtils, Classes, ActiveX, xxm;
 
 const
   XxmMaxIncludeDepth=64;//TODO: setting?
@@ -29,7 +29,7 @@ type
     function GetParameterCount: Integer;
     function GetSessionID: WideString;
     function GetURL: WideString;
-    function PostData: TStream;
+    function PostData: IStream;
     procedure Redirect(RedirectURL: WideString; Relative: Boolean);
     procedure SetAutoEncoding(const Value: TXxmAutoEncoding);
     procedure SetContentType(const Value: WideString);
@@ -48,7 +48,7 @@ type
     procedure SendFile(FilePath: WideString);
     procedure SendHTML(Data: OleVariant); overload;
     procedure SendHTML(const Values:array of OleVariant); overload;
-    procedure SendStream(s: TStream);
+    procedure SendStream(s: IStream);
     procedure Include(Address: WideString); overload;
     procedure Include(Address: WideString;
       const Values: array of OleVariant); overload;
@@ -181,7 +181,7 @@ begin
   Result:=FContext.URL;
 end;
 
-function TStringContext.PostData: TStream;
+function TStringContext.PostData: IStream;
 begin
   Result:=FContext.PostData;
 end;
@@ -271,7 +271,7 @@ begin
   raise EXxmUnsupported.Create('StringContext doesn''t support SendFile');
 end;
 
-procedure TStringContext.SendStream(s: TStream);
+procedure TStringContext.SendStream(s: IStream);
 begin
   raise EXxmUnsupported.Create('StringContext doesn''t support SendStream');
 end;

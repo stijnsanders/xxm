@@ -49,9 +49,8 @@ begin
   else
    begin
     Context.Send(Context.ContextString(csPostMimeType));
-    Context.SendHTML('<br /><i>');
-    Context.Send(Context.PostData.ClassName);
-    Context.SendHTML('</i>---');
+    Context.SendHTML('<br />---');
+    //Context.PostData.ClassName ? no longer available since TStream changed to IStream
     Context.SendHTML('<br /><xmp style="border: 2px solid red;">');
     Context.SendStream(Context.PostData);
     Context.SendHTML('</xmp>');

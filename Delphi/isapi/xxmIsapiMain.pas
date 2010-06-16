@@ -2,7 +2,7 @@ unit xxmIsapiMain;
 
 interface
 
-uses Windows, SysUtils, Classes, isapi4, xxm, xxmIsapiPReg,
+uses Windows, SysUtils, Classes, ActiveX, isapi4, xxm, xxmIsapiPReg,
   xxmParams, xxmParUtils, xxmHeaders;
 
 function GetExtensionVersion(var Ver: THSE_VERSION_INFO): BOOL; stdcall;
@@ -67,7 +67,7 @@ type
       const Values: array of OleVariant;
       const Objects: array of TObject); overload;
     function Connected: Boolean;
-    function PostData: TStream;
+    function PostData: IStream;
     procedure Send(Data: OleVariant); overload;
     procedure Send(Value: integer); overload;
     procedure Send(Value: int64); overload;
@@ -76,7 +76,7 @@ type
     procedure SendFile(FilePath: WideString);
     procedure SendHTML(Data: OleVariant); overload;
     procedure SendHTML(const Values:array of OleVariant); overload;
-    procedure SendStream(s: TStream);
+    procedure SendStream(s: IStream);
     procedure SetStatus(Code: Integer; Text: WideString);
     procedure Redirect(RedirectURL: WideString; Relative: Boolean);
     function GetCookie(Name: WideString): WideString;
@@ -129,7 +129,7 @@ var
 
 implementation
 
-uses ActiveX, Variants, ComObj, xxmCommonUtils, xxmPReg;
+uses Variants, ComObj, xxmCommonUtils, xxmPReg;
 
 resourcestring
   SXxmContextStringUnknown='Unknown ContextString __';
@@ -284,7 +284,8 @@ var
   i,j:integer;
   p:IXxmPage;//for directinclude check
   d:TDateTime;
-  f:TFileStream;
+  f:TStreamAdapter;
+  fs:Int64;
 begin
   //ServerFunction(HSE_REQ_IO_COMPLETION,@ContextIOCompletion,nil,PDWORD(Self));
   try
@@ -354,20 +355,21 @@ begin
       //find a file
       //ask project to translate? project should have given a fragment!
       FProjectEntry.GetFilePath(FFragmentName,x,y);
-      d:=GetFileModifiedDateTime(x);
+      d:=GetFileModifiedDateTime(x,fs);
       if d<>0 then //FileExists(x)
        begin
         //TODO: if directory file-list?
         FContentType:=y;
         FAutoEncoding:=aeContentDefined;
-        f:=TFileStream.Create(x,fmOpenRead or fmShareDenyNone);
+        f:=TStreamAdapter.Create(TFileStream.Create(x,fmOpenRead or fmShareDenyNone),soOwned);
+        (f as IUnknown)._AddRef;
         try
           FResHeaders['Last-Modified']:=RFC822DateGMT(d);
-          FResHeaders['Content-Length']:=IntToStr(f.Size);
+          FResHeaders['Content-Length']:=IntToStr(fs);
           FResHeaders['Accept-Ranges']:='bytes';
           SendStream(f);
         finally
-          f.Free;
+          (f as IUnknown)._Release;
         end;
        end
       else
@@ -588,22 +590,16 @@ begin
 end;
 
 procedure TXxmIsapiContext.SendFile(FilePath: WideString);
-var
-  f:TFileStream;
 begin
-  inherited;
-  f:=TFileStream.Create(FilePath,fmOpenRead or fmShareDenyNone);
-  try
-    SendStream(f);
-  finally
-    f.Free;
-  end;
+  SendStream(TStreamAdapter.Create(TFileStream.Create(FilePath,fmOpenRead or fmShareDenyNone),soOwned));
 end;
 
-procedure TXxmIsapiContext.SendStream(s: TStream);
+procedure TXxmIsapiContext.SendStream(s: IStream);
+const
+  dSize=$10000;
 var
   l:cardinal;
-  d:array[0..$FFFF] of byte;
+  d:array[0..dSize-1] of byte;
 begin
   inherited;
   //TODO: keep-connection since content-length known?
@@ -611,13 +607,13 @@ begin
    begin
     CheckHeader;
     //no autoencoding here
-    l:=$10000;
+    l:=dSize;
     repeat
-      l:=s.Read(d[0],l);
+      OleCheck(s.Read(@d[0],l,@l));
       if not(ecb.WriteClient(ecb.ConnID,@d[0],l,HSE_IO_SYNC)) then
         RaiseLastOSError;
       //ReportData;
-    until not(l=$10000);
+    until l<>dSize;
    end;
 end;
 
@@ -801,22 +797,22 @@ begin
   raise EXxmPageRedirected.Create(s);
 end;
 
-function TXxmIsapiContext.PostData: TStream;
+function TXxmIsapiContext.PostData: IStream;
 begin
-  Result:=FPostData;
+  Result:=TStreamAdapter.Create(FPostData,soReference);
 end;
 
 function TXxmIsapiContext.GetParameter(Key: OleVariant): IXxmParameter;
 begin
   //parse parameters on first use
-  if FParams=nil then FParams:=TXxmReqPars.Create(Self);
+  if FParams=nil then FParams:=TXxmReqPars.Create(Self,FPostData);
   if VarIsNumeric(Key) then Result:=FParams.GetItem(Key) else
     Result:=FParams.Get(VarToWideStr(Key));
 end;
 
 function TXxmIsapiContext.GetParameterCount: Integer;
 begin
-  if FParams=nil then FParams:=TXxmReqPars.Create(Self);
+  if FParams=nil then FParams:=TXxmReqPars.Create(Self,FPostData);
   Result:=FParams.Count;
 end;
 

@@ -3,7 +3,7 @@ unit xxmCommonUtils;
 interface
 
 function RFC822DateGMT(dd: TDateTime): AnsiString;
-function GetFileModifiedDateTime(FilePath:AnsiString):TDateTime;
+function GetFileModifiedDateTime(FilePath:AnsiString;var FileSize:Int64):TDateTime;
 
 implementation
 
@@ -29,7 +29,7 @@ begin
     [Days[wd],d,Months[m],y,th,tm,ts]);
 end;
 
-function GetFileModifiedDateTime(FilePath:AnsiString):TDateTime;
+function GetFileModifiedDateTime(FilePath:AnsiString;var FileSize:Int64):TDateTime;
 var
   fh:THandle;
   fd:TWin32FindDataA;
@@ -41,6 +41,7 @@ begin
     if fh=INVALID_HANDLE_VALUE then Result:=0 else
      begin
       Windows.FindClose(fh);
+      FileSize:=fd.nFileSizeHigh shl 32 or fd.nFileSizeLow;
       FileTimeToSystemTime(fd.ftLastWriteTime,st);
       Result:=SystemTimeToDateTime(st);
      end;

@@ -2,7 +2,7 @@ unit xxmParams;
 
 interface
 
-uses xxm, Classes, SysUtils;
+uses xxm, Classes, SysUtils, ActiveX;
 
 type
   TXxmReqPar=class;
@@ -10,12 +10,12 @@ type
   TXxmReqPars=class(TObject)
   private
     FParams:array of TXxmReqPar;
-    procedure Fill(Context: IXxmContext; DoSeek: boolean);
+    procedure Fill(Context: IXxmContext; PostData: TStream; DoSeek: boolean);
     procedure Add(Par:TXxmReqPar);
   public
     PostDataOnRedirect:boolean;
-    constructor Create(Context: IXxmContext);
-    constructor CreateNoSeek(Context: IXxmContext);
+    constructor Create(Context: IXxmContext; PostData: TStream);
+    constructor CreateNoSeek(Context: IXxmContext; PostData: TStream);
     destructor Destroy; override;
     function Get(Key:WideString):TXxmReqPar;
     function GetNext(Par:TXxmReqPar):TXxmReqPar;
@@ -59,7 +59,7 @@ type
     property Size:integer read GetSize;
     property MimeType:WideString read GetMimeType;
     procedure SaveToFile(FilePath: AnsiString);
-    function SaveToStream(Stream: TStream):integer;
+    function SaveToStream(Stream: IStream):integer;
   end;
 
   EXxmUnknownPostMime=class(Exception);
@@ -72,7 +72,7 @@ const
 
 implementation
 
-uses Windows, xxmParUtils;
+uses Windows, xxmParUtils, ComObj;
 
 const //resourcestring??
   SXxmUnknownPostMime='Unsupported Post Mime type "__"';
@@ -112,18 +112,18 @@ end;
 
 { TXxmReqPars }
 
-constructor TXxmReqPars.Create(Context:IXxmContext);
+constructor TXxmReqPars.Create(Context:IXxmContext; PostData: TStream);
 begin
   inherited Create;
   PostDataOnRedirect:=false;
-  Fill(Context,true);
+  Fill(Context,PostData,true);
 end;
 
-constructor TXxmReqPars.CreateNoSeek(Context:IXxmContext);
+constructor TXxmReqPars.CreateNoSeek(Context:IXxmContext; PostData: TStream);
 begin
   inherited Create;
   PostDataOnRedirect:=false;
-  Fill(Context,false);
+  Fill(Context,PostData,false);
 end;
 
 destructor TXxmReqPars.Destroy;
@@ -134,7 +134,7 @@ begin
   inherited;
 end;
 
-procedure TXxmReqPars.Fill(Context: IXxmContext; DoSeek: boolean);
+procedure TXxmReqPars.Fill(Context: IXxmContext; PostData: TStream; DoSeek: boolean);
 var
   i,p,q,r,l:integer;
   ps:TStream;
@@ -159,7 +159,7 @@ begin
     inc(r);
    end;
 
-  ps:=Context.PostData;
+  ps:=PostData;
   if not(ps=nil) then
    begin
     if DoSeek then ps.Seek(0,soFromBeginning);
@@ -363,23 +363,16 @@ begin
 end;
 
 procedure TXxmReqParPostFile.SaveToFile(FilePath: AnsiString);
-var
-  f:TFileStream;
 begin
-  f:=TFileStream.Create(FilePath,fmCreate);
-  try
-    SaveToStream(f);
-  finally
-    f.Free;
-  end;
+  SaveToStream(TStreamAdapter.Create(TFileStream.Create(FilePath,fmCreate),soOwned));
 end;
 
-function TXxmReqParPostFile.SaveToStream(Stream: TStream): integer;
+function TXxmReqParPostFile.SaveToStream(Stream: IStream): integer;
 const
   xSize=$10000;
 var
   x:array[0..xSize-1] of byte;
-  c,l:integer;
+  c,l,r:integer;
 begin
   //TODO: encoding??!!
   FStream.Position:=FPos;
@@ -390,7 +383,8 @@ begin
     c:=xSize;
     if c>l then c:=l;
     c:=FStream.Read(x[0],c);
-    Stream.Write(x[0],c);
+    OleCheck(Stream.Write(@x[0],c,@r));
+    if r<>c then raise Exception.Create('[TXxmReqParPostFile.SaveToStream]Stream Write Error');
     dec(l,c);
    end;
   Result:=FLen;

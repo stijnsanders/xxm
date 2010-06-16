@@ -91,9 +91,9 @@ type
     procedure SendHTML(Data: OleVariant); overload;
     procedure SendHTML(const Values:array of OleVariant); overload;
     procedure SendFile(FilePath: WideString);
-    procedure SendStream(s: TStream);
+    procedure SendStream(s: IStream);
     function ContextString(cs: TXxmContextString): WideString;
-    function PostData: TStream;
+    function PostData: IStream;
     procedure SetStatus(Code: Integer; Text: WideString);
     procedure Include(Address: WideString); overload;
     procedure Include(Address: WideString;
@@ -241,7 +241,8 @@ var
   ba:TBindInfoF;
   bi:TBindInfo;
   p:IXxmPage;
-  f:TFileStream;
+  f:TStreamAdapter;
+  fs:Int64;
   d:TDateTime;
 begin
   try
@@ -359,19 +360,20 @@ begin
       //ask project to translate? project should have given a fragment!
       FPageClass:='['+FProjectName+']GetFilePath';
       FProjectEntry.GetFilePath(FFragmentName,FSingleFileSent,x);
-      d:=GetFileModifiedDateTime(FSingleFileSent);
+      d:=GetFileModifiedDateTime(FSingleFileSent,fs);
       if d<>0 then //FileExists(FSingleFileSent)
        begin
         //TODO: if directory file-list?
         FContentType:=x;
-        f:=TFileStream.Create(FSingleFileSent,fmOpenRead or fmShareDenyNone);
+        f:=TStreamAdapter.Create(TFileStream.Create(FSingleFileSent,fmOpenRead or fmShareDenyNone),soOwned);
+        (f as IUnknown)._AddRef;
         try
           FResHeaders['Last-Modified']:=RFC822DateGMT(d);
-          FResHeaders['Content-Length']:=IntToStr(f.Size);
+          FResHeaders['Content-Length']:=IntToStr(fs);
           FResHeaders['Accept-Ranges']:='bytes';
           SendStream(f);
         finally
-          f.Free;
+          (f as IUnknown)._Release;
         end;
        end
       else
@@ -585,22 +587,16 @@ end;
 
 procedure TXxmLocalContext.SendFile(FilePath: WideString);
 var
-  f:TFileStream;
   b:boolean;
 begin
   inherited;
   //TODO: auto mimetype by extension?
   b:=not(FMimeTypeSent);
-  f:=TFileStream.Create(FilePath,fmOpenRead or fmShareDenyNone);
-  try
-    SendStream(f);//does CheckSendStart
-    if b then FSingleFileSent:=FilePath;
-  finally
-    f.Free;
-  end;
+  SendStream(TStreamAdapter.Create(TFileStream.Create(FilePath,fmOpenRead or fmShareDenyNone),soOwned));//does CheckSendStart
+  if b then FSingleFileSent:=FilePath;
 end;
 
-procedure TXxmLocalContext.SendStream(s: TStream);
+procedure TXxmLocalContext.SendStream(s: IStream);
 const
   SendBufferSize=$10000;
 var
@@ -618,7 +614,7 @@ begin
       try
         if OutputData=nil then OutputData:=TMemoryStream.Create;
         OutputData.Position:=OutputSize;
-        l:=s.Read(d[0],l);
+        OleCheck(s.Read(@d[0],l,@l));
         OutputData.Write(d[0],l);
         OutputSize:=OutputData.Position;
       finally
@@ -700,9 +696,9 @@ begin
    end;
 end;
 
-function TXxmLocalContext.PostData: TStream;
+function TXxmLocalContext.PostData: IStream;
 begin
-  Result:=FPostData;
+  Result:=TStreamAdapter.Create(FPostData,soReference);
 end;
 
 procedure TXxmLocalContext.SendError(res: AnsiString; vals: array of AnsiString);
@@ -909,7 +905,7 @@ begin
   //parse parameters on first use
   if FParams=nil then
    begin
-    FParams:=TXxmReqPars.Create(Self);
+    FParams:=TXxmReqPars.Create(Self,FPostData);
     //redirect on post? invalidate postdata!
     if FParams.PostDataOnRedirect then FreeAndNil(FPostData);
    end;
@@ -919,7 +915,7 @@ end;
 
 function TXxmLocalContext.GetParameterCount: Integer;
 begin
-  if FParams=nil then FParams:=TXxmReqPars.Create(Self);
+  if FParams=nil then FParams:=TXxmReqPars.Create(Self,FPostData);
   Result:=FParams.Count;
 end;
 

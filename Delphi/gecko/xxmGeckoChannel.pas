@@ -3,7 +3,7 @@ unit xxmGeckoChannel;
 interface
 
 uses nsXPCOM, nsTypes, nsGeckoStrings, nsThreadUtils, xxm, xxmHeaders,
-  Windows, Classes, SysUtils, xxmParUtils, xxmPReg, xxmPRegLocal,
+  Windows, Classes, SysUtils, ActiveX, xxmParUtils, xxmPReg, xxmPRegLocal,
   xxmParams, xxmGeckoInterfaces, xxmGeckoStreams;
 
 type
@@ -169,7 +169,7 @@ type
     procedure SendHTML(Data: OleVariant); overload;
     procedure SendHTML(const Values:array of OleVariant); overload;
     procedure SendFile(FilePath: WideString);
-    procedure SendStream(s:TStream); //TODO: IStream
+    procedure SendStream(s:IStream);
     procedure Include(Address: WideString); overload;
     procedure Include(Address: WideString;
       const Values: array of OleVariant); overload;
@@ -179,7 +179,7 @@ type
     procedure DispositionAttach(FileName: WideString);
 
     function ContextString(cs:TXxmContextString):WideString;
-    function PostData:TStream; //TODO: IStream
+    function PostData:IStream;
     function Connected:boolean;
 
     //(local:)progress
@@ -263,7 +263,7 @@ var
 
 implementation
 
-uses ActiveX, Variants, nsInit, nsNetUtil, xxmCommonUtils;
+uses Variants, nsInit, nsNetUtil, xxmCommonUtils, ComObj;
 
 resourcestring
   SXxmContextStringUnknown='Unknown ContextString __';
@@ -381,7 +381,8 @@ var
   i,j,l:integer;
   x:WideString;
   p:IxxmPage;
-  f:TFileStream;
+  f:TStreamAdapter;
+  fs:Int64;
   d:TDateTime;
 begin
   //called from TXxmGeckoLoader
@@ -439,15 +440,15 @@ begin
       //ask project to translate? project should have given a fragment!
       FPageClass:='['+FProjectName+']GetFilePath';
       FProjectEntry.GetFilePath(FFragmentName,FSingleFileSent,x);
-      d:=GetFileModifiedDateTime(FSingleFileSent);
+      d:=GetFileModifiedDateTime(FSingleFileSent,fs);
       if d<>0 then //FileExists(FSingleFileSent)
        begin
         //TODO: if directory file-list?
         FResponseHeaders['Content-Type']:=x;
-        f:=TFileStream.Create(FSingleFileSent,fmOpenRead or fmShareDenyNone);
+        f:=TStreamAdapter.Create(TFileStream.Create(FSingleFileSent,fmOpenRead or fmShareDenyNone),soOwned);
         try
           FResponseHeaders['Last-Modified']:=RFC822DateGMT(d);
-          FResponseHeaders['Content-Length']:=IntToStr(f.Size);
+          FResponseHeaders['Content-Length']:=IntToStr(fs);
           FResponseHeaders['Accept-Ranges']:='bytes';
           SendStream(f);
         finally
@@ -915,7 +916,7 @@ begin
   //parse parameters on first use
   if FParams=nil then
    begin
-    FParams:=TXxmReqPars.CreateNoSeek(Self);
+    FParams:=TXxmReqPars.CreateNoSeek(Self,FPostData);
     //redirect on post? invalidate postdata!
     //TODO: ?//if FParams.PostDataOnRedirect then FreeAndNil(FPostData);
    end;
@@ -925,7 +926,7 @@ end;
 
 function TxxmChannel.GetParameterCount: integer;
 begin
-  if FParams=nil then FParams:=TXxmReqPars.CreateNoSeek(Self);
+  if FParams=nil then FParams:=TXxmReqPars.CreateNoSeek(Self,FPostData);
   Result:=FParams.Count;
 end;
 
@@ -981,9 +982,9 @@ begin
   Include(Address, [], []);
 end;
 
-function TxxmChannel.PostData: TStream;
+function TxxmChannel.PostData: IStream;
 begin
-  Result:=FPostData;
+  Result:=TStreamAdapter.Create(FPostData,soReference);
 end;
 
 procedure TxxmChannel.Redirect(RedirectURL: WideString; Relative: boolean);
@@ -1086,23 +1087,16 @@ end;
 
 procedure TxxmChannel.SendFile(FilePath: WideString);
 var
-  f:TFileStream;
   b:boolean;
 begin
-  inherited;
   //TODO: auto mimetype by extension?
   //TODO: FResponseHeaders['Last-Modified']:=
   b:=not(FHeaderSent);
-  f:=TFileStream.Create(FilePath,fmOpenRead or fmShareDenyNone);
-  try
-    SendStream(f);//does CheckSendStart
-    if b then FSingleFileSent:=FilePath;
-  finally
-    f.Free;
-  end;
+  SendStream(TStreamAdapter.Create(TFileStream.Create(FilePath,fmOpenRead or fmShareDenyNone),soOwned));//does CheckSendStart
+  if b then FSingleFileSent:=FilePath;
 end;
 
-procedure TxxmChannel.SendStream(s: TStream);
+procedure TxxmChannel.SendStream(s: IStream);
 const
   SendBufferSize=$10000;
 var
@@ -1126,7 +1120,7 @@ begin
     repeat
       Lock;
       try
-        l:=s.Read(d[0],l);
+        OleCheck(s.Read(@d[0],l,@l));
         Write(d[0],l);
       finally
         Unlock;

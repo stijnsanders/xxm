@@ -3,7 +3,7 @@ unit xxmHttpMain;
 interface
 
 uses
-  SysUtils, Sockets, xxm, Classes,
+  SysUtils, Sockets, xxm, Classes, ActiveX,
   xxmHttpPReg, xxmParams, xxmParUtils, xxmHeaders;
 
 type
@@ -76,7 +76,7 @@ type
     procedure SendHTML(Data: OleVariant); overload;
     procedure SendHTML(const Values:array of OleVariant); overload;
     procedure SendFile(FilePath: WideString);
-    procedure SendStream(s:TStream);
+    procedure SendStream(s:IStream);
     procedure Include(Address: WideString); overload;
     procedure Include(Address: WideString;
       const Values: array of OleVariant); overload;
@@ -86,7 +86,7 @@ type
     procedure DispositionAttach(FileName: WideString);
 
     function ContextString(cs:TXxmContextString):WideString; dynamic;
-    function PostData:TStream;
+    function PostData:IStream;
     function Connected:boolean;
 
     procedure SetStatus(Code:integer;Text:WideString);
@@ -113,9 +113,7 @@ procedure XxmRunServer;
 
 implementation
 
-uses Windows, Variants, ActiveX, ComObj, xxmCommonUtils, xxmReadHandler, xxmPReg;
-
-
+uses Windows, Variants, ComObj, AxCtrls, xxmCommonUtils, xxmReadHandler, xxmPReg;
 
 resourcestring
   SXxmMaximumHeaderLines='Maximum header lines exceeded.';
@@ -261,7 +259,8 @@ var
   i,j,l:integer;
   x,y:AnsiString;
   p:IxxmPage;
-  f:TFileStream;
+  f:TStreamAdapter;
+  fs:Int64;
   d:TDateTime;
 begin
   try
@@ -370,20 +369,21 @@ begin
       //ask project to translate? project should have given a fragment!
       FPageClass:='['+FProjectName+']GetFilePath';
       FProjectEntry.GetFilePath(FFragmentName,x,y);
-      d:=GetFileModifiedDateTime(x);
+      d:=GetFileModifiedDateTime(x,fs);
       if d<>0 then //FileExists(x)
        begin
         //TODO: Last Modified
         //TODO: if directory file-list?
         FContentType:=y;
-        f:=TFileStream.Create(x,fmOpenRead or fmShareDenyNone);
+        f:=TStreamAdapter.Create(TFileStream.Create(x,fmOpenRead or fmShareDenyNone),soOwned);
+        (f as IUnknown)._AddRef;
         try
           FResHeaders['Last-Modified']:=RFC822DateGMT(d);
-          FResHeaders['Content-Length']:=IntToStr(f.Size);
+          FResHeaders['Content-Length']:=IntToStr(fs);
           FResHeaders['Accept-Ranges']:='bytes';
           SendStream(f);
         finally
-          f.Free;
+          (f as IUnknown)._Release;
         end;
        end
       else
@@ -581,14 +581,14 @@ end;
 
 function TXxmHttpContext.GetParameter(Key: OleVariant): IXxmParameter;
 begin
-  if FParams=nil then FParams:=TXxmReqPars.Create(Self);
+  if FParams=nil then FParams:=TXxmReqPars.Create(Self,FPostData);
   if VarIsNumeric(Key) then Result:=FParams.GetItem(Key) else
     Result:=FParams.Get(VarToWideStr(Key));
 end;
 
 function TXxmHttpContext.GetParameterCount: integer;
 begin
-  if FParams=nil then FParams:=TXxmReqPars.Create(Self);
+  if FParams=nil then FParams:=TXxmReqPars.Create(Self,FPostData);
   Result:=FParams.Count;
 end;
 
@@ -672,9 +672,9 @@ begin
   end;
 end;
 
-function TXxmHttpContext.PostData: TStream;
+function TXxmHttpContext.PostData:IStream;
 begin
-  Result:=FPostData;
+  Result:=TStreamAdapter.Create(FPostData,soReference);
 end;
 
 procedure TXxmHttpContext.Redirect(RedirectURL: WideString;
@@ -702,16 +702,8 @@ begin
 end;
 
 procedure TXxmHttpContext.SendFile(FilePath: WideString);
-var
-  f:TFileStream;
 begin
-  inherited;
-  f:=TFileStream.Create(FilePath,fmOpenRead or fmShareDenyNone);
-  try
-    SendStream(f);
-  finally
-    f.Free;
-  end;
+  SendStream(TStreamAdapter.Create(TFileStream.Create(FilePath,fmOpenRead or fmShareDenyNone),soOwned));
 end;
 
 procedure TXxmHttpContext.SendRaw(Data:WideString);
@@ -770,13 +762,20 @@ begin
    end;
 end;
 
-procedure TXxmHttpContext.SendStream(s: TStream);
+procedure TXxmHttpContext.SendStream(s: IStream);
+var
+  os:TOleStream;
 begin
   //if not(s.Size=0) then
    begin
     CheckHeader;
     //no autoencoding here
-    FSocket.SendStream(s);
+    os:=TOleStream.Create(s);
+    try
+      FSocket.SendStream(os);
+    finally
+      os.Free;
+    end;
    end;
 end;
 

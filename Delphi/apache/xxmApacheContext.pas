@@ -2,7 +2,8 @@ unit xxmApacheContext;
 
 interface
 
-uses SysUtils, Classes, HTTPD2, xxm, xxmHeaders, xxmParams, xxmHttpPReg, xxmParUtils;
+uses SysUtils, Classes, ActiveX, HTTPD2, xxm,
+  xxmHeaders, xxmParams, xxmHttpPReg, xxmParUtils;
 
 type
   TxxmApacheContext=class(TInterfacedObject, IxxmContext, IxxmHttpHeaders)
@@ -41,7 +42,7 @@ type
     procedure Send(Data: OleVariant); overload;
     procedure SendHTML(Data: OleVariant); overload;
     procedure SendFile(FilePath: WideString);
-    procedure SendStream(s:TStream); //TODO: IStream
+    procedure SendStream(s:IStream);
     procedure Include(Address: WideString); overload;
     procedure Include(Address: WideString;
       const Values: array of OleVariant); overload;
@@ -51,7 +52,7 @@ type
     procedure DispositionAttach(FileName: WideString);
 
     function ContextString(cs:TXxmContextString):WideString;
-    function PostData:TStream; //TODO: IStream
+    function PostData:IStream;
     function Connected:boolean;
 
     //(local:)progress
@@ -143,7 +144,8 @@ var
   x,y:AnsiString;
   i,l:integer;
   p:IXxmPage;
-  f:TFileStream;
+  f:TStreamAdapter;
+  fs:Int64;
   d:TDateTime;
 begin
   try
@@ -193,20 +195,21 @@ begin
       //ask project to translate? project should have given a fragment!
       FPageClass:='['+FProjectName+']GetFilePath';
       FProjectEntry.GetFilePath(FFragmentName,x,y);
-      d:=GetFileModifiedDateTime(x);
+      d:=GetFileModifiedDateTime(x,fs);
       if d<>0 then //FileExists(x)
        begin
         //TODO: Last Modified
         //TODO: if directory file-list?
         FContentType:=y;
-        f:=TFileStream.Create(x,fmOpenRead or fmShareDenyNone);
+        f:=TStreamAdapter.Create(TFileStream.Create(x,fmOpenRead or fmShareDenyNone),soOwned);
+        (f as IUnknown)._AddRef;
         try
           apr_table_set(rq.headers_out,'Last-Modified',PAnsiChar(RFC822DateGMT(d)));
-          apr_table_set(rq.headers_out,'Content-Length',PAnsiChar(IntToStr(f.Size)));
+          apr_table_set(rq.headers_out,'Content-Length',PAnsiChar(IntToStr(fs)));
           apr_table_set(rq.headers_out,'Accept-Ranges','bytes');
           SendStream(f);
         finally
-          f.Free;
+          (f as IUnknown)._Release;
         end;
        end
       else
@@ -401,14 +404,14 @@ end;
 
 function TxxmApacheContext.GetParameter(Key: OleVariant): IXxmParameter;
 begin
-  if FParams=nil then FParams:=TXxmReqPars.CreateNoSeek(Self);
+  if FParams=nil then FParams:=TXxmReqPars.CreateNoSeek(Self,FPostData);
   if VarIsNumeric(Key) then Result:=FParams.GetItem(Key) else
     Result:=FParams.Get(VarToWideStr(Key));
 end;
 
 function TxxmApacheContext.GetParameterCount: integer;
 begin
-  if FParams=nil then FParams:=TXxmReqPars.CreateNoSeek(Self);
+  if FParams=nil then FParams:=TXxmReqPars.CreateNoSeek(Self,FPostData);
   Result:=FParams.Count;
 end;
 
@@ -486,9 +489,9 @@ begin
   end;
 end;
 
-function TxxmApacheContext.PostData: TStream;
+function TxxmApacheContext.PostData: IStream;
 begin
-  Result:=FPostData;
+  Result:=TStreamAdapter.Create(FPostData,soReference);
 end;
 
 procedure TxxmApacheContext.Redirect(RedirectURL: WideString;
@@ -577,15 +580,8 @@ begin
 end;
 
 procedure TxxmApacheContext.SendFile(FilePath: WideString);
-var
-  f:TFileStream;
 begin
-  f:=TFileStream.Create(FilePath,fmOpenRead or fmShareDenyNone);
-  try
-    SendStream(f);
-  finally
-    f.Free;
-  end;
+  SendStream(TStreamAdapter.Create(TFileStream.Create(FilePath,fmOpenRead or fmShareDenyNone),soOwned));
 end;
 
 procedure TxxmApacheContext.SendHTML(Data: OleVariant);
@@ -600,9 +596,11 @@ begin
   for i:=0 to Length(Values)-1 do SendRaw(VarToWideStr(Values[i]));
 end;
 
-procedure TxxmApacheContext.SendStream(s: TStream);
+procedure TxxmApacheContext.SendStream(s: IStream);
+const
+  dSize=$10000;
 var
-  d:array[0..$FFF] of byte;
+  d:array[0..dSize-1] of byte;
   l:integer;
 begin
   if not(FHeaderSent) then
@@ -613,10 +611,10 @@ begin
    end;
   CheckHeader;
   repeat
-    l:=s.Read(d[0],$1000);
+    OleCheck(s.Read(@d[0],dSize,@l));
     if not(ap_rwrite(d[0],l,rq)=l) then raise EXxmRWriteFailed.Create(SXxmRWriteFailed);
     ap_rflush(rq);//?
-  until not(l=$1000);//s.Position=s.Size?
+  until l<>dSize;
 end;
 
 procedure TxxmApacheContext.HeaderOK;
