@@ -80,7 +80,6 @@ idea's
 - separate fragment for exceptions?
 - line for line: xxm header rigged 20 lines, then pas line per xxm line?
 - translatepath refactor into context
-- force trailing "," on "[[@ ]]"
 - create src dir hidden (difficult, since using ForceDirectories now)
 - Context.Include resolve to delphi-name to have compile-time error?
 - virtual directories (getlocalfilepath?)
