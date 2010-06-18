@@ -1,7 +1,5 @@
 general
 
-- alle ContextString(csVersion): SelfVersion
-
 - common BaseXxmContest (virtual SendRaw)
 
 - XxmProjectUnload

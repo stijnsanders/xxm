@@ -404,14 +404,14 @@ end;
 
 function TxxmApacheContext.GetParameter(Key: OleVariant): IXxmParameter;
 begin
-  if FParams=nil then FParams:=TXxmReqPars.CreateNoSeek(Self,FPostData);
+  if FParams=nil then FParams:=TXxmReqPars.Create(Self,FPostData);
   if VarIsNumeric(Key) then Result:=FParams.GetItem(Key) else
     Result:=FParams.Get(VarToWideStr(Key));
 end;
 
 function TxxmApacheContext.GetParameterCount: integer;
 begin
-  if FParams=nil then FParams:=TXxmReqPars.CreateNoSeek(Self,FPostData);
+  if FParams=nil then FParams:=TXxmReqPars.Create(Self,FPostData);
   Result:=FParams.Count;
 end;
 

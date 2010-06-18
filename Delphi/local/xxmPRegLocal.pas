@@ -108,6 +108,7 @@ begin
       r.RootKey:=HKEY_CURRENT_USER;
       r.OpenKey('\Software\xxm\local\'+t,true);
       r.WriteString('',s);
+      r.DeleteValue('Signature');
       //TODO: default settings?
     finally
       r.Free;

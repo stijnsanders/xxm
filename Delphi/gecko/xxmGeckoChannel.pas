@@ -50,7 +50,7 @@ type
     FReportPending:boolean;
     FData:TMemoryStream;
     FLock:TRTLCriticalSection;
-    FPostData:TUploadStream;
+    FPostData:TxxmGeckoUploadStream;
     FRedirectChannel:nsIChannel;//see Redirect
     procedure CheckHeader(Sent:boolean);
     procedure CheckSuspend;
@@ -916,7 +916,7 @@ begin
   //parse parameters on first use
   if FParams=nil then
    begin
-    FParams:=TXxmReqPars.CreateNoSeek(Self,FPostData);
+    FParams:=TXxmReqPars.Create(Self,FPostData);
     //redirect on post? invalidate postdata!
     //TODO: ?//if FParams.PostDataOnRedirect then FreeAndNil(FPostData);
    end;
@@ -926,7 +926,7 @@ end;
 
 function TxxmChannel.GetParameterCount: integer;
 begin
-  if FParams=nil then FParams:=TXxmReqPars.CreateNoSeek(Self,FPostData);
+  if FParams=nil then FParams:=TXxmReqPars.Create(Self,FPostData);
   Result:=FParams.Count;
 end;
 
@@ -1458,7 +1458,7 @@ var
   ct:AnsiString;
 begin
   if @aContentType=nil then ct:='' else ct:=GetCString(aContentType);
-  FPostData:=TUploadStream.Create(aStream);
+  FPostData:=TxxmGeckoUploadStream.Create(aStream);
   if not(aContentLength=-1) then FRequestHeaders['Content-Length']:=IntToStr(aContentLength);
   //if aContentLength=-1 then aStream.Available?
   if ct='' then

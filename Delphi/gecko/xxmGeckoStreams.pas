@@ -7,7 +7,7 @@ uses nsXPCOM, SysUtils, Classes, xxmParUtils;
 type
   //TODO: nsIInputStream impl for channel output?
 
-  TUploadStream=class(TStream)
+  TxxmGeckoUploadStream=class(TStream)
   private
     FUploadStream:nsIInputStream;
     FHeaderSize:int64;
@@ -30,22 +30,22 @@ implementation
 uses
   xxmGeckoInterfaces;
 
-{ TUploadStream }
+{ TxxmGeckoUploadStream }
 
-constructor TUploadStream.Create(UploadStream: nsIInputStream);
+constructor TxxmGeckoUploadStream.Create(UploadStream: nsIInputStream);
 begin
   inherited Create;
   FUploadStream:=UploadStream;
   FHeaderSize:=0;
 end;
 
-destructor TUploadStream.Destroy;
+destructor TxxmGeckoUploadStream.Destroy;
 begin
   FUploadStream:=nil;
   inherited;
 end;
 
-function TUploadStream.GetSize: Int64;
+function TxxmGeckoUploadStream.GetSize: Int64;
 var
   x:int64;
   s:nsISeekableStream;
@@ -57,7 +57,7 @@ begin
   s.seek(NS_SEEK_SET,x);
 end;
 
-procedure TUploadStream.ParseHeader(Headers: TResponseHeaders);
+procedure TxxmGeckoUploadStream.ParseHeader(Headers: TResponseHeaders);
 var
   s:AnsiString;
   i,j,l:integer;
@@ -88,13 +88,13 @@ begin
   until l=0;
 end;
 
-function TUploadStream.Read(var Buffer; Count: Integer): Longint;
+function TxxmGeckoUploadStream.Read(var Buffer; Count: Integer): Longint;
 begin
   //FUploadStream.ReadSegments?
   Result:=FUploadStream.Read(PAnsiChar(@Buffer),Count);
 end;
 
-function TUploadStream.Seek(const Offset: Int64;
+function TxxmGeckoUploadStream.Seek(const Offset: Int64;
   Origin: TSeekOrigin): Int64;
 var
   whence:cardinal;
@@ -114,12 +114,12 @@ begin
   Result:=s.tell-FHeaderSize;
 end;
 
-procedure TUploadStream.SetSize(const NewSize: Int64);
+procedure TxxmGeckoUploadStream.SetSize(const NewSize: Int64);
 begin
   raise EInvalidOperation.Create('SetSize on read-only stream not supported.');
 end;
 
-function TUploadStream.Write(const Buffer; Count: Integer): Longint;
+function TxxmGeckoUploadStream.Write(const Buffer; Count: Integer): Longint;
 begin
   raise EInvalidOperation.Create('Write on read-only stream not supported.');
 end;

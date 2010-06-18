@@ -173,8 +173,8 @@ property ParameterCount:integer</code></dt>
 <dt><code>procedure SendFile(FilePath: WideString);</code></dt>
 <dd>sends the contents of the file to the response. If the response has not started sending data, the <a href="#ContentType">ContentType</a> is set to the MIME-type string found in the Windows registry by the file extention (HKEY_CLASSES_ROOT)</dd>
 
-<dt><code>procedure SendStream(s:TStream);</code></dt>
-<dd>sends the contents of the stream to the response</dd>
+<dt><code>procedure SendStream(s:IStream);</code></dt>
+<dd>sends the contents of the stream to the response (use <code>TStreamAdapter</code> from the Classes unit to provide an <code>IStream</code> interface on a <code>TStream</code> object)</dd>
 
 <dt><code>
     procedure Include(Address: WideString); overload;<br />
@@ -208,8 +208,8 @@ provides information about the incoming request
 
 </dd>
 
-<dt><code>function PostData:TStream;</code></dt>
-<dd>provides access to the data posted in the request</dd>
+<dt><code>function PostData:IStream;</code></dt>
+<dd>provides access to the data posted in the request (use <code>TOleStream</code> from the AxCtrls unit to use the <code>IStream</code> interface as a <code>TStream</code> descendant)</dd>
 
 <dt><code>function Connected:boolean;</code></dt>
 <dd>checks whether the client disconnected, typically when a user presses abort, or the connection is lost</dd>
@@ -264,8 +264,8 @@ provides information about the incoming request
 <dt><code>procedure SaveToFile(FilePath:string);</code></dt>
 <dd>saves the uploaded file</dd>
 
-<dt><code>function SaveToStream(Stream:TStream):integer;</code></dt>
-<dd>saves the uploaded content to a stream</dd>
+<dt><code>function SaveToStream(Stream:IStream):integer;</code></dt>
+<dd>saves the uploaded content to a stream  (use <code>TStreamAdapter</code> from the Classes unit to provide an <code>IStream</code> interface on a <code>TStream</code> object)</dd>
 
 <dt class="title"><a name="XxmVersion"></a><code>function XxmVersion:TXxmVersion;<br />
   TXxmVersion=record Major,Minor,Release,Build:integer; end;
