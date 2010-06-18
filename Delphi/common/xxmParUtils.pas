@@ -263,7 +263,7 @@ begin
       SetLength(Data,Size+i);
       i:=FSource.Read(Data[Size+1],i);
       inc(Size,i);
-      if not(i=GrowStep) then SourceAtEnd:=true;
+      if i=0 then SourceAtEnd:=true;
       Result:=Index+EnsureSize<=Size;
      end;
    end
