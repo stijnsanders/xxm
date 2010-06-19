@@ -144,7 +144,7 @@ var
   x,y:AnsiString;
   i,l:integer;
   p:IXxmPage;
-  f:TStreamAdapter;
+  f:TFileStream;
   fs:Int64;
   d:TDateTime;
 begin
@@ -201,15 +201,14 @@ begin
         //TODO: Last Modified
         //TODO: if directory file-list?
         FContentType:=y;
-        f:=TStreamAdapter.Create(TFileStream.Create(x,fmOpenRead or fmShareDenyNone),soOwned);
-        (f as IUnknown)._AddRef;
+        f:=TFileStream.Create(x,fmOpenRead or fmShareDenyNone);
         try
           apr_table_set(rq.headers_out,'Last-Modified',PAnsiChar(RFC822DateGMT(d)));
           apr_table_set(rq.headers_out,'Content-Length',PAnsiChar(IntToStr(fs)));
           apr_table_set(rq.headers_out,'Accept-Ranges','bytes');
-          SendStream(f);
+          SendStream(TStreamAdapter.Create(f,soReference));
         finally
-          (f as IUnknown)._Release;
+          f.Free;
         end;
        end
       else

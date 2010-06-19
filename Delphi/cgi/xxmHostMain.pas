@@ -189,7 +189,7 @@ var
   l1:cardinal;
   x,y:AnsiString;
   p:IxxmPage;
-  f:TStreamAdapter;
+  f:TFileStream;
   fs:Int64;
   d:TDateTime;
 begin
@@ -314,15 +314,14 @@ begin
         //TODO: Last Modified
         //TODO: if directory file-list?
         FContentType:=y;
-        f:=TStreamAdapter.Create(TFileStream.Create(x,fmOpenRead or fmShareDenyNone),soOwned);
-        (f as IUnknown)._AddRef;
+        f:=TFileStream.Create(x,fmOpenRead or fmShareDenyNone);
         try
           FResHeaders['Last-Modified']:=RFC822DateGMT(d);
           FResHeaders['Content-Length']:=IntToStr(fs);
           FResHeaders['Accept-Ranges']:='bytes';
-          SendStream(f);
+          SendStream(TStreamAdapter.Create(f,soReference));
         finally
-          (f as IUnknown)._Release;
+          f.Free;
         end;
        end
       else

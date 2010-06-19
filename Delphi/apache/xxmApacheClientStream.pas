@@ -45,7 +45,7 @@ begin
   FData:=TMemoryStream.Create;
   FDataPos:=0;
   FDataSize:=0;
-  //TODO: check header Content-length, if larger than start SwitchToFileTreshold with TFileStream
+  //TODO: check header Content-length, if larger than SwitchToFileTreshold start with TFileStream
   FDataFile:='';
 end;
 
@@ -59,30 +59,30 @@ end;
 
 function TxxmApacheClientStream.Read(var Buffer; Count: Integer): Integer;
 var
-  i:integer;
+  c:integer;
   f:TFileStream;
 begin
   if not(FStarted) then
    begin
-    i:=ap_setup_client_block(rq,REQUEST_CHUNKED_DECHUNK);
-    if i<>AP_OK then raise Exception.Create('ap_setup_client_block:'+IntToStr(i));
-    i:=ap_should_client_block(rq);
-    //if i<>1 then raise Exception.Create('ap_should_client_block:'+IntToStr(i));
+    c:=ap_setup_client_block(rq,REQUEST_CHUNKED_DECHUNK);
+    if c<>AP_OK then raise Exception.Create('ap_setup_client_block:'+IntToStr(c));
+    c:=ap_should_client_block(rq);
+    //if c<>1 then raise Exception.Create('ap_should_client_block:'+IntToStr(c));
    end;
   Result:=0;
-  if FDataPos=FDataSize then i:=Count else
+  if FDataPos=FDataSize then c:=Count else
    begin
-    if FDataPos+Count>FDataSize then i:=FDataPos+Count-FDataSize else i:=Count;
-    Result:=FData.Read(Buffer,i);
-    //assert i=Result
-    inc(FDataPos,i);
-    i:=Count-i;
+    if FDataPos+Count>FDataSize then c:=FDataPos+Count-FDataSize else c:=Count;
+    Result:=FData.Read(Buffer,c);
+    //assert c=Result
+    inc(FDataPos,c);
+    c:=Count-c;
    end;
-  if i<>0 then
+  if c<>0 then
    begin
     //assert FDataPos=FDataLen
-    inc(Result,ap_get_client_block(rq,PAnsiChar(@Buffer),i));
-    //assert i=Result
+    inc(Result,ap_get_client_block(rq,PAnsiChar(@Buffer),c));
+    //assert c=Result
     if (FDataFile='') and (FDataSize+Result>=SwitchToFileTreshold) then
      begin
       SetLength(FDataFile,$400);

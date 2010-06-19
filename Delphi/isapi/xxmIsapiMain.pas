@@ -284,7 +284,7 @@ var
   i,j:integer;
   p:IXxmPage;//for directinclude check
   d:TDateTime;
-  f:TStreamAdapter;
+  f:TFileStream;
   fs:Int64;
 begin
   //ServerFunction(HSE_REQ_IO_COMPLETION,@ContextIOCompletion,nil,PDWORD(Self));
@@ -361,15 +361,14 @@ begin
         //TODO: if directory file-list?
         FContentType:=y;
         FAutoEncoding:=aeContentDefined;
-        f:=TStreamAdapter.Create(TFileStream.Create(x,fmOpenRead or fmShareDenyNone),soOwned);
-        (f as IUnknown)._AddRef;
+        f:=TFileStream.Create(x,fmOpenRead or fmShareDenyNone);
         try
           FResHeaders['Last-Modified']:=RFC822DateGMT(d);
           FResHeaders['Content-Length']:=IntToStr(fs);
           FResHeaders['Accept-Ranges']:='bytes';
-          SendStream(f);
+          SendStream(TStreamAdapter.Create(f,soReference));
         finally
-          (f as IUnknown)._Release;
+          f.Free;
         end;
        end
       else
