@@ -381,7 +381,7 @@ var
   i,j,l:integer;
   x:WideString;
   p:IxxmPage;
-  f:TStreamAdapter;
+  f:TFileStream;
   fs:Int64;
   d:TDateTime;
 begin
@@ -445,12 +445,12 @@ begin
        begin
         //TODO: if directory file-list?
         FResponseHeaders['Content-Type']:=x;
-        f:=TStreamAdapter.Create(TFileStream.Create(FSingleFileSent,fmOpenRead or fmShareDenyNone),soOwned);
+        f:=TFileStream.Create(FSingleFileSent,fmOpenRead or fmShareDenyNone);
         try
           FResponseHeaders['Last-Modified']:=RFC822DateGMT(d);
           FResponseHeaders['Content-Length']:=IntToStr(fs);
           FResponseHeaders['Accept-Ranges']:='bytes';
-          SendStream(f);
+          SendStream(TStreamAdapter.Create(f,soReference));
         finally
           f.Free;
         end;
@@ -1056,11 +1056,15 @@ begin
       uc:=nil;
      end;
 
-    if FRedirectChannel.QueryInterface(NS_IHTTPCHANNELINTERNAL_IID,hi)=S_OK then
-     begin
-      hi.SetDocumentURI(FDocURI);
-      hi:=nil;
-     end;
+    try
+      if FRedirectChannel.QueryInterface(NS_IHTTPCHANNELINTERNAL_IID,hi)=S_OK then
+       begin
+        hi.SetDocumentURI(FDocURI);
+        hi:=nil;
+       end;
+    except
+      //silent
+    end;
 
     //nsIEncodedChannel?
     //nsIResumableChannel?

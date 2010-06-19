@@ -10,7 +10,9 @@ type
   TxxmGeckoUploadStream=class(TStream)
   private
     FUploadStream:nsIInputStream;
-    FHeaderSize:int64;
+    FData:TStream;
+    FDataPos,FDataSize:Int64;
+    FDataFile:AnsiString;
   protected
     function GetSize: Int64; override;
     procedure SetSize(const NewSize: Int64); overload; override;
@@ -25,10 +27,18 @@ type
     property InputStream:nsIInputStream read FUploadStream;
   end;
 
+  EXxmPostDataReadOnly=class(EInvalidOperation);
+
 implementation
 
 uses
-  xxmGeckoInterfaces;
+  Windows, xxmGeckoInterfaces;
+
+resourcestring
+  SXxmPostDataReadOnly='Post-data is read-only';
+
+const
+  SwitchToFileTreshold=$100000;//TODO: setting?
 
 { TxxmGeckoUploadStream }
 
@@ -36,25 +46,26 @@ constructor TxxmGeckoUploadStream.Create(UploadStream: nsIInputStream);
 begin
   inherited Create;
   FUploadStream:=UploadStream;
-  FHeaderSize:=0;
+  //FHeaderSize:=0;
+  FData:=TMemoryStream.Create;
+  FDataPos:=0;
+  FDataSize:=0;
+  //TODO: check header Content-length, if larger than SwitchToFileTreshold start with TFileStream
+  FDataFile:='';
 end;
 
 destructor TxxmGeckoUploadStream.Destroy;
 begin
   FUploadStream:=nil;
+  FData.Free;
+  if FDataFile<>'' then SysUtils.DeleteFile(FDataFile);
   inherited;
 end;
 
 function TxxmGeckoUploadStream.GetSize: Int64;
-var
-  x:int64;
-  s:nsISeekableStream;
 begin
-  s:=(FUploadStream as nsISeekableStream);
-  x:=s.tell;
-  s.seek(NS_SEEK_END,0);
-  Result:=s.tell-FHeaderSize;
-  s.seek(NS_SEEK_SET,x);
+  //(FUploadStream as nsISeekableStream) works, but seek doesn't
+  Result:=FDataSize;
 end;
 
 procedure TxxmGeckoUploadStream.ParseHeader(Headers: TResponseHeaders);
@@ -73,14 +84,14 @@ begin
       inc(l);
       SetLength(s,l);
       c:=FUploadStream.Read(PAnsiChar(@s[l]),1);
-      inc(FHeaderSize,c);
+      //inc(FHeaderSize,c);
      end;
     //TODO: concat next line that starts with whitespace
     if l<2 then l:=0 else dec(l,2);
-    if not(l=0) then
+    if l<>0 then
      begin
       i:=1;
-      while (i<=l) and not(s[i]=':') do inc(i);
+      while (i<=l) and (s[i]<>':') do inc(i);
       j:=i+1;
       while (j<=l) and (s[j] in [' ',#9]) do inc(j);
       Headers[Copy(s,1,i-1)]:=Copy(s,j,l-j+1);
@@ -89,39 +100,57 @@ begin
 end;
 
 function TxxmGeckoUploadStream.Read(var Buffer; Count: Integer): Longint;
+var
+  c:integer;
+  f:TFileStream;
 begin
   //FUploadStream.ReadSegments?
-  Result:=FUploadStream.Read(PAnsiChar(@Buffer),Count);
+  Result:=0;
+  if FDataPos=FDataSize then c:=Count else
+   begin
+    if FDataPos+Count>FDataSize then c:=FDataPos+Count-FDataSize else c:=Count;
+    Result:=FData.Read(Buffer,c);
+    //assert c=Result
+    inc(FDataPos,c);
+    c:=Count-c;
+   end;
+  if c<>0 then
+   begin
+    //assert FDataPos=FDataLen
+    inc(Result,FUploadStream.Read(PAnsiChar(@Buffer),c));
+    //assert c=Result
+    if (FDataFile='') and (FDataSize+Result>=SwitchToFileTreshold) then
+     begin
+      SetLength(FDataFile,$400);
+      SetLength(FDataFile,GetTempPathA($400,PAnsiChar(FDataFile)));//TODO: setting
+      FDataFile:=FDataFile+'xxm_'+IntToStr(GetCurrentProcessId)+'_'+IntToStr(GetCurrentThreadId)+'.dat';
+      f:=TFileStream.Create(FDataFile,fmCreate);
+      f.Write((FData as TMemoryStream).Memory^,FDataSize);
+      FData.Free;
+      FData:=f;
+     end;
+    FData.Write(Buffer,Result);
+    inc(FDataSize,Result);
+    FDataPos:=FDataSize;
+   end;
 end;
 
 function TxxmGeckoUploadStream.Seek(const Offset: Int64;
   Origin: TSeekOrigin): Int64;
-var
-  whence:cardinal;
-  x:int64;
-  s:nsISeekableStream;
 begin
-  s:=(FUploadStream as nsISeekableStream);
-  case Origin of
-    soBeginning:whence:=NS_SEEK_SET;
-    soCurrent:whence:=NS_SEEK_CUR;
-    soEnd:whence:=NS_SEEK_END;
-    else
-      raise Exception.Create('Seek: unknown origin');
-  end;
-  if Origin=soBeginning then x:=FHeaderSize+Offset else x:=Offset;
-  s.seek(whence,x);
-  Result:=s.tell-FHeaderSize;
+  //(FUploadStream as nsISeekableStream) works, but seek doesn't
+  FDataPos:=FData.Seek(Offset,Origin);
+  Result:=FDataPos;
 end;
 
 procedure TxxmGeckoUploadStream.SetSize(const NewSize: Int64);
 begin
-  raise EInvalidOperation.Create('SetSize on read-only stream not supported.');
+  raise EXxmPostDataReadOnly.Create(SXxmPostDataReadOnly);
 end;
 
 function TxxmGeckoUploadStream.Write(const Buffer; Count: Integer): Longint;
 begin
-  raise EInvalidOperation.Create('Write on read-only stream not supported.');
+  raise EXxmPostDataReadOnly.Create(SXxmPostDataReadOnly);
 end;
 
 end.
