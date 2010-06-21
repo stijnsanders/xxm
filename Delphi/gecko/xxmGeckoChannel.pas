@@ -996,8 +996,7 @@ var
   x:IInterfacedCString;
 begin
   //TODO:
-  //if FRedirectionLimit=0 then NS_ERROR_REDIRECT_LOOP
-  //if 307 then forward as POST else as GET?
+  //if 307 then forward as POST else as GET? (see RedirectSync)
 
   if FRedirectionLimit=0 then
    begin
@@ -1016,8 +1015,8 @@ begin
   FRedirectChannel:=NS_GetIOService.NewChannelFromURI(u);
 
   NS_DispatchToMainThread(TxxmListenerCaller.Create(Self,lcRedirect,0,0));
-
-  Cancel(NS_BINDING_REDIRECTED);
+  FStatus:=NS_BINDING_REDIRECTED;
+  FConnected:=false;
   raise EXxmPageRedirected.Create(x.ToString);
 
   //TODO: PromptTempRedirect?
@@ -1056,15 +1055,11 @@ begin
       uc:=nil;
      end;
 
-    try
-      if FRedirectChannel.QueryInterface(NS_IHTTPCHANNELINTERNAL_IID,hi)=S_OK then
-       begin
-        hi.SetDocumentURI(FDocURI);
-        hi:=nil;
-       end;
-    except
-      //silent
-    end;
+    if FRedirectChannel.QueryInterface(NS_IHTTPCHANNELINTERNAL_IID,hi)=S_OK then
+     begin
+      hi.SetDocumentURI(FDocURI);
+      hi:=nil;
+     end;
 
     //nsIEncodedChannel?
     //nsIResumableChannel?
@@ -1477,12 +1472,8 @@ begin
 end;
 
 procedure TxxmChannel.SetDocumentURI(aDocumentURI: nsIURI);
-var
-  x:IInterfacedCString;
 begin
   FDocURI:=aDocumentURI;
-x:=NewCString;
-FDocURI.GetSpec(x.ACString);
 end;
 
 procedure TxxmChannel.getRequestVersion(var major, minor: PRUint32);
