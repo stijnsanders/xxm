@@ -112,7 +112,7 @@ begin
        begin
         r:=TRegistry.Create;
         try
-          r.RootKey:=HKEY_LOCAL_MACHINE;
+          r.RootKey:=HKEY_CURRENT_USER;
           if r.OpenKey('\SOFTWARE\xxm\local\'+Actions[i].Param,true) then
            begin
             if r.ValueExists('') then s:=r.ReadString('') else s:='';
@@ -179,7 +179,7 @@ begin
        begin
         r:=TRegistry.Create;
         try
-          r.RootKey:=HKEY_LOCAL_MACHINE;
+          r.RootKey:=HKEY_CURRENT_USER;
           if Actions[i].FileName='' then
             r.DeleteKey('\SOFTWARE\xxm\local\'+Actions[i].Param)
           else

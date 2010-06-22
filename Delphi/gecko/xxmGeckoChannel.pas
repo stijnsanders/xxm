@@ -1015,7 +1015,7 @@ begin
   FRedirectChannel:=NS_GetIOService.NewChannelFromURI(u);
 
   NS_DispatchToMainThread(TxxmListenerCaller.Create(Self,lcRedirect,0,0));
-  FStatus:=NS_BINDING_REDIRECTED;
+  FStatus:=integer(NS_BINDING_REDIRECTED);
   FConnected:=false;
   raise EXxmPageRedirected.Create(x.ToString);
 

@@ -66,8 +66,8 @@ begin
    begin
     c:=ap_setup_client_block(rq,REQUEST_CHUNKED_DECHUNK);
     if c<>AP_OK then raise Exception.Create('ap_setup_client_block:'+IntToStr(c));
-    c:=ap_should_client_block(rq);
-    //if c<>1 then raise Exception.Create('ap_should_client_block:'+IntToStr(c));
+    ap_should_client_block(rq);
+    //if <>1 then raise Exception.Create('ap_should_client_block:'+IntToStr(c));
    end;
   Result:=0;
   if FDataPos=FDataSize then c:=Count else

@@ -47,6 +47,7 @@ Use <code>%SystemRoot%\system32\regsvr32.exe</code> to register the xxmLocal.dll
 <dd>xxmLocalAU checks if there is a .xxu file in the directory of the .xxl file, and if so, unloads the project, replaces the xxl file and reloads the project (auto-update).</dd>
 </dl>
 <p>xxmLocal libraries resolve projects by name using the registry. Project definitions are stored here:<br />
+<code>HKEY_CURRENT_USER\SOFTWARE\xxm\local</code><br />
 <code>HKEY_LOCAL_MACHINE\SOFTWARE\xxm\local</code><br />
 Each project has a key with the default value containing the full path to the xxl file.<br />
 When an xxmLocal library is registered, the xxl file type registry also includes a context-menu item to add the project to the registry.</p>
@@ -57,7 +58,7 @@ This is a direct way to run an xxm project, since the project runs inside of the
 <dl>
 <dt>xxmGecko.dll</dt>
 <dd>
-Store this file in the Firefox components directory: <code>C:\Program Files\Mozilla Firefox\components</code><br />
+Store this file and <code>xxmGecko.xpt</code> in the Firefox components directory: <code>C:\Program Files\Mozilla Firefox\components</code><br />
 Firefox may require a refresh of the component registration in order for xxmGecko to work:<br />
 remove the <code>xpti.dat</code> and <code>compreg.dat</code> files from your profile directory in the profiles folder: <code>%APPDATA%\Mozilla\Firefox\Profiles</code>. (It's advised to store a copy of these files in case it doesn't work.)</dd>
 <dt>xxmGeckoDev.dll</dt>
@@ -67,6 +68,7 @@ remove the <code>xpti.dat</code> and <code>compreg.dat</code> files from your pr
 <dd>xxmGeckoAU checks if there is a .xxu file in the directory of the .xxl file, and if so, unloads the project, replaces the xxl file and reloads the project (auto-update).</dd>
 </dl>
 <p>xxmGecko libraries resolve projects by name using the registry. Project definitions are stored here:<br />
+<code>HKEY_CURRENT_USER\SOFTWARE\xxm\local</code><br />
 <code>HKEY_LOCAL_MACHINE\SOFTWARE\xxm\local</code><br />
 Each project has a key with the default value containing the full path to the xxl file.</p>
 
