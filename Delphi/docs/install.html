@@ -56,15 +56,12 @@ When an xxmLocal library is registered, the xxl file type registry also includes
 <p>The xxmGecko libraries enable <a href="http://www.mozilla.com/firefox/">Firefox</a> to load xxm projects directly using the &quot;xxm:&quot; URL scheme.<br />
 This is a direct way to run an xxm project, since the project runs inside of the <code>firefox.exe</code> process.</p>
 <dl>
-<dt>xxmGecko.dll</dt>
-<dd>
-Store this file and <code>xxmGecko.xpt</code> in the Firefox components directory: <code>C:\Program Files\Mozilla Firefox\components</code><br />
-Firefox may require a refresh of the component registration in order for xxmGecko to work:<br />
-remove the <code>xpti.dat</code> and <code>compreg.dat</code> files from your profile directory in the profiles folder: <code>%APPDATA%\Mozilla\Firefox\Profiles</code>. (It's advised to store a copy of these files in case it doesn't work.)</dd>
-<dt>xxmGeckoDev.dll</dt>
+<dt>xxmGecko.xpi</dt>
+<dd>Open this file using FireFox (or download it, optionally marked as MIME-type <code>application/x-xpinstall</code>). An install dialog box is displayed. After installing FireFox may request a restart, and xxmGecko will be listed with the installed add-ons.</dd>
+<dt>xxmGeckoDev.xpi</dt>
 <dd>xxmGeckoDev checks the project's xxmp file if any files have changed. If so, it unloads the project, generates source code where needed, compiles the project and reloads it. If files were added or removed, they are added to the xxmp file.<br />
 <b>Please don't use xxmGeckoDev.dll in a live environment.</b></dd>
-<dt>xxmGeckoAU.dll</dt>
+<dt>xxmGeckoAU.xpi</dt>
 <dd>xxmGeckoAU checks if there is a .xxu file in the directory of the .xxl file, and if so, unloads the project, replaces the xxl file and reloads the project (auto-update).</dd>
 </dl>
 <p>xxmGecko libraries resolve projects by name using the registry. Project definitions are stored here:<br />
