@@ -259,6 +259,7 @@ var
   i,j,l:integer;
   x,y:AnsiString;
   p:IxxmPage;
+  w1,w2:WideString;
   f:TFileStream;
   fs:Int64;
   d:TDateTime;
@@ -368,18 +369,16 @@ begin
       //find a file
       //ask project to translate? project should have given a fragment!
       FPageClass:='['+FProjectName+']GetFilePath';
-      FProjectEntry.GetFilePath(FFragmentName,x,y);
-      d:=GetFileModifiedDateTime(x,fs);
-      if d<>0 then //FileExists(x)
+      FProjectEntry.GetFilePath(FFragmentName,w1,w2);
+      d:=GetFileModifiedDateTime(w1,fs);
+      if d<>0 then //FileExists(w1)
        begin
-        //TODO: Last Modified
         //TODO: if directory file-list?
-        FContentType:=y;
-        f:=TFileStream.Create(x,fmOpenRead or fmShareDenyNone);
+        FContentType:=w2;
+        f:=TFileStream.Create(w1,fmOpenRead or fmShareDenyNone);
         try
           FResHeaders['Last-Modified']:=RFC822DateGMT(d);
           FResHeaders['Content-Length']:=IntToStr(fs);
-          FResHeaders['Accept-Ranges']:='bytes';
           SendStream(TStreamAdapter.Create(f,soReference));
         finally
           f.Free;
@@ -394,14 +393,14 @@ begin
             'URL',HTMLEncode(ContextString(csURL)),
             'PROJECT',FProjectName,
             'ADDRESS',FFragmentName,
-            'PATH',HTMLEncode(x),
+            'PATH',HTMLEncode(w1),
             'VERSION',ContextString(csVersion)
           ])
         else
           try
             FPageClass:=FPage.ClassNameEx;
             FBuilding:=FPage;
-            FPage.Build(Self,nil,[FFragmentName,x,y],[]);//any parameters?
+            FPage.Build(Self,nil,[FFragmentName,w1,w2],[]);//any parameters?
           finally
             FBuilding:=nil;
             //let project free, cache or recycle

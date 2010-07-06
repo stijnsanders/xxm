@@ -286,6 +286,7 @@ var
   d:TDateTime;
   f:TFileStream;
   fs:Int64;
+  w1,w2:WideString;
 begin
   //ServerFunction(HSE_REQ_IO_COMPLETION,@ContextIOCompletion,nil,PDWORD(Self));
   try
@@ -354,18 +355,17 @@ begin
      begin
       //find a file
       //ask project to translate? project should have given a fragment!
-      FProjectEntry.GetFilePath(FFragmentName,x,y);
-      d:=GetFileModifiedDateTime(x,fs);
-      if d<>0 then //FileExists(x)
+      FProjectEntry.GetFilePath(FFragmentName,w1,w2);
+      d:=GetFileModifiedDateTime(w1,fs);
+      if d<>0 then //FileExists(w1)
        begin
         //TODO: if directory file-list?
-        FContentType:=y;
+        FContentType:=w2;
         FAutoEncoding:=aeContentDefined;
-        f:=TFileStream.Create(x,fmOpenRead or fmShareDenyNone);
+        f:=TFileStream.Create(w1,fmOpenRead or fmShareDenyNone);
         try
           FResHeaders['Last-Modified']:=RFC822DateGMT(d);
           FResHeaders['Content-Length']:=IntToStr(fs);
-          FResHeaders['Accept-Ranges']:='bytes';
           SendStream(TStreamAdapter.Create(f,soReference));
         finally
           f.Free;
@@ -379,17 +379,17 @@ begin
         FPage:=FProjectEntry.Project.LoadPage(Self,'404.xxm');
         if FPage=nil then
           SendError('fnf',[
-            'URL',HTMLEncode(URL),
+            'URL',HTMLEncode(FURL),
             'PROJECT',FProjectName,
             'ADDRESS',FFragmentName,
-            'PATH',x,
+            'PATH',w1,
             'VERSION',ContextString(csVersion)
           ])
         else
           try
             FPageClass:=FPage.ClassNameEx;
             FBuilding:=FPage;
-            FPage.Build(Self,nil,[FFragmentName,x,y],[]);
+            FPage.Build(Self,nil,[FFragmentName,w1,w2],[]);
           finally
             FBuilding:=nil;
             //let project free, cache or recycle

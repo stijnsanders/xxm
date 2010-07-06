@@ -7,32 +7,22 @@ uses Windows, SysUtils, xxm, xxmPReg;
 type
   TXxmProjectCacheEntry=class(TXxmProjectEntry)
   private
-    FName,FFilePath,FCookiePath:WideString;
-    FProject:IXxmProject;
-    FHandle:THandle;
+    FCookiePath:WideString;
     FUserName:AnsiString;
     FCookies:array of record
       Name,Value:WideString;
       //TODO: expiry, domain, path...
     end;
-    FContextCount:integer;
     procedure GetRegisteredPath;
-    function GetProject:IXxmProject;
   protected
+    procedure LoadProject; override;
     function GetModulePath:WideString; override;
     procedure SetSignature(const Value: AnsiString); override;
   published
     constructor Create(Name:WideString);
   public
-    procedure Release; override;
-    destructor Destroy; override;
-    procedure OpenContext;
-    procedure CloseContext;
-    procedure GetFilePath(Address:WideString;var Path,MimeType:WideString);
-    function GetSessionCookie(Name: WideString): WideString;
+    function GetSessionCookie(Name: WideString): WideString; virtual;
     procedure SetSessionCookie(Name: WideString; Value: WideString);
-    property Name:WideString read FName;
-    property Project:IXxmProject read GetProject;
     function CookieFile(Name:AnsiString):AnsiString;
   end;
 
@@ -54,9 +44,7 @@ type
   end;
 
   EXxmProjectNotFound=class(Exception);
-  EXxmModuleNotFound=class(Exception);
-  EXxmProjectLoadFailed=class(Exception);
-
+  
 var
   XxmProjectCache:TXxmProjectCache;
 
@@ -73,11 +61,6 @@ exports
 implementation
 
 uses Registry;
-
-const //resourcestring?
-  SXxmProjectNotFound='xxm Project "__" not defined.';
-  SXxmModuleNotFound='xxm Module "__" does not exist.';
-  SXxmProjectLoadFailed='xxm Project load "__" failed.';
 
 procedure XxmProjectRegister(
   hwnd:HWND;        // handle to owner window
@@ -118,129 +101,23 @@ begin
    end;
 end;
 
+const //resourcestring?
+  SXxmProjectNotFound='xxm Project "__" not defined.';
+  
 { TXxmProjectCacheEntry }
 
 constructor TXxmProjectCacheEntry.Create(Name: WideString);
 begin
-  inherited Create;
-  FName:=LowerCase(Name);//lowercase here!
+  inherited Create(LowerCase(Name));//lowercase here and in FindProject
   FFilePath:='';
-  FProject:=nil;
-  FHandle:=0;
   FUserName:='';
-  LastCheck:=GetTickCount-100000;
-  FContextCount:=0;
 end;
 
-destructor TXxmProjectCacheEntry.Destroy;
+procedure TXxmProjectCacheEntry.LoadProject;
 begin
-  Release;
+  if not ProjectLoaded and ((FFilePath='') or not(FileExists(FFilePath))) then GetRegisteredPath;//refresh
   inherited;
-end;
-
-function TXxmProjectCacheEntry.GetProject: IXxmProject;
-var
-  lp:TXxmProjectLoadProc;
-begin
-  if FProject=nil then
-   begin
-    if (FFilePath='') or (FileExists(FFilePath)) then GetRegisteredPath;//refresh
-    if not(FileExists(FFilePath)) then
-      raise EXxmModuleNotFound.Create(StringReplace(
-        SXxmModuleNotFound,'__',FFilePath,[]));
-    FHandle:=LoadLibraryW(PWideChar(FFilePath));
-    //TODO: see if DisableThreadLibraryCalls applies
-    if FHandle=0 then RaiseLastOSError;
-    @lp:=GetProcAddress(FHandle,'XxmProjectLoad');
-    if @lp=nil then RaiseLastOSError;
-    FProject:=lp(Name);//try?
-    if FProject=nil then
-     begin
-      FFilePath:='';//force refresh next time
-      raise EXxmProjectLoadFailed.Create(StringReplace(
-        SXxmProjectLoadFailed,'__',FFilePath,[]));
-     end;
-   end;
-  Result:=FProject;
-end;
-
-procedure TXxmProjectCacheEntry.Release;
-begin
-  //attention: deadlock danger, use OpenContext,CloseContext
-  //XxmAutoBuildHandler should lock new requests
-  while (FContextCount>0) do Sleep(1);
-
-  //finalization gets called on last loaded libraries first,
-  //so FProject release may fail on finalization
-  try
-    FProject:=nil;
-  except
-    pointer(FProject):=nil;
-  end;
-
-  if not(FHandle=0) then
-   begin
-    FreeLibrary(FHandle);
-    FHandle:=0;
-    FContextCount:=0;
-   end;
-end;
-
-procedure TXxmProjectCacheEntry.GetFilePath(Address:WideString;
-  var Path, MimeType: WideString);
-var
-  rf,sf,s:WideString;
-  i,j,l:integer;
-  r:TRegistry;
-begin
-  //TODO: virtual directories?
-  rf:=FFilePath;
-  i:=Length(rf);
-  while not(i=0) and not(rf[i]=PathDelim) do dec(i);
-  SetLength(rf,i);
-  sf:='';
-  i:=1;
-  l:=Length(Address);
-  while (i<=l) do
-   begin
-    j:=i;
-    while (j<=l) and not(AnsiChar(Address[j]) in ['/','\']) do inc(j);
-    s:=Copy(Address,i,j-i);
-    if (s='') or (s='.') then
-      //nothing
-    else
-    if (s='..') then
-     begin
-      //try to go back, but not into rf (raise?)
-      i:=Length(sf)-1;
-      while (i>0) and not(sf[i]=PathDelim) do dec(i);
-      SetLength(sf,i);
-     end
-    else
-      sf:=sf+s;//DirectoryExists()??
-    if (j<=l) and (AnsiChar(Address[j]) in ['/','\']) then sf:=sf+PathDelim;
-    i:=j+1;
-   end;
-  Path:=rf+sf;
-
-  //find a MIME-type from registry
-  i:=Length(sf)-1;
-  while (i>0) and not(sf[i]='.') do dec(i);
-  s:=LowerCase(copy(sf,i,Length(sf)-i+1));
-  //TODO: get from settings or list? or project?
-  r:=TRegistry.Create;
-  try
-    r.RootKey:=HKEY_CLASSES_ROOT;
-    if r.OpenKeyReadOnly(s) and r.ValueExists('Content Type') then
-      MimeType:=r.ReadString('Content Type')
-    else
-      if (s='.log') or (s='.ini') then //override default for a few known types
-        MimeType:='text/plain'
-      else
-        MimeType:='application/octet-stream';
-  finally
-    r.Free;
-  end;
+  if not ProjectLoaded then FFilePath:='';//force refresh next time
 end;
 
 function TXxmProjectCacheEntry.GetSessionCookie(Name: WideString): WideString;
@@ -289,7 +166,7 @@ var
   k:AnsiString;
 begin
   FSignature:=Value;
-  k:='\Software\xxm\local\'+FName;
+  k:='\Software\xxm\local\'+Name;
   r:=TRegistry.Create;
   try
     r.RootKey:=HKEY_CURRENT_USER;
@@ -298,7 +175,7 @@ begin
       r.RootKey:=HKEY_LOCAL_MACHINE;
       if not(r.OpenKey(k,false)) then
         raise EXxmProjectNotFound.Create(StringReplace(
-          SXxmProjectNotFound,'__',FName,[]));
+          SXxmProjectNotFound,'__',Name,[]));
      end;
     r.WriteString('Signature',FSignature);
   finally
@@ -312,7 +189,7 @@ var
   k:AnsiString;
   i:integer;
 begin
-  k:='\Software\xxm\local\'+FName;
+  k:='\Software\xxm\local\'+Name;
   r:=TRegistry.Create;
   try
     r.RootKey:=HKEY_CURRENT_USER;
@@ -328,7 +205,7 @@ begin
      end;
     if FFilePath='' then
       raise EXxmProjectNotFound.Create(StringReplace(
-        SXxmProjectNotFound,'__',FName,[]));
+        SXxmProjectNotFound,'__',Name,[]));
 
     //TODO: alias? (see xxm.xml)
 
@@ -353,16 +230,6 @@ function TXxmProjectCacheEntry.GetModulePath: WideString;
 begin
   if FFilePath='' then GetRegisteredPath;
   Result:=FFilePath;
-end;
-
-procedure TXxmProjectCacheEntry.OpenContext;
-begin
-  InterlockedIncrement(FContextCount);
-end;
-
-procedure TXxmProjectCacheEntry.CloseContext;
-begin
-  InterlockedDecrement(FContextCount);
 end;
 
 { TXxmProjectCache }

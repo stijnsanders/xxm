@@ -1,6 +1,6 @@
 general
 
-- common BaseXxmContest (virtual SendRaw)
+- common BaseXxmContext (virtual SendRaw)
 
 - XxmProjectUnload
 
@@ -64,7 +64,8 @@ local
 grand rework
 - interface to add custom parameters with (e.g. from parsing URL by fragment registry)
 - GetParameter supporting ContextString enum
-- buffering? chunking? keep-connection?
+- buffering? transfer-encoding chunked? keep-connection?
+- Accept-Ranges: bytes on files ('Range' request header?)
 - include from other projects?
 
 idea's

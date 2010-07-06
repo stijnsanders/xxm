@@ -6,25 +6,14 @@ uses Windows, SysUtils, xxm, xxmPReg, MSXML2_TLB;
 
 type
   TXxmProjectCacheEntry=class(TXxmProjectEntry)
-  private
-    FName,FFilePath:WideString;
-    FProject: IXxmProject;
-    FHandle:THandle;
-    FContextCount:integer;
-    function GetProject: IXxmProject;
   protected
     procedure SetSignature(const Value: AnsiString); override;
-    function GetModulePath: WideString; override;
+    function GetExtensionMimeType(x:AnsiString): AnsiString; override;
+    procedure LoadProject; override;
   published
     constructor Create(Name,FilePath:WideString);
   public
-    procedure Release; override;
     destructor Destroy; override;
-    procedure GetFilePath(Address:WideString;var Path,MimeType:AnsiString);
-    procedure OpenContext;
-    procedure CloseContext;
-    property Name:WideString read FName;
-    property Project: IXxmProject read GetProject;
   end;
 
   TXxmProjectCache=class(TObject)
@@ -77,131 +66,27 @@ resourcestring
 
 constructor TXxmProjectCacheEntry.Create(Name, FilePath: WideString);
 begin
-  inherited Create;
-  FName:=LowerCase(Name);//lowercase here!
+  inherited Create(LowerCase(Name));//lowercase here!
   FFilePath:=FilePath;
-  FProject:=nil;
-  FHandle:=0;
-  FContextCount:=0;
-  LastCheck:=GetTickCount-100000;
-end;
-
-procedure TXxmProjectCacheEntry.Release;
-begin
-  //attention for deadlocks! use OpenContext/CloseContext
-  //XxmAutoBuildHandler is supposed to lock any new requests
-  while not(FContextCount=0) do Sleep(1);
-
-  //finalization gets called on last-loaded libraries first,
-  //so FProject release may fail on finalization
-  try
-    FProject:=nil;
-  except
-    pointer(FProject):=nil;
-  end;
-  if not(FHandle=0) then
-   begin
-    FreeLibrary(FHandle);
-    FHandle:=0;
-   end;
 end;
 
 destructor TXxmProjectCacheEntry.Destroy;
 begin
-  pointer(FProject):=nil;//strange, project modules get closed before this happens
-  Release;
+  //pointer(FProject):=nil;//strange, project modules get closed before this happens
   inherited;
 end;
 
-procedure TXxmProjectCacheEntry.GetFilePath(Address:WideString;
-  var Path, MimeType: AnsiString);
-var
-  rf,sf,s:AnsiString;
-  i,j,l:integer;
-  r:TRegistry;
+function TXxmProjectCacheEntry.GetExtensionMimeType(x:AnsiString): AnsiString;
 begin
-  //TODO: widestring all the way?
-
-  //TODO: virtual directories?
-  rf:=FFilePath;
-  i:=Length(rf);
-  while not(i=0) and not(rf[i]=PathDelim) do dec(i);
-  SetLength(rf,i);
-  sf:='';
-
-  i:=1;
-  l:=Length(Address);
-  while (i<=l) do
-   begin
-
-    j:=i;
-    while (j<=l) and not(AnsiChar(Address[j]) in ['/','\']) do inc(j);
-    s:=Copy(Address,i,j-i);
-    i:=j+1;
-
-    if (s='') or (s='.') then
-     begin
-      //nothing
-     end
-    else
-    if (s='..') then
-     begin
-      //try to go back, but not into rf (raise?)
-      j:=Length(sf)-1;
-      while (j>0) and not(sf[j]=PathDelim) do dec(j);
-      SetLength(sf,j);
-     end
-    else
-     begin
-      sf:=sf+s+PathDelim;
-      //DirectoryExists()??
-     end;
-
-   end;
-
-  Path:=rf+Copy(sf,1,Length(sf)-1);
-
-  i:=Length(sf)-1;
-  while (i>0) and not(sf[i]='.') do dec(i);
-  sf:=LowerCase(copy(sf,i,Length(sf)-i+1));
-
-  if (sf='.xxl') or (sf='.exe') or (sf='.dll') or (sf='.xxmp') or (sf='.udl') then //more? settings?
+  if (x='.xxl') or (x='.exe') or (x='.dll') or (x='.xxmp') or (x='.udl') then //more? settings?
     raise EXxmFileTypeAccessDenied.Create(SXxmFileTypeAccessDenied);
-
-  r:=TRegistry.Create;
-  try
-    r.RootKey:=HKEY_CLASSES_ROOT;
-    if r.OpenKeyReadOnly(sf) and r.ValueExists('Content Type') then
-      MimeType:=r.ReadString('Content Type');
-    if MimeType='' then MimeType:='application/octet-stream';
-  finally
-    r.Free;
-  end;
-
+  Result:=inherited GetExtensionMimeType(x);
 end;
 
-function TXxmProjectCacheEntry.GetProject: IXxmProject;
-var
-  lp:TXxmProjectLoadProc;
+procedure TXxmProjectCacheEntry.LoadProject;
 begin
-  if FProject=nil then
-   begin
-    if not(FileExists(FFilePath)) then
-      raise EXxmModuleNotFound.Create(StringReplace(
-        SXxmModuleNotFound,'__',FFilePath,[]));
-    FHandle:=LoadLibraryW(PWideChar(FFilePath));
-    if FHandle=0 then RaiseLastOSError;
-    @lp:=GetProcAddress(FHandle,'XxmProjectLoad');
-    if @lp=nil then RaiseLastOSError;
-    FProject:=lp(Name);//try?
-    if FProject=nil then
-     begin
-      FFilePath:='';//force refresh next time
-      raise EXxmProjectLoadFailed.Create(StringReplace(
-        SXxmProjectLoadFailed,'__',FFilePath,[]));
-     end;
-   end;
-  Result:=FProject;
+  inherited;
+  if not ProjectLoaded then FFilePath:='';//force refresh next time
 end;
 
 procedure TXxmProjectCacheEntry.SetSignature(const Value: AnsiString);
@@ -218,10 +103,10 @@ begin
         SXxmProjectRegistryError,'__',XxmProjectCache.FRegFilePath,[])+#13#10+
         doc.parseError.reason);
     x:=doc.documentElement.selectSingleNode(
-      'Project[@Name="'+FName+'"]') as IXMLDOMElement;
+      'Project[@Name="'+Name+'"]') as IXMLDOMElement;
     if x=nil then
       raise EXxmProjectNotFound.Create(StringReplace(
-        SXxmProjectNotFound,'__',FName,[]));
+        SXxmProjectNotFound,'__',Name,[]));
     x.setAttribute('Signature',FSignature);
     doc.save(XxmProjectCache.FRegFilePath);
     //force XxmProjectCache.Refresh?
@@ -229,21 +114,6 @@ begin
     x:=nil;
     doc:=nil;
   end;
-end;
-
-procedure TXxmProjectCacheEntry.OpenContext;
-begin
-  InterlockedIncrement(FContextCount);
-end;
-
-procedure TXxmProjectCacheEntry.CloseContext;
-begin
-  InterlockedDecrement(FContextCount);
-end;
-
-function TXxmProjectCacheEntry.GetModulePath: WideString;
-begin
-  Result:=FFilePath;
 end;
 
 { TXxmProjectCache }
