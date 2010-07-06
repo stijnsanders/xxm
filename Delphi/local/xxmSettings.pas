@@ -5,7 +5,7 @@ interface
 implementation
 
 uses
-  Windows, SysUtils, Registry, xxmLoader;
+  Windows, SysUtils, Registry, xxmContext, xxmLoader;
 
 procedure XxmReadSettings;
 var

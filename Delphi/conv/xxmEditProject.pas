@@ -259,7 +259,7 @@ begin
     if s='' then raise Exception.Create('Project name required');
     r:=TRegistry.Create;
     try
-      r.RootKey:=HKEY_LOCAL_MACHINE;
+      r.RootKey:=HKEY_CURRENT_USER;//HKEY_LOCAL_MACHINE;
       r.OpenKey('\Software\xxm\local\'+s,true);
       r.WriteString('',ProjectFolder+s+'.xxl');
       r.DeleteValue('Signature');

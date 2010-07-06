@@ -2,59 +2,44 @@ unit xxmLoader;
 
 interface
 
-uses Windows, SysUtils, ActiveX, UrlMon, Classes, xxm,
+uses Windows, SysUtils, ActiveX, UrlMon, Classes, xxm, xxmContext,
   xxmPReg, xxmPRegLocal, xxmParams, xxmParUtils, xxmHeaders;
-
-const
-  XxmMaxIncludeDepth=64;//TODO: setting?
 
 type
   TXxmPageLoader=class;//forward
 
-  TXxmLocalContext=class(TInterfacedObject, IXxmContext, IxxmHttpHeaders)
+  TXxmLocalContext=class(TxxmGeneralContext, IxxmHttpHeaders)
   private
     FVerb: WideString;
     ProtSink: IInternetProtocolSink;
     BindInfo: IInternetBindInfo;
     PrPos,PrMax:Integer;
-    FURL:WideString;
     FLock:TRTLCriticalSection;
-    FProjectEntry:TXxmProjectCacheEntry;
     FStatusCode:integer;
-    FStatusText,FProjectName,FFragmentName,FExtraInfo,FQueryString:WideString;
-    FirstData,StatusSet,Aborted:boolean;
-    FPostData:TStream;
-    FPostTempFile,FPageClass:AnsiString;
+    FStatusText,FExtraInfo,FQueryString:WideString;
+    FirstData,Aborted:boolean;
     FSingleFileSent:WideString;
-    FMimeTypeSent,FGotSessionID:boolean;
-    FIncludeDepth:integer;
-    FParams: TXxmReqPars;
-    FBuilding: IXxmFragment;
+    FGotSessionID:boolean;
     FReqHeaders: TRequestHeaders;
     FResHeaders: TResponseHeaders;
     FHttpNegotiate: IHttpNegotiate;
     procedure ReportData;
-    function CheckSendStart:boolean;
-    procedure SendRaw(Data: WideString);
-    procedure SendError(res:AnsiString;vals:array of AnsiString);
     function StgMediumAsStream(stgmed:TStgMedium):TStream;
-    procedure HeaderOK;
+    function LocaleLanguage: AnsiString;
     procedure CheckReqHeaders;
   protected
-    FContentType: WideString;
-    FAutoEncoding: TXxmAutoEncoding;
-    FPage: IXxmFragment;
-    function GetURL: WideString;
-    function GetPage: IXxmFragment;
-    function GetContentType: WideString;
-    procedure SetContentType(const Value: WideString);
-    function GetAutoEncoding: TXxmAutoEncoding;
-    procedure SetAutoEncoding(const Value: TXxmAutoEncoding);
-    function GetParameter(Key: OleVariant): IXxmParameter;
-    function GetParameterCount: Integer;
-    function LocaleLanguage: AnsiString;
+    procedure SendHeader; override;
+    procedure SendRaw(Data: WideString); override;
+    procedure SendStream(s: IStream); override;
+    function Connected: Boolean; override;
+    procedure Redirect(RedirectURL: WideString; Relative:boolean); override;
+    function ContextString(cs: TXxmContextString): WideString; override;
+    function GetSessionID: WideString; override;
+    function GetCookie(Name: WideString): WideString; override;
+    procedure SetCookie(Name: WideString; Value: WideString); overload; override;
+    procedure SetCookie(Name,Value:WideString; KeepSeconds:cardinal;
+      Comment,Domain,Path:WideString; Secure,HttpOnly:boolean); overload; override;
     function GetRequestParam(Name: AnsiString):AnsiString;
-    function GetSessionID: WideString;
     function GetRequestHeaders:IxxmDictionaryEx;
     function GetResponseHeaders:IxxmDictionaryEx;
   public
@@ -68,45 +53,17 @@ type
       OIProtSink: IInternetProtocolSink; OIBindInfo: IInternetBindInfo);
     destructor Destroy; override;
 
+    procedure DispositionAttach(FileName: WideString); override;
+
     procedure Execute;
+
+    function GetProjectEntry(ProjectName: WideString):TXxmProjectEntry; override;
+    function GetProjectPage(FragmentName: WideString):IXxmFragment; override;
 
     procedure Lock;
     procedure Unlock;
     procedure Disconnect;
 
-    property URL:WideString read GetURL;
-    property ContentType:WideString read FContentType;
-    property StatusCode:integer read FStatusCode;
-    property StatusText:WideString read FStatusText;
-    property Verb:WideString read FVerb;
-    property SingleFileSent:WideString read FSingleFileSent;
-
-    procedure DispositionAttach(FileName: WideString);
-    //TODO: progress
-    procedure Send(Data: OleVariant); overload;
-    procedure Send(Value: integer); overload;
-    procedure Send(Value: int64); overload;
-    procedure Send(Value: cardinal); overload;
-    procedure Send(const Values:array of OleVariant); overload;
-    procedure SendHTML(Data: OleVariant); overload;
-    procedure SendHTML(const Values:array of OleVariant); overload;
-    procedure SendFile(FilePath: WideString);
-    procedure SendStream(s: IStream);
-    function ContextString(cs: TXxmContextString): WideString;
-    function PostData: IStream;
-    procedure SetStatus(Code: Integer; Text: WideString);
-    procedure Include(Address: WideString); overload;
-    procedure Include(Address: WideString;
-      const Values: array of OleVariant); overload;
-    procedure Include(Address: WideString;
-      const Values: array of OleVariant;
-      const Objects: array of TObject); overload;
-    function Connected: Boolean;
-    procedure Redirect(RedirectURL: WideString; Relative:boolean);
-    function GetCookie(Name: WideString): WideString;
-    procedure SetCookie(Name: WideString; Value: WideString); overload;
-    procedure SetCookie(Name,Value:WideString; KeepSeconds:cardinal;
-      Comment,Domain,Path:WideString; Secure,HttpOnly:boolean); overload;
   end;
 
   TXxmPageLoader=class(TThread)
@@ -115,21 +72,15 @@ type
     procedure Execute; override;
   public
     constructor Create;
-    destructor Destroy; override;
     property InUse:boolean read FInUse;
   end;
 
-  EXxmDirectInclude=class(Exception);
-  EXxmAutoBuildFailed=class(Exception);
   EXxmContextStringUnknown=class(Exception);
-  EXxmIncludeFragmentNotFound=class(Exception);
   EXxmUnknownPostDataTymed=class(Exception);
-  EXxmIncludeStackFull=class(Exception);
   EXxmPageRedirected=class(Exception);
 
 var
   //see xxmSettings
-  StatusBuildError,StatusException,StatusFileNotFound:integer;
   DefaultProjectName:AnsiString;
 
 implementation
@@ -137,17 +88,14 @@ implementation
 uses Variants, ComObj, AxCtrls, xxmThreadPool, xxmCommonUtils;
 
 const //resourcestring?
-  SXxmDirectInclude='Direct call to include fragment is not allowed.';
   SXxmContextStringUnknown='Unknown ContextString __';
-  SXxmIncludeFragmentNotFound='Include fragment not found "__"';
-  SXxmIncludeStackFull='Maximum level of includes exceeded';
 
 { TXxmLocalContext }
 
 constructor TXxmLocalContext.Create(URL:WideString;
   OIProtSink: IInternetProtocolSink; OIBindInfo: IInternetBindInfo);
 begin
-  inherited Create;
+  inherited Create(URL);
   PageComplete:=false;
   Redirected:=false;
   DataReported:=false;
@@ -158,32 +106,19 @@ begin
   Queue:=nil;
   InitializeCriticalSection(FLock);
 
-  FURL:=URL;
-  FProjectEntry:=nil;
-  FContentType:='text/html';//default (setting?)
-  FAutoEncoding:=aeUtf8;//default (setting?)
-  FPage:=nil;
-  FBuilding:=nil;
   BindInfo:=OIBindInfo;
   ProtSink:=OIProtSink;
   PrPos:=0;
   PrMax:=1;
   FirstData:=true;
-  FIncludeDepth:=0;
-  StatusSet:=false;
   FStatusCode:=200;
   FProjectName:='';//parsed from URL later
   FFragmentName:='';//parsed from URL later
   FStatusText:='';
-  FPostData:=nil;
-  FPostTempFile:='';
-  FMimeTypeSent:=false;
-  FParams:=nil;//see GetParameter
   FReqHeaders:=nil;
   FResHeaders:=TResponseHeaders.Create;
   (FResHeaders as IUnknown)._AddRef;
   FHttpNegotiate:=nil;
-  FPageClass:='';
   FSingleFileSent:='';
   FGotSessionID:=false;
 end;
@@ -193,7 +128,6 @@ begin
   FHttpNegotiate:=nil;
   BindInfo:=nil;
   ProtSink:=nil;
-  FreeAndNil(FParams);
   if not(FReqHeaders=nil) then
    begin
     (FReqHeaders as IUnknown)._Release;
@@ -204,46 +138,31 @@ begin
     (FResHeaders as IUnknown)._Release;
     FResHeaders:=nil;
    end;
-  FreeAndNil(FPostData);
-  if not(FProjectEntry=nil) then
-   begin
-    FProjectEntry.CloseContext;
-    FProjectEntry:=nil;
-   end;
-  try
-    if not(FPostTempFile='') then
-     begin
-      DeleteFile(FPostTempFile);
-      FPostTempFile:='';
-     end;
-  except
-    //silent
-  end;
   FreeAndNil(OutputData);
   DeleteCriticalSection(FLock);
   inherited;
 end;
 
-function TXxmLocalContext.GetURL: WideString;
+function TXxmLocalContext.GetProjectEntry(ProjectName: WideString): TXxmProjectEntry;
 begin
-  Result:=FURL;
+  OleCheck(ProtSink.ReportProgress(BINDSTATUS_CONNECTING, PWideChar(FProjectName)));
+  if XxmProjectCache=nil then XxmProjectCache:=TXxmProjectCache.Create;
+  Result:=XxmProjectCache.GetProject(FProjectName);
+  OleCheck(ProtSink.ReportProgress(BINDSTATUS_ENCODING, PWideChar(FProjectName)));//?
 end;
 
-function TXxmLocalContext.GetPage: IXxmFragment;
+function TXxmLocalContext.GetProjectPage(FragmentName: WideString): IXxmFragment;
 begin
-  Result:=FPage;
+  Result:=inherited GetProjectPage(FragmentName);
+  OleCheck(ProtSink.ReportProgress(BINDSTATUS_SENDINGREQUEST, PWideChar(FFragmentName)));
 end;
 
 procedure TXxmLocalContext.Execute;
 var
   i,j,l:integer;
-  x:WideString;
   ba:TBindInfoF;
   bi:TBindInfo;
-  p:IXxmPage;
-  f:TFileStream;
-  fs:Int64;
-  d:TDateTime;
+  x:AnsiString;
 begin
   try
     //bind parameters
@@ -340,92 +259,7 @@ begin
 
     //IHttpNegotiate here? see GetRequestParam
 
-    //create page object
-    OleCheck(ProtSink.ReportProgress(BINDSTATUS_CONNECTING, PWideChar(FProjectName)));
-    if XxmProjectCache=nil then XxmProjectCache:=TXxmProjectCache.Create;
-    FProjectEntry:=XxmProjectCache.GetProject(FProjectName);
-    if not(@XxmAutoBuildHandler=nil) then
-     begin
-      OleCheck(ProtSink.ReportProgress(BINDSTATUS_ENCODING, PWideChar(FProjectName)));//?
-      if not(XxmAutoBuildHandler(FProjectEntry,Self,FProjectName)) then
-        raise EXxmAutoBuildFailed.Create(FProjectName);
-     end;
-    FProjectEntry.OpenContext;
-    OleCheck(ProtSink.ReportProgress(BINDSTATUS_SENDINGREQUEST, PWideChar(FFragmentName)));
-    FPage:=FProjectEntry.Project.LoadPage(Self,FFragmentName);
-
-    if FPage=nil then
-     begin
-      //find a file
-      //ask project to translate? project should have given a fragment!
-      FPageClass:='['+FProjectName+']GetFilePath';
-      FProjectEntry.GetFilePath(FFragmentName,FSingleFileSent,x);
-      d:=GetFileModifiedDateTime(FSingleFileSent,fs);
-      if d<>0 then //FileExists(FSingleFileSent)
-       begin
-        //TODO: if directory file-list?
-        FContentType:=x;
-        f:=TFileStream.Create(FSingleFileSent,fmOpenRead or fmShareDenyNone);
-        try
-          FResHeaders['Last-Modified']:=RFC822DateGMT(d);
-          FResHeaders['Content-Length']:=IntToStr(fs);
-          FResHeaders['Accept-Ranges']:='bytes';
-          SendStream(TStreamAdapter.Create(f,soReference));
-        finally
-          f.Free;
-        end;
-       end
-      else
-       begin
-        FPageClass:='['+FProjectName+']404:'+FFragmentName;
-        FPage:=FProjectEntry.Project.LoadPage(Self,'404.xxm');
-        if FPage=nil then
-         begin
-          FStatusCode:=StatusFileNotFound;
-          FStatusText:='File not found';
-          SendError('fnf',[
-            'URL',HTMLEncode(URL),
-            'PROJECT',FProjectName,
-            'ADDRESS',FFragmentName,
-            'PATH',HTMLEncode(FSingleFileSent),
-            'VERSION',ContextString(csVersion)
-          ]);
-         end
-        else
-          try
-            FPageClass:=FPage.ClassNameEx;
-            FBuilding:=FPage;
-            FPage.Build(Self,nil,[FFragmentName,FSingleFileSent,x],[]);//any parameters?
-          finally
-            FBuilding:=nil;
-            //let project free, cache or recycle
-            FProjectEntry.Project.UnloadFragment(FPage);
-            FPage:=nil;
-          end;
-       end;
-     end
-    else
-      try
-        FPageClass:=FPage.ClassNameEx;
-        //mime type moved to CheckSendStart;
-        //OleCheck(ProtSink.ReportProgress(BINDSTATUS_CACHEFILENAMEAVAILABLE,));
-        //TODO: cache output?
-
-        //TODO: setting?
-        if not(FPage.QueryInterface(IID_IXxmPage,p)=S_OK) then
-          raise EXxmDirectInclude.Create(SXxmDirectInclude);
-        p:=nil;
-
-        //build page
-        FBuilding:=FPage;
-        FPage.Build(Self,nil,[],[]);//any parameters?
-
-      finally
-        FBuilding:=nil;
-        //let project decide to free or not
-        FProjectEntry.Project.UnloadFragment(FPage);
-        FPage:=nil;
-      end;
+    BuildPage;
 
   except
     on EXxmPageRedirected do
@@ -455,7 +289,7 @@ begin
         x:='unknown';
       end;
       SendError('error',[
-        'URL',HTMLEncode(URL),
+        'URL',HTMLEncode(FURL),
         'CLASS',FPageClass,
         'POSTDATA',x,
         'QUERYSTRING',FQueryString,
@@ -529,20 +363,6 @@ begin
   ProtSink.ReportProgress(BINDSTATUS_CONTENTDISPOSITIONFILENAME,PWideChar(FileName));
 end;
 
-procedure TXxmLocalContext.SendHTML(Data: OleVariant);
-begin
-  if not(VarIsNull(Data)) then SendRaw(VarToWideStr(Data));
-end;
-
-procedure TXxmLocalContext.Send(Data: OleVariant);
-begin
-  if not(VarIsNull(Data)) then SendRaw(HTMLEncode(VarToWideStr(Data)));
-end;
-
-const
-  Utf8ByteOrderMark=#$EF#$BB#$BF;
-  Utf16ByteOrderMark=#$FF#$FE;
-
 procedure TXxmLocalContext.SendRaw(Data: WideString);
 var
   s:AnsiString;
@@ -582,17 +402,6 @@ begin
     end;
     ReportData;
    end;
-end;
-
-procedure TXxmLocalContext.SendFile(FilePath: WideString);
-var
-  b:boolean;
-begin
-  inherited;
-  //TODO: auto mimetype by extension?
-  b:=not(FMimeTypeSent);
-  SendStream(TStreamAdapter.Create(TFileStream.Create(FilePath,fmOpenRead or fmShareDenyNone),soOwned));//does CheckSendStart
-  if b then FSingleFileSent:=FilePath;
 end;
 
 procedure TXxmLocalContext.SendStream(s: IStream);
@@ -695,143 +504,24 @@ begin
    end;
 end;
 
-function TXxmLocalContext.PostData: IStream;
-begin
-  Result:=TStreamAdapter.Create(FPostData,soReference);
-end;
-
-procedure TXxmLocalContext.SendError(res: AnsiString; vals: array of AnsiString);
-var
-  s:AnsiString;
-  i:integer;
-  r:TResourceStream;
-  l:Int64;
-const
-  RT_HTML = MakeIntResource(23);
-begin
-  r:=TResourceStream.Create(HInstance,res,RT_HTML);
-  try
-    l:=r.Size;
-    SetLength(s,l);
-    r.Read(s[1],l);
-  finally
-    r.Free;
-  end;
-  for i:=0 to (Length(vals) div 2)-1 do
-    s:=StringReplace(s,'[['+vals[i*2]+']]',vals[i*2+1],[rfReplaceAll]);
-  if not(FMimeTypeSent) then
-   begin
-    FContentType:='text/html';
-    FAutoEncoding:=aeContentDefined;//?
-   end;
-  SendHTML(s);
-end;
-
-function TXxmLocalContext.CheckSendStart:boolean;
+procedure TXxmLocalContext.SendHeader;
 var
   px:WideString;
   py:PWideChar;
 begin
-  Result:=not(FMimeTypeSent);
-  if Result then
-   begin
-    //FAutoEncoding: see SendHTML
-    OleCheck(ProtSink.ReportProgress(BINDSTATUS_MIMETYPEAVAILABLE,PWideChar(FContentType)));
+  OleCheck(ProtSink.ReportProgress(BINDSTATUS_MIMETYPEAVAILABLE,PWideChar(FContentType)));
 
-    if FHttpNegotiate=nil then
-      OleCheck((ProtSink as IServiceProvider).QueryService(
-        IID_IHttpNegotiate,IID_IHttpNegotiate,FHttpNegotiate));
-    px:=FResHeaders.Build+#13#10;
-    py:=nil;
-    OleCheck(FHttpNegotiate.OnResponse(FStatusCode,PWideChar(px),nil,py));
-    //TODO: add py to FResHeaders?
+  if FHttpNegotiate=nil then
+    OleCheck((ProtSink as IServiceProvider).QueryService(
+      IID_IHttpNegotiate,IID_IHttpNegotiate,FHttpNegotiate));
+  px:=FResHeaders.Build+#13#10;
+  py:=nil;
+  OleCheck(FHttpNegotiate.OnResponse(FStatusCode,PWideChar(px),nil,py));
+  //TODO: add py to FResHeaders?
 
-    //BINDSTATUS_ENCODING
-    OleCheck(ProtSink.ReportProgress(BINDSTATUS_VERIFIEDMIMETYPEAVAILABLE,PWideChar(FContentType)));
-    OleCheck(ProtSink.ReportProgress(BINDSTATUS_BEGINDOWNLOADDATA,''));
-    FMimeTypeSent:=true;
-   end
-  else
-    FSingleFileSent:='';
-end;
-
-function TXxmLocalContext.GetContentType: WideString;
-begin
-  Result:=FContentType;
-end;
-
-procedure TXxmLocalContext.HeaderOK;
-begin
-  if FMimeTypeSent then
-    raise EXxmResponseHeaderAlreadySent.Create(SXxmResponseHeaderAlreadySent);
-end;
-
-procedure TXxmLocalContext.SetContentType(const Value: WideString);
-begin
-  HeaderOK;
-  FContentType:=Value;
-  FAutoEncoding:=aeContentDefined;//parse from value? (charset)
-end;
-
-function TXxmLocalContext.GetAutoEncoding: TXxmAutoEncoding;
-begin
-  Result:=FAutoEncoding;
-end;
-
-procedure TXxmLocalContext.SetAutoEncoding(const Value: TXxmAutoEncoding);
-begin
-  HeaderOK;
-  FAutoEncoding:=Value;
-end;
-
-procedure TXxmLocalContext.SetStatus(Code: Integer; Text: WideString);
-begin
-  HeaderOK;
-  FStatusCode:=Code;
-  FStatusText:=Text;
-  StatusSet:=true;
-end;
-
-procedure TXxmLocalContext.Include(Address: WideString);
-begin
-  Include(Address, [], []);
-end;
-
-procedure TXxmLocalContext.Include(Address: WideString;
-  const Values: array of OleVariant);
-begin
-  Include(Address, Values, []);
-end;
-
-procedure TXxmLocalContext.Include(Address: WideString;
-  const Values: array of OleVariant;
-  const Objects: array of TObject);
-var
-  f,fb:IXxmFragment;
-  pc:AnsiString;
-begin
-  if FIncludeDepth=XxmMaxIncludeDepth then
-    raise EXxmIncludeStackFull.Create(SXxmIncludeStackFull);
-  //FPage.Project?
-  f:=FProjectEntry.Project.LoadFragment(Address);
-  if f=nil then
-    raise EXxmIncludeFragmentNotFound.Create(StringReplace(
-      SXxmIncludeFragmentNotFound,'__',Address,[]));
-  fb:=FBuilding;
-  pc:=FPageClass;
-  FBuilding:=f;
-  inc(FIncludeDepth);
-  try
-    FPageClass:=f.ClassNameEx+' < '+pc;
-    f.Build(Self,fb,Values,Objects);//queue to avoid building up stack?
-  finally
-    dec(FIncludeDepth);
-    FPageClass:=pc;
-    FBuilding:=fb;
-    fb:=nil;
-    FProjectEntry.Project.UnloadFragment(f);
-    f:=nil;
-  end;
+  //BINDSTATUS_ENCODING
+  OleCheck(ProtSink.ReportProgress(BINDSTATUS_VERIFIEDMIMETYPEAVAILABLE,PWideChar(FContentType)));
+  OleCheck(ProtSink.ReportProgress(BINDSTATUS_BEGINDOWNLOADDATA,''));
 end;
 
 function TXxmLocalContext.StgMediumAsStream(stgmed: TStgMedium): TStream;
@@ -899,25 +589,6 @@ begin
   end;
 end;
 
-function TXxmLocalContext.GetParameter(Key: OleVariant): IXxmParameter;
-begin
-  //parse parameters on first use
-  if FParams=nil then
-   begin
-    FParams:=TXxmReqPars.Create(Self,FPostData);
-    //redirect on post? invalidate postdata!
-    if FParams.PostDataOnRedirect then FreeAndNil(FPostData);
-   end;
-  if VarIsNumeric(Key) then Result:=FParams.GetItem(Key) else
-    Result:=FParams.Get(VarToWideStr(Key));
-end;
-
-function TXxmLocalContext.GetParameterCount: Integer;
-begin
-  if FParams=nil then FParams:=TXxmReqPars.Create(Self,FPostData);
-  Result:=FParams.Count;
-end;
-
 function TXxmLocalContext.Connected: Boolean;
 begin
   Result:=not(Aborted);
@@ -929,7 +600,7 @@ var
   s:WideString;
 begin
   inherited;
-  HeaderOK;
+  CheckHeaderNotSent;
   Redirected:=true;
   //BINDSTATUS_REDIRECTING?
   if Relative then
@@ -937,7 +608,7 @@ begin
     //TODO: use own combine? (implement IInternetProtocolInfo)
     l:=$400;
     SetLength(s,l);
-    OleCheck(CoInternetCombineUrl(PWideChar(URL),PWideChar(RedirectURL),0,PWideChar(s),l,l,0));
+    OleCheck(CoInternetCombineUrl(PWideChar(FURL),PWideChar(RedirectURL),0,PWideChar(s),l,l,0));
     SetLength(s,l);
    end
   else
@@ -971,7 +642,7 @@ begin
     if FHttpNegotiate=nil then
       OleCheck((ProtSink as IServiceProvider).QueryService(
         IID_IHttpNegotiate,IID_IHttpNegotiate,FHttpNegotiate));
-    OleCheck(FHttpNegotiate.BeginningTransaction(PWideChar(URL),nil,0,px));
+    OleCheck(FHttpNegotiate.BeginningTransaction(PWideChar(FURL),nil,0,px));
     FReqHeaders:=TRequestHeaders.Create(px);
     (FReqHeaders as IUnknown)._AddRef;
    end;
@@ -1017,7 +688,7 @@ var
   i,j,l:integer;
   eols:array[0..4] of integer;
 begin
-  fn:=FProjectEntry.CookieFile(Name);
+  fn:=(ProjectEntry as TXxmProjectCacheEntry).CookieFile(Name);
   b:=true;
   if FileExists(fn) then
    begin
@@ -1054,16 +725,19 @@ begin
       Result:=UTF8Decode(copy(s,1,eols[0]-2));
      end;
    end;
-  if b then Result:=FProjectEntry.GetSessionCookie(Name);
+  if b then Result:=(ProjectEntry as TXxmProjectCacheEntry).GetSessionCookie(Name);
 end;
 
 procedure TXxmLocalContext.SetCookie(Name, Value: WideString);
+var
+  pce:TXxmProjectCacheEntry;
 begin
-  HeaderOK;
-  FProjectEntry.SetSessionCookie(Name,Value);
+  CheckHeaderNotSent;
+  pce:=ProjectEntry as TXxmProjectCacheEntry;
+  pce.SetSessionCookie(Name,Value);
   //TODO: clear persistent one or change it's value?
   //TODO: make this value 'unavailable' from GetCookie until next request
-  DeleteFile(FProjectEntry.CookieFile(Name));
+  DeleteFile(pce.CookieFile(Name));
 end;
 
 procedure TXxmLocalContext.SetCookie(Name,Value:WideString;
@@ -1072,18 +746,20 @@ procedure TXxmLocalContext.SetCookie(Name,Value:WideString;
 var
   fn,s:AnsiString;
   f:TFileStream;
+  pce:TXxmProjectCacheEntry;
   function CookieEncode(x:WideString):AnsiString;
   begin
     Result:=StringReplace(StringReplace(UTF8Encode(x),
       '%','%_',[rfReplaceAll]),#13#10,'%|',[rfReplaceAll])+#13#10;
   end;
 begin
-  HeaderOK;
-  fn:=FProjectEntry.CookieFile(Name);
+  CheckHeaderNotSent;
+  pce:=ProjectEntry as TXxmProjectCacheEntry;
+  fn:=pce.CookieFile(Name);
   if KeepSeconds=0 then
    begin
     DeleteFile(fn);
-    FProjectEntry.SetSessionCookie(Name,Value);
+    pce.SetSessionCookie(Name,Value);
    end
   else
    begin
@@ -1108,8 +784,8 @@ end;
 function TXxmLocalContext.GetSessionID: WideString;
 begin
   //http implementations do a SetCookie the first time,
-  //which requires HeaderOK, simulated here with booleans
-  if not(FGotSessionID) then HeaderOK;
+  //which requires CheckHeaderNotSent, simulated here with a boolean
+  if not(FGotSessionID) then CheckHeaderNotSent;
   FGotsessionID:=true;
   Result:=IntToHex(HInstance,8)+IntToHex(GetCurrentProcessId,8);
   //GetCurrentThreadId?
@@ -1131,35 +807,6 @@ begin
   LeaveCriticalSection(FLock);
 end;
 
-procedure TXxmLocalContext.Send(Value: int64);
-begin
-  SendRaw(IntToStr(Value));
-end;
-
-procedure TXxmLocalContext.Send(Value: integer);
-begin
-  SendRaw(IntToStr(Value));
-end;
-
-procedure TXxmLocalContext.Send(const Values: array of OleVariant);
-var
-  i:integer;
-begin
-  for i:=0 to Length(Values)-1 do SendRaw(HTMLEncode(Values[i]));
-end;
-
-procedure TXxmLocalContext.Send(Value: cardinal);
-begin
-  SendRaw(IntToStr(Value));
-end;
-
-procedure TXxmLocalContext.SendHTML(const Values: array of OleVariant);
-var
-  i:integer;
-begin
-  for i:=0 to Length(Values)-1 do SendRaw(VarToWideStr(Values[i]));
-end;
-
 function TXxmLocalContext.GetRequestHeaders: IxxmDictionaryEx;
 begin
   CheckReqHeaders;
@@ -1177,11 +824,6 @@ constructor TXxmPageLoader.Create;
 begin
   inherited Create(false);
   //FInUse:=false;
-end;
-
-destructor TXxmPageLoader.Destroy;
-begin
-  inherited;
 end;
 
 procedure TXxmPageLoader.Execute;

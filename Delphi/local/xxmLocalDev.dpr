@@ -22,7 +22,8 @@ uses
   xxmPageParse in '..\conv\xxmPageParse.pas',
   xxmProtoParse in '..\conv\xxmProtoParse.pas',
   xxmThreadPool in 'xxmThreadPool.pas',
-  xxmCommonUtils in '..\common\xxmCommonUtils.pas';
+  xxmCommonUtils in '..\common\xxmCommonUtils.pas',
+  xxmContext in '..\common\xxmContext.pas';
 
 exports
   DllGetClassObject,
