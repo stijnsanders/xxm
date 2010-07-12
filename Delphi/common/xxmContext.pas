@@ -14,7 +14,7 @@ type
     FPage, FBuilding: IXxmFragment;
     FStatusCode, FIncludeDepth: integer;
     FVerb, FStatusText, FSingleFileSent: WideString;
-    FMimeTypeSent: boolean;
+    FHeaderSent: boolean;
     FParams: TXxmReqPars;
   protected
     FURL, FContentType, FProjectName, FPageClass, FFragmentName: WideString;
@@ -47,7 +47,7 @@ type
     procedure SendStream(s: IStream); virtual; abstract;
     function ContextString(cs: TXxmContextString): WideString; virtual; abstract;
     function PostData: IStream;
-    procedure SetStatus(Code: Integer; Text: WideString);
+    procedure SetStatus(Code: Integer; Text: WideString); virtual;
     procedure Include(Address: WideString); overload;
     procedure Include(Address: WideString;
       const Values: array of OleVariant); overload;
@@ -124,9 +124,13 @@ begin
   FPage:=nil;
   FBuilding:=nil;
   FPageClass:='';
-  FMimeTypeSent:=false;
+  FHeaderSent:=false;
   FIncludeDepth:=0;
+  FStatusCode:=200;//default
+  FStatusText:='OK';//default
   StatusSet:=false;
+  FProjectName:='';//parsed from URL later
+  FFragmentName:='';//parsed from URL later
 end;
 
 destructor TXxmGeneralContext.Destroy;
@@ -256,11 +260,11 @@ end;
 function TXxmGeneralContext.CheckSendStart: boolean;
 begin
   //FAutoEncoding: see SendHTML
-  Result:=not(FMimeTypeSent);
+  Result:=not(FHeaderSent);
   if Result then
    begin
     SendHeader;
-    FMimeTypeSent:=true;
+    FHeaderSent:=true;
    end
   else
     FSingleFileSent:='';
@@ -268,7 +272,7 @@ end;
 
 procedure TXxmGeneralContext.CheckHeaderNotSent;
 begin
-  if FMimeTypeSent then
+  if FHeaderSent then
     raise EXxmResponseHeaderAlreadySent.Create(SXxmResponseHeaderAlreadySent);
 end;
 
@@ -292,7 +296,7 @@ begin
   end;
   for i:=0 to (Length(vals) div 2)-1 do
     s:=StringReplace(s,'[['+vals[i*2]+']]',vals[i*2+1],[rfReplaceAll]);
-  if not(FMimeTypeSent) then
+  if not(FHeaderSent) then
    begin
     FContentType:='text/html';
     FAutoEncoding:=aeContentDefined;//?
@@ -388,7 +392,7 @@ var
 begin
   inherited;
   //TODO: auto mimetype by extension?
-  b:=not(FMimeTypeSent);
+  b:=not(FHeaderSent);
   SendStream(TStreamAdapter.Create(TFileStream.Create(FilePath,fmOpenRead or fmShareDenyNone),soOwned));//does CheckSendStart
   if b then FSingleFileSent:=FilePath;
 end;

@@ -15,6 +15,7 @@ uses
   xxmHttpPReg in '..\http\xxmHttpPReg.pas',
   xxmApacheClientStream in 'xxmApacheClientStream.pas',
   xxmApachePars in 'xxmApachePars.pas',
+  xxmContext in '..\common\xxmContext.pas',
   xxmAutoUpdate in '..\common\xxmAutoUpdate.pas',
   MSXML2_TLB in '..\common\MSXML2_TLB.pas';
 

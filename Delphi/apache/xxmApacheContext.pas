@@ -2,74 +2,36 @@ unit xxmApacheContext;
 
 interface
 
-uses SysUtils, Classes, ActiveX, HTTPD2, xxm,
+uses SysUtils, Classes, ActiveX, HTTPD2, xxm, xxmContext,
   xxmHeaders, xxmParams, xxmHttpPReg, xxmParUtils;
 
 type
-  TxxmApacheContext=class(TInterfacedObject, IxxmContext, IxxmHttpHeaders)
+  TxxmApacheContext=class(TXxmGeneralContext, IxxmHttpHeaders)
   private
-    rq:Prequest_rec;
+    rq: Prequest_rec;
 
-    FConnected,FHeaderSent:boolean;
-    FAutoEncoding: TXxmAutoEncoding;
-    FContentType,FRedirectPrefix,FPageClass,FProjectName,FFragmentName,FSessionID: AnsiString;
-    FProjectEntry:TXxmProjectCacheEntry;
-    FPage, FBuilding: IXxmFragment;
-    FPostData: TStream;
-    FIncludeDepth:integer;
-    FParams: TXxmReqPars;
+    FConnected: boolean;
+    FRedirectPrefix, FSessionID: AnsiString;
     FCookieParsed: boolean;
     FCookie: AnsiString;
     FCookieIdx: TParamIndexes;
 
-    function CheckHeader:boolean;
-    procedure HeaderOK;
-    procedure SendRaw(Data: WideString);
-    procedure SendError(res:AnsiString;vals:array of AnsiString);
-
-  private
-    //IxxmContext
-    function GetURL:WideString;
-    function GetPage:IXxmFragment;
-    function GetContentType:WideString;
-    procedure SetContentType(const Value: WideString);
-    function GetAutoEncoding:TXxmAutoEncoding;
-    procedure SetAutoEncoding(const Value: TXxmAutoEncoding);
-    function GetParameter(Key:OleVariant):IXxmParameter;
-    function GetParameterCount:integer;
-    function GetSessionID:WideString;
-
-    procedure Send(Data: OleVariant); overload;
-    procedure SendHTML(Data: OleVariant); overload;
-    procedure SendFile(FilePath: WideString);
-    procedure SendStream(s:IStream);
-    procedure Include(Address: WideString); overload;
-    procedure Include(Address: WideString;
-      const Values: array of OleVariant); overload;
-    procedure Include(Address: WideString;
-      const Values: array of OleVariant;
-      const Objects: array of TObject); overload;
-    procedure DispositionAttach(FileName: WideString);
-
-    function ContextString(cs:TXxmContextString):WideString;
-    function PostData:IStream;
-    function Connected:boolean;
-
-    //(local:)progress
-    procedure SetStatus(Code:integer;Text:WideString);
-    procedure Redirect(RedirectURL:WideString; Relative:boolean);
-    function GetCookie(Name:WideString):WideString;
-    procedure SetCookie(Name,Value:WideString); overload;
+  protected
+    procedure SendStream(s:IStream); override;
+    function GetSessionID:WideString; override;
+    procedure DispositionAttach(FileName: WideString); override;
+    function ContextString(cs:TXxmContextString):WideString; override;
+    function Connected:boolean; override;
+    procedure Redirect(RedirectURL:WideString; Relative:boolean); override;
+    function GetCookie(Name:WideString):WideString; override;
+    procedure SetCookie(Name,Value:WideString); overload; override;
     procedure SetCookie(Name,Value:WideString; KeepSeconds:cardinal;
-      Comment,Domain,Path:WideString; Secure,HttpOnly:boolean); overload;
+      Comment,Domain,Path:WideString; Secure,HttpOnly:boolean); overload; override;
     //procedure SetCookie2();
-
-    //added V1.0.1
-    procedure Send(Value: integer); overload;
-    procedure Send(Value: int64); overload;
-    procedure Send(Value: cardinal); overload;
-    procedure Send(const Values:array of OleVariant); overload;
-    procedure SendHTML(const Values:array of OleVariant); overload;
+    procedure SendHeader; override;
+    procedure SendRaw(Data: WideString); override;
+    procedure AddResponseHeader(Name: WideString; Value: WideString); override;
+    procedure SetStatus(Code:integer;Text:WideString); override;
 
     //IxxmHttpHeaders
     function GetRequestHeaders:IxxmDictionaryEx;
@@ -83,11 +45,8 @@ type
   end;
 
   EXxmRWriteFailed=class(Exception);
-  EXxmDirectInclude=class(Exception);
   EXxmAutoBuildFailed=class(Exception);
   EXxmPageRedirected=class(Exception);
-  EXxmIncludeStackFull=class(Exception);
-  EXxmIncludeFragmentNotFound=class(Exception);
 
 implementation
 
@@ -95,9 +54,6 @@ uses Windows, Variants, ComObj, xxmCommonUtils, xxmPReg, xxmApacheClientStream, 
 
 resourcestring
   SXxmRWriteFailed='ap_rwrite failed';
-  SXxmDirectInclude='Direct call to include fragment is not allowed.';
-  SXxmIncludeStackFull='Maximum level of includes exceeded';
-  SXxmIncludeFragmentNotFound='Include fragment not found "__"';
 
 const
   XxmMaxIncludeDepth=64;//TODO: setting?
@@ -106,22 +62,10 @@ const
 
 constructor TxxmApacheContext.Create(r: Prequest_rec);
 begin
-  inherited Create;
+  inherited Create(ap_construct_url(r.pool,r.unparsed_uri,r));
   rq:=r;
   FConnected:=true;
-  FHeaderSent:=false;
-  FContentType:='text/html';
-  FAutoEncoding:=aeUtf8;//default (setting?)
   FRedirectPrefix:='';//see Execute
-  FPageClass:='';
-  FProjectName:='';
-  FFragmentName:='';
-  FProjectEntry:=nil;
-  FPage:=nil;
-  FBuilding:=nil;
-  FPostData:=nil;
-  FIncludeDepth:=0;
-  FParams:=nil;//see GetParameter
   FCookieParsed:=false;
   FSessionID:='';//see GetSessionID
 end;
@@ -129,13 +73,6 @@ end;
 destructor TxxmApacheContext.Destroy;
 begin
   rq:=nil;
-  FreeAndNil(FPostData);
-  FreeAndNil(FParams);
-  if not(FProjectEntry=nil) then
-   begin
-    FProjectEntry.CloseContext;
-    FProjectEntry:=nil;
-   end;
   inherited;
 end;
 
@@ -143,13 +80,9 @@ procedure TxxmApacheContext.Execute;
 var
   x,y:AnsiString;
   i,l:integer;
-  p:IXxmPage;
-  f:TFileStream;
-  fs:Int64;
-  d:TDateTime;
 begin
   try
-    apr_table_set(rq.headers_out,'X-Powered-By',PAnsiChar(SelfVersion));
+    AddResponseHeader('X-Powered-By',SelfVersion);
     if XxmProjectCache=nil then XxmProjectCache:=TXxmProjectCache.Create;
 
     //parse url
@@ -182,82 +115,7 @@ begin
     x:=apr_table_get(rq.headers_in,'Content-Length');
     if not(x='') then FPostData:=TxxmApacheClientStream.Create(rq);
 
-    FProjectEntry:=XxmProjectCache.GetProject(FProjectName);
-    if not(@XxmAutoBuildHandler=nil) then
-      if not(XxmAutoBuildHandler(FProjectEntry,Self,FProjectName)) then
-        raise EXxmAutoBuildFailed.Create(FProjectName);
-    FProjectEntry.OpenContext;
-    FPage:=FProjectEntry.Project.LoadPage(Self,FFragmentName);
-
-    if FPage=nil then
-     begin
-      //find a file
-      //ask project to translate? project should have given a fragment!
-      FPageClass:='['+FProjectName+']GetFilePath';
-      FProjectEntry.GetFilePath(FFragmentName,x,y);
-      d:=GetFileModifiedDateTime(x,fs);
-      if d<>0 then //FileExists(x)
-       begin
-        //TODO: Last Modified
-        //TODO: if directory file-list?
-        FContentType:=y;
-        f:=TFileStream.Create(x,fmOpenRead or fmShareDenyNone);
-        try
-          apr_table_set(rq.headers_out,'Last-Modified',PAnsiChar(RFC822DateGMT(d)));
-          apr_table_set(rq.headers_out,'Content-Length',PAnsiChar(IntToStr(fs)));
-          apr_table_set(rq.headers_out,'Accept-Ranges','bytes');
-          SendStream(TStreamAdapter.Create(f,soReference));
-        finally
-          f.Free;
-        end;
-       end
-      else
-       begin
-        FPageClass:='['+FProjectName+']404:'+FFragmentName;
-        FPage:=FProjectEntry.Project.LoadPage(Self,'404.xxm');
-        if FPage=nil then
-          SendError('fnf',[
-            'URL',HTMLEncode(ContextString(csURL)),
-            'PROJECT',FProjectName,
-            'ADDRESS',FFragmentName,
-            'PATH',HTMLEncode(x),
-            'VERSION',ContextString(csVersion)
-          ])
-        else
-          try
-            FPageClass:=FPage.ClassNameEx;
-            FBuilding:=FPage;
-            FPage.Build(Self,nil,[FFragmentName,x,y],[]);//any parameters?
-          finally
-            FBuilding:=nil;
-            //let project free, cache or recycle
-            FProjectEntry.Project.UnloadFragment(FPage);
-            FPage:=nil;
-          end;
-       end;
-     end
-    else
-      try
-        FPageClass:=FPage.ClassNameEx;
-        //mime type moved to CheckSendStart;
-        //OleCheck(ProtSink.ReportProgress(BINDSTATUS_CACHEFILENAMEAVAILABLE,));
-        //TODO: cache output?
-
-        //TODO: setting?
-        if not(FPage.QueryInterface(IID_IXxmPage,p)=S_OK) then
-          raise EXxmDirectInclude.Create(SXxmDirectInclude);
-        p:=nil;
-
-        //build page
-        FBuilding:=FPage;
-        FPage.Build(Self,nil,[],[]);//any parameters?
-
-      finally
-        FBuilding:=nil;
-        //let project decide to free or not
-        FProjectEntry.Project.UnloadFragment(FPage);
-        FPage:=nil;
-      end;
+    BuildPage;
 
   except
     on e:EXxmPageRedirected do
@@ -317,27 +175,11 @@ begin
 end;
 
 procedure TxxmApacheContext.DispositionAttach(FileName: WideString);
-var
-  s:AnsiString;
 begin
   if FileName='' then
-    s:='attachment'
+    AddResponseHeader('Content-Disposition','attachment')
   else
-    s:='attachment; filename="'+FileName+'"';
-  apr_table_set(rq.headers_out,
-    apr_pstrdup(rq.pool,PAnsiChar('Content-Disposition')),
-    apr_pstrdup(rq.pool,PAnsiChar(s)));
-end;
-
-function TxxmApacheContext.GetAutoEncoding: TXxmAutoEncoding;
-begin
-  Result:=FAutoEncoding;
-end;
-
-function TxxmApacheContext.GetContentType: WideString;
-begin
-  //Result:=rq.content_type;//see CheckHeader
-  Result:=FContentType;
+    AddResponseHeader('Content-Disposition','attachment; filename="'+FileName+'"');
 end;
 
 function TxxmApacheContext.GetCookie(Name: WideString): WideString;
@@ -353,15 +195,11 @@ end;
 
 procedure TxxmApacheContext.SetCookie(Name, Value: WideString);
 begin
-  HeaderOK;
+  CheckHeaderNotSent;
   //check name?
   //TODO: "quoted string"?
-  apr_table_set(rq.headers_out,
-    apr_pstrdup(rq.pool,'Cache-Control'),
-    apr_pstrdup(rq.pool,'no-cache="set-cookie"'));
-  apr_table_set(rq.headers_out,
-    apr_pstrdup(rq.pool,'Set-Cookie'),
-    apr_pstrdup(rq.pool,PAnsiChar(AnsiString(Name+'="'+Value+'"'))));
+  AddResponseHeader('Cache-Control','no-cache="set-cookie"');
+  AddResponseHeader('Set-Cookie',Name+'="'+Value+'"');
 end;
 
 procedure TxxmApacheContext.SetCookie(Name, Value: WideString;
@@ -370,12 +208,10 @@ procedure TxxmApacheContext.SetCookie(Name, Value: WideString;
 var
   x:AnsiString;
 begin
-  HeaderOK;
+  CheckHeaderNotSent;
   //check name?
   //TODO: "quoted string"?
-  apr_table_set(rq.headers_out,
-    apr_pstrdup(rq.pool,'Cache-Control'),
-    apr_pstrdup(rq.pool,'no-cache="set-cookie"'));
+  AddResponseHeader('Cache-Control','no-cache="set-cookie"');
   x:=Name+'="'+Value+'"';
   //'; Version=1';
   if not(Comment='') then
@@ -390,28 +226,8 @@ begin
     x:=x+'; Secure'+#13#10;
   if HttpOnly then
     x:=x+'; HttpOnly'+#13#10;
-  apr_table_set(rq.headers_out,
-    apr_pstrdup(rq.pool,'Set-Cookie'),
-    apr_pstrdup(rq.pool,PAnsiChar(x)));
+  AddResponseHeader('Set-Cookie',x);
   //TODO: Set-Cookie2
-end;
-
-function TxxmApacheContext.GetPage: IXxmFragment;
-begin
-  Result:=FPage;
-end;
-
-function TxxmApacheContext.GetParameter(Key: OleVariant): IXxmParameter;
-begin
-  if FParams=nil then FParams:=TXxmReqPars.Create(Self,FPostData);
-  if VarIsNumeric(Key) then Result:=FParams.GetItem(Key) else
-    Result:=FParams.Get(VarToWideStr(Key));
-end;
-
-function TxxmApacheContext.GetParameterCount: integer;
-begin
-  if FParams=nil then FParams:=TXxmReqPars.Create(Self,FPostData);
-  Result:=FParams.Count;
 end;
 
 function TxxmApacheContext.GetRequestHeaders: IxxmDictionaryEx;
@@ -442,64 +258,13 @@ begin
   Result:=FSessionID;
 end;
 
-function TxxmApacheContext.GetURL: WideString;
-begin
-  Result:=ap_construct_url(rq.pool,rq.unparsed_uri,rq);
-end;
-
-procedure TxxmApacheContext.Include(Address: WideString);
-begin
-  Include(Address,[],[]);
-end;
-
-procedure TxxmApacheContext.Include(Address: WideString;
-  const Values: array of OleVariant);
-begin
-  Include(Address,Values,[]);
-end;
-
-procedure TxxmApacheContext.Include(Address: WideString;
-  const Values: array of OleVariant; const Objects: array of TObject);
-var
-  f,fb:IXxmFragment;
-  pc:AnsiString;
-begin
-  if FIncludeDepth=XxmMaxIncludeDepth then
-    raise EXxmIncludeStackFull.Create(SXxmIncludeStackFull);
-  //FPage.Project??
-  f:=FProjectEntry.Project.LoadFragment(Address);
-  if f=nil then
-    raise EXxmIncludeFragmentNotFound.Create(StringReplace(
-      SXxmIncludeFragmentNotFound,'__',Address,[]));
-  fb:=FBuilding;
-  pc:=FPageClass;
-  FBuilding:=f;
-  inc(FIncludeDepth);
-  try
-    FPageClass:=f.ClassNameEx+' < '+pc;
-    f.Build(Self,fb,Values,Objects);//queue to avoid building up stack?
-  finally
-    dec(FIncludeDepth);
-    FBuilding:=fb;
-    FPageClass:=pc;
-    fb:=nil;
-    FProjectEntry.Project.UnloadFragment(f);
-    f:=nil;
-  end;
-end;
-
-function TxxmApacheContext.PostData: IStream;
-begin
-  Result:=TStreamAdapter.Create(FPostData,soReference);
-end;
-
 procedure TxxmApacheContext.Redirect(RedirectURL: WideString;
   Relative: boolean);
 begin
   //HeaderOK;//see SetStatus
   SetStatus(301,'Moved Permanently');
   //TODO: relative
-  apr_table_set(rq.headers_out,'Location',PAnsiChar(AnsiString(RedirectURL)));
+  AddResponseHeader('Location',RedirectURL);
   //TODO: move this to execute's except?
   SendHTML('<a href="'+HTMLEncode(RedirectURL)+'">'+HTMLEncode(RedirectURL)+'</a>');
   raise EXxmPageRedirected.Create(RedirectURL);
@@ -515,7 +280,7 @@ var
 begin
   if not(Data='') then
    begin
-    if CheckHeader then
+    if CheckSendStart then
       case FAutoEncoding of
         aeUtf8:
          begin
@@ -551,50 +316,6 @@ begin
    end;
 end;
 
-procedure TxxmApacheContext.Send(Value: integer);
-begin
-  SendRaw(IntToStr(Value));
-end;
-
-procedure TxxmApacheContext.Send(Data: OleVariant);
-begin
-  SendRaw(HTMLEncode(Data));
-end;
-
-procedure TxxmApacheContext.Send(Value: int64);
-begin
-  SendRaw(IntToStr(Value));
-end;
-
-procedure TxxmApacheContext.Send(const Values: array of OleVariant);
-var
-  i:integer;
-begin
-  for i:=0 to Length(Values)-1 do SendRaw(HTMLEncode(Values[i]));
-end;
-
-procedure TxxmApacheContext.Send(Value: cardinal);
-begin
-  SendRaw(IntToStr(Value));
-end;
-
-procedure TxxmApacheContext.SendFile(FilePath: WideString);
-begin
-  SendStream(TStreamAdapter.Create(TFileStream.Create(FilePath,fmOpenRead or fmShareDenyNone),soOwned));
-end;
-
-procedure TxxmApacheContext.SendHTML(Data: OleVariant);
-begin
-  SendRaw(VarToWideStr(Data));
-end;
-
-procedure TxxmApacheContext.SendHTML(const Values: array of OleVariant);
-var
-  i:integer;
-begin
-  for i:=0 to Length(Values)-1 do SendRaw(VarToWideStr(Values[i]));
-end;
-
 procedure TxxmApacheContext.SendStream(s: IStream);
 const
   dSize=$10000;
@@ -602,13 +323,15 @@ var
   d:array[0..dSize-1] of byte;
   l:integer;
 begin
+  {
   if not(FHeaderSent) then
    begin
     //TODO: (Apache does 'Transfer-Encoding: chunked' for us!)
     //'Content-Length':=IntToStr(s.Size);
     //'Accept-Ranges':='bytes';
    end;
-  CheckHeader;
+  }
+  CheckSendStart;
   repeat
     OleCheck(s.Read(@d[0],dSize,@l));
     if not(ap_rwrite(d[0],l,rq)=l) then raise EXxmRWriteFailed.Create(SXxmRWriteFailed);
@@ -616,74 +339,31 @@ begin
   until l<>dSize;
 end;
 
-procedure TxxmApacheContext.HeaderOK;
-begin
-  if FHeaderSent then
-    raise EXxmResponseHeaderAlreadySent.Create(SXxmResponseHeaderAlreadySent);
-end;
-
-procedure TxxmApacheContext.SetAutoEncoding(const Value: TXxmAutoEncoding);
-begin
-  HeaderOK;
-  FAutoEncoding:=Value;
-end;
-
-procedure TxxmApacheContext.SetContentType(const Value: WideString);
-begin
-  HeaderOK;
-  FContentType:=Value;
-end;
-
 procedure TxxmApacheContext.SetStatus(Code: integer; Text: WideString);
 begin
-  HeaderOK;
+  inherited;
   rq.status:=Code;
   rq.status_line:=apr_pstrdup(rq.pool,PAnsiChar(IntToStr(Code)+' '+AnsiString(Text)));
 end;
 
-function TxxmApacheContext.CheckHeader: boolean;
+procedure TxxmApacheContext.SendHeader;
 begin
-  Result:=not(FHeaderSent);
-  if Result then
-   begin
-    //rq.status_line Sent by first ap_rwrite?
-    rq.content_type:=apr_pstrdup(rq.pool,PAnsiChar(FContentType));
-    case FAutoEncoding of
-      aeUtf8:   rq.content_encoding:=apr_pstrdup(rq.pool,PAnsiChar('utf-8'));
-      aeUtf16:  rq.content_encoding:=apr_pstrdup(rq.pool,PAnsiChar('utf-16'));
-      aeIso8859:rq.content_encoding:=apr_pstrdup(rq.pool,PAnsiChar('iso-8859-15'));
-      else      ;//rq.content_encoding:=apr_pstrdup(rq.pool,PAnsiChar('?
-    end;
-    //rq.connection.keepalive?//TODO
-    FHeaderSent:=true;
-   end;
+  //rq.status_line Sent by first ap_rwrite?
+  rq.content_type:=apr_pstrdup(rq.pool,PAnsiChar(AnsiString(FContentType)));
+  case FAutoEncoding of
+    aeUtf8:   rq.content_encoding:=apr_pstrdup(rq.pool,PAnsiChar('utf-8'));
+    aeUtf16:  rq.content_encoding:=apr_pstrdup(rq.pool,PAnsiChar('utf-16'));
+    aeIso8859:rq.content_encoding:=apr_pstrdup(rq.pool,PAnsiChar('iso-8859-15'));
+    else      ;//rq.content_encoding:=apr_pstrdup(rq.pool,PAnsiChar('?
+  end;
+  //rq.connection.keepalive?//TODO
 end;
 
-procedure TxxmApacheContext.SendError(res: AnsiString; vals: array of AnsiString);
-var
-  s:AnsiString;
-  i:integer;
-  r:TResourceStream;
-  l:Int64;
-const
-  RT_HTML = MakeIntResource(23);
+procedure TxxmApacheContext.AddResponseHeader(Name: WideString; Value: WideString);
 begin
-  r:=TResourceStream.Create(HInstance,res,RT_HTML);
-  try
-    l:=r.Size;
-    SetLength(s,l);
-    r.Read(s[1],l);
-  finally
-    r.Free;
-  end;
-  for i:=0 to (Length(vals) div 2)-1 do
-    s:=StringReplace(s,'[['+vals[i*2]+']]',vals[i*2+1],[rfReplaceAll]);
-  if not(FHeaderSent) then
-   begin
-    FContentType:='text/html';
-    FAutoEncoding:=aeContentDefined;//?
-   end;
-  SendHTML(s);
+  apr_table_set(rq.headers_out,
+    apr_pstrdup(rq.pool,PAnsiChar(AnsiString(Name))),
+    apr_pstrdup(rq.pool,PAnsiChar(AnsiString(Value))));
 end;
 
 end.

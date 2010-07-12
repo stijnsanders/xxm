@@ -111,9 +111,6 @@ begin
   PrPos:=0;
   PrMax:=1;
   FirstData:=true;
-  FStatusCode:=200;
-  FProjectName:='';//parsed from URL later
-  FFragmentName:='';//parsed from URL later
   FStatusText:='';
   FReqHeaders:=nil;
   FResHeaders:=TResponseHeaders.Create;

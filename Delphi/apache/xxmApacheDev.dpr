@@ -16,6 +16,7 @@ uses
   xxmHttpPReg in '..\http\xxmHttpPReg.pas',
   xxmApacheClientStream in 'xxmApacheClientStream.pas',
   xxmApachePars in 'xxmApachePars.pas',
+  xxmContext in '..\common\xxmContext.pas',
   xxmAutoBuild in '..\common\xxmAutoBuild.pas',
   xxmWebProject in '..\conv\xxmWebProject.pas',
   xxmPageParse in '..\conv\xxmPageParse.pas',
