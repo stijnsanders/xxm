@@ -32,9 +32,6 @@ type
     procedure SetAutoEncoding(const Value: TXxmAutoEncoding);
     function GetParameter(Key: OleVariant): IXxmParameter;
     function GetParameterCount: Integer;
-    function GetSessionID: WideString; virtual; abstract;
-
-    procedure DispositionAttach(FileName: WideString); virtual; abstract;
     //TODO: progress
     procedure Send(Data: OleVariant); overload;
     procedure Send(Value: integer); overload;
@@ -44,8 +41,6 @@ type
     procedure SendHTML(Data: OleVariant); overload;
     procedure SendHTML(const Values:array of OleVariant); overload;
     procedure SendFile(FilePath: WideString);
-    procedure SendStream(s: IStream); virtual; abstract;
-    function ContextString(cs: TXxmContextString): WideString; virtual; abstract;
     function PostData: IStream;
     procedure SetStatus(Code: Integer; Text: WideString); virtual;
     procedure Include(Address: WideString); overload;
@@ -54,6 +49,13 @@ type
     procedure Include(Address: WideString;
       const Values: array of OleVariant;
       const Objects: array of TObject); overload;
+
+    //abstract methods, inheriters need to implement these
+    function GetSessionID: WideString; virtual; abstract;
+    procedure DispositionAttach(FileName: WideString); virtual; abstract;
+    procedure SendRaw(Data: WideString); virtual; abstract;
+    procedure SendStream(s: IStream); virtual; abstract;
+    function ContextString(cs: TXxmContextString): WideString; virtual; abstract;
     function Connected: Boolean; virtual; abstract;
     procedure Redirect(RedirectURL: WideString; Relative:boolean); virtual; abstract;
     function GetCookie(Name: WideString): WideString; virtual; abstract;
@@ -63,16 +65,17 @@ type
 
     {  }
     function GetProjectEntry(ProjectName: WideString):TXxmProjectEntry; virtual; abstract;
+    procedure SendHeader; virtual; abstract;
+    procedure AddResponseHeader(Name, Value: WideString); virtual; abstract;
+
+
     function GetProjectPage(FragmentName: WideString):IXxmFragment; virtual;
     procedure CheckHeaderNotSent;
     function CheckSendStart:boolean;
-    procedure SendHeader; virtual; abstract;
-    procedure AddResponseHeader(Name, Value: WideString); virtual; abstract;
-    
+
     procedure SendError(res:AnsiString;vals:array of AnsiString);
 
     procedure BuildPage;
-    procedure SendRaw(Data: WideString); virtual; abstract;
 
     property ProjectEntry: TXxmProjectEntry read FProjectEntry;
   public

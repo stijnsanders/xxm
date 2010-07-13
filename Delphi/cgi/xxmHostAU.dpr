@@ -14,6 +14,7 @@ uses
   xxmPReg in '..\common\xxmPReg.pas',
   xxmHttpPReg in '..\http\xxmHttpPReg.pas',
   xxmCommonUtils in '..\common\xxmCommonUtils.pas',
+  xxmContext in '..\common\xxmContext.pas',
   MSXML2_TLB in '..\common\MSXML2_TLB.pas',
   xxmAutoUpdate in '..\common\xxmAutoUpdate.pas';
 

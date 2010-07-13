@@ -30,6 +30,7 @@ type
     //procedure SetCookie2();
     procedure SendHeader; override;
     procedure SendRaw(Data: WideString); override;
+    function GetProjectEntry(ProjectName: WideString):TXxmProjectEntry; override;
     procedure AddResponseHeader(Name: WideString; Value: WideString); override;
     procedure SetStatus(Code:integer;Text:WideString); override;
 
@@ -54,9 +55,6 @@ uses Windows, Variants, ComObj, xxmCommonUtils, xxmPReg, xxmApacheClientStream, 
 
 resourcestring
   SXxmRWriteFailed='ap_rwrite failed';
-
-const
-  XxmMaxIncludeDepth=64;//TODO: setting?
 
 { TxxmApacheContext }
 
@@ -143,6 +141,12 @@ begin
       ]);
      end;
   end;
+end;
+
+function TxxmApacheContext.GetProjectEntry(
+  ProjectName: WideString): TXxmProjectEntry;
+begin
+  Result:=XxmProjectCache.GetProject(FProjectName);
 end;
 
 function TxxmApacheContext.Connected: boolean;
