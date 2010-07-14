@@ -15,10 +15,8 @@ type
     BindInfo: IInternetBindInfo;
     PrPos,PrMax:Integer;
     FLock:TRTLCriticalSection;
-    FStatusCode:integer;
-    FStatusText,FExtraInfo,FQueryString:WideString;
+    FExtraInfo,FQueryString:WideString;
     FirstData,Aborted:boolean;
-    FSingleFileSent:WideString;
     FGotSessionID:boolean;
     FReqHeaders: TRequestHeaders;
     FResHeaders: TResponseHeaders;
@@ -35,11 +33,14 @@ type
     procedure Redirect(RedirectURL: WideString; Relative:boolean); override;
     function ContextString(cs: TXxmContextString): WideString; override;
     function GetSessionID: WideString; override;
+    procedure DispositionAttach(FileName: WideString); override;
     function GetCookie(Name: WideString): WideString; override;
     procedure SetCookie(Name: WideString; Value: WideString); overload; override;
     procedure SetCookie(Name,Value:WideString; KeepSeconds:cardinal;
       Comment,Domain,Path:WideString; Secure,HttpOnly:boolean); overload; override;
     function GetRequestParam(Name: AnsiString):AnsiString;
+    function GetProjectEntry(ProjectName: WideString):TXxmProjectEntry; override;
+    function GetProjectPage(FragmentName: WideString):IXxmFragment; override;
     function GetRequestHeaders:IxxmDictionaryEx;
     function GetResponseHeaders:IxxmDictionaryEx;
   public
@@ -53,17 +54,13 @@ type
       OIProtSink: IInternetProtocolSink; OIBindInfo: IInternetBindInfo);
     destructor Destroy; override;
 
-    procedure DispositionAttach(FileName: WideString); override;
-
     procedure Execute;
-
-    function GetProjectEntry(ProjectName: WideString):TXxmProjectEntry; override;
-    function GetProjectPage(FragmentName: WideString):IXxmFragment; override;
 
     procedure Lock;
     procedure Unlock;
     procedure Disconnect;
 
+    property Verb: WideString read FVerb;
   end;
 
   TXxmPageLoader=class(TThread)
@@ -111,12 +108,10 @@ begin
   PrPos:=0;
   PrMax:=1;
   FirstData:=true;
-  FStatusText:='';
   FReqHeaders:=nil;
   FResHeaders:=TResponseHeaders.Create;
   (FResHeaders as IUnknown)._AddRef;
   FHttpNegotiate:=nil;
-  FSingleFileSent:='';
   FGotSessionID:=false;
 end;
 
@@ -261,24 +256,19 @@ begin
   except
     on EXxmPageRedirected do
      begin
-      FStatusCode:=301;//??
-      FStatusText:='Moved Permanently';
+      SetStatus(301,'Moved Permanently');
       //SendHTML('Redirected to <a href=""></a>')?
      end;
 
     on EXxmAutoBuildFailed do
      begin
       //assert AutoBuild handler already displays message
-      StatusSet:=true;
-      FStatusCode:=StatusBuildError;
-      FStatusText:='BUILDFAILED';
+      SetStatus(StatusBuildError,'BUILDFAILED');
      end;
 
     on e:Exception do
      begin
-      StatusSet:=true;
-      FStatusCode:=StatusException;
-      FStatusText:='ERROR';
+      SetStatus(StatusException,'ERROR');
       //TODO: get fragment 500.xxm?
       try
         if FPostData=nil then x:='none' else x:=IntToStr(FPostData.Size)+' bytes';
@@ -305,10 +295,10 @@ begin
     //OleCheck?
     //PrPos:=PrMax;
     ProtSink.ReportData(BSCF_LASTDATANOTIFICATION or BSCF_DATAFULLYAVAILABLE,PrPos,PrMax);
-    if not(StatusSet) or (FStatusCode=200) then
-      ProtSink.ReportResult(S_OK,FStatusCode,nil)
+    if not(StatusSet) or (StatusCode=200) then
+      ProtSink.ReportResult(S_OK,StatusCode,nil)
     else
-      ProtSink.ReportResult(S_OK,FStatusCode,PWideChar(FStatusText))
+      ProtSink.ReportResult(S_OK,StatusCode,PWideChar(StatusText))
     //TODO: find out why iexplore keeps counting up progress sometimes (even after terminate+unlock)
    end;
 end;
@@ -513,7 +503,7 @@ begin
       IID_IHttpNegotiate,IID_IHttpNegotiate,FHttpNegotiate));
   px:=FResHeaders.Build+#13#10;
   py:=nil;
-  OleCheck(FHttpNegotiate.OnResponse(FStatusCode,PWideChar(px),nil,py));
+  OleCheck(FHttpNegotiate.OnResponse(StatusCode,PWideChar(px),nil,py));
   //TODO: add py to FResHeaders?
 
   //BINDSTATUS_ENCODING

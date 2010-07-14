@@ -2,12 +2,12 @@ unit xxmGeckoChannel;
 
 interface
 
-uses nsXPCOM, nsTypes, nsGeckoStrings, nsThreadUtils, xxm, xxmHeaders,
-  Windows, Classes, SysUtils, ActiveX, xxmParUtils, xxmPReg, xxmPRegLocal,
-  xxmParams, xxmGeckoInterfaces, xxmGeckoStreams;
+uses nsXPCOM, nsTypes, nsGeckoStrings, nsThreadUtils, xxm, xxmContext,
+  Windows, Classes, SysUtils, ActiveX, xxmHeaders, xxmParUtils,
+  xxmPReg, xxmPRegLocal, xxmParams, xxmGeckoInterfaces, xxmGeckoStreams;
 
 type
-  TxxmChannel=class(TInterfacedObject,
+  TxxmChannel=class(TXxmGeneralContext,
     nsIRequest,
     nsIChannel,
     nsIHttpChannel,
@@ -22,44 +22,33 @@ type
     //nsISecurityCheckedComponent,
     nsIInputStream,
     //nsISeekableStream?
-    IxxmContext,
+    //IxxmContext,//see TXxmGeneralContext
     IxxmHttpHeaders)
   private
     FOwner:nsISupports;
     FURI,FOrigURI,FDocURI,FReferer:nsIURI;
-    FURL:WideString;
     FLoadFlags:nsLoadFlags;
     FLoadGroup:nsILoadGroup;
     FListenerContext:nsISupports;
     FListener:nsIStreamListener;
     FCallBacks:nsIInterfaceRequestor;
-    FConnected,FComplete,FHeaderSent,FAllowPipelining:boolean;
-    FStatus,FSuspendCount,FIncludeDepth,FRedirectionLimit:integer;
-    FStatusCode:word;
-    FStatusText,FVerb,FProjectName,FFragmentName,FPageClass,FQueryString:AnsiString;
-    FProjectEntry:TXxmProjectCacheEntry;
-    FPage, FBuilding: IXxmFragment;
-    FParams: TXxmReqPars;
-    FAutoEncoding: TXxmAutoEncoding;
+    FConnected,FComplete,FAllowPipelining:boolean;
+    FStatus,FSuspendCount,FRedirectionLimit:integer;
+    FVerb,FQueryString:AnsiString;
     FRequestHeaders,FResponseHeaders:TResponseHeaders;//both TResponseHeaders?! see Create
     FCookie:AnsiString;
     FCookieIdx: TParamIndexes;
     FCookieParsed: boolean;
-    FSingleFileSent: WideString;
     FTotalSize,FOutputSize,FExportSize,FReportSize:int64;
     FReportPending:boolean;
     FData:TMemoryStream;
     FLock:TRTLCriticalSection;
-    FPostData:TxxmGeckoUploadStream;
     FRedirectChannel:nsIChannel;//see Redirect
-    procedure CheckHeader(Sent:boolean);
     procedure CheckSuspend;
     procedure Lock;
     procedure Unlock;
     procedure ReportData;//call within lock!
     function Write(const Buffer; Count: Longint): Longint;//call within lock!
-    procedure SendRaw(Data: WideString);
-    procedure SendError(res:AnsiString;vals:array of AnsiString);
     procedure ReadCheck;
     procedure RedirectSync;
   protected
@@ -151,45 +140,22 @@ type
     procedure setEOF();
 }
     //IxxmContext
-    function GetURL:WideString;
-    function GetPage:IXxmFragment;
-    function GetContentType:WideString; overload;
-    procedure SetContentType(const Value: WideString); overload;
-    function GetAutoEncoding:TXxmAutoEncoding;
-    procedure SetAutoEncoding(const Value: TXxmAutoEncoding);
-    function GetParameter(Key:OleVariant):IXxmParameter;
-    function GetParameterCount:integer;
-    function GetSessionID:WideString;
-
-    procedure Send(Data: OleVariant); overload;
-    procedure Send(Value: integer); overload;
-    procedure Send(Value: int64); overload;
-    procedure Send(Value: cardinal); overload;
-    procedure Send(const Values:array of OleVariant); overload;
-    procedure SendHTML(Data: OleVariant); overload;
-    procedure SendHTML(const Values:array of OleVariant); overload;
-    procedure SendFile(FilePath: WideString);
-    procedure SendStream(s:IStream);
-    procedure Include(Address: WideString); overload;
-    procedure Include(Address: WideString;
-      const Values: array of OleVariant); overload;
-    procedure Include(Address: WideString;
-      const Values: array of OleVariant;
-      const Objects: array of TObject); overload;
-    procedure DispositionAttach(FileName: WideString);
-
-    function ContextString(cs:TXxmContextString):WideString;
-    function PostData:IStream;
-    function Connected:boolean;
-
-    //(local:)progress
-    procedure SetStatus(Code:integer;Text:WideString);
-    procedure Redirect(RedirectURL:WideString; Relative:boolean);
-    function GetCookie(Name:WideString):WideString;
-    procedure SetCookie(Name,Value:WideString); overload;
+    function GetSessionID: WideString; override;
+    procedure DispositionAttach(FileName: WideString); override;
+    procedure SendRaw(Data: WideString); override;
+    procedure SendStream(s: IStream); override;
+    function ContextString(cs: TXxmContextString): WideString; override;
+    function Connected: Boolean; override;
+    procedure Redirect(RedirectURL: WideString; Relative:boolean); override;
+    function GetCookie(Name: WideString): WideString; override;
+    procedure SetCookie(Name: WideString; Value: WideString); overload; override;
     procedure SetCookie(Name,Value:WideString; KeepSeconds:cardinal;
-      Comment,Domain,Path:WideString; Secure,HttpOnly:boolean); overload;
-    //procedure SetCookie2();
+      Comment,Domain,Path:WideString; Secure,HttpOnly:boolean); overload; override;
+
+    //other TXxmGeneralContext abstract methods
+    function GetProjectEntry(ProjectName: WideString):TXxmProjectEntry; override;
+    procedure SendHeader; override;
+    procedure AddResponseHeader(Name, Value: WideString); override;
 
     //IxxmHttpHeaders
     function GetRequestHeaders:IxxmDictionaryEx;
@@ -243,17 +209,11 @@ type
   end;
 
   EXxmContextStringUnknown=class(Exception);
-  EXxmResponseHeaderAlreadySent=class(Exception);
-  EXxmResponseHeaderNotSent=class(Exception);
   EXxmAutoBuildFailed=class(Exception);
-  EXxmDirectInclude=class(Exception);
-  EXxmIncludeFragmentNotFound=class(Exception);
   EXxmPageRedirected=class(Exception);
-  EXxmIncludeStackFull=class(Exception);
 
 const
   PoolMaxThreads=64;//TODO: setting?
-  XxmMaxIncludeDepth=64;//TODO: setting?
 
 var
   GeckoLoaderPool:TXxmGeckoLoaderPool;
@@ -267,11 +227,6 @@ uses Variants, nsInit, nsNetUtil, xxmCommonUtils, ComObj;
 
 resourcestring
   SXxmContextStringUnknown='Unknown ContextString __';
-  SXxmResponseHeaderAlreadySent='Response header has already been sent.';
-  SXxmResponseHeaderNotSent='Response header has not been sent.';
-  SXxmDirectInclude='Direct call to include fragment is not allowed.';
-  SXxmIncludeFragmentNotFound='Include fragment not found "__"';
-  SXxmIncludeStackFull='Maximum level of includes exceeded';
 
 { TxxmChannel }
 
@@ -279,7 +234,9 @@ constructor TxxmChannel.Create(aURI: nsIURI);
 var
   x:IInterfacedUTF8String;
 begin
-  inherited Create;
+  x:=NewUTF8String;
+  aURI.GetSpec(x.AUTF8String);
+  inherited Create(UTF8Decode(x.ToString));
   FOwner:=nil;
   FLoadGroup:=nil;
   FLoadFlags:=0;//?
@@ -296,7 +253,6 @@ begin
   FReportSize:=0;
   FTotalSize:=0;
   FExportSize:=0;
-  FParams:=nil;//see GetParameter
   //FRequestHeaders is TResponseHeaders because data is set later
   //and because TResponseHeaders has full IxxmDictionaryEx implementation
   FRequestHeaders:=TResponseHeaders.Create();
@@ -307,37 +263,18 @@ begin
   FSuspendCount:=1;//see AsyncOpen, TxxmListenerCaller/lcActivate
   FConnected:=false;//see AsyncOpen
   FComplete:=false;
-  FHeaderSent:=false;
   FAllowPipelining:=true;//?
   FStatus:=NS_OK;
-  FStatusCode:=200;
-  FStatusText:='OK';
   FVerb:='GET';//default, see SetRequestMethod
   FResponseHeaders['Content-Type']:='text/html';//default (setting?)
   FResponseHeaders['Content-Charset']:='utf-8';//used by GetContentCharset/SetContentCharset
-  FAutoEncoding:=aeUtf8;//default (setting?)
-  x:=NewUTF8String;
-  aURI.GetSpec(x.AUTF8String);
-  FURL:=UTF8Decode(x.ToString);
-  FProjectName:='';//parsed from URL
-  FFragmentName:='';//parsed from URL
   FQueryString:='';//parsed from URL
-  FProjectEntry:=nil;
-  FPage:=nil;
-  FPageClass:='';
-  FSingleFileSent:='';
-  FBuilding:=nil;
-  FIncludeDepth:=0;
   FRedirectionLimit:=32;//set later?
-  FPostData:=nil;
   FRedirectChannel:=nil;
 end;
 
 destructor TxxmChannel.Destroy;
 begin
-  if not(FProjectEntry=nil) then FProjectEntry.CloseContext;
-  FProjectEntry:=nil;
-  FPage:=nil;
   FOwner:=nil;
   FListenerContext:=nil;
   FListener:=nil;
@@ -353,8 +290,6 @@ begin
   FRequestHeaders:=nil;
   (FResponseHeaders as IUnknown)._Release;
   FResponseHeaders:=nil;
-  FreeAndNil(FParams);
-  FreeAndNil(FPostData);
   inherited;
 end;
 
@@ -380,10 +315,6 @@ procedure TxxmChannel.Execute;
 var
   i,j,l:integer;
   x:WideString;
-  p:IxxmPage;
-  f:TFileStream;
-  fs:Int64;
-  d:TDateTime;
 begin
   //called from TXxmGeckoLoader
   try
@@ -425,107 +356,24 @@ begin
     while (j<=l) and not(FURL[j]='#') do inc(j);
     FQueryString:=Copy(FURL,i,j-i);
 
-    //create page object
-    if XxmProjectCache=nil then XxmProjectCache:=TXxmProjectCache.Create;
-    FProjectEntry:=XxmProjectCache.GetProject(FProjectName);
-    if not(@XxmAutoBuildHandler=nil) then
-      if not(XxmAutoBuildHandler(FProjectEntry,Self,FProjectName)) then
-        raise EXxmAutoBuildFailed.Create(FProjectName);
-    FProjectEntry.OpenContext;
-    FPage:=FProjectEntry.Project.LoadPage(Self,FFragmentName);
-
-    if FPage=nil then
-     begin
-      //find a file
-      //ask project to translate? project should have given a fragment!
-      FPageClass:='['+FProjectName+']GetFilePath';
-      FProjectEntry.GetFilePath(FFragmentName,FSingleFileSent,x);
-      d:=GetFileModifiedDateTime(FSingleFileSent,fs);
-      if d<>0 then //FileExists(FSingleFileSent)
-       begin
-        //TODO: if directory file-list?
-        FResponseHeaders['Content-Type']:=x;
-        f:=TFileStream.Create(FSingleFileSent,fmOpenRead or fmShareDenyNone);
-        try
-          FResponseHeaders['Last-Modified']:=RFC822DateGMT(d);
-          FResponseHeaders['Content-Length']:=IntToStr(fs);
-          FResponseHeaders['Accept-Ranges']:='bytes';
-          SendStream(TStreamAdapter.Create(f,soReference));
-        finally
-          f.Free;
-        end;
-       end
-      else
-       begin
-        FPageClass:='['+FProjectName+']404:'+FFragmentName;
-        FPage:=FProjectEntry.Project.LoadPage(Self,'404.xxm');
-        if FPage=nil then
-         begin
-          FStatusCode:=StatusFileNotFound;
-          FStatusText:='File not found';
-          SendError('fnf',[
-            'URL',HTMLEncode(FURL),
-            'PROJECT',FProjectName,
-            'ADDRESS',FFragmentName,
-            'PATH',HTMLEncode(FSingleFileSent),
-            'VERSION',ContextString(csVersion)
-          ]);
-         end
-        else
-          try
-            FPageClass:=FPage.ClassNameEx;
-            FBuilding:=FPage;
-            FPage.Build(Self,nil,[FFragmentName,FSingleFileSent,x],[]);//any parameters?
-          finally
-            FBuilding:=nil;
-            //let project free, cache or recycle
-            FProjectEntry.Project.UnloadFragment(FPage);
-            FPage:=nil;
-          end;
-       end;
-     end
-    else
-      try
-        FPageClass:=FPage.ClassNameEx;
-        //mime type moved to CheckSendStart;
-        //OleCheck(ProtSink.ReportProgress(BINDSTATUS_CACHEFILENAMEAVAILABLE,));
-        //TODO: cache output?
-
-        //TODO: setting?
-        if not(FPage.QueryInterface(IID_IXxmPage,p)=S_OK) then
-          raise EXxmDirectInclude.Create(SXxmDirectInclude);
-        p:=nil;
-
-        //build page
-        FBuilding:=FPage;
-        FPage.Build(Self,nil,[],[]);//any parameters?
-
-      finally
-        FBuilding:=nil;
-        //let project decide to free or not
-        FProjectEntry.Project.UnloadFragment(FPage);
-        FPage:=nil;
-      end;
+    BuildPage;
 
   except
     on EXxmPageRedirected do
      begin
-      FStatusCode:=301;//??
-      FStatusText:='Moved Permanently';
+      SetStatus(301,'Moved Permanently');
       //SendHTML('Redirected to <a href=""></a>')?
      end;
 
     on EXxmAutoBuildFailed do
      begin
       //assert AutoBuild handler already displays message
-      FStatusCode:=StatusBuildError;
-      FStatusText:='BUILDFAILED';
+      SetStatus(StatusBuildError,'BUILDFAILED');
      end;
 
     on e:Exception do
      begin
-      FStatusCode:=StatusException;
-      FStatusText:='ERROR';
+      SetSTatus(StatusException,'ERROR');
       //TODO: get fragment 500.xxm?
       try
         if FPostData=nil then x:='none' else x:=IntToStr(FPostData.Size)+' bytes';
@@ -558,6 +406,12 @@ begin
   FComplete:=true;
 end;
 
+function TxxmChannel.GetProjectEntry(ProjectName: WideString):TXxmProjectEntry;
+begin
+  if XxmProjectCache=nil then XxmProjectCache:=TXxmProjectCache.Create;
+  Result:=XxmProjectCache.GetProject(ProjectName);
+end;
+
 procedure TxxmChannel.GetName(aName: nsAUTF8String);
 var
   x:UTF8String;
@@ -573,8 +427,8 @@ end;
 
 function TxxmChannel.GetRequestSucceeded: PRBool;
 begin
-  Result:=FStatusCode=200;//FStatus=NS_OK?
-  //Result:=FStatusCode in [200,404,500]??
+  Result:=StatusCode=200;//FStatus=NS_OK?
+  //Result:=StatusCode in [200,404,500]??
 end;
 
 function TxxmChannel.GetStatus: nsresult;
@@ -584,15 +438,18 @@ end;
 
 function TxxmChannel.GetResponseStatus: PRUint32;
 begin
-  //CheckHeader(true);?
-  Result:=FStatusCode;
+  //CheckHeaderNotSent;?
+  Result:=StatusCode;
 end;
 
 procedure TxxmChannel.GetResponseStatusText(
   aResponseStatusText: nsACString);
+var
+  st:AnsiString;
 begin
-  //CheckHeader(true);?
-  NS_CStringSetData(aResponseStatusText,PAnsiChar(FStatusText),Length(FStatusText));
+  //CheckHeaderSent;?
+  st:=StatusText;
+  NS_CStringSetData(aResponseStatusText,PAnsiChar(st),Length(st));
 end;
 
 function TxxmChannel.GetSecurityInfo: nsISupports;
@@ -605,13 +462,13 @@ end;
 function TxxmChannel.IsNoCacheResponse: PRBool;
 begin
   //TODO
-  Result:=(FSingleFileSent='');
+  Result:=(SingleFileSent='');
 end;
 
 function TxxmChannel.IsNoStoreResponse: PRBool;
 begin
   //TODO: ?
-  Result:=(FSingleFileSent='');
+  Result:=(SingleFileSent='');
 end;
 
 procedure TxxmChannel.Cancel(aStatus: nsresult);
@@ -642,7 +499,7 @@ end;
 
 procedure TxxmChannel.SetContentCharset(const aContentCharset: nsACString);
 begin
-  CheckHeader(false);
+  CheckHeaderNotSent;
   FAutoEncoding:=aeContentDefined;
   FResponseHeaders['Content-Charset']:=GetCString(aContentCharset);
 end;
@@ -661,13 +518,12 @@ end;
 
 procedure TxxmChannel.GetContentType(aContentType: nsACString);
 begin
-  SetCString(aContentType,FResponseHeaders['Content-Type']);
+  SetCString(aContentType,FContentType);
 end;
 
 procedure TxxmChannel.SetContentType(const aContentType: nsACString);
 begin
-  CheckHeader(false);
-  FResponseHeaders['Content-Type']:=GetCString(aContentType);
+  SetContentType(GetCString(aContentType));
 end;
 
 function TxxmChannel.GetLoadFlags: nsLoadFlags;
@@ -787,6 +643,11 @@ begin
   FResponseHeaders[GetCString(header)]:=GetCString(value);
 end;
 
+procedure TxxmChannel.AddResponseHeader(Name, Value: WideString);
+begin
+  FResponseHeaders[Name]:=Value;
+end;
+
 function TxxmChannel.IsPending: PRBool;
 begin
   Result:=FComplete;
@@ -849,7 +710,7 @@ begin
     csAcceptedMimeTypes:
       Result:=FRequestHeaders['accept-mime-type'];
     csPostMimeType:
-      Result:=FRequestHeaders['content-type'];
+      Result:=FContentType;//FRequestHeaders['content-type'];
     csURL:
       Result:=FURL;//FURI.GetSpec?
     csReferer:
@@ -885,16 +746,6 @@ begin
   FResponseHeaders['Content-Disposition']:='attachment; filname="'+x+'"';
 end;
 
-function TxxmChannel.GetAutoEncoding: TXxmAutoEncoding;
-begin
-  Result:=FAutoEncoding;
-end;
-
-function TxxmChannel.GetContentType: WideString;
-begin
-  Result:=FResponseHeaders['Content-Type'];
-end;
-
 function TxxmChannel.GetCookie(Name: WideString): WideString;
 begin
   if not(FCookieParsed) then
@@ -906,85 +757,10 @@ begin
   Result:=GetParamValue(FCookie,FCookieIdx,Name);
 end;
 
-function TxxmChannel.GetPage: IXxmFragment;
-begin
-  Result:=FPage;
-end;
-
-function TxxmChannel.GetParameter(Key: OleVariant): IXxmParameter;
-begin
-  //parse parameters on first use
-  if FParams=nil then
-   begin
-    FParams:=TXxmReqPars.Create(Self,FPostData);
-    //redirect on post? invalidate postdata!
-    //TODO: ?//if FParams.PostDataOnRedirect then FreeAndNil(FPostData);
-   end;
-  if VarIsNumeric(Key) then Result:=FParams.GetItem(Key) else
-    Result:=FParams.Get(VarToWideStr(Key));
-end;
-
-function TxxmChannel.GetParameterCount: integer;
-begin
-  if FParams=nil then FParams:=TXxmReqPars.Create(Self,FPostData);
-  Result:=FParams.Count;
-end;
-
 function TxxmChannel.GetSessionID: WideString;
 begin
-  CheckHeader(false);
+  CheckHeaderNotSent;
   Result:=IntToHex(HInstance,8)+IntToHex(GetCurrentProcessId,8);
-end;
-
-function TxxmChannel.GetURL: WideString;
-begin
-  Result:=FURL;
-end;
-
-procedure TxxmChannel.Include(Address: WideString;
-  const Values: array of OleVariant; const Objects: array of TObject);
-var
-  f,fb:IXxmFragment;
-  pc:AnsiString;
-begin
-  if FIncludeDepth=XxmMaxIncludeDepth then
-    raise EXxmIncludeStackFull.Create(SXxmIncludeStackFull);
-  //FPage.Project?
-  f:=FProjectEntry.Project.LoadFragment(Address);
-  if f=nil then
-    raise EXxmIncludeFragmentNotFound.Create(StringReplace(
-      SXxmIncludeFragmentNotFound,'__',Address,[]));
-  fb:=FBuilding;
-  pc:=FPageClass;
-  FBuilding:=f;
-  inc(FIncludeDepth);
-  try
-    FPageClass:=f.ClassNameEx+' < '+pc;
-    f.Build(Self,fb,Values,Objects);//queue to avoid building up stack?
-    FPageClass:=pc;
-  finally
-    dec(FIncludeDepth);
-    FBuilding:=fb;
-    fb:=nil;
-    FProjectEntry.Project.UnloadFragment(f);
-    f:=nil;
-  end;
-end;
-
-procedure TxxmChannel.Include(Address: WideString;
-  const Values: array of OleVariant);
-begin
-  Include(Address, Values, []);
-end;
-
-procedure TxxmChannel.Include(Address: WideString);
-begin
-  Include(Address, [], []);
-end;
-
-function TxxmChannel.PostData: IStream;
-begin
-  Result:=TStreamAdapter.Create(FPostData,soReference);
 end;
 
 procedure TxxmChannel.Redirect(RedirectURL: WideString; Relative: boolean);
@@ -1029,6 +805,7 @@ var
   h:nsIHttpChannel;
   hi:nsIHttpChannelInternal;
   uc:nsIUploadChannel;
+  inst:nsIInputStream;
 begin
   try
     FRedirectChannel.OriginalURI:=FOrigURI;
@@ -1049,8 +826,9 @@ begin
      begin
       if not(FPostData=nil) then
        begin
-        (FPostData.InputStream as nsISeekableStream).seek(NS_SEEK_SET,0);
-        uc.SetUploadStream(FPostData.InputStream,NewCString('').ACString,-1);
+        inst:=(FPostData as TxxmGeckoUploadStream).InputStream;
+        (inst as nsISeekableStream).seek(NS_SEEK_SET,0);
+        uc.SetUploadStream(inst,NewCString('').ACString,-1);
        end;
       uc:=nil;
      end;
@@ -1074,46 +852,17 @@ begin
   end;
 end;
 
-procedure TxxmChannel.SendHTML(Data: OleVariant);
-begin
-  if not(VarIsNull(Data)) then SendRaw(VarToWideStr(Data));
-end;
-
-procedure TxxmChannel.Send(Data: OleVariant);
-begin
-  if not(VarIsNull(Data)) then SendRaw(HTMLEncode(VarToWideStr(Data)));
-end;
-
-procedure TxxmChannel.SendFile(FilePath: WideString);
-var
-  b:boolean;
-begin
-  //TODO: auto mimetype by extension?
-  //TODO: FResponseHeaders['Last-Modified']:=
-  b:=not(FHeaderSent);
-  SendStream(TStreamAdapter.Create(TFileStream.Create(FilePath,fmOpenRead or fmShareDenyNone),soOwned));//does CheckSendStart
-  if b then FSingleFileSent:=FilePath;
-end;
-
 procedure TxxmChannel.SendStream(s: IStream);
 const
   SendBufferSize=$10000;
 var
   l:integer;
   d:array[0..SendBufferSize-1] of byte;
-  startdata:boolean;
 begin
   inherited;
   //if not(s.Size=0) then
    begin
-    startdata:=not(FHeaderSent);
-    if startdata then //do this outside of lock
-      if FConnected then
-       begin
-        CheckSuspend;
-        NS_DispatchToMainThread(TxxmListenerCaller.Create(Self,lcStart,0,0));
-        FHeaderSent:=true;
-       end;
+    CheckSendStart; //SendHeader out of lock
     //no autoencoding here!
     l:=SendBufferSize;
     repeat
@@ -1129,28 +878,20 @@ begin
    end;
 end;
 
-procedure TxxmChannel.SetAutoEncoding(const Value: TXxmAutoEncoding);
+procedure TxxmChannel.SendHeader;
 begin
-  CheckHeader(false);
-  FAutoEncoding:=Value;
-  case FAutoEncoding of
-    aeUtf8:FResponseHeaders['Content-Charset']:='utf-8';
-    aeUtf16:FResponseHeaders['Content-Charset']:='utf-16';
-    aeIso8859:FResponseHeaders['Content-Charset']:='iso-8859-15';//-1?
-    aeContentDefined:FResponseHeaders['Content-Charset']:='';//??
-  end;
-end;
-
-procedure TxxmChannel.SetContentType(const Value: WideString);
-begin
-  CheckHeader(false);
-  FResponseHeaders['Content-Type']:=Value;
-  FAutoEncoding:=aeContentDefined;//parse from value? (charset)
+  //assert not in Lock
+  if FConnected then
+   begin
+    CheckSuspend;
+    FResponseHeaders['Content-Type']:=FContentType;
+    NS_DispatchToMainThread(TxxmListenerCaller.Create(Self,lcStart,0,0));
+   end;
 end;
 
 procedure TxxmChannel.SetCookie(Name, Value: WideString);
 begin
-  CheckHeader(false);
+  CheckHeaderNotSent;
   //check name?
   //TODO: "quoted string"?
   FResponseHeaders['Cache-Control']:='no-cache="set-cookie"';
@@ -1163,7 +904,7 @@ procedure TxxmChannel.SetCookie(Name, Value: WideString;
 var
   x:WideString;
 begin
-  CheckHeader(false);
+  CheckHeaderNotSent;
   //check name?
   //TODO: "quoted string"?
   FResponseHeaders['Cache-Control']:='no-cache="set-cookie"';
@@ -1185,22 +926,6 @@ begin
   //TODO: Set-Cookie2
 end;
 
-procedure TxxmChannel.SetStatus(Code: integer; Text: WideString);
-begin
-  CheckHeader(false);
-  FStatusCode:=Code;
-  FStatusText:=Text;
-end;
-
-procedure TxxmChannel.CheckHeader(Sent: boolean);
-begin
-  if not(FHeaderSent=Sent) then
-    if Sent then
-      raise EXxmResponseHeaderNotSent.Create(SXxmResponseHeaderNotSent)
-    else
-      raise EXxmResponseHeaderAlreadySent.Create(SXxmResponseHeaderAlreadySent);
-end;
-
 {
 procedure TxxmChannel.nsGetInterface(const uuid: TGUID; out _result);
 begin
@@ -1208,35 +933,6 @@ begin
     raise EIntfCastError.Create('Interface not supported');
 end;
 }
-
-procedure TxxmChannel.Send(Value: int64);
-begin
-  SendRaw(IntToStr(Value));
-end;
-
-procedure TxxmChannel.Send(Value: integer);
-begin
-  SendRaw(IntToStr(Value));
-end;
-
-procedure TxxmChannel.Send(const Values: array of OleVariant);
-var
-  i:integer;
-begin
-  for i:=0 to Length(Values)-1 do SendRaw(HTMLEncode(Values[i]));
-end;
-
-procedure TxxmChannel.Send(Value: cardinal);
-begin
-  SendRaw(IntToStr(Value));
-end;
-
-procedure TxxmChannel.SendHTML(const Values: array of OleVariant);
-var
-  i:integer;
-begin
-  for i:=0 to Length(Values)-1 do SendRaw(VarToWideStr(Values[i]));
-end;
 
 procedure TxxmChannel.CheckSuspend;
 begin
@@ -1255,24 +951,14 @@ begin
   inherited;
   if not(Data='') then
    begin
-    startdata:=not(FHeaderSent);
-    if startdata then //do this outside of lock
-      if FConnected then
-       begin
-        CheckSuspend;
-        NS_DispatchToMainThread(TxxmListenerCaller.Create(Self,lcStart,0,0));
-       end;
+    startdata:=CheckSendStart; //SendHeader outside of lock
     Lock;
     try
       if startdata then
-       begin
-        FHeaderSent:=true;
         case FAutoEncoding of
           aeUtf8:Write(Utf8ByteOrderMark,3);
           aeUtf16:Write(Utf16ByteOrderMark,2);
         end;
-       end;
-
       case FAutoEncoding of
         aeUtf16:Write(Data[1],Length(Data)*2);
         aeUtf8:
@@ -1302,33 +988,6 @@ begin
     FReportPending:=true;
     NS_DispatchToMainThread(TxxmListenerCaller.Create(Self,lcData,0,FReportSize));
    end;
-end;
-
-procedure TxxmChannel.SendError(res: AnsiString; vals: array of AnsiString);
-var
-  s:AnsiString;
-  i:integer;
-  r:TResourceStream;
-  l:Int64;
-const
-  RT_HTML = MakeIntResource(23);
-begin
-  r:=TResourceStream.Create(HInstance,res,RT_HTML);
-  try
-    l:=r.Size;
-    SetLength(s,l);
-    r.Read(s[1],l);
-  finally
-    r.Free;
-  end;
-  for i:=0 to (Length(vals) div 2)-1 do
-    s:=StringReplace(s,'[['+vals[i*2]+']]',vals[i*2+1],[rfReplaceAll]);
-  if not(FHeaderSent) then
-   begin
-    FResponseHeaders['Content-Type']:='text/html';
-    FAutoEncoding:=aeContentDefined;//?
-   end;
-  SendHTML(s);
 end;
 
 procedure TxxmChannel.Lock;
@@ -1448,7 +1107,7 @@ end;
 
 function TxxmChannel.GetUploadStream: nsIInputStream;
 begin
-  Result:=FPostData.InputStream;
+  Result:=(FPostData as TxxmGeckoUploadStream).InputStream;
 end;
 
 procedure TxxmChannel.SetUploadStream(aStream: nsIInputStream;
@@ -1461,7 +1120,7 @@ begin
   if not(aContentLength=-1) then FRequestHeaders['Content-Length']:=IntToStr(aContentLength);
   //if aContentLength=-1 then aStream.Available?
   if ct='' then
-    FPostData.ParseHeader(FRequestHeaders)
+    (FPostData as TxxmGeckoUploadStream).ParseHeader(FRequestHeaders)
   else
     FRequestHeaders['Content-Type']:=ct;
 end;
@@ -1683,7 +1342,7 @@ begin
     lcActivate:FOwner.Resume;
     lcStart:FOwner.FListener.OnStartRequest(FOwner,FOwner.FListenerContext);
     lcData:FOwner.FListener.OnDataAvailable(FOwner,FOwner.FListenerContext,FOwner,FOffset,FCount);
-    lcStop:FOwner.FListener.OnStopRequest(FOwner,FOwner.FListenerContext,FOwner.FStatusCode);
+    lcStop:FOwner.FListener.OnStopRequest(FOwner,FOwner.FListenerContext,FOwner.StatusCode);
     lcRedirect:FOwner.RedirectSync;
   end;
   if (FCall in [lcStop,lcAbort,lcRedirect]) and not(FOwner.FLoadGroup=nil) then

@@ -13,7 +13,7 @@ type
     FProjectEntry: TXxmProjectEntry;
     FPage, FBuilding: IXxmFragment;
     FStatusCode, FIncludeDepth: integer;
-    FVerb, FStatusText, FSingleFileSent: WideString;
+    FStatusText, FSingleFileSent: WideString;
     FHeaderSent: boolean;
     FParams: TXxmReqPars;
   protected
@@ -86,7 +86,6 @@ type
     property ContentType:WideString read FContentType;
     property StatusCode:integer read FStatusCode;
     property StatusText:WideString read FStatusText;
-    property Verb:WideString read FVerb;
     property SingleFileSent:WideString read FSingleFileSent;
   end;
 

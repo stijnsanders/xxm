@@ -1,6 +1,8 @@
 general
 
 - common BaseXxmContext (virtual SendRaw)
+- common SetCookie using abstrast SetResponseHeader
+- common ContextString?
 
 - XxmProjectUnload
 
