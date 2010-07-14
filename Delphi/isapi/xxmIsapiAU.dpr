@@ -15,6 +15,7 @@ uses
   xxmHeaders in '..\public\xxmHeaders.pas',
   MSXML2_TLB in '..\common\MSXML2_TLB.pas',
   xxmCommonUtils in '..\common\xxmCommonUtils.pas',
+  xxmContext in '..\common\xxmContext.pas',
   xxmAutoUpdate in '..\common\xxmAutoUpdate.pas';
 
 {$R *.res}
