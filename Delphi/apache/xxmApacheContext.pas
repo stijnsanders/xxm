@@ -3,7 +3,7 @@ unit xxmApacheContext;
 interface
 
 uses SysUtils, Classes, ActiveX, HTTPD2, xxm, xxmContext,
-  xxmHeaders, xxmParams, xxmHttpPReg, xxmParUtils;
+  xxmHeaders, xxmParams, xxmPReg, xxmHttpPReg, xxmParUtils;
 
 type
   TxxmApacheContext=class(TXxmGeneralContext, IxxmHttpHeaders)
@@ -51,7 +51,7 @@ type
 
 implementation
 
-uses Windows, Variants, ComObj, xxmCommonUtils, xxmPReg, xxmApacheClientStream, xxmApachePars;
+uses Windows, Variants, ComObj, xxmCommonUtils, xxmApacheClientStream, xxmApachePars;
 
 resourcestring
   SXxmRWriteFailed='ap_rwrite failed';

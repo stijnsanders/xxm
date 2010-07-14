@@ -236,11 +236,7 @@ begin
     on e:Exception do
      begin
       //TODO: get fragment 500.xxm?
-      try
-        SetStatus(500,'Internal Server Error');//TODO:setting?
-      except
-        //silent
-      end;
+      ForceStatus(500,'Internal Server Error');//TODO:setting?
       try
         if FPostData=nil then x:='none' else x:=IntToStr(FPostData.Size)+' bytes';
       except
@@ -373,8 +369,7 @@ var
   s:AnsiString;
 begin
   inherited;
-  CheckHeaderNotSent;
-  SetStatus(301,'Moved Permamently');
+  SetStatus(301,'Moved Permamently');//does CheckHeaderNotSent;
   s:=RedirectURL;
   if Relative and not(RedirectURL='') and (RedirectURL[1]='/') then s:=FRedirectPrefix+s;
   FResHeaders['Location']:=s;

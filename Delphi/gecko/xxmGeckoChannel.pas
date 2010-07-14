@@ -361,19 +361,19 @@ begin
   except
     on EXxmPageRedirected do
      begin
-      SetStatus(301,'Moved Permanently');
+      ForceStatus(301,'Moved Permanently');
       //SendHTML('Redirected to <a href=""></a>')?
      end;
 
     on EXxmAutoBuildFailed do
      begin
       //assert AutoBuild handler already displays message
-      SetStatus(StatusBuildError,'BUILDFAILED');
+      ForceStatus(StatusBuildError,'BUILDFAILED');
      end;
 
     on e:Exception do
      begin
-      SetSTatus(StatusException,'ERROR');
+      ForceStatus(StatusException,'ERROR');
       //TODO: get fragment 500.xxm?
       try
         if FPostData=nil then x:='none' else x:=IntToStr(FPostData.Size)+' bytes';

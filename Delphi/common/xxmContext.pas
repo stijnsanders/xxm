@@ -74,6 +74,7 @@ type
     function CheckSendStart:boolean;
 
     procedure SendError(res:AnsiString;vals:array of AnsiString);
+    procedure ForceStatus(Code: Integer; Text: WideString);
 
     procedure BuildPage;
 
@@ -335,6 +336,13 @@ begin
   FStatusCode:=Code;
   FStatusText:=Text;
   StatusSet:=true;
+end;
+
+procedure TXxmGeneralContext.ForceStatus(Code: Integer; Text: WideString);
+begin
+  //use from exception handling only
+  FStatusCode:=Code;
+  FStatusText:=Text;
 end;
 
 procedure TXxmGeneralContext.Include(Address: WideString);

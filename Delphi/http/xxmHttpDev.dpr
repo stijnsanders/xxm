@@ -13,6 +13,7 @@ uses
   xxmPReg in '..\common\xxmPReg.pas',
   xxmHttpPReg in 'xxmHttpPReg.pas',
   xxmCommonUtils in '..\common\xxmCommonUtils.pas',
+  xxmContext in '..\common\xxmContext.pas',
   xxmReadHandler in 'xxmReadHandler.pas',
   xxmAutoBuild in '..\common\xxmAutoBuild.pas',
   xxmWebProject in '..\conv\xxmWebProject.pas',
