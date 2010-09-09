@@ -17,14 +17,14 @@ type
     function GetProjectName: WideString;
     property Name:WideString read GetProjectName;
     function LoadPage(Context:IXxmContext;Address:WideString):IXxmFragment;
-    function LoadFragment(Address:WideString):IXxmFragment;
+    function LoadFragment(Context:IXxmContext;Address,RelativeTo:WideString):IXxmFragment;
     procedure UnloadFragment(Fragment: IXxmFragment);
   end;
 
   TXxmProjectLoadProc=function(AProjectName:WideString): IXxmProject; stdcall;
 
   TXxmContextString=(
-    csVersion,
+    csVersion,             
     csExtraInfo,
     csVerb,
     csQueryString,
@@ -141,11 +141,13 @@ type
   IXxmFragment=interface
     ['{78786D00-0000-0004-C000-000000000004}']
     function GetProject: IXxmProject;
-    property Project:IXxmProject read GetProject;
     function ClassNameEx: WideString;
     procedure Build(const Context:IXxmContext; const Caller:IXxmFragment;
       const Values: array of OleVariant;
       const Objects: array of TObject);
+    function GetRelativePath: WideString;
+    property Project:IXxmProject read GetProject;
+    property RelativePath: WideString read GetRelativePath;
   end;
 
   IXxmPage=interface(IXxmFragment)
@@ -176,7 +178,7 @@ type
     constructor Create(AProjectName: WideString);
     destructor Destroy; override;
     function LoadPage(Context: IXxmContext; Address: WideString): IXxmFragment; virtual; abstract;
-    function LoadFragment(Address: WideString): IXxmFragment; virtual; abstract;
+    function LoadFragment(Context: IXxmContext; Address, RelativeTo: WideString): IXxmFragment; virtual; abstract;
     procedure UnloadFragment(Fragment: IXxmFragment); virtual; abstract;
     property Name:WideString read GetProjectName;
   end;
@@ -184,7 +186,9 @@ type
   TXxmFragment=class(TInterfacedObject, IXxmFragment)//abstract
   private
     FProject: TXxmProject;
+    FRelativePath: WideString;
     function GetProject: IXxmProject;
+    procedure SetRelativePath(const Value: WideString);
   public
     constructor Create(AProject: TXxmProject);
     destructor Destroy; override;
@@ -192,7 +196,9 @@ type
     procedure Build(const Context: IXxmContext; const Caller: IXxmFragment;
       const Values: array of OleVariant;
       const Objects: array of TObject); virtual; abstract;
+    function GetRelativePath: WideString;
     property Project:IXxmProject read GetProject;
+    property RelativePath: WideString read GetRelativePath write SetRelativePath;
   end;
 
   TXxmPage=class(TXxmFragment, IXxmPage)
@@ -229,7 +235,7 @@ begin
   Result:=Data;
   di:=1;
   dl:=Length(Data);
-  while (di<=dl) and not(AnsiChar(Data[di]) in ['&','<','"','>',#13,#10]) do inc(di);
+  while (di<=dl) and not(char(Data[di]) in ['&','<','"','>',#13,#10]) do inc(di);
   if di<=dl then
    begin
     ri:=di;
@@ -266,7 +272,7 @@ begin
 end;
 
 const
-  Hex: array[0..15] of char='0123456789ABCDEF';
+  Hex: array[0..15] of AnsiChar='0123456789ABCDEF';
 
 function URLEncode(Data:OleVariant):AnsiString;
 var
@@ -286,7 +292,7 @@ begin
         inc(l,$80);
         SetLength(t,l);
        end;
-      case s[p] of
+      case char(s[p]) of
         #0..#31,'"','#','$','%','&','''','+','/','<','>','?','@','[','\',']','^','`','{','|','}','´':
          begin
           t[q]:='%';
@@ -324,13 +330,13 @@ begin
        begin
         inc(p);
         b:=0;
-        case Data[p] of
+        case char(Data[p]) of
           '0'..'9':inc(b,byte(Data[p]) and $F);
           'A'..'F','a'..'f':inc(b,(byte(Data[p]) and $F)+9);
         end;
         inc(p);
         b:=b shl 4;
-        case Data[p] of
+        case char(Data[p]) of
           '0'..'9':inc(b,byte(Data[p]) and $F);
           'A'..'F','a'..'f':inc(b,(byte(Data[p]) and $F)+9);
         end;
@@ -382,6 +388,7 @@ constructor TXxmFragment.Create(AProject: TXxmProject);
 begin
   inherited Create;
   FProject:=AProject;
+  FRelativePath:='';//set by xxmFReg, used for relative includes
 end;
 
 function TXxmFragment.GetProject: IXxmProject;
@@ -397,6 +404,16 @@ end;
 destructor TXxmFragment.Destroy;
 begin
   inherited;
+end;
+
+function TXxmFragment.GetRelativePath: WideString;
+begin
+  Result:=FRelativePath;
+end;
+
+procedure TXxmFragment.SetRelativePath(const Value: WideString);
+begin
+  FRelativePath:=Value;
 end;
 
 initialization

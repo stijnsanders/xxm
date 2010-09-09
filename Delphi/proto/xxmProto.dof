@@ -109,9 +109,9 @@ DebugCWD=
 IncludeVerInfo=1
 AutoIncBuild=0
 MajorVer=1
-MinorVer=0
-Release=1
-Build=240
+MinorVer=1
+Release=0
+Build=272
 Debug=0
 PreRelease=0
 Special=0
@@ -122,7 +122,7 @@ CodePage=1252
 [Version Info Keys]
 CompanyName=
 FileDescription=xxm Master Manual Project
-FileVersion=1.0.1.240
+FileVersion=1.1.0.272
 InternalName=xxmProto
 LegalCopyright=
 LegalTrademarks=
@@ -134,15 +134,17 @@ Comments=http://xxm.sf.net/
 Count=1
 Item0=WinTypes=Windows;WinProcs=Windows;DbiTypes=BDE;DbiProcs=BDE;DbiErrs=BDE;
 [HistoryLists\hlSearchPath]
-Count=2
-Item0=C:\Program Files\Indy9
-Item1=..\..\public
+Count=3
+Item0=sdk;..\public
+Item1=C:\Program Files\Indy9
+Item2=..\..\public
 [HistoryLists\hlUnitOutputDirectory]
 Count=2
 Item0=..\dcu
 Item1=dcu
 [HistoryLists\hlOutputDirectorry]
-Count=3
+Count=4
 Item0=..\bin
-Item1=C:\Inetpub\xxm
-Item2=..\
+Item1=C:\Program Files\Mozilla Firefox\components
+Item2=C:\Inetpub\xxm
+Item3=..\

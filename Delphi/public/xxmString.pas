@@ -234,7 +234,8 @@ begin
     raise EXxmIncludeStackFull.Create(SXxmIncludeStackFull);
   p:=FContext.Page.Project;
   try
-    f:=p.LoadFragment(Address);
+    //TODO: relative path to FContext.ContextString(clLocalURL)
+    f:=p.LoadFragment(FContext,Address,FBuilding.RelativePath);
     if f=nil then
       raise EXxmIncludeFragmentNotFound.Create(StringReplace(
         SXxmIncludeFragmentNotFound,'__',Address,[]));

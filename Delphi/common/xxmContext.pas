@@ -68,7 +68,6 @@ type
     procedure SendHeader; virtual; abstract;
     procedure AddResponseHeader(Name, Value: WideString); virtual; abstract;
 
-
     function GetProjectPage(FragmentName: WideString):IXxmFragment; virtual;
     procedure CheckHeaderNotSent;
     function CheckSendStart:boolean;
@@ -365,7 +364,7 @@ begin
   if FIncludeDepth=XxmMaxIncludeDepth then
     raise EXxmIncludeStackFull.Create(SXxmIncludeStackFull);
   //FPage.Project?
-  f:=FProjectEntry.Project.LoadFragment(Address);
+  f:=FProjectEntry.Project.LoadFragment(Self,Address,FBuilding.RelativePath);
   if f=nil then
     raise EXxmIncludeFragmentNotFound.Create(StringReplace(
       SXxmIncludeFragmentNotFound,'__',Address,[]));

@@ -111,10 +111,10 @@ Context.SendHTML('&lt;/b&gt;');</code></p>
 <dd>An xxm project implements the IXxmProject. (by default provided in the xxmp.pas file)</dd>
 
 <dt><code>function LoadPage(Context:IXxmContext;Address:WideString):IXxmFragment;</code></dt>
-<dd>The project's LoadPage function is called to provide a page to process an incoming request</dd>
+<dd>The project's LoadPage function is called to provide a page to process an incoming request, e.g. to link it to a session (use <a href="#SessionID">Context.SessionID</a> for this).</dd>
 
-<dt><code>function LoadFragment(Address:WideString):IXxmFragment;</code></dt>
-<dd>The project's LoadFragment function is called to provide a fragement</dd>
+<dt><code>function LoadFragment(Context:IXxmContext;Address,RelativeTo:WideString):IXxmFragment;</code></dt>
+<dd>The project's LoadFragment function is called to provide a fragement, resolve RelativeTo to allow relative calls to Context.Include</dd>
 
 <dt><code>procedure UnloadFragment(Fragment: IXxmFragment);</code></dt>
 <dd>Pages and include fragments are passed to the UnloadFragment procedure to allow the xxm project to perform clean-up or re-use of object instances.</dd>
@@ -161,7 +161,7 @@ Context.SendHTML('&lt;/b&gt;');</code></p>
 property ParameterCount:integer</code></dt>
 <dd>the parameters provided in the request, see below for more about IXxmParameter and its descendants</dd>
 
-<dt><code>property SessionID:WideString</code></dt>
+<dt><a name="SessionID"></a><code>property SessionID:WideString</code></dt>
 <dd>read-only, a unique string constructed with random data, included in the response as a cookie, to identify following requests as requests from the same browser session. A project may use this property to perform session management.</dd>
 
 <dt><code>procedure Send(Data: OleVariant);</code></dt>
@@ -190,20 +190,22 @@ property ParameterCount:integer</code></dt>
 <dd>
 provides information about the incoming request
 <ul>
-<li>    csVersion: xxm version</li>
-<li>    csVerb: HTTP verb, typically "GET" or "POST"</li>
-<li>    csQueryString: the URL portion after "?"</li>
-<li>    csExtraInfo: trailing URL information</li>
-<li>    csUserAgent: browser's identification string</li>
-<li>    csAcceptedMimeTypes: browser's accepted MIME types</li>
-<li>    csPostMimeType: the MIME type of the data posted in the request</li>
-<li>    csURL: the full URL of the request</li>
-<li>    csReferer: the URL of the previous page opened in the browser</li>
-<li>    csLanguage: browser's accepted languages</li>
-<li>    csRemoteAddress: client's address</li>
-<li>    csRemoteHost: client's host name</li>
-<li>    csAuthUser: user name provided by the request authentification</li>
-<li>    csAuthPassword: password provided by the request authentification</li>
+<li>csVersion: xxm version</li>
+<li>csVerb: HTTP verb, typically "GET" or "POST"</li>
+<li>csQueryString: the URL portion after "?"</li>
+<li>csExtraInfo: trailing URL information</li>
+<li>csUserAgent: browser's identification string</li>
+<li>csAcceptedMimeTypes: browser's accepted MIME types</li>
+<li>csPostMimeType: the MIME type of the data posted in the request</li>
+<li>csURL: the full URL of the request</li>
+<li>csReferer: the URL of the previous page opened in the browser</li>
+<li>csLanguage: browser's accepted languages</li>
+<li>csRemoteAddress: client's network address</li>
+<li>csRemoteHost: client's host name</li>
+<li>csAuthUser: user name provided by the request authentification</li>
+<li>csAuthPassword: password provided by the request authentification</li>
+<li>csProjectName: name the xxm project was loaded with (is registered with)</li>
+<li>csLocalURL: URL fraction that determines the loaded page</li><li>csRelativePath: path into the website, used for relative includes</li>
 </ul>
 
 </dd>

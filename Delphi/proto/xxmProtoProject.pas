@@ -12,7 +12,7 @@ type
   TXxmProject1=class(TXxmProject)
   public
     function LoadPage(Context: IXxmContext; Address: WideString): IXxmFragment; override;
-    function LoadFragment(Address: WideString): IXxmFragment; override;
+    function LoadFragment(Context: IXxmContext; Address, RelativeTo: WideString): IXxmFragment; override;
     procedure UnloadFragment(Fragment: IXxmFragment); override;
   end;
 
@@ -36,19 +36,13 @@ function TXxmProject1.LoadPage(Context: IXxmContext;
   Address: WideString): IXxmFragment;
 begin
   if Session=nil then SetSession(Context);
-  Result:=LoadFragment(Address) as IXxmPage;
+  Result:=LoadFragment(Context,Address,'') as IXxmPage;
 end;
 
-function TXxmProject1.LoadFragment(Address: WideString): IXxmFragment;
-var
-  fc:TXxmFragmentClass;
+function TXxmProject1.LoadFragment(Context: IXxmContext; Address, RelativeTo: WideString): IXxmFragment;
 begin
-  fc:=XxmFragmentRegistry.GetClass(Address);
-  if fc=nil then Result:=nil else
-   begin
-    Result:=fc.Create(Self);
-    Result._AddRef;
-   end;
+  Result:=XxmFragmentRegistry.GetFragment(Self,Address,RelativeTo);
+  if Result<>nil then Result._AddRef;
   //TODO: cache created instance?
 end;
 

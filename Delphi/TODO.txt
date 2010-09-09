@@ -1,6 +1,5 @@
 general
 
-- common BaseXxmContext (virtual SendRaw)
 - common SetCookie using abstrast SetResponseHeader
 - common ContextString?
 
@@ -19,9 +18,6 @@ general
 
 - some good solution for common xxm.pas and xxmFReg.pas units
 
-- relative includes
-
-- reg: ShellNew? tried but didn't work
 - logging?
 
 - XMLHTTP starts new session: test with authentication! (take-over other SessionID?)
@@ -32,14 +28,13 @@ Conv
 - flags
 - signature on proto files?
 - default proto in resources?
-- (hidden dir 'dcu' maken?)
 - '_proto' per directory zelfs?
 - whitespace voor [[ ook overnemen
 - create new project (can't get ShellNew to work!)
 - CreateProcessWithLogin for compile?
 - web.xxmp signature in TWebProject (not TProjectCacheEntry)
 - dynamic list of supported exceptions, default pas,xxm,xxmi (act; proto, unit, res?)
-- support a respurces file (zlib?) and auto update (using extension list?)
+- support a resources file (zlib?) and auto update (using extension list?)
 
 ISAPI
 - authentication?
@@ -76,12 +71,9 @@ idea's
 - limit threads per session
 - 401 auth & windows auth (IHttpAuthenticate on local?)
 - add files into rc for dll/xxl (tlb?)
-- XML whitespace sanitation
 - bpg support? (to what purpose?)
 - separate fragment for exceptions?
-- line for line: xxm header rigged 20 lines, then pas line per xxm line?
 - translatepath refactor into context
-- create src dir hidden (difficult, since using ForceDirectories now)
 - Context.Include resolve to delphi-name to have compile-time error?
 - virtual directories (getlocalfilepath?)
 

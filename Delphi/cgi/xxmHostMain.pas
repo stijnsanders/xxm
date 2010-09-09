@@ -282,11 +282,10 @@ begin
     csLocalURL:Result:=FFragmentName;
     csReferer:Result:=FReqHeaders['Referer'];//TODO:
     csLanguage:Result:=FReqHeaders['Language'];//TODO:
-
     csRemoteAddress:Result:=GetCGIValue('REMOTE_ADDR');
     csRemoteHost:Result:=GetCGIValue('REMOTE_HOST');
-    csAuthUser:GetCGIValue('AUTH_USER');
-    csAuthPassword:GetCGIValue('AUTH_PASSWORD');
+    csAuthUser:Result:=GetCGIValue('AUTH_USER');
+    csAuthPassword:Result:=GetCGIValue('AUTH_PASSWORD');
     else
       raise EXxmContextStringUnknown.Create(StringReplace(
         SXxmContextStringUnknown,'__',IntToHex(integer(cs),8),[]));
