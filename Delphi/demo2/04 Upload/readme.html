@@ -1,0 +1,21 @@
+<h3>xxm Demo Projects - 04 Upload</h3>
+<p>This is a demo project showing how to accept file uploads.</p>
+<dl>
+<dt>Web.xxmp</dt>
+<dd>The project file, contains an internal list of the files of the project, and other data about the project.<br />
+Use xxmProject.exe to edit and manage project settings.</dd>
+<dt>iHead.xxmi</dt>
+<dd>An include file for pages to use with the HTML header</dd>
+<dt>iFoot.xxmi</dt>
+<dd>An include file for pages to use with the HTML footer</dd>
+<dt>demo4.css</dt>
+<dd>The website's style sheet, linked to by <code>iHead.xxmi</code>, and thus by any page that includes <code>iHead.xxmi</code>.</dd>
+<dt>files\</dt>
+<dd>Directory uploaded files will be stored in. <b>Attention:</b> storing uploaded files within a directory of the website poses a security risk, especially when sensitive information is passed between pages using client side scripting.</dd>
+<dt>Default.xxm</dt>
+<dd>The website's default page. It displays a list of the files that have already been uploaded, and a link to the upload form.</dd>
+<dt>fAdd.xxm</dt>
+<dd>The upload form. Please note the form's <code>method</code> and <code>enctype</code>, and the client-side script that grays the submit button, as a visual feedback that the form posing is in progress, and to prevent subsequent posts. (Some people confuse single and double click sometimes. Sometimes a second click happens unintentionally.)
+<dt>aAdd.xxm</dt>
+<dd>Accepts the upload form post. Expects a parameter that supports the <code>IXxmParameterPostFile</code> interface, and stores the uploaded file.</dd>
+</dl>

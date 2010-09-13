@@ -8,5 +8,4 @@
 		<File ID="login_xxm" UnitName="login_xxm1" UnitPath=""><Path>Login.xxm</Path></File>
 		<File ID="logout_xxm" UnitName="logout_xxm1" UnitPath=""><Path>Logout.xxm</Path></File>
 	</Files>
-	<LastModified>2008-06-07T00:47:18</LastModified>
 </XxmWebProject>

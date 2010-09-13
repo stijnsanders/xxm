@@ -1,0 +1,20 @@
+<h3>xxm Demo Projects - 02 Session</h3>
+<p>This is a demo project showing how to set up basic session management in a xxm project.</p>
+<dl>
+<dt>Web.xxmp</dt>
+<dd>The project file, contains an internal list of the files of the project, and other data about the project.<br />
+Use xxmProject.exe to edit and manage project settings.</dd>
+<dt>Default.xxm</dt>
+<dd>The website's default page. It shows either a login-form or a logout button, depending on wether you're logged in or not.</dd>
+<dt>xxmp.pas</dt>
+<dd>The project's main unit. When this file is missing form the project, xxm creates one for you.<br />
+This one has been modified to include the <code>SetSession(Context);</code> call on LoadPage, linking each request to a new or existing session.</dd>
+<dt>xxmSession.pas</dt>
+<dd>This unit defines the TxxmSession class, and SetSession and AbandonSession procedures.<br />
+It also uses a SessionStore to keep a track of started sessions and clean them up when the project shuts down.<br />
+SetSession uses IxxmContext's SessionID property to uniquely identify the visitor (e.b. by using a cookie).</dd>
+<dt>Login.xxm</dt>
+<dd>The logon form posts here. It only checks if you entered a name, and if so flags the session as authenticated. Other websites could check the entered password here.</dd>
+<dt>Logout.xxm</dt>
+<dd>The logout button posts to here. It calls AbandonSession to close the session object. If the visitor continues to browse the website, a new session is created.</dd>
+</dl>

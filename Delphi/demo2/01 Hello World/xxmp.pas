@@ -1,18 +1,14 @@
 unit xxmp;
 
-{
-  $Rev: 204 $ $Date: 2008-04-08 21:39:14 +0200 (di, 08 apr 2008) $
-}
-
 interface
 
 uses xxm;
 
 type
-  TXxmdemo2=class(TXxmProject)
+  TXxmdemo=class(TXxmProject)
   public
     function LoadPage(Context: IXxmContext; Address: WideString): IXxmFragment; override;
-    function LoadFragment(Address: WideString): IXxmFragment; override;
+    function LoadFragment(Context: IXxmContext; Address, RelativeTo: WideString): IXxmFragment; override;
     procedure UnloadFragment(Fragment: IXxmFragment); override;
   end;
 
@@ -24,28 +20,24 @@ uses xxmFReg;
 
 function XxmProjectLoad(AProjectName:WideString): IXxmProject;
 begin
-  Result:=TXxmdemo2.Create(AProjectName);
+  Result:=TXxmdemo.Create(AProjectName);
 end;
 
-{ TXxmdemo2 }
+{ TXxmdemo }
 
-function TXxmdemo2.LoadPage(Context: IXxmContext; Address: WideString): IXxmFragment;
+function TXxmdemo.LoadPage(Context: IXxmContext; Address: WideString): IXxmFragment;
 begin
   inherited;
   //TODO: link session to request
-  Result:=LoadFragment(Address);
+  Result:=XxmFragmentRegistry.GetFragment(Self,Address,'');
 end;
 
-function TXxmdemo2.LoadFragment(Address: WideString): IXxmFragment;
-var
-  fc:TXxmFragmentClass;
+function TXxmdemo.LoadFragment(Context: IXxmContext; Address, RelativeTo: WideString): IXxmFragment;
 begin
-  fc:=XxmFragmentRegistry.GetClass(Address);
-  if fc=nil then Result:=nil else Result:=fc.Create(Self);
-  //TODO: cache created instance, incease ref count
+  Result:=XxmFragmentRegistry.GetFragment(Self,Address,RelativeTo);
 end;
 
-procedure TXxmdemo2.UnloadFragment(Fragment: IXxmFragment);
+procedure TXxmdemo.UnloadFragment(Fragment: IXxmFragment);
 begin
   inherited;
   //TODO: set cache TTL, decrease ref count

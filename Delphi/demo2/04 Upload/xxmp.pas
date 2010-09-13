@@ -1,9 +1,5 @@
 unit xxmp;
 
-{
-  $Rev: 204 $ $Date: 2008-04-08 21:39:14 +0200 (di, 08 apr 2008) $
-}
-
 interface
 
 uses xxm;
@@ -11,9 +7,8 @@ uses xxm;
 type
   TXxmdemo=class(TXxmProject)
   public
-    constructor Create(AProjectName: WideString);
-	function LoadPage(Context: IXxmContext; Address: WideString): IXxmFragment; override;
-    function LoadFragment(Address: WideString): IXxmFragment; override;
+    function LoadPage(Context: IXxmContext; Address: WideString): IXxmFragment; override;
+    function LoadFragment(Context: IXxmContext; Address, RelativeTo: WideString): IXxmFragment; override;
     procedure UnloadFragment(Fragment: IXxmFragment); override;
   end;
 
@@ -21,39 +16,25 @@ function XxmProjectLoad(AProjectName:WideString): IXxmProject; stdcall;
 
 implementation
 
-uses SysUtils, Windows, xxmFReg;
+uses xxmFReg;
 
 function XxmProjectLoad(AProjectName:WideString): IXxmProject;
 begin
-  Result:=TXxmdemo.Create(AProjectName);  
+  Result:=TXxmdemo.Create(AProjectName);
 end;
 
 { TXxmdemo }
 
-constructor TXxmdemo.Create(AProjectName: WideString);
-var
-  s:AnsiString;
-begin
-  inherited Create(AProjectName);
-  SetLength(s,1024);
-  SetLength(s,GetModuleFileNameA(HInstance,PAnsiChar(s),1024));
-  SetCurrentDir(ExtractFilePath(s));
-end;
-
 function TXxmdemo.LoadPage(Context: IXxmContext; Address: WideString): IXxmFragment;
 begin
   inherited;
-  //SetSession(Context);
-  Result:=LoadFragment(Address);
+  //TODO: link session to request
+  Result:=XxmFragmentRegistry.GetFragment(Self,Address,'');
 end;
 
-function TXxmdemo.LoadFragment(Address: WideString): IXxmFragment;
-var
-  fc:TXxmFragmentClass;
+function TXxmdemo.LoadFragment(Context: IXxmContext; Address, RelativeTo: WideString): IXxmFragment;
 begin
-  fc:=XxmFragmentRegistry.GetClass(Address);
-  if fc=nil then Result:=nil else Result:=fc.Create(Self);
-  //TODO: cache created instance, incease ref count
+  Result:=XxmFragmentRegistry.GetFragment(Self,Address,RelativeTo);
 end;
 
 procedure TXxmdemo.UnloadFragment(Fragment: IXxmFragment);

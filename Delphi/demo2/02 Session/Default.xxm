@@ -1,7 +1,6 @@
 [[@xxmSession,]]
 <p>[[=Context.SessionID]]</p>
 
-
 [[
 if Session.Authenticated then
  begin
