@@ -102,14 +102,11 @@ type
       Comment,Domain,Path:WideString; Secure,HttpOnly:boolean); overload;
     //procedure SetCookie2();
 
-    //added V1.0.1
     procedure Send(Value: integer); overload;
     procedure Send(Value: int64); overload;
     procedure Send(Value: cardinal); overload;
     procedure Send(const Values:array of OleVariant); overload;
     procedure SendHTML(const Values:array of OleVariant); overload;
-
-    //TODO: pointer to project?
 
     property URL:WideString read GetURL;
     property ContentType:WideString read GetContentType write SetContentType;
@@ -362,8 +359,8 @@ var
 begin
   s:=XxmRevision;
   Result.Major:=1;
-  Result.Minor:=0;
-  Result.Release:=1;
+  Result.Minor:=1;
+  Result.Release:=0;
   Result.Build:=StrToInt(Copy(s,7,Length(s)-8));
 end;
 

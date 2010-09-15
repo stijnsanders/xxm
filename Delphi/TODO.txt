@@ -5,14 +5,14 @@ general
 
 - XxmProjectUnload
 
-- LastModified: toch bias! (uur minder dan IIS)
+- LastModified: use bias! (an hour less than IIS?)
 
 - Context.URLPath
 - Context.Priority (linked to thread priority!)
 - set-cookie2 support
 - context: settings from registry (e.g. connectionstring?)
 - registration editor
-- exception handling pages (500,400, TXxmHandler=class(TXxmPage) en setting)
+- exception handling pages (500,400, TXxmHandler=class(TXxmPage) and setting)
 - response timeout (how to halt a running thread?)
 - document.browser
 
@@ -28,8 +28,8 @@ Conv
 - flags
 - signature on proto files?
 - default proto in resources?
-- '_proto' per directory zelfs?
-- whitespace voor [[ ook overnemen
+- '_proto' per directory even?
+- whitespace before [[ into source, not output?
 - create new project (can't get ShellNew to work!)
 - CreateProcessWithLogin for compile?
 - web.xxmp signature in TWebProject (not TProjectCacheEntry)
