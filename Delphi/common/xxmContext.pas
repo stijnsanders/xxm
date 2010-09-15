@@ -444,6 +444,8 @@ begin
 end;
 
 function TXxmGeneralContext.GetParameter(Key: OleVariant): IXxmParameter;
+var
+  iKey:integer;
 begin
   //parse parameters on first use
   if FParams=nil then
@@ -452,7 +454,16 @@ begin
     //redirect on post? invalidate postdata!
     if FParams.PostDataOnRedirect then FreeAndNil(FPostData);
    end;
-  if VarIsNumeric(Key) then Result:=FParams.GetItem(Key) else
+  if VarIsNumeric(Key) then
+   begin
+    iKey:=integer(Key);
+    if (iKey>cs_Max) and (iKey<=csVersion) then
+      Result:=TXxmContextStringPar.Create(
+        'Context.ContextString('+VarToStr(Key)+')',ContextString(iKey)) as IXxmParameter
+    else
+      Result:=FParams.GetItem(iKey);
+   end
+  else
     Result:=FParams.Get(VarToWideStr(Key));
 end;
 

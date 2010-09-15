@@ -59,7 +59,6 @@ local
 - register project: worn overwriting registration
 
 grand rework
-- GetParameter supporting ContextString enum
 - buffering? transfer-encoding chunked? keep-connection?
 - Accept-Ranges: bytes on files ('Range' request header?)
 - include from other projects?

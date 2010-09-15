@@ -60,6 +60,20 @@ type
     function SaveToStream(Stream: IStream):integer;
   end;
 
+  TXxmContextStringPar=class(TInterfacedObject, IXxmParameter)
+  private
+    FName,FValue:WideString;
+  protected
+    function GetName:WideString;
+    function GetValue:WideString;
+    function AsInteger:integer;
+    function NextBySameName:IXxmParameter;
+  public
+    constructor Create(Name,Value:WideString);
+    property Name:WideString read GetName;
+    property Value:WideString read GetValue;
+  end;
+
   EXxmUnknownPostMime=class(Exception);
 
 var
@@ -394,6 +408,35 @@ begin
     dec(l,c);
    end;
   Result:=FLen;
+end;
+
+{ TXxmContextStringPar }
+
+constructor TXxmContextStringPar.Create(Name, Value: WideString);
+begin
+  inherited Create;
+  FName:=Name;
+  FValue:=Value;
+end;
+
+function TXxmContextStringPar.GetName: WideString;
+begin
+  Result:=FName;
+end;
+
+function TXxmContextStringPar.GetValue: WideString;
+begin
+  Result:=FValue;
+end;
+
+function TXxmContextStringPar.AsInteger: integer;
+begin
+  Result:=StrToIntDef(FValue,0);
+end;
+
+function TXxmContextStringPar.NextBySameName: IXxmParameter;
+begin
+  Result:=nil;//context strings are unique
 end;
 
 initialization

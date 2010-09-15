@@ -29,14 +29,14 @@ function TXxm[[ProjectName]].LoadPage(Context: IXxmContext; Address: WideString)
 begin
   inherited;
   //TODO: link session to request
-  Result:=GetPageAndParameters(Context,Address);
+  Result:=GetPageAndParameters(Self,Context,Address);
 end;
 
 function TXxm[[ProjectName]].LoadFragment(Context: IXxmContext; Address, RelativeTo: WideString): IXxmFragment;
 begin
   inherited;
   //TODO: resolve relativeto
-  Result:=GetIncludeFragment(Address);
+  Result:=GetIncludeFragment(Self,Address);
 end;
 
 procedure TXxm[[ProjectName]].UnloadFragment(Fragment: IXxmFragment);

@@ -23,24 +23,7 @@ type
 
   TXxmProjectLoadProc=function(AProjectName:WideString): IXxmProject; stdcall;
 
-  TXxmContextString=(
-    csVersion,             
-    csExtraInfo,
-    csVerb,
-    csQueryString,
-    csUserAgent,
-    csAcceptedMimeTypes,
-    csPostMimeType,
-    csURL,
-    csReferer,
-    csLanguage,
-    csRemoteAddress,
-    csRemoteHost,
-    csAuthUser,
-    csAuthPassword,
-    csProjectName,
-    csLocalURL
-  );
+  TXxmContextString=integer;//enumeration values see below
 
   TXxmVersion=record
     Major,Minor,Release,Build:integer;
@@ -169,6 +152,27 @@ const
   IID_IXxmParameterPost: TGUID = '{78786D00-0000-0009-C000-000000000009}';
   IID_IXxmParameterPostFile: TGUID = '{78786D00-0000-000A-C000-00000000000A}';
 
+const
+  //TXxmContextString enumeration values
+  csVersion           = -1000;
+  csProjectName       = -1001;
+  csURL               = -1002;
+  csLocalURL          = -1003;
+  csVerb              = -1004;
+  csExtraInfo         = -1005;
+  csUserAgent         = -1006;
+  csQueryString       = -1007;
+  csPostMimeType      = -1008;
+  csReferer           = -1009;
+  csLanguage          = -1010;
+  csAcceptedMimeTypes = -1011;
+  csRemoteAddress     = -1012;
+  csRemoteHost        = -1013;
+  csAuthUser          = -1014;
+  csAuthPassword      = -1015;
+  //
+  cs_Max              = -1100;//used by GetParameter
+  
 type
   TXxmProject=class(TInterfacedObject, IXxmProject)//abstract
   private
@@ -206,7 +210,6 @@ type
 
   TXxmInclude=class(TXxmFragment, IXxmInclude)
   end;
-
 
 function XxmVersion:TXxmVersion;
 function HTMLEncode(Data:WideString):WideString; overload;

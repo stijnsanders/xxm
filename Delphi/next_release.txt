@@ -1,0 +1,39 @@
+v1.1.0.272
+
+- xxm.pas: IXxmProject.LoadFragment Context, RelativeTo parameter added
+- xxmFReg.pas: GetClass changed to GetFragment, resolves relative include paths
+    ### ATTENTION ### ATTENTION ### ATTENTION ###
+    This will break all existing projects
+        revise LoadPage and LoadFragment declarations or
+        let auto-build re-create xxmp.pas from proto template
+        and update your xxmFReg.pas copy
+	#############################################
+- add 'M' to default .cfg to enable creating dcu's
+- xxmGecko xpi package for easy install
+- internal revision of TxxmContext and TxxmProjectEntry objects
+- xxmHeader: added IxxmParameterCollection interface to allow to add parameters (e.g. when parsing URL's in LoadPage)
+- added URL routing demo (demonstrating IxxmParameterCollection.AddParameter)
+- replaced TXxmContextString enumeration with constants
+- constants also work with Context.Parameter[] (and Context[] because it's the default index property)
+
+v1.0.3.266
+
+- xxm.pas: all TStream are now IStream
+    ### ATTENTION ### ATTENTION ### ATTENTION ###
+    This will break all existing projects
+	that use SendStream or PostData
+	Update code using TStreamAdapter where needed
+	#############################################
+- add missing trailing comma in uses-clause sections ([[@]])
+- issue uploading files using xxmApache
+- issue uploading files using xxmGecko
+
+v1.0.2.262
+
+- fixed issue mapping line number on last code-section
+- fixed file download issue
+- keep cleaner whitespace when changing Web.xxmp XML
+- a more performance HTMLEncode
+- fixed issue with xxmStream.pas' TxxmOutputStream
+- xxmHttp provides virtual methods for new project that inherit from it
+
