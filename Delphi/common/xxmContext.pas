@@ -378,9 +378,9 @@ begin
   try
     FPageClass:=f.ClassNameEx+' < '+pc;
     f.Build(Self,fb,Values,Objects);//queue to avoid building up stack?
+    FPageClass:=pc;
   finally
     dec(FIncludeDepth);
-    FPageClass:=pc;
     FBuilding:=fb;
     fb:=nil;
     FProjectEntry.Project.UnloadFragment(f);

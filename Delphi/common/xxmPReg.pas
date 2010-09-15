@@ -170,11 +170,11 @@ begin
       SetLength(sf,i);
      end
     else
-      sf:=sf+s+PathDelim;//DirectoryExists()??
+      sf:=sf+s;//DirectoryExists()??
     if (j<=l) and (char(Address[j]) in ['/','\']) then sf:=sf+PathDelim;
     i:=j+1;
    end;
-  Path:=rf+Copy(sf,1,Length(sf)-1);
+  Path:=rf+sf;
 
   //find a MIME-type from registry
   i:=Length(sf)-1;

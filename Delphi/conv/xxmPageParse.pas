@@ -200,7 +200,7 @@ begin
     while (i<=l) and not(b and (FData[i]='[')) do
      begin
       b:=FData[i]='[';
-      if FData[i] in [#13,#10] then
+      if char(FData[i]) in [#13,#10] then
        begin
         inc(nx);
         if (FData[i]=#13) and (i<l) and (FData[i+1]=#10) then inc(i);
@@ -223,7 +223,7 @@ begin
           if char(FData[j]) in ['''',#13,#10] then instr:=false;
          end
         else
-          case FData[j] of
+          case char(FData[j]) of
             '''':if incom=0 then instr:=true;
             '[':if incom=0 then inc(sqd);
             ']':if incom=0 then if sqd=0 then b:=true else dec(sqd);
@@ -232,7 +232,7 @@ begin
             '(':if (incom=0) and (j<l) and (FData[j+1]='*') then incom:=2;
             ')':if (incom=2) and (j>1) and (FData[j-1]='*') then incom:=0;
           end;
-        if FData[j] in [#13,#10] then
+        if char(FData[j]) in [#13,#10] then
          begin
           inc(nx);
           if (FData[j]=#13) and (j<l) and (FData[j+1]=#10) then inc(j);
@@ -243,7 +243,7 @@ begin
        begin
         //close tag found also
         k:=i+1;
-        case FData[k] of
+        case char(FData[k]) of
           '[':begin ps:=psSquareBracketsOpen; b:=j-i=2; end;
           ']':begin ps:=psSquareBracketsClose; b:=j-i=2; end;
           '!':ps:=psHeader;
@@ -408,7 +408,7 @@ begin
               l:=0;
               map.MapLine(1,0);
              end;
-            case FData[p] of
+            case char(FData[p]) of
               #0..#31:
                begin
                 DoString(false);

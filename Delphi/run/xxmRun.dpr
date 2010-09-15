@@ -33,10 +33,10 @@ begin
     for i:=0 to sl.Count-1 do
      begin
       s:=sl[i];
-      if not(s='') and not(s[1] in [';','#']) then
+      if not(s='') and not(char(s[1]) in [';','#']) then
        begin
         SetLength(Actions,j+1);
-        case s[1] of
+        case char(s[1]) of
           '{':
            begin
             Actions[j].ActionType:=atCLSID;

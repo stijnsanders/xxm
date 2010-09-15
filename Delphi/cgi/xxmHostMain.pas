@@ -196,7 +196,7 @@ begin
     i:=2;
     if XxmProjectCache.SingleProject='' then
      begin
-      while (i<=l) and not(FURI[i] in ['/','?','&','$','#']) do inc(i);
+      while (i<=l) and not(char(FURI[i]) in ['/','?','&','$','#']) do inc(i);
       FProjectName:=Copy(FURI,2,i-2);
       if FProjectName='' then
        begin
@@ -214,7 +214,7 @@ begin
       FPageClass:='[SingleProject]';
      end;
     j:=i;
-    while (i<=l) and not(FURI[i] in ['?','&','$','#']) do inc(i);
+    while (i<=l) and not(char(FURI[i]) in ['?','&','$','#']) do inc(i);
     FFragmentName:=Copy(FURI,j,i-j);
     if (i<=l) then inc(i);
     FQueryStringIndex:=i;

@@ -92,7 +92,7 @@ begin
     i:=2;
     if XxmProjectCache.SingleProject='' then
      begin
-      while (i<=l) and not(x[i] in ['/','?','&','$','#']) do inc(i);
+      while (i<=l) and not(char(x[i]) in ['/','?','&','$','#']) do inc(i);
       FProjectName:=Copy(x,2,i-2);
       if FProjectName='' then
        begin

@@ -93,7 +93,7 @@ begin
       i:=1;
       while (i<=l) and (s[i]<>':') do inc(i);
       j:=i+1;
-      while (j<=l) and (s[j] in [' ',#9]) do inc(j);
+      while (j<=l) and (char(s[j]) in [' ',#9]) do inc(j);
       Headers[Copy(s,1,i-1)]:=Copy(s,j,l-j+1);
      end;
   until l=0;

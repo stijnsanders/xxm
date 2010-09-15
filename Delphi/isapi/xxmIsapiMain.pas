@@ -229,7 +229,7 @@ begin
     inc(i);
     if XxmProjectCache.SingleProject='' then
      begin
-      while (i<=Length(x)) and not(AnsiChar(x[i]) in ['/','?','&','$','#']) do inc(i);
+      while (i<=Length(x)) and not(char(x[i]) in ['/','?','&','$','#']) do inc(i);
       FProjectName:=Copy(x,2,i-2);
       if FProjectName='' then
        begin
@@ -253,7 +253,7 @@ begin
 
     //fragment name
     j:=i;
-    while (j<=Length(x)) and not(x[j] in ['?','&','$','#']) do inc(j);
+    while (j<=Length(x)) and not(char(x[j]) in ['?','&','$','#']) do inc(j);
     FFragmentName:=Copy(x,i,j-i);
 
     BuildPage;

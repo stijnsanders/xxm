@@ -324,7 +324,7 @@ begin
   p:=1;
   while (p<=l) do
    begin
-    case Data[p] of
+    case char(Data[p]) of
       '+':t[q]:=' ';
       '%':
        begin

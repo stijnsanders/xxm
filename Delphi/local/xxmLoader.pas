@@ -648,12 +648,12 @@ var
   function next:integer;
   begin
     Result:=0;
-    while (i<=l) and (s[i] in ['0'..'9']) do
+    while (i<=l) and (char(s[i]) in ['0'..'9']) do
      begin
       Result:=Result*10+byte(s[i])-48;
       inc(i);
      end;
-    while (i<=l) and not(s[i] in ['0'..'9']) do inc(i);
+    while (i<=l) and not(char(s[i]) in ['0'..'9']) do inc(i);
   end;
 begin
   i:=1;

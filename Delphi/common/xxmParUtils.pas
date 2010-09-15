@@ -148,7 +148,7 @@ begin
     if not(q-p=2) then
      begin
       r:=p;
-      while (r<=q) and (Value[r] in [#1..#32]) do inc(r);
+      while (r<=q) and (char(Value[r]) in [#1..#32]) do inc(r);
       if r=p then
        begin
         SetLength(Params,i+1);
@@ -157,7 +157,7 @@ begin
         while (r<=q) and not(Value[r]=':') do inc(r);
         Params[i].NameLength:=r-p;
         inc(r);
-        while (r<=q) and (Value[r] in [#1..#32]) do inc(r);
+        while (r<=q) and (char(Value[r]) in [#1..#32]) do inc(r);
         Params[i].ValueStart:=r;
         Params[i].ValueLength:=q-r-2;//2 from Length(EOL)
         inc(i);
@@ -189,7 +189,7 @@ begin
      begin
       SetLength(Params,q+1);
       inc(i);
-      while (i<=l) and (Value[i] in [#1..#32]) do inc(i);
+      while (i<=l) and (char(Value[i]) in [#1..#32]) do inc(i);
       Params[q].NameStart:=i;
       j:=i;
       while (j<=l) and not(Value[j]='=') do inc(j);
@@ -291,7 +291,7 @@ end;
 procedure TStreamNozzle.SkipWhiteSpace;
 begin
   //if '--' then multipart done?
-  while Ensure(1) and (Data[Index] in [#0..#31]) do inc(Index);
+  while Ensure(1) and (char(Data[Index]) in [#0..#31]) do inc(Index);
 end;
 
 procedure TStreamNozzle.CheckBoundary(var Boundary: AnsiString);
@@ -349,7 +349,7 @@ begin
       while (r<=q) and not(Result[r]=':') do inc(r);
       Params[i].NameLength:=r-p;
       inc(r);
-      while (r<=q) and (Result[r] in [#1..#32]) do inc(r);
+      while (r<=q) and (char(Result[r]) in [#1..#32]) do inc(r);
       Params[i].ValueStart:=r;
       Params[i].ValueLength:=q-r-2;//2 from Length(EOL)
       inc(i);
