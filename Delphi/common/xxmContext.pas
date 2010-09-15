@@ -2,13 +2,13 @@ unit xxmContext;
 
 interface
 
-uses Windows, SysUtils, Classes, ActiveX, xxm, xxmPReg, xxmParams;
+uses Windows, SysUtils, Classes, ActiveX, xxm, xxmPReg, xxmHeaders, xxmParams;
 
 const
   XxmMaxIncludeDepth=64;//TODO: setting?
 
 type
-  TXxmGeneralContext=class(TInterfacedObject, IXxmContext) //abstract!
+  TXxmGeneralContext=class(TInterfacedObject, IXxmContext, IxxmParameterCollection) //abstract!
   private
     FProjectEntry: TXxmProjectEntry;
     FPage, FBuilding: IXxmFragment;
@@ -62,6 +62,9 @@ type
     procedure SetCookie(Name: WideString; Value: WideString); overload; virtual; abstract;
     procedure SetCookie(Name,Value:WideString; KeepSeconds:cardinal;
       Comment,Domain,Path:WideString; Secure,HttpOnly:boolean); overload; virtual; abstract;
+
+    { IxxmParameterCollection }
+    procedure AddParameter(Param: IUnknown);//IxxmParameter
 
     {  }
     function GetProjectEntry(ProjectName: WideString):TXxmProjectEntry; virtual; abstract;
@@ -457,6 +460,12 @@ function TXxmGeneralContext.GetParameterCount: Integer;
 begin
   if FParams=nil then FParams:=TXxmReqPars.Create(Self,FPostData);
   Result:=FParams.Count;
+end;
+
+procedure TXxmGeneralContext.AddParameter(Param: IInterface);
+begin
+  if FParams=nil then FParams:=TXxmReqPars.Create(Self,FPostData);
+  FParams.Add(Param as IXxmParameter);
 end;
 
 end.

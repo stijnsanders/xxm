@@ -28,6 +28,11 @@ type
     property ResponseHeaders:IxxmDictionaryEx read GetResponseHeaders;
   end;
 
+  IxxmParameterCollection=interface
+    ['{78786D00-0000-000F-C000-00000000000F}']
+    procedure AddParameter(Param: IUnknown);//IxxmParameter
+  end;
+
 implementation
 
 end.

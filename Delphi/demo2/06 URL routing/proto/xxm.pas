@@ -10,7 +10,6 @@ unit [[FragmentUnit]];
 
   Prototype-file used:
   "[[ProtoFile]]"
-  $Rev$ $Date$
 }
 
 interface
@@ -18,7 +17,7 @@ interface
 uses xxm;
 
 type
-  [[FragmentID]]=class(TXxmInclude)
+  [[FragmentID]]=class(TXxmPage)
   public
     procedure Build(const Context: IXxmContext; const Caller: IXxmFragment;
       const Values: array of OleVariant; const Objects: array of TObject); override;
@@ -29,12 +28,12 @@ implementation
 uses 
   SysUtils, 
 [[UsesClause]]
-  xxmFReg;
+  FRegRouting;
   
 [[FragmentDefinitions]]
 { [[FragmentID]] }
 
-procedure [[FragmentID]].Build(const Context: IXxmContext; const Caller: IXxmFragment;
+procedure [[FragmentID]].Build(const Context: IXxmContext; const Caller: IXxmFragment; 
       const Values: array of OleVariant; const Objects: array of TObject);
 [[FragmentHeader]]
 begin
@@ -43,7 +42,7 @@ begin
 end;
 
 initialization
-  XxmFragmentRegistry.RegisterClass('[[FragmentAddress]]',[[FragmentID]]);
+  RegisterFragmentClass('[[FragmentAddress]]',[[FragmentID]]);
 [[FragmentFooter]]
 
 end.

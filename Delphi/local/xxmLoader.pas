@@ -43,6 +43,7 @@ type
     function GetProjectPage(FragmentName: WideString):IXxmFragment; override;
     function GetRequestHeaders:IxxmDictionaryEx;
     function GetResponseHeaders:IxxmDictionaryEx;
+    procedure AddResponseHeader(Name: WideString; Value: WideString); override;
   public
     OutputData:TStream;
     OutputSize,ClippedSize:Int64;
@@ -223,7 +224,7 @@ begin
        end;
      end;
     j:=i;
-    while (i<=l) and not(AnsiChar(FURL[i]) in ['/','?','&','$','#']) do inc(i);
+    while (i<=l) and not(char(FURL[i]) in ['/','?','&','$','#']) do inc(i);
     //if server then remote?
     FProjectName:=Copy(FURL,j,i-j);
     if FProjectName='' then
@@ -242,7 +243,7 @@ begin
     if (FURL[i]='/') then inc(i);
 
     j:=i;
-    while (i<=l) and not(AnsiChar(FURL[i]) in ['?','&','$','#']) do inc(i);
+    while (i<=l) and not(char(FURL[i]) in ['?','&','$','#']) do inc(i);
     FFragmentName:=Copy(FURL,j,i-j);
     if (FURL[i]='?') then inc(i);
     j:=i;
@@ -803,6 +804,11 @@ end;
 function TXxmLocalContext.GetResponseHeaders: IxxmDictionaryEx;
 begin
   Result:=FResHeaders;
+end;
+
+procedure TXxmLocalContext.AddResponseHeader(Name, Value: WideString);
+begin
+  FResHeaders.Add(Name,Value);
 end;
 
 { TXxmPageLoader }

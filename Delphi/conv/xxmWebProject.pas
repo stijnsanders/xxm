@@ -278,7 +278,7 @@ begin
          begin
           //unique counter for project
           uname:=Copy(cid,cPathIndex,Length(cid)-cPathIndex+1);
-          if not(uname[1] in ['A'..'Z','a'..'z']) then uname:='x'+uname;
+          if not(char(uname[1]) in ['A'..'Z','a'..'z']) then uname:='x'+uname;
           i:=0;
           repeat
             inc(i);
@@ -671,7 +671,7 @@ begin
       si.wShowWindow:=SW_HIDE;
       si.hStdOutput:=h2;
       si.hStdError:=h2;
-      Result:=true;
+      Result:=true;//default
       h:=THandleStream.Create(h1);
       try
         if Result and not(cl1='') then Result:=DoCommand(cl1);

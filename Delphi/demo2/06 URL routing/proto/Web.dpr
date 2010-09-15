@@ -10,10 +10,11 @@ library [[ProjectName]];
 
   Prototype-file used:
   "[[ProtoFile]]"
-  $Rev$ $Date$
+  $Rev: 198 $ $Date: 2008-01-21 22:52:37 +0100 (ma, 21 jan 2008) $
 }
 
 uses
+	FRegRouting in '..\FRegRouting.pas',
 	[[@Include]][[IncludeUnit]] in '..\[[IncludePath]][[IncludeUnit]].pas',
 	[[@]][[@Fragment]][[FragmentUnit]] in '[[FragmentPath]][[FragmentUnit]].pas', {[[FragmentAddress]]}
 	[[@]][[UsesClause]]

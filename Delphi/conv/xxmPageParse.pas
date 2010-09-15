@@ -220,7 +220,7 @@ begin
        begin
         if instr then
          begin
-          if FData[j] in ['''',#13,#10] then instr:=false;
+          if char(FData[j]) in ['''',#13,#10] then instr:=false;
          end
         else
           case FData[j] of

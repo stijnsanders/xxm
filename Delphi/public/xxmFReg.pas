@@ -33,7 +33,7 @@ var
   XxmFragmentRegistry:TXxmFragmentRegistry;
 
 const
-  XXmDefaultPage:AnsiString='default.xxm';
+  XxmDefaultPage:AnsiString='default.xxm';
 
 implementation
 

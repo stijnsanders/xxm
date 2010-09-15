@@ -1,0 +1,47 @@
+[[!var
+i,l:integer;
+p:IXxmParameter;
+]][[
+l:=Context.ParameterCount;
+]]
+<h3>examples</h3>
+<ul>
+<li><a href="/view/1234">/view/1234<a>: number parameter</li>
+<li><a href="/view/hello/world/">/view/hello/world/</a>: name value pair</li>
+<li><a href="/view/hello/world/5678/product/1">/view/hello/world/5678/product/1</a>: both</li>
+<li><a href="/view/hello/world/?test=1">/view/hello/world/?test=1</a>: querystring still works</li>
+<li>
+<form action="/formpost/form/1/product/1" method="post" style="margin:0pt;">
+<input type="hidden" name="hello" value="world" />
+<input type="submit" value="/formpost/form/1/product/1" />: a form post
+</form></li>
+<li><a href="/search/q/something/">/search/q/something/</a>: another page</li>
+<li><a href="/files/test.html">/files/test.html</a>: remember to put plain files into the files folder</li>
+</ul>
+<h3>parameter list ([[=l]]):</h3>
+<table border="1"><tr><th>name</th><th>type</th><th>value</th></tr>
+[[!
+function p_is(IID:TGUID):boolean;
+var
+  x:IUnknown;
+begin
+  x:=nil;
+  Result:=p.QueryInterface(IID,x)=S_OK;
+  x:=nil;
+end;
+]][[
+for i:=0 to l-1 do
+ begin
+  p:=Context.Parameter[i];
+  ]]
+  <tr><td>[[=p.Name]]</td><td>[[
+  if p_is(IID_IParameterFromPath) then Context.Send('IParameterFromPath') else
+  if p_is(IID_IXxmParameterPostFile) then Context.Send('IXxmParameterPostFile') else
+  if p_is(IID_IXxmParameterPost) then Context.Send('IXxmParameterPost') else
+  if p_is(IID_IXxmParameterGet) then Context.Send('IXxmParameterGet') else
+    Context.Send('?');
+  ]]</td><td>[[=p.Value]]</td></tr>
+  [[
+ end;
+]]
+</table>

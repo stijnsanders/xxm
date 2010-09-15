@@ -5,22 +5,20 @@ interface
 uses xxm, Classes, SysUtils, ActiveX;
 
 type
-  TXxmReqPar=class;
-
   TXxmReqPars=class(TObject)
   private
-    FParams:array of TXxmReqPar;
+    FParams:array of IXxmParameter;
     procedure Fill(Context: IXxmContext; PostData: TStream; DoSeek: boolean);
-    procedure Add(Par:TXxmReqPar);
   public
     PostDataOnRedirect:boolean;
     constructor Create(Context: IXxmContext; PostData: TStream);
     constructor CreateNoSeek(Context: IXxmContext; PostData: TStream);
     destructor Destroy; override;
-    function Get(Key:WideString):TXxmReqPar;
-    function GetNext(Par:TXxmReqPar):TXxmReqPar;
-    function GetItem(Key:integer):TXxmReqPar;
+    function Get(Key:WideString):IXxmParameter;
+    function GetNext(Par:IXxmParameter):IXxmParameter;
+    function GetItem(Key:integer):IXxmParameter;
     function Count:integer;
+    procedure Add(Par:IXxmParameter);
   end;
 
   TXxmReqPar=class(TInterfacedObject, IXxmParameter)
@@ -130,7 +128,13 @@ destructor TXxmReqPars.Destroy;
 var
   i:integer;
 begin
-  for i:=0 to Length(FParams)-1 do FParams[i]._Release;
+  for i:=0 to Length(FParams)-1 do
+    try
+      FParams[i]._Release;
+      FParams[i]:=nil;
+    except
+      pointer(FParams[i]):=nil;//silent
+    end;
   inherited;
 end;
 
@@ -254,7 +258,7 @@ begin
    end;
 end;
 
-procedure TXxmReqPars.Add(Par: TXxmReqPar);
+procedure TXxmReqPars.Add(Par: IXxmParameter);
 var
   i:integer;
 begin
@@ -264,9 +268,10 @@ begin
   Par._AddRef;
 end;
 
-function TXxmReqPars.Get(Key: WideString): TXxmReqPar;
+function TXxmReqPars.Get(Key: WideString): IXxmParameter;
 var
   i:integer;
+  p:TXxmReqPar;
 begin
   i:=0;
   //case sensitive?
@@ -275,13 +280,14 @@ begin
    begin
     //TODO: setting: nil or create empty?
     //Result:=nil;
-    Result:=TXxmReqPar.Create(Self,Key,'');
-    Result.FDummy:=true;
+    p:=TXxmReqPar.Create(Self,Key,'');
+    p.FDummy:=true;
+    Result:=p;
     //default value from setting?
    end;
 end;
 
-function TXxmReqPars.GetNext(Par: TXxmReqPar): TXxmReqPar;
+function TXxmReqPars.GetNext(Par: IXxmParameter): IXxmParameter;
 var
   i:integer;
   Key:WideString;
@@ -299,7 +305,7 @@ begin
     Result:=nil;
 end;
 
-function TXxmReqPars.GetItem(Key: integer): TXxmReqPar;
+function TXxmReqPars.GetItem(Key: integer): IXxmParameter;
 begin
   Result:=FParams[Key];
 end;

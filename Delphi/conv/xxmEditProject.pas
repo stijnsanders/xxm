@@ -380,7 +380,7 @@ begin
                 n:=tvFiles.Items.AddChild(node,fn);
                 (n as TFileNode).IsDir:=true;
                 (n as TFileNode).ProjectNode:=nil;
-                if ((node=nil) and (fn=SourceDirectory)) or
+                if ((node=nil) and ((fn=SourceDirectory) or (fn=ProtoDirectory))) or
                    (not(n.Parent=nil) and (n.Parent.ImageIndex=iiDirGenerated)) then
                  begin
                   n.ImageIndex:=iiDirGenerated;

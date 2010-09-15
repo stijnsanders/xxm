@@ -10,7 +10,6 @@ unit [[FragmentUnit]];
 
   Prototype-file used:
   "[[ProtoFile]]"
-  $Rev$ $Date$
 }
 
 interface
@@ -29,7 +28,7 @@ implementation
 uses 
   SysUtils, 
 [[UsesClause]]
-  xxmFReg;
+  FRegRouting;
   
 [[FragmentDefinitions]]
 { [[FragmentID]] }
@@ -43,7 +42,7 @@ begin
 end;
 
 initialization
-  XxmFragmentRegistry.RegisterClass('[[FragmentAddress]]',[[FragmentID]]);
+  RegisterFragmentClass('[[FragmentAddress]]',[[FragmentID]]);
 [[FragmentFooter]]
 
 end.
