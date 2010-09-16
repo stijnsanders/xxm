@@ -101,7 +101,7 @@ DebugSourceDirs=
 UsePackages=0
 [Parameters]
 RunParams=xxm:proto/test.xxm
-HostApplication=C:\Program Files\Internet Explorer\IEXPLORE.EXE
+HostApplication=C:\Program Files\TB.exe
 Launcher=
 UseLauncher=0
 DebugCWD=

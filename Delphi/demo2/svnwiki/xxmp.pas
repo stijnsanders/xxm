@@ -8,7 +8,7 @@ type
   TXxmsvnwiki=class(TXxmProject)
   public
     function LoadPage(Context: IXxmContext; Address: WideString): IXxmFragment; override;
-    function LoadFragment(Address: WideString): IXxmFragment; override;
+    function LoadFragment(Context: IXxmContext; Address, RelativeTo: WideString): IXxmFragment; override;
     procedure UnloadFragment(Fragment: IXxmFragment); override;
   end;
 
@@ -26,28 +26,25 @@ end;
 { TXxmsvnwiki }
 
 function TXxmsvnwiki.LoadPage(Context: IXxmContext; Address: WideString): IXxmFragment;
-var
-  fc:TXxmFragmentClass;
 begin
   inherited;
   //SetSession(Context);
   //Result:=LoadFragment(Address);
   if Address='svnwiki.css' then 
-    fc:=nil //return nil here and default to file-search
+    Result:=nil //return nil here and default to file-search
   else
     if not(Address='') and (Address[1] in [WideChar('~'),WideChar('+')]) then
-	  fc:=XxmFragmentRegistry.GetClass('BackLinks.xxm')
+	  Result:=XxmFragmentRegistry.GetFragment(Self,'BackLinks.xxm','')
 	else
 	  if Context.ContextString(csQueryString)='' then
-        fc:=XxmFragmentRegistry.GetClass('Default.xxm')
+        Result:=XxmFragmentRegistry.GetFragment(Self,'Default.xxm','')
 	  else
-	    fc:=XxmFragmentRegistry.GetClass('Search.xxm');
-  if fc=nil then Result:=nil else Result:=fc.Create(Self);
+	    Result:=XxmFragmentRegistry.GetFragment(Self,'Search.xxm','');
 end;
 
-function TXxmsvnwiki.LoadFragment(Address: WideString): IXxmFragment;
+function TXxmsvnwiki.LoadFragment(Context: IXxmContext; Address, RelativeTo: WideString): IXxmFragment;
 begin
-  Result:=XxmFragmentRegistry.GetClass(Address).Create(Self);
+  Result:=XxmFragmentRegistry.GetFragment(Self,Address,RelativeTo);
   //TODO: cache created instance, incease ref count
 end;
 
