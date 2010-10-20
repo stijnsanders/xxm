@@ -191,21 +191,21 @@ property ParameterCount:integer</code></dt>
 provides information about the incoming request
 <ul>
 <li>csVersion: xxm version</li>
+<li>csProjectName: name the xxm project was loaded with (is registered with)</li>
+<li>csURL: the full URL of the request</li>
+<li>csLocalURL: URL fraction that determines the loaded page</li>
 <li>csVerb: HTTP verb, typically "GET" or "POST"</li>
+<li>csReferer: the URL of the previous page opened in the browser</li>
 <li>csQueryString: the URL portion after "?"</li>
-<li>csExtraInfo: trailing URL information</li>
 <li>csUserAgent: browser's identification string</li>
+<li>csExtraInfo: trailing URL information</li>
 <li>csAcceptedMimeTypes: browser's accepted MIME types</li>
 <li>csPostMimeType: the MIME type of the data posted in the request</li>
-<li>csURL: the full URL of the request</li>
-<li>csReferer: the URL of the previous page opened in the browser</li>
 <li>csLanguage: browser's accepted languages</li>
 <li>csRemoteAddress: client's network address</li>
 <li>csRemoteHost: client's host name</li>
 <li>csAuthUser: user name provided by the request authentification</li>
 <li>csAuthPassword: password provided by the request authentification</li>
-<li>csProjectName: name the xxm project was loaded with (is registered with)</li>
-<li>csLocalURL: URL fraction that determines the loaded page</li><li>csRelativePath: path into the website, used for relative includes</li>
 </ul>
 
 </dd>
@@ -288,7 +288,7 @@ function URLDecode(Data:string):WideString;
 
 <p class="title"><a name="headers"></a>Headers</p>
 
-<p>The xxm context objects provide separate interfaces to allow access to request and response HTTP headers. Include the <code>xxmHeaders.pas</code> and query the Context object for an IxxmHttpHeaders interface pointer.</p>
+<p>The xxm context objects provide separate interfaces to allow access to request and response HTTP headers and parameters. Include the <code>xxmHeaders.pas</code> and query the Context object for an IxxmHttpHeaders or IxxmParameterCollection interface pointer.</p>
 
 <dl>
 <dt class="title"><code>IxxmHttpHeaders=interface</code></dt>
@@ -313,6 +313,13 @@ function URLDecode(Data:string):WideString;
 </dl>
 
 <p>Example:</p><p><code>(Context as IxxmHttpHeaders).ResponseHeaders['X-Something']:='Hello world!';</code></p>
+
+<dl>
+<dt class="title"><code>IxxmParameterCollection</code></dt>
+<dd>an interface provided by the context object that enables adding extra parameters, e.g. from the project's LoadPage method.</dd>
+<dt><code>procedure AddParameter(Param: IXxmParameter);</code></dt>
+<dd>adds an object to the parameter collection that implements the IXxmParameter interface.</dd>
+</dl>
 
 </body>
 </html>
