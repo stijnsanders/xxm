@@ -1,7 +1,5 @@
-[[@wikiObj,Variants,MSXML2_TLB,]][[!var
-pn,gn,mn,mv:WideString;
-rq:IXMLHTTPRequest;
-x:WideString;
+[[@wikiObj,]][[!var
+pn,gn,mn,mv,x,y:WideString;
 redirecting:boolean;
 rl:array of WideString;
 i,l:integer;
@@ -10,19 +8,12 @@ pn:=Context.ContextString(csLocalURL);
 if pn='' then pn:='HomePage';
 CheckMainWikiEngine;
 gn:=MainWikiEngine.GetGroupByName(pn,'Main');
-rq:=CoXMLHTTP.Create;
 redirecting:=true;
 SetLength(rl,0);
 while redirecting do
  begin
   redirecting:=false;
-	try
-	  rq.open('GET',WikiDataRoot+FileNameSafe(pn+WikiDataExt),false,WikiDataUser,WikiDataPwd);
-	  rq.send(EmptyParam);
-	  if rq.status in [0,200] then x:=rq.responseText else x:='''''Page not found''''';
-	except
-	  x:='''''Page not found''''';
-	end;
+	GetItemData(pn+WikiDataExt,'''''Page not found''''',x,y);
 	x:=MainWikiEngine.Render(x,gn);
 	while MainWikiEngine.GetModification(mn,mv) do
 	 begin
@@ -37,7 +28,7 @@ while redirecting do
 		rl[l]:=pn;
 		redirecting:=true;
 		pn:=mv;
-        gn:=MainWikiEngine.GetGroupByName(pn,'Main');
+        gn:=MainWikiEngine.GetGroupByName(pn,gn);
 	   end;
 	  //more?
 	 end;
@@ -45,18 +36,15 @@ while redirecting do
 Context.Include('iHead.xxmi',[pn,gn,pn]);
 for i:=0 to Length(rl)-1 do
  begin
-  ]]<p class="redirected">redirected from <b>[[=rl[i]]]</b></p>[[
+  ]]<p class="redirected">redirected from <b>[[=rl[i]]]</b></p>
+  [[
  end;
 Context.SendHTML(x);
 ]]</div>
-<div class="footerbar">rev:[[=RevFromETag(rq.getResponseHeader('ETag'))]] &nbsp; [[=rq.getResponseHeader('Last-Modified')]]</div>
+<div class="footerbar">[[=y]]</div>
 <div class="sidebar"><div class="faketitle">&nbsp;</div><div class="sidewiki">[[
-try
-  rq.open('GET',WikiDataRoot+FileNameSafe(gn+WikiSideBarSuffix+WikiDataExt),false,WikiDataUser,WikiDataPwd);
-  rq.send(EmptyParam);
-  if rq.status in [0,200] then Context.SendHTML(MainWikiEngine.Render(rq.responseText,gn));
-except
-end;
+GetItemData(gn+WikiSideBarSuffix+WikiDataExt,'''''Page not found''''',x,y);
+Context.SendHTML(MainWikiEngine.Render(x,gn));
 ]]</div>[[
 Context.Include('iFoot.xxmi');
 ]]
