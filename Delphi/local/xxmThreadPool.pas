@@ -87,7 +87,7 @@ begin
          end;
        end;
       SetLength(FLoaders,x);
-      if ThreadsClosed then Sleep(50);
+      if ThreadsClosed then Sleep(250);
      end;
     //if FLoaderIndex>=FLoaderSize then FLoaderIndex:=0;
   finally

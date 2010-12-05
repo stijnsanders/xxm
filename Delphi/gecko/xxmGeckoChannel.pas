@@ -1314,9 +1314,6 @@ const
     'SyncAbort',
     'SyncRedirect');
 
-var
-  DebugListenerCount: integer;
-
 constructor TxxmListenerCaller.Create(Owner: TxxmChannel;
   Call: TxxmListenerCall;Offset,Count:cardinal);
 begin
@@ -1326,7 +1323,6 @@ begin
   FCall:=Call;
   FOffset:=Offset;
   FCount:=Count;
-  inc(DebugListenerCount);
 end;
 
 destructor TxxmListenerCaller.Destroy;

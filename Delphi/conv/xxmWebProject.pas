@@ -391,6 +391,8 @@ begin
   finally
     p.Free;
     q.Free;
+    m.Free;
+    x:=nil;
   end;
 
 end;

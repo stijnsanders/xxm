@@ -1,6 +1,8 @@
 Though a xxmGeckoDev.xpi file is available for install,
 when debugging the xxmGeckoDev.dpr project, it's
-advised to install xxmGeckoDev.dll 'the hard way':
+advised to install xxmGeckoDev.dll 'the hard way'
+to ensure firefox.exe loads the same DLL file
+as the debugger is listening for:
 
 - Put "xxmGeckoDev.dll" and "xxmGeckoDev.xpt" in the
   "components" folder of the FireFox folder, typically
