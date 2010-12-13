@@ -26,7 +26,35 @@ const
 var
   PageLoaderPool:TXxmPageLoaderPool;
 
+procedure SetThreadName(ThreadDisplayName:AnsiString);
+function IsDebuggerPresent: BOOL; stdcall;
+
 implementation
+
+function IsDebuggerPresent; external 'kernel32.dll';
+
+procedure SetThreadName(ThreadDisplayName:AnsiString);
+var
+  ThreadInfo:record
+    dwType:LongWord;
+    szName:PAnsiChar;
+    dwThreadID:LongWord;
+    dwFlags:LongWord;
+  end;
+begin
+  if IsDebuggerPresent then
+    begin
+      ThreadInfo.dwType:=$1000;
+      ThreadInfo.szName:=PAnsiChar(ThreadDisplayName);
+      ThreadInfo.dwThreadID:=LongWord(-1);//calling thread
+      ThreadInfo.dwFlags:=0;
+      try
+        RaiseException($406D1388,0,SizeOf(ThreadInfo) div SizeOf(LongWord),@ThreadInfo);
+      except
+        //
+      end;
+    end;
+end;
 
 { TXxmPageLoaderPool }
 

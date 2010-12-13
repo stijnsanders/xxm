@@ -833,6 +833,7 @@ begin
     if Context=nil then
      begin
       FInUse:=false;//used by PageLoaderPool.Queue
+      SetThreadName('(xxmPageLoader)');
       Suspend;
       FInUse:=true;
      end
@@ -840,6 +841,7 @@ begin
      begin
       ContextI:=Context;//keep refcount up for premature terminate
       try
+        SetThreadName('xxmPageLoader'+Context.FURL);
         Context.Execute;//assert all exceptions handled!
       finally
         ContextI:=nil;
