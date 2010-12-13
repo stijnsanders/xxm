@@ -456,7 +456,8 @@ end;
 
 function TXxmGeneralContext.PostData: IStream;
 begin
-  Result:=TStreamAdapter.Create(FPostData,soReference);
+  if FPostData=nil then Result:=nil else
+    Result:=TStreamAdapter.Create(FPostData,soReference);
 end;
 
 function TXxmGeneralContext.GetParameter(Key: OleVariant): IXxmParameter;
