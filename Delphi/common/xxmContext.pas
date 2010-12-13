@@ -388,14 +388,30 @@ begin
   end;
 end;
 
+function VarToWideStrX(const V: Variant): WideString;
+var
+  p:IXxmParameter;
+begin
+  case VarType(V) and varTypeMask of
+    varNull:Result:='';
+    varUnknown:
+      if IUnknown(v).QueryInterface(IID_IXxmParameter,p)=S_OK then
+        Result:=p.Value
+      else
+        Result:=V //throw default exception
+    else
+      Result:=V;
+  end;
+end;
+
 procedure TXxmGeneralContext.SendHTML(Data: OleVariant);
 begin
-  if not(VarIsNull(Data)) then SendRaw(VarToWideStr(Data));
+  SendRaw(VarToWideStrX(Data));
 end;
 
 procedure TXxmGeneralContext.Send(Data: OleVariant);
 begin
-  if not(VarIsNull(Data)) then SendRaw(HTMLEncode(VarToWideStr(Data)));
+  SendRaw(HTMLEncode(VarToWideStrX(Data)));
 end;
 
 procedure TXxmGeneralContext.SendFile(FilePath: WideString);
@@ -435,7 +451,7 @@ procedure TXxmGeneralContext.SendHTML(const Values: array of OleVariant);
 var
   i:integer;
 begin
-  for i:=0 to Length(Values)-1 do SendRaw(VarToWideStr(Values[i]));
+  for i:=0 to Length(Values)-1 do SendRaw(VarToWideStrX(Values[i]));
 end;
 
 function TXxmGeneralContext.PostData: IStream;

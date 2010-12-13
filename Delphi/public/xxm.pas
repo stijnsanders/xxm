@@ -222,7 +222,7 @@ uses Variants;
 
 function HTMLEncode(Data:OleVariant):WideString;
 begin
-  if VarIsNull(Data) then Result:='' else Result:=HTMLEncode(VarToWideStr(Data));
+  Result:=HTMLEncode(VarToWideStr(Data));
 end;
 
 function HTMLEncode(Data:WideString):WideString;
