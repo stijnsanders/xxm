@@ -130,10 +130,9 @@ begin
        begin
         SetLength(FQueries,i+1);
         FQueries[i].ID:=(x1 as IXMLDOMElement).getAttribute('id');
-		FQueries[i].SQL:=x1.text;
+		    FQueries[i].SQL:=x1.text;
         inc(i);
        end;
-	   
       x1:=xl1.nextNode;
      end;
   finally
@@ -159,7 +158,7 @@ begin
     cmd.CommandText:=QueryStore.GetSQL(QueryName);
     cmd.Set_ActiveConnection(Session.Connection);
     for i:=0 to Length(Values)-1 do
-      cmd.Parameters.Append(cmd.CreateParameter('',adVariant,adParamInput,0,Values[i]));
+      cmd.Parameters.Append(cmd.CreateParameter('',VarType(Values[i]),adParamInput,0,Values[i]));
     FRecordSet:=cmd.Execute(v,EmptyParam,0);
   finally
     cmd:=nil;
@@ -206,7 +205,7 @@ var
 begin
   try
     //v:=FRecordSet.Fields[Idx].Value;
-	v:=FRecordSet.Collect[idx];
+	  v:=FRecordSet.Collect[idx];
   except
     on e:EOleException do
       if cardinal(e.ErrorCode)=$800A0CC1 then
@@ -221,7 +220,7 @@ function TQueryResult.GetStr(Idx: OleVariant): WideString;
 begin
   try
     //Result:=VarToWideStr(FRecordSet.Fields[Idx].Value);
-	Result:=VarToWideStr(FRecordSet.Collect[Idx]);
+	  Result:=VarToWideStr(FRecordSet.Collect[Idx]);
   except
     on e:EOleException do
       if cardinal(e.ErrorCode)=$800A0CC1 then
@@ -237,7 +236,7 @@ var
 begin
   try
     //v:=FRecordSet.Fields[Idx].Value;
-	v:=FRecordSet.Collect[Idx];
+	  v:=FRecordSet.Collect[Idx];
   except
     on e:EOleException do
       if cardinal(e.ErrorCode)=$800A0CC1 then
@@ -374,7 +373,7 @@ begin
   cmd.CommandText:=QueryStore.GetSQL(QueryName);
   cmd.Set_ActiveConnection(Session.Connection);
   for i:=0 to Length(Values)-1 do
-    cmd.Parameters.Append(cmd.CreateParameter('',adVariant,adParamInput,0,Values[i]));
+    cmd.Parameters.Append(cmd.CreateParameter('',VarType(Values[i]),adParamInput,0,Values[i]));
   cmd.Execute(v,EmptyParam,0);
   cmd:=nil;
   Result:=v;
