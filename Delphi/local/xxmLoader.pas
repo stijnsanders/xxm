@@ -63,7 +63,7 @@ type
 
     property Verb: WideString read FVerb;
   end;
-
+  
   TXxmPageLoader=class(TThread)
   protected
     FInUse:boolean;
@@ -848,7 +848,7 @@ begin
       end;
      end;
    end;
-  CoUninitialize;
+  //CoUninitialize;//? hangs thread
 end;
 
 end.
