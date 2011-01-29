@@ -1,4 +1,4 @@
-binary-component platform/WINNT_x86-msvc/components/xxmGeckoDev.dll abi=WINNT_x86-msvc
-interfaces platform/WINNT_x86-msvc/components/xxmGeckoDev.xpt
-component {78786D00-0000-0010-C000-000000000010} platform/WINNT_x86-msvc/components/xxmGeckoDev.dll abi=WINNT_x86-msvc
+binary-component platform/WINNT/components/xxmGeckoDev.dll abi=WINNT
+component {78786D00-0000-0010-C000-000000000010} platform/WINNT/components/xxmGeckoDev.dll abi=WINNT
 contract @mozilla.org/network/protocol;1?name=xxm {78786D00-0000-0010-C000-000000000010}
+interfaces platform/WINNT/components/xxmGeckoDev.xpt

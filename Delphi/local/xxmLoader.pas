@@ -841,7 +841,7 @@ begin
      begin
       ContextI:=Context;//keep refcount up for premature terminate
       try
-        SetThreadName('xxmPageLoader'+Context.FURL);
+        SetThreadName('xxmPageLoader:'+Context.FURL);
         Context.Execute;//assert all exceptions handled!
       finally
         ContextI:=nil;

@@ -41,6 +41,9 @@ type
     constructor Create(SQL:AnsiString); overload;
     destructor Destroy; override;
 
+    class function SingleValue(QueryName: AnsiString; const Values: array of Variant):Variant; overload;
+    class function SingleValue(SQL:AnsiString):Variant; overload;
+
     procedure Reset;
     function Read:boolean;
     property Fields[Idx:OleVariant]:OleVariant read GetValue; default;
@@ -71,6 +74,7 @@ type
 
   EQueryStoreError=class(Exception);
   EFieldNotFound=class(Exception);
+  ESingleValueFailed=class(Exception);
 
 var
   QueryStore: TQueryStore;
@@ -140,6 +144,22 @@ begin
   end;
 end;
 
+procedure CmdParameters(Cmd:Command;const Values:array of Variant);
+var
+  i:integer;
+  vt:TVarType;
+begin
+  cmd.Set_ActiveConnection(Session.Connection);
+  for i:=0 to Length(Values)-1 do
+   begin
+    vt:=VarType(Values[i]);
+    if (vt=varString) or (vt=varOleStr) then
+      cmd.Parameters.Append(cmd.CreateParameter('',adVariant,adParamInput,0,Values[i]))
+    else
+      cmd.Parameters.Append(cmd.CreateParameter('',vt,adParamInput,0,Values[i]));
+   end;
+end;
+
 { TQueryResult }
 
 constructor TQueryResult.Create(QueryName: AnsiString;
@@ -147,7 +167,6 @@ constructor TQueryResult.Create(QueryName: AnsiString;
 var
   cmd:Command;
   v:OleVariant;
-  i:integer;
 begin
   inherited Create;
   //FRecordSet:=Session.DbCon.Execute(,v,adCmdText);
@@ -156,9 +175,7 @@ begin
   try
     cmd.CommandType:=adCmdText;
     cmd.CommandText:=QueryStore.GetSQL(QueryName);
-    cmd.Set_ActiveConnection(Session.Connection);
-    for i:=0 to Length(Values)-1 do
-      cmd.Parameters.Append(cmd.CreateParameter('',VarType(Values[i]),adParamInput,0,Values[i]));
+    CmdParameters(cmd,Values);
     FRecordSet:=cmd.Execute(v,EmptyParam,0);
   finally
     cmd:=nil;
@@ -191,6 +208,61 @@ begin
   //FRecordSet.Close;
   FRecordSet:=nil;
   inherited;
+end;
+
+class function TQueryResult.SingleValue(QueryName: AnsiString;
+  const Values: array of Variant): Variant;
+var
+  cmd:Command;
+  rs:Recordset;
+  v:OleVariant;
+begin
+  inherited Create;
+  cmd:=CoCommand.Create;
+  try
+    cmd.CommandType:=adCmdText;
+    cmd.CommandText:=QueryStore.GetSQL(QueryName);
+    CmdParameters(cmd,Values);
+    rs:=cmd.Execute(v,EmptyParam,0);
+    if rs.EOF then
+      raise ESingleValueFailed.Create('SingleValue('+QueryName+') did not result a value')
+    else
+     begin
+      Result:=rs.Fields[0].Value;
+      rs.MoveNext;
+      if not rs.EOF then
+        raise ESingleValueFailed.Create('SingleValue('+QueryName+') resulted in more than one value')
+     end;
+  finally
+    rs:=nil;
+    cmd:=nil;
+  end;
+end;
+
+class function TQueryResult.SingleValue(SQL: AnsiString): Variant;
+var
+  rs:Recordset;
+begin
+  rs:=CoRecordset.Create;
+  try
+    rs.Open(
+      SQL,
+      Session.Connection,
+      adOpenStatic,//? adOpenForwardOnly,//?
+      adLockReadOnly,
+      adCmdText);
+    if rs.EOF then
+      raise ESingleValueFailed.Create('SingleValue did not result a value')
+    else
+     begin
+      Result:=rs.Fields[0].Value;
+      rs.MoveNext;
+      if not rs.EOF then
+        raise ESingleValueFailed.Create('SingleValue resulted in more than one value')
+     end;
+  finally
+    rs:=nil;
+  end;
 end;
 
 procedure TQueryResult.Reset;
@@ -366,14 +438,11 @@ class function TDataChanger.Perform(QueryName: AnsiString;
 var
   cmd:Command;
   v:OleVariant;
-  i:integer;
 begin
   cmd:=CoCommand.Create;
   cmd.CommandType:=adCmdText;
   cmd.CommandText:=QueryStore.GetSQL(QueryName);
-  cmd.Set_ActiveConnection(Session.Connection);
-  for i:=0 to Length(Values)-1 do
-    cmd.Parameters.Append(cmd.CreateParameter('',VarType(Values[i]),adParamInput,0,Values[i]));
+  CmdParameters(cmd,Values);
   cmd.Execute(v,EmptyParam,0);
   cmd:=nil;
   Result:=v;
