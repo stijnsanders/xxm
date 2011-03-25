@@ -8,11 +8,10 @@ type
   TXxmReqPars=class(TObject)
   private
     FParams:array of IXxmParameter;
-    procedure Fill(Context: IXxmContext; PostData: TStream; DoSeek: boolean);
+    procedure Fill(Context: IXxmContext; PostData: TStream);
   public
     PostDataOnRedirect:boolean;
     constructor Create(Context: IXxmContext; PostData: TStream);
-    constructor CreateNoSeek(Context: IXxmContext; PostData: TStream);
     destructor Destroy; override;
     function Get(Key:WideString):IXxmParameter;
     function GetNext(Par:IXxmParameter):IXxmParameter;
@@ -128,14 +127,7 @@ constructor TXxmReqPars.Create(Context:IXxmContext; PostData: TStream);
 begin
   inherited Create;
   PostDataOnRedirect:=false;
-  Fill(Context,PostData,true);
-end;
-
-constructor TXxmReqPars.CreateNoSeek(Context:IXxmContext; PostData: TStream);
-begin
-  inherited Create;
-  PostDataOnRedirect:=false;
-  Fill(Context,PostData,false);
+  Fill(Context,PostData);
 end;
 
 destructor TXxmReqPars.Destroy;
@@ -152,7 +144,7 @@ begin
   inherited;
 end;
 
-procedure TXxmReqPars.Fill(Context: IXxmContext; PostData: TStream; DoSeek: boolean);
+procedure TXxmReqPars.Fill(Context: IXxmContext; PostData: TStream);
 var
   i,p,q,r,l:integer;
   ps:TStream;
@@ -178,9 +170,9 @@ begin
    end;
 
   ps:=PostData;
-  if not(ps=nil) then
+  if ps<>nil then
    begin
-    if DoSeek then ps.Seek(0,soFromBeginning);
+    ps.Seek(0,soFromBeginning);
     pm:=Context.ContextString(csPostMimeType);
     pn:=SplitHeaderValue(pm,1,Length(pm),pa);//lower?
 
@@ -268,7 +260,7 @@ begin
       raise EXxmUnknownPostMime.Create(StringReplace(
         SXxmUnknownPostMime,'__',pm,[]));
 
-    if DoSeek then ps.Seek(0,soFromBeginning);
+    ps.Seek(0,soFromBeginning);
    end;
 end;
 

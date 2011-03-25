@@ -9,15 +9,17 @@ type
   private
     FSize:Int64;
     FSocket:TCustomIpClient;
+    FStore:TStream;
+    FStorePosition,FPosition:int64;
   protected
     function GetSize: Int64; override;
     procedure SetSize(NewSize: Longint); overload; override;
     procedure SetSize(const NewSize: Int64); overload; override;
   public
-    constructor Create(Socket:TCustomIpClient;Size:Int64);
+    constructor Create(Socket:TCustomIpClient;Size:Int64;StoreStream:TStream);
+    destructor Destroy; override;
     function Read(var Buffer; Count: Longint): Longint; override;
     function Write(const Buffer; Count: Longint): Longint; override;
-    function Seek(Offset: Longint; Origin: Word): Longint; overload; override;
     function Seek(const Offset: Int64; Origin: TSeekOrigin): Int64; overload; override;
   end;
 
@@ -28,11 +30,16 @@ uses SysUtils;
 { THandlerReadStreamAdapter }
 
 constructor THandlerReadStreamAdapter.Create(Socket: TCustomIpClient;
-  Size: Int64);
+  Size: Int64; StoreStream: TStream);
 begin
   inherited Create;
   FSize:=Size;
   FSocket:=Socket;
+  FStore:=StoreStream;
+  //FStore.Size:=FSize;//done by caller? (don't care really)
+  //assert FStore.Position:=0;
+  FStorePosition:=0;
+  FPosition:=0;
 end;
 
 function THandlerReadStreamAdapter.GetSize: Int64;
@@ -40,26 +47,47 @@ begin
   Result:=FSize;//from HTTP request header
 end;
 
-function THandlerReadStreamAdapter.Seek(Offset: Integer;
-  Origin: Word): Longint;
-begin
-  //TXxmReqPars.Fill seeks to beginning only for convenience
-  if (Offset=soFromBeginning) and (Origin=0) then
-    Result:=0
-  else
-    raise Exception.Create('THandlerReadStreamAdapter.Seek not supported');
-end;
-
 function THandlerReadStreamAdapter.Seek(const Offset: Int64;
   Origin: TSeekOrigin): Int64;
 begin
-  Result:=Seek(integer(Offset),word(Origin));
+  case Origin of
+    soBeginning:Result:=Offset;
+    soCurrent:Result:=FPosition+Offset;
+    soEnd:Result:=FSize+Offset;
+    else Result:=FPosition+Offset;//raise?
+  end;
+  if (Result<0) or (Result>FSize) then
+    raise Exception.Create('THandlerReadStreamAdapter.Seek past end not allowed');
+  if (Result>FStorePosition) then
+    raise Exception.Create('THandlerReadStreamAdapter.Seek past current incoming position not allowed');//TODO: force read?
+  FStore.Position:=Result;
+  FPosition:=Result;
 end;
 
 function THandlerReadStreamAdapter.Read(var Buffer;
   Count: Integer): Longint;
 begin
-  Result:=FSocket.ReceiveBuf(Buffer,Count);
+  if FPosition=FStorePosition then
+   begin
+    Result:=FSocket.ReceiveBuf(Buffer,Count);
+    FStore.Write(Buffer,Result);
+    inc(FPosition,Result);
+    inc(FStorePosition,Result);
+   end
+  else
+   if FPosition<FStorePosition then
+    begin
+     if FPosition+Count>FStorePosition then
+       Result:=FStorePosition-FPosition
+     else
+       Result:=Count;
+     Result:=FStore.Read(Buffer,Result);
+     inc(FPosition,Result);
+     //assert FPosition=FStorePosition?
+     //TODO: read FPosition+Count-FStorePosition
+    end
+   else
+     raise Exception.Create('THandlerReadStreamAdapter.Read past current incoming position not allowed');//TODO: force read?
 end;
 
 procedure THandlerReadStreamAdapter.SetSize(NewSize: Integer);
@@ -76,6 +104,12 @@ function THandlerReadStreamAdapter.Write(const Buffer;
   Count: Integer): Longint;
 begin
   raise Exception.Create('THandlerReadStreamAdapter.Write not supported');
+end;
+
+destructor THandlerReadStreamAdapter.Destroy;
+begin
+  FStore.Free;
+  inherited;
 end;
 
 end.

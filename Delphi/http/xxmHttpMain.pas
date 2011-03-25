@@ -80,7 +80,8 @@ resourcestring
   SXxmContextStringUnknown='Unknown ContextString __';
 
 const
-  HTTPMaxHEaderLines=$400;
+  HTTPMaxHeaderLines=$400;
+  PostDataTreshold=$100000;
 
 procedure XxmRunServer;
 type
@@ -195,6 +196,8 @@ procedure TXxmHttpContext.Execute;
 var
   i,j,l:integer;
   x,y:AnsiString;
+  s:TStream;
+  si:int64;
 begin
   try
     //command line
@@ -284,7 +287,21 @@ begin
 
     //if not(Verb='GET') then?
     x:=FReqHeaders['Content-Length'];
-    if not(x='') then FPostData:=THandlerReadStreamAdapter.Create(FSocket,StrToInt(x));
+    if x<>'' then
+     begin
+      si:=StrToInt(x);
+      if si<PostDataTreshold then
+        s:=TMemoryStream.Create
+      else
+       begin
+        SetLength(FPostTempFile,$400);
+        SetLength(FPostTempFile,GetTempPathA($400,PAnsiChar(FPostTempFile)));//TODO: setting
+        FPostTempFile:=FPostTempFile+'xxm_'+IntToHex(integer(Self),8)+'_'+IntToHex(GetTickCount,8)+'.dat';
+        s:=TFileStream.Create(FPostTempFile,fmCreate);
+       end;
+      s.Size:=StrToInt(x);
+      FPostData:=THandlerReadStreamAdapter.Create(FSocket,si,s);
+     end;
 
     BuildPage;
 
