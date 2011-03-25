@@ -1,3 +1,7 @@
+v1.1.1.?
+- xxmHttp: fixed bug with saving uploaded files
+- xxmLocal: fixed bug with javascript authorization (document.domain)
+
 v1.1.0.272
 
 - xxm.pas: IXxmProject.LoadFragment Context, RelativeTo parameter added

@@ -376,13 +376,12 @@ begin
       i:=1;
       while (i<=l) and not(FURL[i]=':') do inc(i);
       //assert starts with 'xxm:'
-      w:=Copy(FURL,1,i);
       inc(i);
       if (i<=l) and (FURL[i]='/') then inc(i);
       if (i<=l) and (FURL[i]='/') then inc(i);
       j:=i;
       while (i<=Length(FURL)) and not(char(FURL[i]) in ['/','?','&','$','#']) do inc(i);
-      w:=w+Copy(FURL,j,i-j);
+      w:=Copy(FURL,j,i-j);
       wr:=true;
      end;
     //TODO: other PARSE_*
