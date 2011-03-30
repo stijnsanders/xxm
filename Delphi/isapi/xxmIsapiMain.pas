@@ -90,7 +90,7 @@ var
 
 implementation
 
-uses Variants, ComObj, xxmCommonUtils;
+uses Variants, ComObj, xxmCommonUtils, xxmIsapiStream;
 
 resourcestring
   SXxmContextStringUnknown='Unknown ContextString __';
@@ -306,8 +306,6 @@ end;
 function TXxmIsapiContext.GetProjectPage(FragmentName: WideString):IXxmFragment;
 var
   p:IXxmPage;
-  c,l:cardinal;
-  x:AnsiString;
 begin
   Result:=inherited GetProjectPage(FragmentName);
   if Result<>nil then
@@ -315,33 +313,19 @@ begin
     if Result.QueryInterface(IID_IXxmPage,p)=S_OK then
      begin
 
-      //TODO: postpone till first GetParameter?
-      if not(ecb.cbTotalBytes=0) then
+      if ecb.cbTotalBytes<>0 then
        begin
-        l:=ecb.cbTotalBytes;
-        c:=ecb.cbAvailable;
-        if c=l then
+        if ecb.cbAvailable=ecb.cbTotalBytes then
          begin
           FPostData:=TMemoryStream.Create;
-          FPostData.Write(ecb.lpbData^,c);
+          FPostData.Write(ecb.lpbData^,ecb.cbAvailable);
          end
         else
          begin
           SetLength(FPostTempFile,$400);
           SetLength(FPostTempFile,GetTempPathA($400,PAnsiChar(FPostTempFile)));//TODO: setting
           FPostTempFile:=FPostTempFile+'xxm_'+IntToHex(ecb.ConnID,8)+'.dat';
-          FPostData:=TFileStream.Create(FPostTempFile,fmCreate);
-          FPostData.Write(ecb.lpbData^,c);
-          dec(l,c);
-          c:=$10000;
-          SetLength(x,c);
-          while l>0 do
-           begin
-            if c>l then c:=l;
-            if not(ecb.ReadClient(ecb.ConnID,@x[1],c)) then RaiseLastOSError;
-            FPostData.Write(x[1],c);
-            dec(l,c);
-           end;
+          FPostData:=TXxmIsapiStreamAdapter.Create(ecb,TFileStream.Create(FPostTempFile,fmCreate));
          end;
         FPostData.Seek(0,soFromBeginning);
        end;

@@ -1,5 +1,6 @@
 v1.1.1.?
-- xxmHttp: fixed bug with saving uploaded files
+- xxmHttp,xxmIsapi: fixed bug with saving uploaded files
+- xxmIsapi: post data not all read up front, post data reads read from connection as needed
 - xxmLocal: fixed bug with javascript authorization (document.domain)
 
 v1.1.0.272

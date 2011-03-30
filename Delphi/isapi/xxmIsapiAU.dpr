@@ -16,6 +16,7 @@ uses
   MSXML2_TLB in '..\common\MSXML2_TLB.pas',
   xxmCommonUtils in '..\common\xxmCommonUtils.pas',
   xxmContext in '..\common\xxmContext.pas',
+  xxmIsapiStream in 'xxmIsapiStream.pas',
   xxmAutoUpdate in '..\common\xxmAutoUpdate.pas';
 
 {$R *.res}

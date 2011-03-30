@@ -81,9 +81,10 @@ begin
        Result:=FStorePosition-FPosition
      else
        Result:=Count;
+     FStore.Position:=FPosition;
      Result:=FStore.Read(Buffer,Result);
      inc(FPosition,Result);
-     //assert FPosition=FStorePosition?
+     FStore.Position:=FStorePosition;
      //TODO: read FPosition+Count-FStorePosition
     end
    else
