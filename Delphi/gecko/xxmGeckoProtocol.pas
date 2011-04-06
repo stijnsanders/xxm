@@ -2,10 +2,10 @@ unit xxmGeckoProtocol;
 
 interface
 
-uses nsXPCOM, xxmGeckoModule, nsTypes, nsGeckoStrings;
+uses nsXPCOM, nsTypes, nsGeckoStrings;
 
 type
-  TxxmProtocolHandler=class(TxxmGeckoComponent, nsIProtocolHandler)
+  TxxmProtocolHandler=class(TInterfacedObject, nsIProtocolHandler)
   public
     procedure GetScheme(aScheme: nsACString); safecall;
     function AllowPort(port: Integer; const scheme: PAnsiChar): LongBool;
@@ -19,11 +19,14 @@ type
 
 const
   CID_xxmProtocolHandler: TGUID = '{78786D00-0000-0010-C000-000000000010}';
+  CONTRACT_xxmProtocolHandler = '@mozilla.org/network/protocol;1?name=xxm';
+
+function xxmProtocolHandlerConstructor(aOuter:nsISupports;const aIID:TGUID;var aResult:pointer):nsresult; cdecl;
 
 implementation
 
 uses
-  xxmGeckoChannel, xxmGeckoInterfaces;
+  xxmGeckoChannel, xxmGeckoInterfaces, nsInit;
 
 { TxxmProtocolHandler }
 
@@ -53,9 +56,11 @@ end;
 function TxxmProtocolHandler.NewURI(const aSpec: nsAUTF8String;
   const aOriginCharset: PAnsiChar; aBaseURI: nsIURI): nsIURI;
 var
+  CompMgr:nsIComponentManager;
   u:nsIStandardURL;
 begin
-  Module.CompMgr.CreateInstanceByContractID('@mozilla.org/network/standard-url;1',nil,NS_ISTANDARDURL_IID,u);
+  NS_GetComponentManager(CompMgr);
+  CompMgr.CreateInstanceByContractID(NS_ISTANDARDURL_CONTRACT,nil,NS_ISTANDARDURL_IID,u);
   u.Init(URLTYPE_STANDARD,80,aSpec,aOriginCharset,aBaseURI);
   Result:=u as nsIURI;
 end;
@@ -65,6 +70,11 @@ begin
   Result:=TxxmChannel.Create(aURI) as nsIChannel;
 end;
 
-initialization
-  RegisterComponent('xxm','@mozilla.org/network/protocol;1?name=xxm',CID_xxmProtocolHandler,TxxmProtocolHandler);
+function xxmProtocolHandlerConstructor(aOuter:nsISupports;const aIID:TGUID;var aResult:pointer):nsresult; cdecl;
+begin
+  //aOuter?
+  if (TxxmProtocolHandler.Create as IInterface).QueryInterface(aIID,aResult)<>S_OK then
+    Error(reIntfCastError);
+end;
+
 end.

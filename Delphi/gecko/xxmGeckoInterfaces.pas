@@ -11,11 +11,14 @@ const
 
   NS_IMUTABLE_IID:TGUID='{321578d0-03c1-4d95-8821-021ac612d18d}';
   NS_ISTANDARDURL_IID:TGUID='{babd6cca-ebe7-4329-967c-d6b9e33caa81}';
+  NS_ISTANDARDURL_CONTRACT='@mozilla.org/network/standard-url;1';
   NS_IHTTPCHANNELINTERNAL_IID:TGUID='{3ce040fb-3933-462a-8d62-80b78fbd0809}';
+  NS_IINPUTSTREAMPUMP_IID:TGUID='{400f5468-97e7-4d2b-9c65-a82aecc7ae82}';
+  NS_IINPUTSTREAMPUMP_CONTRACT='@mozilla.org/network/input-stream-pump;1';
 
-  URLTYPE_STANDARD        = 1;
-  URLTYPE_AUTHORITY       = 2;
-  URLTYPE_NO_AUTHORITY    = 3;
+  URLTYPE_STANDARD     = 1;
+  URLTYPE_AUTHORITY    = 2;
+  URLTYPE_NO_AUTHORITY = 3;
 
   NS_SEEK_SET = 0;
   NS_SEEK_CUR = 1;
@@ -73,6 +76,20 @@ type
     procedure getResponseVersion(var major:PRUint32; var minor:PRUint32); safecall;
     procedure setCookie(aCookieHeader:PAnsiChar); safecall;//string?
     procedure setupFallbackChannel(aFallbackKey:PAnsiChar); safecall;//string?
+  end;
+
+  nsIInputStreamPump = interface(nsISupports)
+  ['{400f5468-97e7-4d2b-9c65-a82aecc7ae82}']
+    procedure init(
+      aStream:nsIInputStream;
+      aStreamPos:int64;
+      aStreamLen:int64;
+      aSegmentSize:cardinal;
+      aSegmentCount:cardinal;
+      aCloseWhenDone:boolean); safecall;
+    procedure asyncRead(
+      aListener:nsIStreamListener;
+      aListenerContext:nsISupports); safecall;
   end;
 
 procedure SetCString(x:nsACString;v:AnsiString);
