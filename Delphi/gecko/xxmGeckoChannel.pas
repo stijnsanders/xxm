@@ -20,7 +20,7 @@ type
     //nsIXPCScriptable,
     //nsIXPConnectWrappedJS,
     //nsISecurityCheckedComponent,
-    nsIInputStream,
+    nsIInputStream,//!
     //nsISeekableStream?
     //IxxmContext,//see TXxmGeneralContext
     IxxmHttpHeaders)
@@ -32,6 +32,7 @@ type
     FListenerContext:nsISupports;
     FListener:nsIStreamListener;
     FCallBacks:nsIInterfaceRequestor;
+    FReportToThread:nsIThread;
     FConnected,FComplete,FAllowPipelining:boolean;
     FStatus,FSuspendCount,FRedirectionLimit:integer;
     FVerb,FQueryString:AnsiString;
@@ -139,7 +140,8 @@ type
     function tell:PRUint64;
     procedure setEOF();
 }
-    //IxxmContext
+
+    //IxxmContext
     function GetSessionID: WideString; override;
     procedure DispositionAttach(FileName: WideString); override;
     procedure SendRaw(Data: WideString); override;
@@ -221,12 +223,40 @@ var
   StatusBuildError,StatusException,StatusFileNotFound:integer;
   DefaultProjectName:AnsiString;
 
+procedure SetThreadName(ThreadDisplayName:AnsiString);
+function IsDebuggerPresent: BOOL; stdcall;
+
 implementation
 
-uses Variants, nsInit, nsNetUtil, xxmCommonUtils, ComObj;
+uses Variants, nsInit, nsNetUtil, xxmCommonUtils, ComObj, nsXPCOMGlue;
 
 resourcestring
   SXxmContextStringUnknown='Unknown ContextString __';
+
+function IsDebuggerPresent; external 'kernel32.dll';
+
+procedure SetThreadName(ThreadDisplayName:AnsiString);
+var
+  ThreadInfo:record
+    dwType:LongWord;
+    szName:PAnsiChar;
+    dwThreadID:LongWord;
+    dwFlags:LongWord;
+  end;
+begin
+  if IsDebuggerPresent then
+    begin
+      ThreadInfo.dwType:=$1000;
+      ThreadInfo.szName:=PAnsiChar(ThreadDisplayName);
+      ThreadInfo.dwThreadID:=LongWord(-1);//calling thread
+      ThreadInfo.dwFlags:=0;
+      try
+        RaiseException($406D1388,0,SizeOf(ThreadInfo) div SizeOf(LongWord),@ThreadInfo);
+      except
+        //
+      end;
+    end;
+end;
 
 { TxxmChannel }
 
@@ -302,13 +332,19 @@ end;
 
 procedure TxxmChannel.AsyncOpen(aListener: nsIStreamListener;
   aContext: nsISupports);
+var
+  CompMgr:nsIComponentManager;
+  ThMgr:nsIThreadManager;
 begin
   FConnected:=true;
   FListener:=aListener;
   FListenerContext:=aContext;
-  if not(FLoadGroup=nil) then FLoadGroup.AddRequest(Self as nsIRequest,nil);
+  FReportToThread:=NS_GetCurrentThread;
+  if FLoadGroup<>nil then FLoadGroup.AddRequest(Self as nsIRequest,nil);
+  NS_GetComponentManager(CompMgr);
+  CompMgr.CreateInstanceByContractID(NS_THREADMANAGER_CONTRACTID,nil,nsIThreadManager,ThMgr);
+  FReportToThread:=ThMgr.currentThread;
   GeckoLoaderPool.Queue(Self);
-  NS_DispatchToCurrentThread(TxxmListenerCaller.Create(Self,lcActivate,0,0));
 end;
 
 procedure TxxmChannel.Execute;
@@ -318,14 +354,13 @@ var
 begin
   //called from TXxmGeckoLoader
   try
-
     //TODO: use FLoadFlags?
 
     //parse URL
     //TODO: use FURI?
     l:=Length(FURL);
     i:=1;
-    while (i<=l) and not(FURL[i]=':') do inc(i); //skip "xxm://"
+    while (i<=l) and (FURL[i]<>':') do inc(i); //skip "xxm://"
     inc(i);
     if FURL[i]='/' then inc(i);
     if FURL[i]='/' then inc(i);
@@ -353,8 +388,11 @@ begin
     FFragmentName:=Copy(FURL,j,i-j);
     if (FURL[i]='?') then inc(i);
     j:=i;
-    while (j<=l) and not(FURL[j]='#') do inc(j);
+    while (j<=l) and (FURL[j]<>'#') do inc(j);
     FQueryString:=Copy(FURL,i,j-i);
+
+    //activate
+    Resume;
 
     BuildPage;
 
@@ -396,7 +434,7 @@ begin
     if FConnected and not(FReportPending) then
      begin
       CheckSuspend;
-      NS_DispatchToMainThread(TxxmListenerCaller.Create(Self,lcStop,0,0));
+      FReportToThread.dispatch(TxxmListenerCaller.Create(Self,lcStop,0,0),NS_DISPATCH_NORMAL);//_SYNC?
       FConnected:=false;
      end;
   except
@@ -444,12 +482,9 @@ end;
 
 procedure TxxmChannel.GetResponseStatusText(
   aResponseStatusText: nsACString);
-var
-  st:AnsiString;
 begin
   //CheckHeaderSent;?
-  st:=StatusText;
-  NS_CStringSetData(aResponseStatusText,PAnsiChar(st),Length(st));
+  SetCString(aResponseStatusText,StatusText);
 end;
 
 function TxxmChannel.GetSecurityInfo: nsISupports;
@@ -474,7 +509,7 @@ end;
 procedure TxxmChannel.Cancel(aStatus: nsresult);
 begin
   //TODO: test here
-  if FConnected then NS_DispatchToMainThread(TxxmListenerCaller.Create(Self,lcAbort,0,0));
+  if FConnected then FReportToThread.dispatch(TxxmListenerCaller.Create(Self,lcAbort,0,0),NS_DISPATCH_NORMAL);//_SYNC?
   FStatus:=aStatus;
   FConnected:=false;
 end;
@@ -490,11 +525,8 @@ begin
 end;
 
 procedure TxxmChannel.GetContentCharset(aContentCharset: nsACString);
-var
-  x:AnsiString;
 begin
-  x:=FResponseHeaders['Content-Charset'];
-  NS_CStringSetData(aContentCharset,PAnsiChar(x),Length(x));
+  SetCString(aContentCharset,FResponseHeaders['Content-Charset']);
 end;
 
 procedure TxxmChannel.SetContentCharset(const aContentCharset: nsACString);
@@ -710,7 +742,7 @@ begin
     csAcceptedMimeTypes:
       Result:=FRequestHeaders['accept-mime-type'];
     csPostMimeType:
-      Result:=FContentType;//FRequestHeaders['content-type'];
+      Result:=FRequestHeaders['content-type'];
     csURL:
       Result:=FURL;//FURI.GetSpec?
     csReferer:
@@ -790,7 +822,8 @@ begin
 
   FRedirectChannel:=NS_GetIOService.NewChannelFromURI(u);
 
-  NS_DispatchToMainThread(TxxmListenerCaller.Create(Self,lcRedirect,0,0));
+  FReportToThread.dispatch(TxxmListenerCaller.Create(Self,lcRedirect,0,0),NS_DISPATCH_NORMAL);
+
   FStatus:=integer(NS_BINDING_REDIRECTED);
   FConnected:=false;
   raise EXxmPageRedirected.Create(x.ToString);
@@ -808,6 +841,8 @@ var
   inst:nsIInputStream;
 begin
   try
+    //http://mxr.mozilla.org/mozilla2.0/source/netwerk/base/src/nsBaseChannel.cpp#107
+
     FRedirectChannel.OriginalURI:=FOrigURI;
     FRedirectChannel.LoadGroup:=FLoadGroup;
     FRedirectChannel.NotificationCallbacks:=FCallBacks;
@@ -815,7 +850,7 @@ begin
     if FRedirectChannel.QueryInterface(NS_IHTTPCHANNEL_IID,h)=S_OK then
      begin
       //h.SetRequestMethod(NewCString('GET').ACString);//FVerb?
-      if not(FReferer=nil) then h.Referrer:=FReferer;
+      if FReferer<>nil then h.Referrer:=FReferer;
       h.AllowPipelining:=FAllowPipelining;
       h.RedirectionLimit:=FRedirectionLimit-1;
       h:=nil;
@@ -824,7 +859,7 @@ begin
     //if FVerb='POST'?
     if FRedirectChannel.QueryInterface(NS_IUPLOADCHANNEL_IID,uc)=S_OK then
      begin
-      if not(FPostData=nil) then
+      if FPostData<>nil then
        begin
         inst:=(FPostData as TxxmGeckoUploadStream).InputStream;
         (inst as nsISeekableStream).seek(NS_SEEK_SET,0);
@@ -843,8 +878,14 @@ begin
     //nsIResumableChannel?
     //nsIWritablePropertyBag, CopyProperties?
 
-    (FCallBacks as nsIChannelEventSink).onChannelRedirect(Self,
-      FRedirectChannel,REDIRECT_PERMANENT);//temporary?
+    try
+      if FCallBacks<>nil then
+        (FCallBacks as nsIChannelEventSink).onChannelRedirect(Self,
+          FRedirectChannel,REDIRECT_PERMANENT);//temporary?
+    except
+      //silent?
+    end;
+
     FRedirectChannel.AsyncOpen(FListener,FListenerContext);//???
 
   finally
@@ -860,7 +901,7 @@ var
   d:array[0..SendBufferSize-1] of byte;
 begin
   inherited;
-  //if not(s.Size=0) then
+  //if s.Size<>0 then
    begin
     CheckSendStart; //SendHeader out of lock
     //no autoencoding here!
@@ -874,7 +915,7 @@ begin
         Unlock;
       end;
       ReportData;
-    until not(l=SendBufferSize) or not(FConnected);
+    until (l<>SendBufferSize) or not(FConnected);
    end;
 end;
 
@@ -885,7 +926,7 @@ begin
    begin
     CheckSuspend;
     FResponseHeaders['Content-Type']:=FContentType;
-    NS_DispatchToMainThread(TxxmListenerCaller.Create(Self,lcStart,0,0));
+    FReportToThread.dispatch(TxxmListenerCaller.Create(Self,lcStart,0,0),NS_DISPATCH_NORMAL);
    end;
 end;
 
@@ -910,11 +951,11 @@ begin
   FResponseHeaders['Cache-Control']:='no-cache="set-cookie"';
   x:=Name+'="'+Value+'"';
   //'; Version=1';
-  if not(Comment='') then
+  if Comment<>'' then
     x:=x+'; Comment="'+Comment+'"';
-  if not(Domain='') then
+  if Domain<>'' then
     x:=x+'; Domain="'+Domain+'"';
-  if not(Path='') then
+  if Path<>'' then
     x:=x+'; Path="'+Path+'"';
   x:=x+'; Max-Age='+IntToStr(KeepSeconds)+
     '; Expires="'+RFC822DateGMT(Now+KeepSeconds/86400)+'"';
@@ -936,7 +977,7 @@ end;
 
 procedure TxxmChannel.CheckSuspend;
 begin
-  while not(FSuspendCount=0) do Sleep(5);
+  while FSuspendCount<>0 do Sleep(5);
 end;
 
 const
@@ -949,7 +990,7 @@ var
   startdata:boolean;
 begin
   inherited;
-  if not(Data='') then
+  if Data<>'' then
    begin
     startdata:=CheckSendStart; //SendHeader outside of lock
     Lock;
@@ -982,11 +1023,11 @@ end;
 procedure TxxmChannel.ReportData;
 begin
   //assert within Lock/Unlock try/finally!
-  if FConnected and not(FReportPending) and not(FReportSize=0) then
+  if FConnected and not(FReportPending) and (FReportSize<>0) then
    begin
     CheckSuspend;//is this no problem inside of lock?
     FReportPending:=true;
-    NS_DispatchToMainThread(TxxmListenerCaller.Create(Self,lcData,0,FReportSize));
+    FReportToThread.dispatch(TxxmListenerCaller.Create(Self,lcData,0,FReportSize),NS_DISPATCH_NORMAL);
    end;
 end;
 
@@ -1018,7 +1059,8 @@ end;
 
 procedure TxxmChannel.Close;
 begin
-  raise Exception.Create('Closing stream not supported.');
+  FConnected:=false;
+  //raise Exception.Create('Closing stream not supported.');
 end;
 
 function TxxmChannel.IsNonBlocking: LongBool;
@@ -1083,7 +1125,7 @@ begin
      begin
       if FComplete then
        begin
-        NS_DispatchToMainThread(TxxmListenerCaller.Create(Self,lcStop,0,0));
+        FReportToThread.dispatch(TxxmListenerCaller.Create(Self,lcStop,0,0),NS_DISPATCH_NORMAL);
         FConnected:=false;
        end;
      end
@@ -1091,7 +1133,7 @@ begin
       if FSuspendCount=0 then
        begin
         FReportPending:=true;
-        NS_DispatchToMainThread(TxxmListenerCaller.Create(Self,lcData,0,FReportSize));
+        FReportToThread.dispatch(TxxmListenerCaller.Create(Self,lcData,0,FReportSize),NS_DISPATCH_NORMAL);
        end;
 end;
 
@@ -1117,7 +1159,7 @@ var
 begin
   if @aContentType=nil then ct:='' else ct:=GetCString(aContentType);
   FPostData:=TxxmGeckoUploadStream.Create(aStream);
-  if not(aContentLength=-1) then FRequestHeaders['Content-Length']:=IntToStr(aContentLength);
+  if aContentLength<>-1 then FRequestHeaders['Content-Length']:=IntToStr(aContentLength);
   //if aContentLength=-1 then aStream.Available?
   if ct='' then
     (FPostData as TxxmGeckoUploadStream).ParseHeader(FRequestHeaders)
@@ -1181,17 +1223,19 @@ begin
     if Channel=nil then
      begin
       FInUse:=false;//used by PageLoaderPool.Queue
+      SetThreadName('(xxmPageLoader)');
       Suspend;
       FInUse:=true;
      end
     else
      begin
       Sleep(10);//let AsyncOpen return...
+      SetThreadName('xxmPageLoader:'+Channel.FURL);
       Channel.Execute;//assert all exceptions handled!
       Channel._Release;
      end;
    end;
-  CoUninitialize;
+  //CoUninitialize;
 end;
 
 { TXxmGeckoLoaderPool }
@@ -1220,7 +1264,7 @@ begin
     if FLoadersSize<x then
      begin
       SetLength(FLoaders,x);
-      while not(FLoadersSize=x) do
+      while FLoadersSize<>x do
        begin
         FLoaders[FLoadersSize]:=nil;
         inc(FLoadersSize);
@@ -1228,11 +1272,11 @@ begin
      end
     else
      begin
-      while not(FLoadersSize=X) do
+      while FLoadersSize<>x do
        begin
         dec(FLoadersSize);
         //FreeAndNil(FLoaders[FLoadersSize]);
-        if not(FLoaders[FLoadersSize]=nil) then
+        if FLoaders[FLoadersSize]<>nil then
          begin
           FLoaders[FLoadersSize].FreeOnTerminate:=true;
           FLoaders[FLoadersSize].Terminate;
@@ -1260,7 +1304,7 @@ begin
     if FQueue=nil then FQueue:=Channel else
      begin
       c:=FQueue;
-      while not(c.Queue=nil) do c:=c.Queue;
+      while c.Queue<>nil do c:=c.Queue;
       c.Queue:=Channel;
      end;
   finally
@@ -1270,7 +1314,7 @@ begin
   //fire thread
   //TODO: see if a rotary index matters in any way
   i:=0;
-  while (i<FLoadersSize) and not(FLoaders[i]=nil) and FLoaders[i].InUse do inc(i);
+  while (i<FLoadersSize) and (FLoaders[i]<>nil) and FLoaders[i].InUse do inc(i);
   if i=FLoadersSize then
    begin
     //pool full, leave on queue
@@ -1292,7 +1336,7 @@ begin
     EnterCriticalSection(FLock);
     try
       Result:=FQueue;
-      if not(Result=nil) then
+      if Result<>nil then
        begin
         FQueue:=FQueue.Queue;
         Result.Queue:=nil;
@@ -1341,7 +1385,7 @@ begin
     lcStop:FOwner.FListener.OnStopRequest(FOwner,FOwner.FListenerContext,FOwner.StatusCode);
     lcRedirect:FOwner.RedirectSync;
   end;
-  if (FCall in [lcStop,lcAbort,lcRedirect]) and not(FOwner.FLoadGroup=nil) then
+  if (FCall in [lcStop,lcAbort,lcRedirect]) and (FOwner.FLoadGroup<>nil) then
     FOwner.FLoadGroup.RemoveRequest(FOwner as nsIRequest,nil,NS_OK);
 end;
 

@@ -78,16 +78,16 @@ type
     procedure setupFallbackChannel(aFallbackKey:PAnsiChar); safecall;//string?
   end;
 
-  nsIInputStreamPump = interface(nsISupports)
+  nsIInputStreamPump = interface(nsIRequest)
   ['{400f5468-97e7-4d2b-9c65-a82aecc7ae82}']
-    procedure init(
+    procedure Init(
       aStream:nsIInputStream;
       aStreamPos:int64;
       aStreamLen:int64;
       aSegmentSize:cardinal;
       aSegmentCount:cardinal;
       aCloseWhenDone:boolean); safecall;
-    procedure asyncRead(
+    procedure AsyncRead(
       aListener:nsIStreamListener;
       aListenerContext:nsISupports); safecall;
   end;

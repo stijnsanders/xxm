@@ -95,15 +95,17 @@ type
   end;
 
   nsIThreadManager = interface(nsISupports)
-  ['{056216f5-8803-46b4-9199-d95bc1f0446f}']
+  ['{487c10bf-0a22-4148-89fa-790d819dd559}']
     function newThread(creationFlag: PRUint32): nsIThread; safecall;
     function getThreadFromPRThread(prthread: Pointer): nsIThread; safecall;
-    function getMainThread(): nsIThread; safecall;
+    function getMainThread: nsIThread; safecall;
     property mainThread: nsIThread read getMainThread;
     function getCurrentThread: nsIThread; safecall;
     property currentThread: nsIThread read getCurrentThread;
     function getIsMainThread: PRBool; safecall;
-    property isMainThread: PRbool read getIsMainThread;
+    property isMainThread: PRBool read getIsMainThread;
+    function getIsCycleCollectorThread: PRBool; safecall;
+    property isCycleCollectorThread: PRBool read getIsCycleCollectorThread;
   end;
 
   nsIThreadPoolListener = interface(nsISupports)

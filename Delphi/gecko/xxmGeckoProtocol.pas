@@ -73,8 +73,10 @@ end;
 function xxmProtocolHandlerConstructor(aOuter:nsISupports;const aIID:TGUID;var aResult:pointer):nsresult; cdecl;
 begin
   //aOuter?
-  if (TxxmProtocolHandler.Create as IInterface).QueryInterface(aIID,aResult)<>S_OK then
-    Error(reIntfCastError);
+  if (TxxmProtocolHandler.Create as IInterface).QueryInterface(aIID,aResult)=S_OK then
+    Result:=NS_OK
+  else
+    Result:=NS_ERR;//Error(reIntfCastError);
 end;
 
 end.

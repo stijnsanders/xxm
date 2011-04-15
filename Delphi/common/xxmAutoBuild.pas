@@ -129,5 +129,4 @@ initialization
   InitializeCriticalSection(BuildLock);
 finalization
   DeleteCriticalSection(BuildLock);
-
 end.
