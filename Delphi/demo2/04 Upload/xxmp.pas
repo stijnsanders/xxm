@@ -2,6 +2,13 @@ unit xxmp;
 
 interface
 
+{
+  xxm Project Unit
+  demo: 04 Upload
+
+This file was generated using the xxmp.pas template, then added as described in "demo/02 Session"
+}
+
 uses xxm;
 
 type

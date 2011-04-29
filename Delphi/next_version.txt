@@ -1,4 +1,4 @@
-Next Version:
+How To Prepare Next Version Release:
 
 - update version in project properties of all (changed) projects
 - update gecko/setup/xxmGecko*/install.rdf's <em:version>

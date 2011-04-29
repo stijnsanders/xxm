@@ -2,6 +2,16 @@ unit xxmp;
 
 interface
 
+{
+  xxm Project Unit
+  demo: 02 Session
+
+Please note this xxmp.pas was first created from the xxmp.pas template,
+but has been modified to include xxmSession in the uses clause (implementation section),
+and to call SetSession(Context); in LoadPage, linking this request either to a new session (using Context.SessionID)
+or to an existing session that was created for the SessionID.
+}
+
 uses xxm;
 
 type

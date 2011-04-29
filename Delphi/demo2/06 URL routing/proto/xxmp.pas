@@ -2,6 +2,14 @@ unit xxmp;
 
 interface
 
+{
+  xxm Project Unit
+  demo: 06 URL routing
+
+This xxmp.pas template has been adapted to use the FRegRouting unit instead of the default xxmFReg unit.
+See GetPageAndParameters for how request addresses are mapped onto page objects to handle the request.
+}
+
 uses xxm;
 
 type
