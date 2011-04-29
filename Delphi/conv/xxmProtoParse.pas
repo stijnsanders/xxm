@@ -7,6 +7,7 @@ uses SysUtils, Classes;
 type
   TXxmProtoParseTag=(
     ptProjectName,
+    ptProjectSwitches,
     ptProjectHeader,
     ptProjectBody,
     ptFragmentUnit,
@@ -67,6 +68,7 @@ implementation
 const
   ProtoParseTag:array[TXxmProtoParseTag] of AnsiString=(
     'ProjectName',
+    'ProjectSwitches',
     'ProjectHeader',
     'ProjectBody',
     'FragmentUnit',
@@ -170,7 +172,7 @@ begin
         //tag found
         s:=Copy(FData,i+1,j-i-2);
         pt:=TXxmProtoParseTag(0);
-        while not(pt=pt_Unknown) and not(ProtoParseTag[pt]=s) do inc(pt);
+        while (pt<>pt_Unknown) and (ProtoParseTag[pt]<>s) do inc(pt);
         if pt=pt_Unknown then
           raise EXxmParseUnknownTag.Create(
             StringReplace(SXxmParseUnknownTag,'__',s,[]));
@@ -210,7 +212,7 @@ begin
     //IterateSkip
     i:=FIndex+1;
     ic:=1;
-    while (i<PointsCount) and not(ic=0) do
+    while (i<PointsCount) and (ic<>0) do
      begin
       case Points[i].Tag of
         pt_Iterations..Pred(ptIterateEnd):inc(ic);

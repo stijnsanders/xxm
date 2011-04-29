@@ -114,7 +114,7 @@ begin
             'URL',HTMLEncode(Context.URL),
             'ProjectName',ProjectName,
             'ErrorClass',e.ClassName,
-            'ErrorMessage',e.Message,
+            'ErrorMessage',HTMLEncode(e.Message),
             'DateTime',DateTimeToStr(Now)
           ]));
          end;

@@ -57,14 +57,14 @@ var
   CDir,s:AnsiString;
   i:integer;
   FirstLevel,AbandonDirectory:boolean;
-  ft:TXxmFileType;
+  ft:TXxmFileType;                              
 begin
   Dirs:=TStringList.Create;
   try
     Dirs.Add('');
     FirstLevel:=true;
 
-    while not(Dirs.Count=0) do
+    while Dirs.Count<>0 do
      begin
       CDir:=Dirs[0];
       AbandonDirectory:=false;
@@ -74,18 +74,18 @@ begin
       if fh=INVALID_HANDLE_VALUE then RaiseLastOSError;
       repeat
 
-       if not(AnsiString(fd.cFileName)='.') and not(AnsiString(fd.cFileName)='..') then
+       if (AnsiString(fd.cFileName)<>'.') and (AnsiString(fd.cFileName)<>'..') then
         begin
 
          if (fd.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY)=0 then
           begin
            s:=fd.cFileName;
            i:=Length(s);
-           while not(i=0) and not(s[i]='.') do dec(i);
+           while (i<>0) and (s[i]<>'.') do dec(i);
            s:=LowerCase(Copy(s,i,Length(s)-i+1));
 
            ft:=TXxmFileType(0);
-           while not(ft=ft_Unknown) and not(s=XxmFileExtension[ft]) do inc(ft);
+           while (ft<>ft_Unknown) and (s<>XxmFileExtension[ft]) do inc(ft);
 
            case ft of
 
@@ -161,14 +161,14 @@ var
   y:AnsiString;
   i:integer;
 begin
-  //assert not(x='')
+  //assert x<>''
   c:=UpCase(x[1]);
   //skip anything longer than longest word
   if not(c in ['A'..'B']) or (Length(x)>ResWordMaxLength[c]) then Result:=false else
    begin
     y:=LowerCase(x);
     i:=0;
-    while (i<ResWordsCount) and not(y=ResWords[i]) do inc(i);
+    while (i<ResWordsCount) and (y<>ResWords[i]) do inc(i);
     Result:=i<ResWordsCount;
    end;
 end;
@@ -211,7 +211,7 @@ begin
   SetLength(Result,$400);
   SetLength(Result,GetModuleFileNameA(HInstance,PAnsiChar(Result),$400));
   i:=Length(Result);
-  while not(i=0) and not(Result[i]=PathDelim) do dec(i);
+  while (i<>0) and (Result[i]<>PathDelim) do dec(i);
   Result:=Copy(Result,1,i);
   if Copy(Result,1,4)='\\?\' then Result:=Copy(Result,5,Length(Result)-4);
 end;
@@ -244,7 +244,7 @@ begin
       else
         Result:=Result+'x'+Hex[byte(FileName[i]) shr 4]+Hex[byte(FileName[i]) and $F];
     end;
-  //assert not(CID='')
+  //assert CID<>''
   if not(char(Result[1]) in ['A'..'Z','a'..'z']) then Result:='x'+Result;
   if IsReservedWord(Result) then
     if LowerCase(Result)='or' then
