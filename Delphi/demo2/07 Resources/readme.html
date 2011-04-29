@@ -1,0 +1,27 @@
+<h3>xxm Demo Projects - 07 Resources</h3>
+<p>This is a demo project showing how to include files into the resources of the xxl module, and respond to requests for these files with data from these resources. This way all data for a website is contained in a single file, which enables easy (auto-)updates.</p>
+<dl>
+<dt>Web.xxmp</dt>
+<dd>The project file, contains an internal list of the files of the project, and other data about the project.<br />
+This Web.xxmp has extra entries for actions to perform to prepare the resource files:
+
+	<dl>
+	<dt><code>&lt;PreCompileCommand&gt;prebuild\prepres.exe&lt;/PreCompileCommand&gt;</code><dt>
+	<dd>Lists files in the <code>res\</code> folder and generates the resources list</dd>
+	<dt><code>&lt;Switches&gt;{$R '..\Web.res' '..\Web.rc'}&lt;/Switches&gt;</code><dt>
+	<dd>Includes the Pascal code to include the resource file into the compiled library</dd>
+	<dt><code>&lt;PreCompileCommand&gt;brcc32 -32 Web.rc&lt;/PreCompileCommand&gt;</code><dt>
+	<dd>Calls the resource compiler on the resource script</dd>
+	</dl>
+
+</dd>
+<dt>xxmp.pas</dt>
+<dd>The project's main unit. When this file is missing form the project, xxm creates one for you.<br />
+This one has been modified to divert all requests to the <code>res\</code> folder to a dedicated TxxmPage descendant that serves the requested file from resource data.</dd>
+<dt>prebuild\</dt>
+<dd>Contains the source-code for the PrepRes utility that lists the files in the <code>res\</code> folder and generates the resource script.</dd>
+<dt>res\</dt>
+<dd>Contains the files to include into module resources.</dd>
+<dt>Default.xxm</dt>
+<dd>The website's default page. This simple example uses files from resources by using relative URL's.</dd>
+</dl>

@@ -1,0 +1,12 @@
+<XxmWebProject>
+	<ProjectName>demo</ProjectName>
+	<PreCompileCommand>prebuild\prepres.exe</PreCompileCommand>
+	<Switches>{$R '..\Web.res' '..\Web.rc'}</Switches>
+	<PreCompileCommand>brcc32 -32 Web.rc</PreCompileCommand>
+	<CompileCommand>dcc32 -U..\..\..\public -Q [[ProjectName]].dpr</CompileCommand>
+	<UUID>{F9D7CE3E-0D22-495B-ABDE-C0F19F799488}</UUID>
+	<Files>
+		<File ID="default_xxm" UnitName="default_xxm1" UnitPath=""><Path>Default.xxm</Path></File>
+	</Files>
+	<LastModified>2011-04-29T21:36:09</LastModified>
+</XxmWebProject>
