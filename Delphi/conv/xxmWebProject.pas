@@ -17,8 +17,6 @@ type
     Signatures:TStringList;
     FOnOutput:TXxmWebProjectOutput;
 
-    function GetNode(element:IXMLDOMElement;xpath:AnsiString):IXMLDOMElement;
-    function GetNodeText(element:IXMLDOMElement;xpath:AnsiString):AnsiString;
     function ForceNode(element:IXMLDOMElement;tagname,id:AnsiString;indentlevel:integer):IXMLDOMElement;
     function NodesText(element:IXMLDOMElement;xpath:AnsiString):AnsiString;
 
@@ -49,6 +47,7 @@ type
 
   EXxmWebProjectNotFound=class(Exception);
   EXxmWebProjectLoad=class(Exception);
+  EXxmWebProjectCompile=class(Exception);
 
 implementation
 
@@ -78,11 +77,11 @@ begin
   //SourcePath:=ExpandFileName(SourcePath);
 
   i:=Length(SourcePath);
-  while not(i=0) and not(SourcePath[i]='.') do dec(i);
+  while (i<>0) and (SourcePath[i]<>'.') do dec(i);
   if LowerCase(Copy(SourcePath,i,Length(SourcePath)-i+1))=XxmFileExtension[ftProject] then
    begin
     //project file specified
-    while not(i=0) and not(SourcePath[i]=PathDelim) do dec(i);
+    while (i<>0) and (SourcePath[i]<>PathDelim) do dec(i);
     FRootFolder:=Copy(SourcePath,1,i);
     DataFileName:=Copy(SourcePath,i+1,Length(SourcePath)-i);
    end
@@ -92,10 +91,10 @@ begin
     DataFileName:=XxmProjectFileName;
     FRootFolder:=IncludeTrailingPathDelimiter(SourcePath);
     i:=Length(FRootFolder);
-    while not(i=0) and not(FileExists(FRootFolder+DataFileName)) do
+    while (i<>0) and not(FileExists(FRootFolder+DataFileName)) do
      begin
       dec(i);
-      while not(i=0) and not(FRootFolder[i]=PathDelim) do dec(i);
+      while (i<>0) and (FRootFolder[i]<>PathDelim) do dec(i);
       SetLength(FRootFolder,i);
      end;
     if i=0 then
@@ -107,11 +106,11 @@ begin
         else
          begin
           i:=Length(SourcePath);
-          while not(i=0) and not(SourcePath[i]=PathDelim) do dec(i);
+          while (i<>0) and (SourcePath[i]<>PathDelim) do dec(i);
           FRootFolder:=Copy(SourcePath,1,i);
          end;
         i:=Length(FRootFolder)-1;
-        while not(i=0) and not(FRootFolder[i]=PathDelim) do dec(i);
+        while (i<>0) and (FRootFolder[i]<>PathDelim) do dec(i);
         FProjectName:=Copy(FRootFolder,i+1,Length(FRootFolder)-i-1);
         s:='<XxmWebProject>'#13#10#9'<ProjectName></ProjectName>'#13#10#9+
           '<CompileCommand>dcc32 -U..\..\public -Q [[ProjectName]].dpr</CompileCommand>'#13#10'</XxmWebProject>';
@@ -157,7 +156,7 @@ begin
     if FProjectName='' then
      begin
       i:=Length(DataFileName);
-      while not(i=0) and not(DataFileName[i]='.') do dec(i);
+      while (i<>0) and (DataFileName[i]<>'.') do dec(i);
       FProjectName:=Copy(DataFileName,1,Length(DataFileName)-i-1);
      end;
     x.text:=FProjectName;
@@ -198,7 +197,7 @@ var
 begin
   if Modified then
    begin
-    if not(DataStartSize=Length(Data.xml)) then
+    if DataStartSize<>Length(Data.xml) then
      begin
       ForceNode(RootNode,'LastModified','',1).text:=
         FormatDateTime('yyyy-mm-dd"T"hh:nn:ss',Now);//timezone?
@@ -247,7 +246,7 @@ begin
       xl:=DataFiles.selectNodes('File');
       try
         x:=xl.nextNode as IXMLDOMElement;
-        while not(x=nil) do
+        while x<>nil do
          begin
           sl1.Add(x.getAttribute('ID'));
           x:=xl.nextNode as IXMLDOMElement;
@@ -264,7 +263,7 @@ begin
         cid:=GetInternalIdentifier(fn,cPathIndex,fExtIndex,fPathIndex);
         xFile:=ForceNode(DataFiles,'File',cid,2);
         i:=sl1.IndexOf(cid);
-        if not(i=-1) then sl1.Delete(i);
+        if i<>-1 then sl1.Delete(i);
         //fn fit for URL
         fnu:=StringReplace(fn,'\','/',[rfReplaceAll]);
         x:=ForceNode(xFile,'Path','',-1);
@@ -299,7 +298,7 @@ begin
 
         //TODO: proto signature? (setting?)
         s:=Signature(FRootFolder+fn);
-        if Rebuild or not(Signatures.Values[uname]=s) or not(
+        if Rebuild or (Signatures.Values[uname]<>s) or not(
           FileExists(FSrcFolder+upath+uname+DelphiExtension)) then
          begin
           Signatures.Values[uname]:=s;
@@ -365,14 +364,14 @@ begin
     xl:=DataFiles.selectNodes('Unit');
     try
       xFile:=xl.nextNode as IXMLDOMElement;
-      while not(xFile=nil) do
+      while xFile<>nil do
        begin
         uname:=VarToStr(xFile.getAttribute('UnitName'));
         upath:=VarToStr(xFile.getAttribute('UnitPath'));
         fn:=upath+uname+DelphiExtension;
 
         s:=Signature(FRootFolder+fn);
-        if not(Signatures.Values[uname]=s) then
+        if Signatures.Values[uname]<>s then
          begin
           Signatures.Values[uname]:=s;
           Modified:=true;
@@ -431,27 +430,28 @@ begin
            begin
             xl:=DataFiles.selectNodes('File');
             x:=xl.nextNode as IXMLDOMElement;
-            p.IterateBegin(not(x=nil));
+            p.IterateBegin(x<>nil);
            end;
           ptIterateInclude:
            begin
             xl:=DataFiles.selectNodes('Unit');
             x:=xl.nextNode as IXMLDOMElement;
-            p.IterateBegin(not(x=nil));
+            p.IterateBegin(x<>nil);
            end;
           ptFragmentUnit:p.Output(VarToStr(x.getAttribute('UnitName')));
           ptFragmentPath:p.Output(VarToStr(x.getAttribute('UnitPath')));
-          ptFragmentAddress:p.Output(GetNode(x,'Path').text);
+          ptFragmentAddress:p.Output((x.selectSingleNode('Path') as IXMLDOMElement).text);
           ptIncludeUnit:p.Output(VarToStr(x.getAttribute('UnitName')));
           ptIncludePath:p.Output(VarToStr(x.getAttribute('UnitPath')));
           ptIterateEnd:
            begin
             x:=xl.nextNode as IXMLDOMElement;
-            p.IterateNext(not(x=nil));
+            p.IterateNext(x<>nil);
            end;
-          ptUsesClause:    p.Output(NodesText(RootNode,'UsesClause'));
-          ptProjectHeader: p.Output(NodesText(RootNode,'Header'));
-          ptProjectBody:   p.Output(NodesText(RootNode,'Body'));
+          ptUsesClause:     p.Output(NodesText(RootNode,'UsesClause'));
+          ptProjectHeader:  p.Output(NodesText(RootNode,'Header'));
+          ptProjectBody:    p.Output(NodesText(RootNode,'Body'));
+          ptProjectSwitches:p.Output(NodesText(RootNode,'Switches'));
           //else raise?
         end;
       until p.Done;
@@ -476,14 +476,14 @@ begin
 
       //copy other files the first time (cfg,dof,res...)
       fh:=FindFirstFileA(PAnsiChar(FProtoPath+ProtoProjectMask),fd);
-      if not(fh=INVALID_HANDLE_VALUE) then
+      if fh<>INVALID_HANDLE_VALUE then
        begin
         repeat
           s:=fd.cFileName;
-          if not(s=ProtoProjectDpr) then
+          if s<>ProtoProjectDpr then
            begin
             i:=Length(s);
-            while not(i=0) and not(s[i]='.') do dec(i);
+            while (i<>0) and (s[i]<>'.') do dec(i);
             fn1:=FSrcFolder+FProjectName+Copy(s,i,Length(s)-i+1);
             if not(FileExists(fn1)) then
              begin
@@ -496,14 +496,14 @@ begin
        end;
 
       fh:=FindFirstFileA(PAnsiChar(FProtoPathDef+ProtoProjectMask),fd);
-      if not(fh=INVALID_HANDLE_VALUE) then
+      if fh<>INVALID_HANDLE_VALUE then
        begin
         repeat
           s:=fd.cFileName;
-          if not(s=ProtoProjectDpr) then
+          if s<>ProtoProjectDpr then
            begin
             i:=Length(s);
-            while not(i=0) and not(s[i]='.') do dec(i);
+            while (i<>0) and (s[i]<>'.') do dec(i);
             fn1:=FSrcFolder+FProjectName+Copy(s,i,Length(s)-i+1);
             if not(FileExists(fn1)) then
              begin
@@ -522,21 +522,6 @@ begin
     Result:=true;
    end;
 
-end;
-
-function TXxmWebProject.GetNode(element: IXMLDOMElement;
-  xpath: AnsiString): IXMLDOMElement;
-begin
-  Result:=element.selectSingleNode(xpath) as IXMLDOMElement;
-end;
-
-function TXxmWebProject.GetNodeText(element: IXMLDOMElement;
-  xpath: AnsiString): AnsiString;
-var
-  x:IXMLDOMNode;
-begin
-  x:=element.selectSingleNode(xpath);
-  if x=nil then Result:='' else Result:=x.text;
 end;
 
 function TXxmWebProject.ForceNode(element:IXMLDOMElement;tagname,id:AnsiString;indentlevel:integer): IXMLDOMElement;
@@ -600,7 +585,7 @@ begin
   x:=xl.nextNode as IXMLDOMElement;
   s:=TStringStream.Create('');
   try
-    while not(x=nil) do
+    while x<>nil do
      begin
       s.WriteString(x.text);
       x:=xl.nextNode as IXMLDOMElement;
@@ -618,7 +603,9 @@ end;
 
 function TXxmWebProject.Compile:boolean;
 var
-  cl1,cl2,cl3:AnsiString;
+  cl:TStringList;
+  cli:integer;
+  clx,cld,d1:AnsiString;
   pi:TProcessInformation;
   si:TStartupInfo;
   h1,h2:THandle;
@@ -627,67 +614,130 @@ var
   f:TFileStream;
   c:cardinal;
   d:array[0..$FFF] of char;
-  function DoCommand(cmd:AnsiString):boolean;
+  procedure GetNodesText(element: IXMLDOMElement; xpath, prefix: AnsiString);
+  var
+    xl:IXMLDOMNodeList;
+    x:IXMLDOMNode;
+    s1,s2:WideString;
+  begin
+    xl:=element.selectNodes(xpath);
+    x:=xl.nextNode;
+    while x<>nil do
+     begin
+      s1:=Trim(x.text);
+      s2:=VarToStr((x as IXMLDOMElement).getAttribute('Path'));
+      if s1<>'' then
+        if s2='' then
+          cl.Add(prefix+s1)
+        else
+         begin
+          cl.Add('4'+s2);
+          cl.Add('5'+s1);
+         end;
+      x:=xl.nextNode;
+     end;
+  end;
+  function DoCommand(cmd,fld:AnsiString):boolean;
   begin
     if not(CreateProcessA(nil,PAnsiChar(
       StringReplace(
+      StringReplace(
+      StringReplace(
         cmd,
-          '[[ProjectName]]',FProjectName,[rfReplaceAll])
+          '[[ProjectName]]',FProjectName,[rfReplaceAll]),
+          '[[SrcPath]]',FSrcFolder,[rfReplaceAll]),
+          '[[ProjectPath]]',FRootFolder,[rfReplaceAll])
           //more?
       ),
-      nil,nil,true,NORMAL_PRIORITY_CLASS,nil,PAnsiChar(FSrcFolder),si,pi)) then
-      RaiseLastOSError;
+      nil,nil,true,NORMAL_PRIORITY_CLASS,nil,PAnsiChar(fld),si,pi)) then
+      //RaiseLastOSError;
+      raise EXxmWebProjectCompile.Create('Error performing'#13#10'"'+cmd+'":'#13#10+SysErrorMessage(GetLastError));
     CloseHandle(pi.hThread);
     try
-      while (WaitForSingleObject(pi.hProcess,50)=WAIT_TIMEOUT) or not(h.Size=0) do
+      while (WaitForSingleObject(pi.hProcess,50)=WAIT_TIMEOUT) or (h.Size<>0) do
        begin
         c:=h.Read(d[0],$1000);
-        if not(c=0) then
+        if c<>0 then
          begin
           f.Write(d[0],c);
           d[c]:=#0;
           BuildOutput(d);
          end;
        end;
-      Result:=GetExitCodeProcess(pi.hProcess,c) and (c=0);
+      if GetExitCodeProcess(pi.hProcess,c) then
+        if c=0 then
+          Result:=true
+        else
+         begin
+          Result:=false;
+          BuildOutput('Command "'+cmd+'" failed with code '+IntToStr(integer(c)));
+         end
+      else
+       begin
+        Result:=false;
+        BuildOutput('GetExitCodeProcess('+cmd+'):'+SysErrorMessage(GetLastError));
+       end;
     finally
       CloseHandle(pi.hProcess);
     end;
   end;
 begin
-  cl1:=GetNodeText(RootNode,'PreCompileCommand');
-  cl2:=GetNodeText(RootNode,'CompileCommand');
-  cl3:=GetNodeText(RootNode,'PostCompileCommand');
-  if (cl1='') and (cl2='') and (cl3='') then Result:=true else
-   begin
-    //more?
-    f:=TFileStream.Create(FRootFolder+FProjectName+ProjectLogExtension,fmCreate);
-    try
-      sa.nLength:=SizeOf(TSecurityAttributes);
-      sa.lpSecurityDescriptor:=nil;
-      sa.bInheritHandle:=true;
-      if not(CreatePipe(h1,h2,@sa,$10000)) then RaiseLastOSError;
-      ZeroMemory(@si,SizeOf(TStartupInfo));
-      si.cb:=SizeOf(TStartupInfo);
-      si.dwFlags:=STARTF_USESHOWWINDOW or STARTF_USESTDHANDLES;
-      si.wShowWindow:=SW_HIDE;
-      si.hStdOutput:=h2;
-      si.hStdError:=h2;
-      Result:=true;//default
-      h:=THandleStream.Create(h1);
+  cl:=TStringList.Create;
+  try
+    GetNodesText(RootNode,'PreCompileCommand','1');
+    GetNodesText(RootNode,'CompileCommand','2');
+    GetNodesText(RootNode,'PostCompileCommand','3');
+    if cl.Count=0 then
+      Result:=true
+    else
+     begin
+      d1:=GetCurrentDir;
+      f:=TFileStream.Create(FRootFolder+FProjectName+ProjectLogExtension,fmCreate);
       try
-        if Result and not(cl1='') then Result:=DoCommand(cl1);
-        if Result and not(cl2='') then Result:=DoCommand(cl2);
-        if Result and not(cl3='') then Result:=DoCommand(cl3);
+        sa.nLength:=SizeOf(TSecurityAttributes);
+        sa.lpSecurityDescriptor:=nil;
+        sa.bInheritHandle:=true;
+        if not(CreatePipe(h1,h2,@sa,$10000)) then RaiseLastOSError;
+        ZeroMemory(@si,SizeOf(TStartupInfo));
+        si.cb:=SizeOf(TStartupInfo);
+        si.dwFlags:=STARTF_USESHOWWINDOW or STARTF_USESTDHANDLES;
+        si.wShowWindow:=SW_HIDE;
+        si.hStdOutput:=h2;
+        si.hStdError:=h2;
+        Result:=true;//default
+        h:=THandleStream.Create(h1);
+        try
+          cli:=0;
+          while (cli<cl.Count) and Result do
+           begin
+            clx:=cl[cli];
+            inc(cli);
+            //TODO: switch for DoOutput(clx)?
+            case clx[1] of
+              '1','3':cld:=FRootFolder;
+              '2':cld:=FSrcFolder;
+              '4':cld:=Copy(clx,2,Length(clx)-1);
+              '5':;//assert cld set by preceding '4' (see GetNodesText)
+            end;
+            if clx[1]<>'4' then
+             begin
+              SetCurrentDir(cld);
+              Result:=DoCommand(Copy(clx,2,Length(clx)-1),cld);
+             end;
+           end;
+        finally
+          h.Free;
+          CloseHandle(h1);
+          CloseHandle(h2);
+        end;
       finally
-        h.Free;
-        CloseHandle(h1);
-        CloseHandle(h2);
+        f.Free;
+        SetCurrentDir(d1);
       end;
-    finally
-      f.Free;
-    end;
-   end;
+     end;
+  finally
+    cl.Free;
+  end;
 end;
 
 procedure TXxmWebProject.BuildOutput(Msg: AnsiString);
@@ -743,7 +793,7 @@ var
 begin
   i:=Length(x);
   while (i<>0) and (x[i]<=' ') do dec(i);
-  if (i<>0) and not(x[i]=',') then Result:=x+',' else Result:=x;
+  if (i<>0) and (x[i]<>',') then Result:=x+',' else Result:=x;
 end;
 
 end.
