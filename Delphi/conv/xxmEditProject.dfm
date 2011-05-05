@@ -84,6 +84,7 @@ object EditProjectMainForm: TEditProjectMainForm
         Images = ImageList1
         Indent = 19
         PopupMenu = PopupMenu1
+        ReadOnly = True
         TabOrder = 0
         OnChange = tvFilesChange
         OnCompare = tvFilesCompare
@@ -836,9 +837,6 @@ object EditProjectMainForm: TEditProjectMainForm
     end
     object Exclude1: TMenuItem
       Action = actExclude
-    end
-    object Includeunit1: TMenuItem
-      Action = actIncludePas
     end
     object N2: TMenuItem
       Caption = '-'

@@ -45,7 +45,6 @@ type
     Refresh1: TMenuItem;
     actIncludePas: TAction;
     OpenDialog2: TOpenDialog;
-    Includeunit1: TMenuItem;
     Includeunit2: TMenuItem;
     procedure Exit1Click(Sender: TObject);
     procedure txtChange(Sender: TObject);
@@ -176,9 +175,9 @@ begin
     else
      begin
       j:=Length(fn);
-      while not(j=0) and not(fn[j]=PathDelim) do dec(j);
+      while (j<>0) and (fn[j]<>PathDelim) do dec(j);
       i:=j-1;
-      while not(i<=0) and not(fn[i]=PathDelim) do dec(i);
+      while (i>0) and (fn[i]<>PathDelim) do dec(i);
       ProjectData.loadXML('<XxmWebProject>'#13#10#9'<ProjectName>'+Copy(fn,i+1,j-i-1)+'</ProjectName>'#13#10#9+
         '<CompileCommand>dcc32 -U..\..\public -Q [[ProjectName]].dpr</CompileCommand>'#13#10'</XxmWebProject>');
      end;
@@ -190,7 +189,7 @@ begin
     txtCompileCommand.Text:=GetNode(ProjectData.documentElement,'CompileCommand').text;
 
     i:=Length(ProjectPath);
-    while not(i=0) and not(ProjectPath[i]=PathDelim) do dec(i);
+    while (i<>0) and (ProjectPath[i]<>PathDelim) do dec(i);
     ProjectFolder:=Copy(ProjectPath,1,i);
 
     //load files
@@ -293,6 +292,7 @@ var
   fh:THandle;
   fd:TWin32FindDataA;
   d,fn,fe:AnsiString;
+  ft:TXxmFileType;
   n:TTreeNode;
   i:integer;
   x:IXMLDOMElement;
@@ -303,13 +303,13 @@ begin
     if node=nil then tvFiles.Items.Clear else node.DeleteChildren;
     d:='';
     n:=node;
-    while not(n=nil) do
+    while n<>nil do
      begin
       d:=n.Text+PathDelim+d;
       n:=n.Parent;
      end;
     fh:=FindFirstFileA(PAnsiChar(ProjectFolder+d+'*.*'),fd);
-    if not(fh=INVALID_HANDLE_VALUE) then
+    if fh<>INVALID_HANDLE_VALUE then
       try
         repeat
           if ((fd.dwFileAttributes and FILE_ATTRIBUTE_HIDDEN)=0) and
@@ -322,13 +322,11 @@ begin
               (n as TFileNode).ProjectNode:=nil;
               fn:=fd.cFileName;
               i:=Length(fn);
-              while not(i=0) and not(fn[i]='.') do dec(i);
+              while (i<>0) and (fn[i]<>'.') do dec(i);
               if i=0 then fe:='' else fe:=LowerCase(Copy(fn,i,Length(fn)-i+1));
               if fe=DelphiExtension then //.pas
                 if LowerCase(fn)=ProtoProjectPas then //xxmp.pas
-                 begin
-                  n.ImageIndex:=iiPasGenerated;
-                 end
+                  n.ImageIndex:=iiPasGenerated
                 else
                  begin
                   x:=ProjectData.documentElement.selectSingleNode(
@@ -344,44 +342,55 @@ begin
                     n.ImageIndex:=iiPasIncluded;
                    end;
                  end
-              else if fe=XxmFileExtension[ftPage] then //.xxm
-               begin
-                x:=ProjectData.documentElement.selectSingleNode(
-                  'Files/Unit[Path="'+StringReplace(d,'\','\\',[rfReplaceAll])+Copy(fn,1,i-1)+'"]') as IXMLDOMElement;
-                (n as TFileNode).ProjectNode:=x;
-                n.ImageIndex:=iiXxm;
-               end
-              else if fe=XxmFileExtension[ftInclude] then //.xxmi
-               begin
-                x:=ProjectData.documentElement.selectSingleNode(
-                  'Files/Unit[Path="'+StringReplace(d,'\','\\',[rfReplaceAll])+Copy(fn,1,i-1)+'"]') as IXMLDOMElement;
-                (n as TFileNode).ProjectNode:=x;
-                n.ImageIndex:=iiXxmi;
-               end
-              else if fe=XxmFileExtension[ftProject] then //.xxmp
-               begin
-                n.ImageIndex:=iiXxmp;
-                //TODO: invalidate folder since it's another project
-               end
               else if fe=DelphiProjectExtension then //.dpr
                 n.ImageIndex:=iiDpr
               else if (fe='.cfg') or (fe='.dof') then
                 n.ImageIndex:=iiFileGenerated
               else
-                n.ImageIndex:=iiFile;
+               begin
+                ft:=TXxmFileType(0);
+                while (ft<>ft_Unknown) and (fe<>XxmFileExtension[ft]) do inc(ft);
+                case ft of
+                  ftPage,ftInclude:
+                   begin
+                    x:=ProjectData.documentElement.selectSingleNode(
+                      'Files/Unit[Path="'+StringReplace(d,'\','\\',[rfReplaceAll])+Copy(fn,1,i-1)+'"]') as IXMLDOMElement;
+                    (n as TFileNode).ProjectNode:=x;
+                    if ft=ftPage then
+                      n.ImageIndex:=iiXxm
+                    else
+                      n.ImageIndex:=iiXxmi;
+                   end;
+                  ftProject://.xxmp
+                   begin
+                    n.ImageIndex:=iiXxmp;
+                    //TODO: invalidate folder since it's another project
+                   end;
+                  ft_Unknown:
+                   begin
+                    x:=ProjectData.documentElement.selectSingleNode(
+                      'Files/Resource[Path="'+StringReplace(d,'\','\\',[rfReplaceAll])+fn+'"]') as IXMLDOMElement;
+                    (n as TFileNode).ProjectNode:=x;
+                    if x=nil then
+                      n.ImageIndex:=iiFile
+                    else
+                      n.ImageIndex:=iiFileIncluded;
+                   end;
+                end;
+               end;
               n.SelectedIndex:=n.ImageIndex;
              end
             else
              begin
               //directory
-              if not(fd.cFileName[0]='.') then
+              if (fd.cFileName[0]<>'.') then
                begin
                 fn:=fd.cFileName;
                 n:=tvFiles.Items.AddChild(node,fn);
                 (n as TFileNode).IsDir:=true;
                 (n as TFileNode).ProjectNode:=nil;
                 if ((node=nil) and ((fn=SourceDirectory) or (fn=ProtoDirectory))) or
-                   (not(n.Parent=nil) and (n.Parent.ImageIndex=iiDirGenerated)) then
+                   ((n.Parent<>nil) and (n.Parent.ImageIndex=iiDirGenerated)) then
                  begin
                   n.ImageIndex:=iiDirGenerated;
                   //n.HasChildren:=true;
@@ -438,7 +447,7 @@ begin
   nx:=tvFiles.Selected;
   n:=nx;
   s:='';
-  while not(n=nil) do
+  while n<>nil do
    begin
     s:=s+PathDelim+n.Text;
     n:=n.Parent;
@@ -455,7 +464,7 @@ begin
   if not(so.fAnyOperationsAborted) then
    begin
     x:=(nx as TFileNode).ProjectNode;
-    if not(x=nil) then
+    if x<>nil then
      begin
       y:=x.previousSibling;
       if (y<>nil) and (y.nodeType=NODE_TEXT) then x.parentNode.removeChild(y);//whitespace
@@ -484,35 +493,46 @@ var
   i,j:integer;
 begin
   n:=tvFiles.Selected;
+  x:=nil;//default
+  nx:=n;
+  s:='';
+  while nx<>nil do
+   begin
+    s:=PathDelim+nx.Text+s;
+    nx:=nx.Parent;
+   end;
   //case (n of TFileNode) of
   case n.ImageIndex of
     iiPas:
      begin
-      nx:=n;
-      s:='';
-      while not(nx=nil) do
-       begin
-        s:=PathDelim+nx.Text+s;
-        nx:=nx.Parent;
-       end;
       i:=Length(s);
-      while not(i=0) and not(s[i]='.') do dec(i);
+      while (i<>0) and (s[i]<>'.') do dec(i);
       j:=i;
-      while not(j=0) and not(s[j]=PathDelim) do dec(j);
+      while (j<>0) and (s[j]<>PathDelim) do dec(j);
       x:=ProjectData.createElement('Unit');
       x.setAttribute('UnitName',Copy(s,j+1,i-j-1));
       if (j>1) then x.setAttribute('UnitPath',Copy(s,2,j-1));
-      (n as TFileNode).ProjectNode:=x;
-      y:=GetFilesNode;
-      y.appendChild(ProjectData.createTextNode(#13#10#9#9));
-      y.appendChild(x);
-      y.appendChild(ProjectData.createTextNode(#13#10#9));
       n.ImageIndex:=iiPasIncluded;
-      n.SelectedIndex:=iiPasIncluded;
-      Modified:=true;
+     end;
+    iiFile:
+     begin
+      x:=ProjectData.createElement('Resource');
+      y:=ProjectData.createElement('Path');
+      y.text:=Copy(s,2,Length(s));
+      n.ImageIndex:=iiFileIncluded;
      end;
     //more?
   end;
+  if x<>nil then
+   begin
+    (n as TFileNode).ProjectNode:=x;
+    n.SelectedIndex:=n.ImageIndex;
+    y:=GetFilesNode;
+    y.appendChild(ProjectData.createTextNode(#13#10#9#9));
+    y.appendChild(x);
+    y.appendChild(ProjectData.createTextNode(#13#10#9));
+    Modified:=true;
+   end;
   tvFilesChange(tvFiles,n);
 end;
 
@@ -524,12 +544,13 @@ begin
   n:=tvFiles.Selected;
   //case (n of TFileNode) of
   case n.ImageIndex of
-    iiPasIncluded:
+    iiPasIncluded,iiFileIncluded:
      begin
       x:=(n as TFileNode).ProjectNode;
       x.parentNode.removeChild(x);
-      n.ImageIndex:=iiPas;
-      n.SelectedIndex:=iiPas;
+      n.ImageIndex:=n.ImageIndex-1;
+      n.SelectedIndex:=n.ImageIndex;
+      (n as TFileNode).ProjectNode:=nil;
       Modified:=true;
      end;
     //more?
@@ -543,9 +564,9 @@ var
   n:TTreeNode;
 begin
   n:=tvFiles.Selected;
-  actInclude.Enabled:=not(n=nil) and (n.ImageIndex in [iiPas]);
-  actExclude.Enabled:=not(n=nil) and (n.ImageIndex in [iiPasIncluded]);
-  actDelete.Enabled:=not(n=nil);
+  actInclude.Enabled:=(n<>nil) and (n.ImageIndex in [iiPas,iiFile]);
+  actExclude.Enabled:=(n<>nil) and (n.ImageIndex in [iiPasIncluded,iiFileIncluded]);
+  actDelete.Enabled:=(n<>nil);
 end;
 
 procedure TEditProjectMainForm.actRefreshExecute(Sender: TObject);
@@ -578,9 +599,9 @@ begin
      end;
     //strip extension, path
     i:=Length(s);
-    while not(i=0) and not(s[i]='.') do dec(i);
+    while (i<>0) and (s[i]<>'.') do dec(i);
     j:=i;
-    while not(j=0) and not(s[j]=PathDelim) do dec(j);
+    while (j<>0) and (s[j]<>PathDelim) do dec(j);
     //TODO check already included
     t:='@UnitName="'+Copy(s,j+1,i-j-1)+'"';
     if j>0 then t:=t+'&&@UnitPath="'+StringReplace(Copy(s,1,j),'\','\\',[rfReplaceAll])+'"';

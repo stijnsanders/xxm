@@ -1,6 +1,7 @@
-v1.1.1.?
+v1.1.1.277
 - Web.xxmp: multiple <PreCompileCommand>,<CompileCommand>,<PostCompileCommand> allowed
 - added files from module resources demo
+- Web.xxmp,xxmProject: add <Resource> files to check for changes to force auto-build 
 - xxmHttp,xxmIsapi: fixed bug with saving uploaded files
 - xxmIsapi: post data not all read up front, post data reads read from connection as needed
 - xxmLocal: fixed bug with javascript authorization (document.domain)

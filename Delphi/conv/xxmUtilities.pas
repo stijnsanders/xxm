@@ -74,58 +74,57 @@ begin
       if fh=INVALID_HANDLE_VALUE then RaiseLastOSError;
       repeat
 
-       if (AnsiString(fd.cFileName)<>'.') and (AnsiString(fd.cFileName)<>'..') then
-        begin
-
-         if (fd.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY)=0 then
-          begin
-           s:=fd.cFileName;
-           i:=Length(s);
-           while (i<>0) and (s[i]<>'.') do dec(i);
-           s:=LowerCase(Copy(s,i,Length(s)-i+1));
-
-           ft:=TXxmFileType(0);
-           while (ft<>ft_Unknown) and (s<>XxmFileExtension[ft]) do inc(ft);
-
-           case ft of
-
-             ftPage,ftInclude:
-               FileList.Add(CDir+fd.cFileName);
-
-             ftProject:
-               if FirstLevel then
-                begin
-                 //create TXxmWebProject?
-                end
-               else
-                begin
-                 //warning! sub-project, skip directory
-                 AbandonDirectory:=true;
-                 for i:=Dirs.Count-1 downto 0 do
-                   if Copy(Dirs[i],1,Length(CDir))=CDir then Dirs.Delete(i);
-                 for i:=FileList.Count-1 downto 0 do
-                   if Copy(FileList[i],1,Length(CDir))=CDir then FileList.Delete(i);
-
-                 //TODO: queue secondary process directory?
-                end;
-
-             //add new here
-
-             //else?
-
-           end;
-
-          end
-         else
-           Dirs.Add(CDir+fd.cFileName+PathDelim);
-
-        end;
+        if (AnsiString(fd.cFileName)<>'.') and (AnsiString(fd.cFileName)<>'..') then
+         begin
+     
+          if (fd.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY)=0 then
+           begin
+            s:=fd.cFileName;
+            i:=Length(s);
+            while (i<>0) and (s[i]<>'.') do dec(i);
+            s:=LowerCase(Copy(s,i,Length(s)-i+1));
+     
+            ft:=TXxmFileType(0);
+            while (ft<>ft_Unknown) and (s<>XxmFileExtension[ft]) do inc(ft);
+     
+            case ft of
+     
+              ftPage,ftInclude:
+                FileList.Add(CDir+fd.cFileName);
+     
+              ftProject:
+                if FirstLevel then
+                 begin
+                  //create TXxmWebProject?
+                 end
+                else
+                 begin
+                  //warning! sub-project, skip directory
+                  AbandonDirectory:=true;
+                  for i:=Dirs.Count-1 downto 0 do
+                    if Copy(Dirs[i],1,Length(CDir))=CDir then Dirs.Delete(i);
+                  for i:=FileList.Count-1 downto 0 do
+                    if Copy(FileList[i],1,Length(CDir))=CDir then FileList.Delete(i);
+     
+                  //TODO: queue secondary process directory?
+                 end;
+     
+              //add new here
+     
+              //else?
+     
+            end;
+     
+           end
+          else
+            Dirs.Add(CDir+fd.cFileName+PathDelim);
+     
+         end;
 
       until not(FindNextFile(fh,fd)) or AbandonDirectory;
       Windows.FindClose(fh);
       FirstLevel:=false;
      end;
-
 
   finally
     Dirs.Free;

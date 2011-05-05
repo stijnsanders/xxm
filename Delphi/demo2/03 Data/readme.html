@@ -10,7 +10,8 @@ This one has been modified to include the <code>SetSession(Context);</code> call
 <dt>ADODB_TLB.pas</dt>
 <dd>A generated unit based on the Type Library of the Microsoft ActiveX Data Objects (ADO).</dd>
 <dt>queries.xml</dt>
-<dd>An XML file holding the SQL queries the project uses.</dd>
+<dd>An XML file holding the SQL queries the project uses.<br />
+It is included into Web.xxmp as a resource file, so a change to this file will force a re-start of the project.</dd>
 <dt>xxmData.pas</dt>
 <dd>This unit defines the TQueryResult and TDataChanger classes. It also defines the QueryStore that is used to store SQL queries. When initialized, <code>queries.xml</code> is loaded into memory.<br />
 Please note <code>xxmData.pas</code> doesn't check for changes to <code>queries.xml</code>. A change made to <code>queries.xml</code> only will not cause the xxm project to (re)compile when you use a xxm*Dev handler.</dd>
@@ -18,7 +19,8 @@ Please note <code>xxmData.pas</code> doesn't check for changes to <code>queries.
 <dd>This unit defines the TxxmSession class. This website uses a single database connection object for each session. This works good for a small number of visitors, but websites that expect a larger number of visitors should implement a connection pool.<br />
 Also note that the TxxmSession constructor checks if the QueryStore is already initialized. This can not be done when the project's DLL is started because this may happen in a different thread than the xxm project will run in. Within calls over the xxm project object, you're sure CoInitialize is called ans that you're on a thread that the website will run on.</dd>
 <dt>demo.udl</dt>
-<dd>This data-link file is used to have a fixed ADO connection string: "<code>File Name=demo.udl</code>". It depends on the process' current directory, which is set by the TxxmSession's constructor to the project's path.</dd>
+<dd>This data-link file is used to have a fixed ADO connection string: "<code>File Name=demo.udl</code>". It depends on the process' current directory, which is set by the TxxmSession's constructor to the project's path.<br />
+It is included into Web.xxmp as a resource file, so a change to this file will force a re-start of the project.</dd>
 <dt>demo.mdb</dt>
 <dd>The demo UDL links to this file, also depending on the current directory.</dd>
 <dt>Default.xxm</dt>

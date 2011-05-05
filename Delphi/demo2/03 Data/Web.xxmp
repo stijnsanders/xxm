@@ -10,5 +10,8 @@
 		<File ID="default_xxm" UnitName="default_xxm1" UnitPath=""><Path>Default.xxm</Path></File>
 		<File ID="delete_xxm" UnitName="delete_xxm1" UnitPath=""><Path>Delete.xxm</Path></File>
 		<File ID="edit_xxm" UnitName="edit_xxm1" UnitPath=""><Path>Edit.xxm</Path></File>
+		<File ID="a_xxm" UnitName="a_xxm1" UnitPath=""><Path>A.xxm</Path></File>
+		<Resource><Path>demo.udl</Path></Resource>
+		<Resource><Path>queries.xml</Path></Resource>
 	</Files>
 </XxmWebProject>

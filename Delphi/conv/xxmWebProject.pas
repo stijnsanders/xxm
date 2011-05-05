@@ -252,6 +252,7 @@ begin
           x:=xl.nextNode as IXMLDOMElement;
          end;
       finally
+        x:=nil;
         xl:=nil;
       end;
 
@@ -358,6 +359,8 @@ begin
     finally
       sl.Free;
       sl1.Free;
+      x:=nil;
+      xFile:=nil;
     end;
 
     //check units
@@ -381,17 +384,41 @@ begin
         xFile:=xl.nextNode as IXMLDOMElement;
        end;
     finally
+      xFile:=nil;
       xl:=nil;
     end;
     //missing? delete?
 
+    //check resource files
+    xl:=DataFiles.selectNodes('Resource');
+    try
+      xFile:=xl.nextNode as IXMLDOMElement;
+      while xFile<>nil do
+       begin
+        fn:=ForceNode(xFile,'Path','',-1).text;
+        s:=Signature(FRootFolder+fn);
+        uname:=':'+StringReplace(fn,'=','_',[rfReplaceAll]);
+        if Signatures.Values[uname]<>s then
+         begin
+          Signatures.Values[uname]:=s;
+          Modified:=true;
+          Result:=true;
+         end;
+
+        xFile:=xl.nextNode as IXMLDOMElement;
+       end;
+    finally
+      xFile:=nil;
+      xl:=nil;
+    end;
+
+    //
     GenerateProjectFiles(Rebuild);
 
   finally
     p.Free;
     q.Free;
     m.Free;
-    x:=nil;
   end;
 
 end;
