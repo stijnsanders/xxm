@@ -201,7 +201,7 @@ begin
    begin
     if StackPosition=StackSize then
      begin
-      inc(StackSize,32);
+      inc(StackSize,$100);
       SetLength(Stack,StackSize);
      end;
     Stack[StackPosition]:=FIndex;
@@ -238,7 +238,7 @@ procedure TXxmProtoParser.AddPoint(Index, Length, EOLs: integer; Tag: TXxmProtoP
 begin
   if PointsCount=PointsSize then
    begin
-    inc(PointsSize,32);
+    inc(PointsSize,$100);
     SetLength(Points,PointsSize);
    end;
   Points[PointsCount].Index:=Index;

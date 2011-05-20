@@ -20,6 +20,7 @@
 <li><a href="#project">Project</a></li>
 <li><a href="#syntax">Syntax</a></li>
 <li><a href="#proto">Proto</a></li>
+<li><a href="#embedhtml">Embed HTML</a></li>
 <li><a href="#interface">Interface</a></li>
 <li><a href="#xxmproject">TxxmProject</a></li>
 <li><a href="#xxmfragment">TxxmFragment, TxxmPage, TxxmInclude</a></li>
@@ -73,23 +74,21 @@
 <dt><code>[[@Variants,]]</code></dt><dd><b>uses clause:</b> adds code to the uses clause. <b>Important:</b> be sure to include a comma for each used unit, including the last, or Delphi syntaxis may break</dd>
 <dt><code>[[!var i:integer;]]</code></dt><dd><b>header:</b> adds code in front of 'begin' of the fragment's Build method implementation, use this to declare local variables</dd>
 <dt><code>[[/ ]]</code></dt><dd><b>comment:</b> excludes a section of the xxm code</dd>
-<dt><code>[[:resourcestring SHelloWorld='Hello world!';]]</code></dt><dd><b>definitions:</b> adds code in front of the fragment's Build method implementation, please read below remarks for proper use</dd>
-<dt><code>[[_ ]]</code></dt><dd><b>footer:</b> adds code right after the fragment's Build method implementation, please read below remarks for proper use</dd>
+<dt><code>[[:resourcestring SHelloWorld='Hello world!';]]</code></dt><dd><b>definitions:</b> adds code in front of the fragment's Build method implementation, read below remarks for proper use</dd>
+<dt><code>[[_ ]]</code></dt><dd><b>footer:</b> adds code right after the fragment's Build method implementation, read below remarks for proper use</dd>
 <dt><code>[[[]]</code></dt><dd><b>opening square brackets:</b> is replaced by opening square brackets</dd>
 <dt><code>[[]]]</code></dt><dd><b>closing square brackets:</b> is replaced by closing square brackets</dd>
 </dl>
 
-<p><b>Attention:</b> please avoid declaring (nested) procedures and functions in header, footer and definition blocks, use include fragments or plain pascal units for that. One reason to avoid them is because closing the current Delphi code block to output HTML doesn't work, because all HTML is parsed onto <code>Context.SendHTML();</code> calls <i>inside of</i> the fragment's Build method implementation, and breaks Delphi syntax.</i>
+<p><b>Attention:</b> avoid declaring (nested) procedures and functions in header, footer and definition blocks, use include fragments or plain pascal units for that. One reason to avoid them is because closing the current Delphi code block to output HTML doesn't work, because all HTML is parsed onto <code>Context.SendHTML();</code> calls <i>inside of</i> the fragment's Build method implementation, and breaks Delphi syntax.</i>
 
 <p>Within a Delphi code block (including comment blocks), the number of opening and closing brackets and braces is counted (disregarding those in strings), this enables code like this: <code style="background-color:#FFFFFF;"><span style="background-color:#CCFFCC">[[</span>Context.Send('<span style="background-color:#FFCCCC;">]]</span>');<span style="background-color:#CCFFCC">]]</span></code> and <code><span style="background-color:#CCFFCC">[[</span>=MyArray[x<span style="background-color:#FFCCCC">]</span><span style="background-color:#FFFFCC">]</span><span style="background-color:#CCFFCC">]</span></code>, but also enables a comment block to 'comment out' a full block of both HTML and code blocks.</p>
-
-<p class="title"><a name="proto"></a>Proto</p>
 
 <p>Each xxm and xxmi source file is converted into a pas file, using a prototype file. By default the prototype files are used from the "proto" directory provided with the xxm installation, but an xxm project can provide custom prototype files.</p>
 
 <p>When the default prototype files are used, each resulting pas file declares a descendant TXxmFragment class (either TXxmPage or TXxmInclude). The Delphi code blocks are duplicated in the predesignated spot, and all HTML is converted into calls to <code>Context.SendHTML();</code> inside of the Build method implementation.</p>
 
-<p>Longer portions of HTML may be split into several <code>Context.SendHTML();</code> calls, so be carefull whith code like this:</p>
+<p><b>Attention:</b> longer portions of HTML may be split into several <code>Context.SendHTML();</code> calls, so be carefull whith code like this:</p>
 <p><code>if MyBoolean then ]]&lt;b&gt;priority:[[=PriorityLevel]]&lt;/b&gt;[[</code></p>
 <p>which gets parsed into:</p>
 <p><code>if MyBoolean then <br />
@@ -98,6 +97,15 @@ Context.Send(PriorityLevel);<br />
 Context.SendHTML('&lt;/b&gt;');</code></p>
 <p>so be sure to use <code>begin</code> and <code>end</code>:</p>
 <p><code style="background-color:#FFFFFF;">if MyBoolean then <span style="background-color:#CCFFCC">begin</span>]]&lt;b&gt;priority:[[=PriorityLevel]]&lt;/b&gt;[[<span style="background-color:#CCFFCC">end</span>;</code></p>
+
+<p class="title"><a name="embedhtml"></a>Embed HTML</p>
+
+<p>To improve readability, sections with HTML elements can also be enclosed in an extra set of angled brackets ("<code>&lt;&gt;</code>") to escape them from a code block, for example:</p>
+
+<p><code>if ShowExtraWarning then &lt;&lt;span class=&quot;warning&quot;&gt;be carefull!&lt;/span&gt;&gt;</code></p>
+
+<p>As noted above, remember to use <code>begin</code> and <code>end</code> with larger HTML blocks or when the section has embedded code blocks.</p>
+<p><code style="background-color:#FFFFFF;">if MyBoolean then <span style="background-color:#CCFFCC">begin</span> &lt;&lt;b&gt;priority:[[=PriorityLevel]]&lt;/b&gt;&gt; <span style="background-color:#CCFFCC">end</span>;</code></p>
 
 <p class="title"><a name="interface"></a>Interface</p>
 

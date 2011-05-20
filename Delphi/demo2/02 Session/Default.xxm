@@ -4,22 +4,18 @@
 [[
 if Session.Authenticated then
  begin
-  ]]
-  <p><b>Hello, [[=Session.Name]]</b></p>
+  <<p><b>Hello, [[=Session.Name]]</b></p>
   <form action="Logout.xxm" method="post">
   <input type="submit" value="logout" />
-  </form>
-  [[
+  </form>>
  end
 else
  begin
-  ]]
-  <form action="Login.xxm" method="post">
+  <<form action="Login.xxm" method="post">
   name:<input type="text" name="name" /><br />
   pwd:[...]<br />
   <input type="submit" value="login" />
-  </form>
-  [[
+  </form>>
  end;
 ]]
 

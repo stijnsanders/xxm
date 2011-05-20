@@ -177,8 +177,8 @@ end;
 
 procedure TXxmPageParser.Parse(Data: AnsiString);
 var
-  b,instr:boolean;
-  a,i,j,l,n1,n2,nx,k,sqd,incom:integer;
+  SquareB,AngleB,InString:boolean;
+  a1,a2,b1,b2,bx,l,n1,n2,nx,sqd,InComment:integer;
   ps:TXxmPageSection;
 begin
   SectionsCount:=0;
@@ -187,94 +187,118 @@ begin
   FData:=Data;
   FIndex:=0;
   l:=Length(FData);
-  i:=1;
-  a:=1;//counter warning
+  a1:=1;//counter warning
+  a2:=1;
   n1:=1;
   nx:=1;
-  while i<=l do
+  while a2<=l do
    begin
     //search for an open tag
     n1:=nx;
-    a:=i;
-    b:=false;
-    while (i<=l) and not(b and (FData[i]='[')) do
+    a1:=a2;
+    SquareB:=false;
+    AngleB:=false;
+    while (a2<=l) and not(SquareB and (FData[a2]='[')) and not(AngleB and (FData[a2]='>')) do
      begin
-      b:=FData[i]='[';
-      if char(FData[i]) in [#13,#10] then
+      SquareB:=FData[a2]='[';
+      AngleB:=FData[a2]='>';
+      if char(FData[a2]) in [#13,#10] then
        begin
         inc(nx);
-        if (FData[i]=#13) and (i<l) and (FData[i+1]=#10) then inc(i);
+        if (FData[a2]=#13) and (a2<l) and (FData[a2+1]=#10) then inc(a2);
        end;
-      inc(i);
+      inc(a2);
      end;
-    if b then
+    b1:=a2+1;
+    b2:=b1;
+    if AngleB then a2:=b1;//inc(a2);
+    if SquareB or AngleB then
      begin
       //open tag found, look for close tag (carefully: check strings and opening/closing braces and things)
-      j:=i+1;
-      b:=false;
+      SquareB:=false;
+      AngleB:=false;
       sqd:=0;//square bracket depth
-      instr:=false;
-      incom:=0;
+      InString:=false;
+      InComment:=0;
       n2:=nx;
-      while (j<=l) and not(b and (FData[j]=']')) do
+      while (b2<=l) and not(SquareB and (FData[b2]=']')) and not(AngleB and (FData[b2]='<')) do
        begin
-        if instr then
+        SquareB:=false;
+        AngleB:=false;
+        if InString then
          begin
-          if char(FData[j]) in ['''',#13,#10] then instr:=false;
+          if char(FData[b2]) in ['''',#13,#10] then InString:=false;
          end
         else
-          case char(FData[j]) of
-            '''':if incom=0 then instr:=true;
-            '[':if incom=0 then inc(sqd);
-            ']':if incom=0 then if sqd=0 then b:=true else dec(sqd);
-            '{':if incom=0 then incom:=1;
-            '}':if incom=1 then incom:=0;
-            '(':if (incom=0) and (j<l) and (FData[j+1]='*') then incom:=2;
-            ')':if (incom=2) and (j>1) and (FData[j-1]='*') then incom:=0;
+          case char(FData[b2]) of
+            '''':if InComment=0 then InString:=true;
+            '[':if InComment=0 then inc(sqd);
+            ']':if InComment=0 then if sqd=0 then SquareB:=true else dec(sqd);
+            '{':if InComment=0 then InComment:=1;
+            '}':if InComment=1 then InComment:=0;
+            '(':if (InComment=0) and (b2<l) and (FData[b2+1]='*') then InComment:=2;
+            ')':if (InComment=2) and (b2>1) and (FData[b2-1]='*') then InComment:=0;
+            '<':if InComment=0 then AngleB:=true;
           end;
-        if char(FData[j]) in [#13,#10] then
+        if char(FData[b2]) in [#13,#10] then
          begin
           inc(nx);
-          if (FData[j]=#13) and (j<l) and (FData[j+1]=#10) then inc(j);
+          if (FData[b2]=#13) and (b2<l) and (FData[b2+1]=#10) then inc(b2);
          end;
-        inc(j);
+        inc(b2);
        end;
-      if b and (i<l) then
+      if SquareB or AngleB and (a2<l) then
        begin
         //close tag found also
-        k:=i+1;
-        case char(FData[k]) of
-          '[':begin ps:=psSquareBracketsOpen; b:=j-i=2; end;
-          ']':begin ps:=psSquareBracketsClose; b:=j-i=2; end;
-          '!':ps:=psHeader;
-          '@':ps:=psUses;
-          ':':ps:=psDefinitions;
-          '_':ps:=psFooter;
-          '#':ps:=psSendHTML;
-          '=':ps:=psSend;
-          '/','?':ps:=psComment;
-          //'&$%*^+|;.,
-          else
+        if AngleB then
+         begin
+          ps:=psBody;
+          AddSection(a1,a2-a1-1,n1,psHTML);
+          AddSection(b1,b2-b1-1,n2,ps);
+          a2:=b2;
+         end
+        else //SquareB or (i=l)
+         begin
+          bx:=b1;
+          if bx=a2 then //opener was AngleB
            begin
             ps:=psBody;
-            dec(k);
-           end;
-        end;
-        if b then
-         begin
-          AddSection(a,i-a-1,n1,psHTML);
-          AddSection(k+1,j-k-2,n2,ps);
-          i:=j+1;
-         end
-        else
-          AddSection(a,i-a,n1,psHTML);
-        a:=i;
+            dec(bx);
+           end
+          else
+            case char(FData[bx]) of
+              '[':begin ps:=psSquareBracketsOpen; SquareB:=b2-b1=1; end;
+              ']':begin ps:=psSquareBracketsClose; SquareB:=b2-b1=1; end;
+              '!':ps:=psHeader;
+              '@':ps:=psUses;
+              ':':ps:=psDefinitions;
+              '_':ps:=psFooter;
+              '#':ps:=psSendHTML;
+              '=':ps:=psSend;
+              '/','?':ps:=psComment;
+              //'&$%*^+|;.,
+              else
+               begin
+                ps:=psBody;
+                dec(bx);
+               end;
+            end;
+          if SquareB then
+           begin
+            AddSection(a1,a2-a1-1,n1,psHTML);
+            AddSection(bx+1,b2-bx-2,n2,ps);
+            a2:=b2+1;
+           end
+          else
+            AddSection(a1,a2-a1,n1,psHTML);
+         end;
+        a1:=a2;
        end
       else
-        i:=l+1;
+        a2:=l+1;
      end;
    end;
-  AddSection(a,l-a+1,n1,psHTML);
+  AddSection(a1,l-a1+1,n1,psHTML);
   TotalLines:=nx;
 end;
 
@@ -285,7 +309,7 @@ begin
    begin
     if SectionsCount=SectionsSize then
      begin
-      inc(SectionsSize,16);
+      inc(SectionsSize,$100);
       SetLength(Sections,SectionsSize);
      end;
     Sections[SectionsCount].Index:=Index;

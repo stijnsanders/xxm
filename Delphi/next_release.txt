@@ -1,4 +1,5 @@
 v1.1.1.277
+- 'embed HTML syntax': use "<<html>>" instead of "]]<html>[["
 - Web.xxmp: multiple <PreCompileCommand>,<CompileCommand>,<PostCompileCommand> allowed
 - added files from module resources demo
 - Web.xxmp,xxmProject: add <Resource> files to check for changes to force auto-build 

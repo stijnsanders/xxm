@@ -5,17 +5,13 @@ Name:=Context.Parameter['name'].Value;
 
 if Name='' then
  begin
-  ]]
-  <p style="color:red;">no name entered</p>
-  [[
+  <<p style="color:red;">no name entered</p>>
  end
 else
  begin
   Session.Authenticated:=true;
   Session.Name:=Name;
-  ]]
-  <p>Welcome [[=Name]]!</p>
-  [[
+  <<p>Welcome [[=Name]]!</p>>
  end;
 
 ]]

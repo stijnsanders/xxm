@@ -33,15 +33,13 @@ end;
 for i:=0 to l-1 do
  begin
   p:=Context.Parameter[i];
-  ]]
-  <tr><td>[[=p.Name]]</td><td>[[
+  <<tr><td>[[=p.Name]]</td><td>>
   if p_is(IID_IParameterFromPath) then Context.Send('IParameterFromPath') else
   if p_is(IID_IXxmParameterPostFile) then Context.Send('IXxmParameterPostFile') else
   if p_is(IID_IXxmParameterPost) then Context.Send('IXxmParameterPost') else
   if p_is(IID_IXxmParameterGet) then Context.Send('IXxmParameterGet') else
     Context.Send('?');
-  ]]</td><td>[[=p.Value]]</td></tr>
-  [[
+  <</td><td>[[=p.Value]]</td></tr>>
  end;
 ]]
 </table>
