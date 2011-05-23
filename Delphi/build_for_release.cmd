@@ -38,5 +38,4 @@ dcc32 xxmGeckoDev.dpr
 cd setup
 make_xxmGeckoDev_xpi.cmd
 cd ..\..
-xcopy "C:\Program Files\Mozilla Firefox\components\xxmGecko*.dll" bin\ /y
 pause
