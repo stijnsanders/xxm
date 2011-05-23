@@ -144,8 +144,8 @@ Item0=..\dcu
 Item1=dcu
 [HistoryLists\hlOutputDirectorry]
 Count=5
-Item0=setup\xxmGeckoDev\platform\WINNT\components
-Item1=..\bin
+Item0=..\bin
+Item1=setup\xxmGeckoDev\platform\WINNT\components
 Item2=C:\Program Files\Mozilla Firefox\components
 Item3=C:\Inetpub\xxm
 Item4=..\
