@@ -11,7 +11,7 @@ uses xxm, Classes;
 This is a default fragment registry. You are free to change this one  or create a new one for your project.
 The TxxmProject (xxmp.pas) calls GetClass with the page section of the URL, or can pre-process the URL.
 
-  $Rev$ $Date$
+  $Rev: 102 $ $Date: 2010-09-15 14:42:45 +0200 (wo, 15 sep 2010) $
 
 }
 

@@ -5,15 +5,19 @@ interface
 uses xxm, SysUtils;
 
 type
+  TXxmProjectEntry=class;
+
   TXxmProjectEntry=class(TObject)
   private
     FName:WideString;
     FProject:IXxmProject;
     FContextCount:integer;
     FHandle:THandle;
+    FLoadSignature:AnsiString;
+    FCheckMutex:THandle;
   protected
     FSignature:AnsiString;
-    FFilePath:WideString;
+    FFilePath,FLoadPath:WideString;
     function GetProject: IXxmProject;
     procedure LoadProject; virtual;
     function GetModulePath:WideString; virtual;
@@ -24,29 +28,35 @@ type
     constructor Create(Name:WideString);//abstract! only here for initialization
     destructor Destroy; override;
   public
+    //used by auto-build/auto-update
     LastCheck:cardinal;
+    procedure Lock; //used by auto-build/auto-update
+    procedure Unlock; //used by auto-build/auto-update
+    procedure Release; //virtual;?
+    procedure AfterConstruction; override; //creates the lock mutex
+    property ModulePath:WideString read GetModulePath;
+    property Signature:AnsiString read FSignature write SetSignature;
+    property LoadSignature:AnsiString read FLoadSignature;
+
+    //used by xxmContext
     procedure OpenContext;
     procedure CloseContext;
-    procedure Release; virtual;
     procedure GetFilePath(Address:WideString;var Path,MimeType:WideString);
     property Name: WideString read FName;
     property Project: IXxmProject read GetProject;
-    property ModulePath:WideString read GetModulePath;
-    property Signature:AnsiString read FSignature write SetSignature;
   end;
 
   EXxmModuleNotFound=class(Exception);
   EXxmProjectLoadFailed=class(Exception);
 
-  TXxmAutoBuildHandler=function(pce:TXxmProjectEntry;
-    Context:IXxmContext; ProjectName:WideString):boolean;
+  TXxmAutoBuildHandler=function(Entry: TXxmProjectEntry; Context: IXxmContext; ProjectName: WideString): boolean;
 
 var
   XxmAutoBuildHandler:TXxmAutoBuildHandler;
 
 implementation
 
-uses Windows, Registry;
+uses Windows, Registry, xxmCommonUtils;
 
 const //resourcestring?
   SXxmModuleNotFound='xxm Module "__" does not exist.';
@@ -62,13 +72,41 @@ begin
   FProject:=nil;
   FHandle:=0;
   FFilePath:='';//set by inheriters
-  FSignature:='';//used for auto-build/auto-update
+  FLoadPath:='';//set by inheriters
+  FSignature:='';//used for auto-build
+  FLoadSignature:='';//used for auto-update
+  FCheckMutex:=0;
   LastCheck:=GetTickCount-100000;
+end;
+
+procedure TXxmProjectEntry.AfterConstruction;
+var
+  mn:AnsiString;
+  i,l:integer;
+begin
+  inherited;
+  if @XxmAutoBuildHandler<>nil then
+   begin
+    //prepare mutex name
+    mn:=GetModulePath;
+    l:=Length(mn);
+    if l>248 then
+     begin
+      mn:=Copy(mn,1,120)+'('+IntToStr(l-240)+')'+Copy(mn,l-119,120);
+      l:=Length(mn);
+     end;
+    for i:=1 to l do if char(mn[i]) in ['\',':','/',' ','.'] then mn[i]:='|';
+    mn:='Global\'+mn;
+    //get mutex
+    FCheckMutex:=CreateMutexA(nil,false,PAnsiChar(mn));
+    if FCheckMutex=0 then RaiseLastOSError;//?
+   end;
 end;
 
 destructor TXxmProjectEntry.Destroy;
 begin
   Release;
+  if FCheckMutex<>0 then CloseHandle(FCheckMutex);
   inherited;
 end;
 
@@ -100,6 +138,7 @@ begin
     FreeLibrary(FHandle);
     FHandle:=0;
     //FContextCount:=0;
+    if FLoadPath<>'' then DeleteFileW(PWideChar(FLoadPath));
    end;
 end;
 
@@ -119,10 +158,18 @@ procedure TXxmProjectEntry.LoadProject;
 var
   lp:TXxmProjectLoadProc;
 begin
-  if not(FileExists(FFilePath)) then
+  FLoadSignature:=GetFileSignature(FFilePath);
+  if FLoadSignature='' then //if not(FileExists(FFilePath)) then
     raise EXxmModuleNotFound.Create(StringReplace(
       SXxmModuleNotFound,'__',FFilePath,[]));
-  FHandle:=LoadLibraryW(PWideChar(FFilePath));
+  if FLoadPath='' then
+    FHandle:=LoadLibraryW(PWideChar(FFilePath))
+  else
+   begin
+    if not(CopyFileW(PWideChar(FFilePath),PWideChar(FLoadPath),false)) then RaiseLastOSError;
+    SetFileAttributesW(PWideChar(FLoadPath),FILE_ATTRIBUTE_HIDDEN or FILE_ATTRIBUTE_SYSTEM);
+    FHandle:=LoadLibraryW(PWideChar(FLoadPath));
+   end;
   if FHandle=0 then RaiseLastOSError;
   @lp:=GetProcAddress(FHandle,'XxmProjectLoad');
   if @lp=nil then RaiseLastOSError;
@@ -200,6 +247,18 @@ begin
   finally
     r.Free;
   end;
+end;
+
+procedure TXxmProjectEntry.Lock;
+begin
+  //assert FCheckMutex<>0
+  if WaitForSingleObject(FCheckMutex,INFINITE)<>WAIT_OBJECT_0 then RaiseLastOSError;
+end;
+
+procedure TXxmProjectEntry.Unlock;
+begin
+  //assert FCheckMutex<>0
+  ReleaseMutex(FCheckMutex);
 end;
 
 end.

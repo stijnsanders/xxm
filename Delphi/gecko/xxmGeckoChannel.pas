@@ -16,6 +16,7 @@ type
     //nsIInterfaceRequestor,
     //nsITransportEventSink,??
     nsIUploadChannel,
+    nsIAsyncVerifyRedirectCallback,
     //nsIPropertyBag2
     //nsIXPCScriptable,
     //nsIXPConnectWrappedJS,
@@ -33,7 +34,7 @@ type
     FListener:nsIStreamListener;
     FCallBacks:nsIInterfaceRequestor;
     FReportToThread:nsIThread;
-    FConnected,FComplete,FAllowPipelining:boolean;
+    FConnected,FComplete,FAllowPipelining,FGotSessionID:boolean;
     FStatus,FSuspendCount,FRedirectionLimit:integer;
     FVerb,FQueryString:AnsiString;
     FRequestHeaders,FResponseHeaders:TResponseHeaders;//both TResponseHeaders?! see Create
@@ -45,6 +46,7 @@ type
     FData:TMemoryStream;
     FLock:TRTLCriticalSection;
     FRedirectChannel:nsIChannel;//see Redirect
+    FChannelIsForDownload:boolean;
     procedure CheckSuspend;
     procedure Lock;
     procedure Unlock;
@@ -123,9 +125,23 @@ type
     procedure nsIHttpChannelInternal.setCookie=SetCookieHttpInt;
     procedure SetCookieHttpInt(aCookieHeader:PAnsiChar); safecall;//string?
     procedure setupFallbackChannel(aFallbackKey:PAnsiChar); safecall;//string?
+    function GetForceAllowThirdPartyCookie: PRBool; safecall;
+    procedure SetForceAllowThirdPartyCookie(aForceAllowThirdPartyCookie: PRBool); safecall;
+    function GetCanceled: PRBool; safecall;
+    function GetChannelIsForDownload: PRBool; safecall;
+    procedure SetChannelIsForDownload(aChannelIsForDownload: PRBool); safecall;
+    procedure GetLocalAddress(aLocalAddress: nsAUTF8String); safecall;
+    function GetLocalPort: PRUint32; safecall;
+    procedure GetRemoteAddress(aRemoteAddress: nsAUTF8String); safecall;
+    function GetRemotePort: PRUint32; safecall;
+    procedure setCacheKeysRedirectChain(cacheKeys:pointer); safecall;//StringArray:nsTArray<nsCString>
+    procedure HTTPUpgrade(aProtocolName: nsACString; aListener: nsISupports); safecall; //nsIHttpUpgradeListener
     //nsIUploadChannel
     procedure SetUploadStream(aStream: nsIInputStream; const aContentType: nsACString; aContentLength: PRInt32); safecall;
     function GetUploadStream(): nsIInputStream; safecall;
+    //TODO: nsIUploadChannel2
+    //nsIAsyncVerifyRedirectCallback
+    procedure OnRedirectVerifyCallback(aResult: nsresult); safecall;
     //nsIInputStream (attention: interface on channel object for convenience)
     function Available: Cardinal; safecall;
     procedure Close; safecall;
@@ -196,8 +212,7 @@ type
 
   TxxmListenerCall=(lcActivate,lcStart,lcData,lcStop,lcAbort,lcRedirect);
 
-  TxxmListenerCaller=class(TInterfacedObject,
-    nsIRunnable)
+  TxxmListenerCaller=class(TInterfacedObject, nsIRunnable)
   private
     FOwner:TxxmChannel;
     FCall:TxxmListenerCall;
@@ -276,6 +291,7 @@ begin
   FOrigURI:=aURI;
   FDocURI:=nil;
   FReferer:=nil;
+  FGotSessionID:=false;
   FData:=TMemoryStream.Create;
   InitializeCriticalSection(FLock);
   FReportPending:=false;
@@ -301,6 +317,7 @@ begin
   FQueryString:='';//parsed from URL
   FRedirectionLimit:=32;//set later?
   FRedirectChannel:=nil;
+  FChannelIsForDownload:=false;
 end;
 
 destructor TxxmChannel.Destroy;
@@ -332,18 +349,12 @@ end;
 
 procedure TxxmChannel.AsyncOpen(aListener: nsIStreamListener;
   aContext: nsISupports);
-var
-  CompMgr:nsIComponentManager;
-  ThMgr:nsIThreadManager;
 begin
   FConnected:=true;
   FListener:=aListener;
   FListenerContext:=aContext;
-  FReportToThread:=NS_GetCurrentThread;
+  FReportToThread:=NS_GetCurrentThread;//NS_GetMainThread?
   if FLoadGroup<>nil then FLoadGroup.AddRequest(Self as nsIRequest,nil);
-  NS_GetComponentManager(CompMgr);
-  CompMgr.CreateInstanceByContractID(NS_THREADMANAGER_CONTRACTID,nil,nsIThreadManager,ThMgr);
-  FReportToThread:=ThMgr.currentThread;
   GeckoLoaderPool.Queue(Self);
 end;
 
@@ -393,7 +404,6 @@ begin
 
     //activate
     Resume;
-
     BuildPage;
 
   except
@@ -451,11 +461,8 @@ begin
 end;
 
 procedure TxxmChannel.GetName(aName: nsAUTF8String);
-var
-  x:UTF8String;
 begin
-  x:=UTF8Encode(FURL);
-  NS_CStringSetData(aName,PAnsiChar(x),Length(x));
+  SetCString(aName,UTF8Encode(FURL));
 end;
 
 function TxxmChannel.GetURI: nsIURI;
@@ -566,6 +573,7 @@ end;
 procedure TxxmChannel.SetLoadFlags(aLoadFlags: nsLoadFlags);
 begin
   FLoadFlags:=aLoadFlags;
+  //TODO: ???
 end;
 
 function TxxmChannel.GetLoadGroup: nsILoadGroup;
@@ -702,10 +710,14 @@ procedure TxxmChannel.VisitRequestHeaders(aVisitor: nsIHttpHeaderVisitor);
 var
   i:integer;
 begin
-  for i:=0 to FRequestHeaders.Count-1 do
+  i:=0;
+  while i<FRequestHeaders.Count do
+   begin
     aVisitor.VisitHeader(
       NewCString(FRequestHeaders.Name[i]).ACString,
       NewCString(FRequestHeaders.Item[i]).ACString);
+    inc(i);
+   end;
 end;
 
 procedure TxxmChannel.VisitResponseHeaders(aVisitor: nsIHttpHeaderVisitor);
@@ -726,6 +738,48 @@ begin
   Result:=FConnected;
 end;
 
+function BuildUserAgent: WideString;
+var
+  SvcMgr:nsIServiceManager;
+  h:nsIHttpProtocolHandler;
+  c:IInterfacedCString;
+  p:PAnsiChar;
+  l:cardinal;
+  r:TResourceStream;
+  m:TMemoryStream;
+begin
+  try
+    NS_GetServiceManager(SvcMgr);
+    SvcMgr.GetServiceByContractID(NS_IHTTPPROTOCOLHANDLER_CONTRACT,nsIHttpProtocolHandler,h);
+    c:=NewCString;
+    h.GetUserAgent(c.ACString);
+    Result:=c.ToString;
+  except
+    on e:EOleException do //if E.ErrorCode=$80004002?
+     begin
+      m:=TMemoryStream.Create;
+      try
+        //odd, a copy is required to avoid access violation in version.dll
+        r:=TResourceStream.CreateFromID(0,1,RT_VERSION);
+        try
+          r.SaveToStream(m);
+        finally
+          r.Free;
+        end;
+        m.Position:=0;
+        if VerQueryValueA(m.Memory,'\StringFileInfo\000004B0\FileDescription',pointer(p),l) then
+          Result:=p else Result:='???';
+        if VerQueryValueA(m.Memory,'\StringFileInfo\000004B0\FileVersion',pointer(p),l) then
+          Result:=Result+' '+p;
+        if VerQueryValueA(m.Memory,'\StringFileInfo\000004B0\BuildID',pointer(p),l) then
+          Result:=Result+' build '+p;
+      finally
+        m.Free;
+      end;
+     end;
+  end;
+end;
+
 function TxxmChannel.ContextString(cs: TXxmContextString): WideString;
 begin
   case cs of
@@ -738,7 +792,7 @@ begin
     csQueryString:
       Result:=FQueryString;
     csUserAgent:
-      Result:=FRequestHeaders['user-agent'];
+      Result:=BuildUserAgent;//Result:=FRequestHeaders['user-agent'];
     csAcceptedMimeTypes:
       Result:=FRequestHeaders['accept-mime-type'];
     csPostMimeType:
@@ -791,7 +845,8 @@ end;
 
 function TxxmChannel.GetSessionID: WideString;
 begin
-  CheckHeaderNotSent;
+  if not FGotSessionID then CheckHeaderNotSent;
+  FGotSessionID:=true;
   Result:=IntToHex(HInstance,8)+IntToHex(GetCurrentProcessId,8);
 end;
 
@@ -832,8 +887,6 @@ begin
 end;
 
 procedure TxxmChannel.RedirectSync;
-const
-  LOAD_REPLACE=$40000;//1 shl 18
 var
   h:nsIHttpChannel;
   hi:nsIHttpChannelInternal;
@@ -847,7 +900,7 @@ begin
     FRedirectChannel.LoadGroup:=FLoadGroup;
     FRedirectChannel.NotificationCallbacks:=FCallBacks;
     FRedirectChannel.LoadFlags:=FLoadFlags or LOAD_REPLACE;
-    if FRedirectChannel.QueryInterface(NS_IHTTPCHANNEL_IID,h)=S_OK then
+    if FRedirectChannel.QueryInterface(nsIHttpChannel,h)=S_OK then
      begin
       //h.SetRequestMethod(NewCString('GET').ACString);//FVerb?
       if FReferer<>nil then h.Referrer:=FReferer;
@@ -857,7 +910,7 @@ begin
      end;
 
     //if FVerb='POST'?
-    if FRedirectChannel.QueryInterface(NS_IUPLOADCHANNEL_IID,uc)=S_OK then
+    if FRedirectChannel.QueryInterface(nsIUploadChannel,uc)=S_OK then
      begin
       if FPostData<>nil then
        begin
@@ -868,7 +921,7 @@ begin
       uc:=nil;
      end;
 
-    if FRedirectChannel.QueryInterface(NS_IHTTPCHANNELINTERNAL_IID,hi)=S_OK then
+    if FRedirectChannel.QueryInterface(nsIHttpChannelInternal,hi)=S_OK then
      begin
       hi.SetDocumentURI(FDocURI);
       hi:=nil;
@@ -881,7 +934,7 @@ begin
     try
       if FCallBacks<>nil then
         (FCallBacks as nsIChannelEventSink).onChannelRedirect(Self,
-          FRedirectChannel,REDIRECT_PERMANENT);//temporary?
+          FRedirectChannel,REDIRECT_PERMANENT,Self);//temporary?
     except
       //silent?
     end;
@@ -1100,7 +1153,7 @@ begin
     //assert aCount is size of data reported
     p:=FData.Memory;
     inc(integer(p),FExportSize);
-    aWriter(Self,aClosure,p,0,aCount,Result);
+    aWriter(Self,aClosure,p,0,aCount,Result);//TODO: evaluate result
     //assert Result=aCount
     FExportSize:=FExportSize+Result;
     if aCount>FReportSize then FReportSize:=0 else FReportSize:=FReportSize-aCount;
@@ -1201,6 +1254,69 @@ procedure TxxmChannel.setupFallbackChannel(aFallbackKey: PAnsiChar);
 begin
   //TODO:
   raise EInvalidOp.Create('Not implemented');
+end;
+
+function TxxmChannel.GetCanceled: PRBool;
+begin
+  Result:=not FConnected;
+end;
+
+function TxxmChannel.GetChannelIsForDownload: PRBool;
+begin
+  Result:=FChannelIsForDownload;
+end;
+
+procedure TxxmChannel.SetChannelIsForDownload(
+  aChannelIsForDownload: PRBool);
+begin
+  FChannelIsForDownload:=aChannelIsForDownload;
+end;
+
+function TxxmChannel.GetForceAllowThirdPartyCookie: PRBool;
+begin
+  Result:=false;
+end;
+
+procedure TxxmChannel.GetLocalAddress(aLocalAddress: nsAUTF8String);
+begin
+  SetCString(aLocalAddress,'127.0.0.1');//?
+end;
+
+function TxxmChannel.GetLocalPort: PRUint32;
+begin
+  Result:=10000;//?
+end;
+
+procedure TxxmChannel.GetRemoteAddress(aRemoteAddress: nsAUTF8String);
+begin
+  SetCString(aRemoteAddress,'127.0.0.1');//?
+end;
+
+function TxxmChannel.GetRemotePort: PRUint32;
+begin
+  Result:=80;//?
+end;
+
+procedure TxxmChannel.setCacheKeysRedirectChain(cacheKeys: pointer);
+begin
+  raise EInvalidOperation.Create('Not implemented');
+end;
+
+procedure TxxmChannel.HTTPUpgrade(aProtocolName: nsACString;
+  aListener: nsISupports);
+begin
+  raise EInvalidOperation.Create('Not implemented');//TODO:
+end;
+
+procedure TxxmChannel.SetForceAllowThirdPartyCookie(
+  aForceAllowThirdPartyCookie: PRBool);
+begin
+
+end;
+
+procedure TxxmChannel.OnRedirectVerifyCallback(aResult: nsresult);
+begin
+  //called when redirecting
 end;
 
 { TXxmGeckoLoader }

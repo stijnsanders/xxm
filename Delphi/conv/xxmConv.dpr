@@ -10,7 +10,8 @@ uses
   xxmWebProject in 'xxmWebProject.pas',
   MSXML2_TLB in '..\common\MSXML2_TLB.pas',
   xxmProtoParse in 'xxmProtoParse.pas',
-  xxmPageParse in 'xxmPageParse.pas';
+  xxmPageParse in 'xxmPageParse.pas',
+  xxmCommonUtils in '..\common\xxmCommonUtils.pas';
 
 {$R *.res}
 

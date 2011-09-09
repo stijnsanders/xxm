@@ -2965,7 +2965,7 @@ type
   end;
 
   nsIURI = interface(nsISupports)
-  ['{07a22cc0-0ce5-11d3-9331-00104ba0fd40}']
+  ['{12120b20-0929-40e9-88cf-6e08766e8b23}']
     procedure GetSpec(aSpec: nsAUTF8String); safecall;
     procedure SetSpec(const aSpec: nsAUTF8String); safecall;
     procedure GetPrePath(aPrePath: nsAUTF8String); safecall;
@@ -2993,18 +2993,20 @@ type
     procedure GetAsciiSpec(aAsciiSpec: nsACString); safecall;
     procedure GetAsciiHost(aAsciiHost: nsACString); safecall;
     procedure GetOriginCharset(aOriginCharset: nsACString); safecall;
+    procedure GetRef(aRef: nsAUTF8String); safecall;
+    procedure SetRef(const aRef: nsAUTF8String); safecall;
+    function GetCloseIgnoringRef():PRBool; safecall;
+    procedure SetCloseIgnoringRef(aClosingIgnoringRef: PRBool); safecall;
+    procedure GetSpecIgnoringRef(aSpecIgnoringRef: nsAUTF8String); safecall;
+    function GetHasRef(): PRBool; safecall;
   end;
 
   nsIURL = interface(nsIURI)
-  ['{d6116970-8034-11d3-9399-00104ba0fd40}']
+  ['{067d697a-c725-4293-9656-e658a75e6bcf}']
     procedure GetFilePath(aFilePath: nsAUTF8String); safecall;
     procedure SetFilePath(const aFilePath: nsAUTF8String); safecall;
-    procedure GetParam(aParam: nsAUTF8String); safecall;
-    procedure SetParam(const aParam: nsAUTF8String); safecall;
     procedure GetQuery(aQuery: nsAUTF8String); safecall;
     procedure SetQuery(const aQuery: nsAUTF8String); safecall;
-    procedure GetRef(aRef: nsAUTF8String); safecall;
-    procedure SetRef(const aRef: nsAUTF8String); safecall;
     procedure GetDirectory(aDirectory: nsAUTF8String); safecall;
     procedure SetDirectory(const aDirectory: nsAUTF8String); safecall;
     procedure GetFileName(aFileName: nsAUTF8String); safecall;
@@ -3018,7 +3020,7 @@ type
   end;
 
   nsIFileURL = interface(nsIURL)
-  ['{d26b2e2e-1dd1-11b2-88f3-8545a7ba7949}']
+  ['{93a4f94e-1dae-4056-ac4e-08e13691ee8e}']
     function GetFile(): nsIFile; safecall;
     procedure SetFile(aFile: nsIFile); safecall;
     property _File: nsIFile read GetFile write SetFile;
@@ -3076,7 +3078,7 @@ type
   end;
 
   nsIHttpHeaderVisitor = interface(nsISupports)
-  ['{0cf40717-d7c1-4a94-8c1e-d6c9734101bb}']
+  ['{35412859-b9d9-423c-8866-2d4559fdd2be}']
     procedure VisitHeader(const aHeader: nsACString; const aValue: nsACString); safecall;
   end;
 
@@ -3525,11 +3527,12 @@ type
   end;
 
   nsIScriptableInputStream = interface(nsISupports)
-  ['{a2a32f90-9b90-11d3-a189-0050041caf44}']
+  ['{e546afd6-1248-4deb-8940-4b000b618a58}']
     procedure Close(); safecall;
     procedure Init(aInputStream: nsIInputStream); safecall;
     function Available(): PRUint32; safecall;
     function Read(aCount: PRUint32): PAnsiChar; safecall;
+    procedure readBytes(aCount: PRUint32; aReadBytes: nsACString); safecall;
   end;
 
   nsISecurityWarningDialogs = interface(nsISupports)

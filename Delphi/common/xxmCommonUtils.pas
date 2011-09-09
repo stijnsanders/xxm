@@ -4,6 +4,7 @@ interface
 
 function RFC822DateGMT(dd: TDateTime): AnsiString;
 function GetFileModifiedDateTime(FilePath:AnsiString;var FileSize:Int64):TDateTime;
+function GetFileSignature(Path:AnsiString):AnsiString;
 
 implementation
 
@@ -45,6 +46,23 @@ begin
       FileTimeToSystemTime(fd.ftLastWriteTime,st);
       Result:=SystemTimeToDateTime(st);
      end;
+   end;
+end;
+
+function GetFileSignature(Path:AnsiString):AnsiString;
+var
+  fh:THandle;
+  fd:TWin32FindDataA;
+begin
+  fh:=FindFirstFileA(PAnsiChar(Path),fd);
+  if fh=INVALID_HANDLE_VALUE then Result:='' else
+   begin
+    //assert(fd.nFileSizeHigh=0
+    Result:=
+      IntToHex(fd.ftLastWriteTime.dwHighDateTime,8)+
+      IntToHex(fd.ftLastWriteTime.dwLowDateTime,8)+'_'+
+      IntToStr(fd.nFileSizeLow);
+    Windows.FindClose(fh);
    end;
 end;
 

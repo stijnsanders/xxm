@@ -2,7 +2,7 @@ unit xxmGeckoProtocol;
 
 interface
 
-uses nsXPCOM, nsTypes, nsGeckoStrings;
+uses nsXPCOM, nsTypes, nsGeckoStrings, xxmGeckoInterfaces;
 
 type
   TxxmProtocolHandler=class(TInterfacedObject, nsIProtocolHandler)
@@ -19,14 +19,14 @@ type
 
 const
   CID_xxmProtocolHandler: TGUID = '{78786D00-0000-0010-C000-000000000010}';
-  CONTRACT_xxmProtocolHandler = '@mozilla.org/network/protocol;1?name=xxm';
+  CONTRACT_xxmProtocolHandler = NS_NETWORK_PROTOCOL_CONTRACTID_PREFIX+'xxm';
 
 function xxmProtocolHandlerConstructor(aOuter:nsISupports;const aIID:TGUID;var aResult:pointer):nsresult; cdecl;
 
 implementation
 
 uses
-  xxmGeckoChannel, xxmGeckoInterfaces, nsInit;
+  xxmGeckoChannel, nsInit;
 
 { TxxmProtocolHandler }
 
@@ -41,10 +41,11 @@ begin
 end;
 
 function TxxmProtocolHandler.GetProtocolFlags: Cardinal;
-const
-  URI_LOADABLE_BY_ANYONE=$40;//1 shl 6
 begin
-  Result:=URI_LOADABLE_BY_ANYONE;
+  Result:=
+    URI_LOADABLE_BY_ANYONE or//?
+    URI_NON_PERSISTABLE;//?
+    //URI_OPENING_EXECUTES_SCRIPT?
 end;
 
 function TxxmProtocolHandler.AllowPort(port: Integer;
@@ -60,7 +61,7 @@ var
   u:nsIStandardURL;
 begin
   NS_GetComponentManager(CompMgr);
-  CompMgr.CreateInstanceByContractID(NS_ISTANDARDURL_CONTRACT,nil,NS_ISTANDARDURL_IID,u);
+  CompMgr.CreateInstanceByContractID(NS_ISTANDARDURL_CONTRACT,nil,nsIStandardURL,u);
   u.Init(URLTYPE_STANDARD,80,aSpec,aOriginCharset,aBaseURI);
   Result:=u as nsIURI;
 end;

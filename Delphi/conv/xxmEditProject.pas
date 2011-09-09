@@ -179,7 +179,7 @@ begin
       i:=j-1;
       while (i>0) and (fn[i]<>PathDelim) do dec(i);
       ProjectData.loadXML('<XxmWebProject>'#13#10#9'<ProjectName>'+Copy(fn,i+1,j-i-1)+'</ProjectName>'#13#10#9+
-        '<CompileCommand>dcc32 -U..\..\public -Q [[ProjectName]].dpr</CompileCommand>'#13#10'</XxmWebProject>');
+        '<CompileCommand>dcc32 -U[[HandlerPath]]public -Q [[ProjectName]].dpr</CompileCommand>'#13#10'</XxmWebProject>');
      end;
     ProjectPath:=fn;
     Caption:='xxm Project - '+fn;

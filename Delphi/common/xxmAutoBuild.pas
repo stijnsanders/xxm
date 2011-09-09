@@ -4,16 +4,14 @@ interface
 
 uses xxm, xxmPReg;
 
-function AutoBuild(pce:TXxmProjectEntry;
-  Context:IXxmContext; ProjectName:WideString):boolean;
+function AutoBuild(Entry: TXxmProjectEntry; Context: IXxmContext; ProjectName: WideString):boolean;
 
 implementation
 
-uses Windows, SysUtils, Classes, Registry, xxmWebProject, xxmUtilities;
+uses Windows, SysUtils, Classes, Registry, xxmWebProject, xxmUtilities, xxmCommonUtils;
 
 var
   BuildOutput:TStringStream;
-  BuildLock:TRTLCriticalSection;
 
 procedure DoBuildOutput(Msg:AnsiString);
 begin
@@ -40,50 +38,46 @@ begin
     Result:=StringReplace(Result,'[['+vals[i*2]+']]',vals[i*2+1],[rfReplaceAll]);
 end;
 
-function AutoBuild(pce:TXxmProjectEntry;
-  Context:IXxmContext; ProjectName:WideString):boolean;
+function AutoBuild(Entry: TXxmProjectEntry; Context: IXxmContext; ProjectName: WideString):boolean;
 var
   WebProject:TXxmWebProject;
   wsig,fn:AnsiString;
   b:boolean;
-  tc:cardinal;
 const
   RT_HTML=PAnsiChar(23);//MakeIntResource(23);
   NoNextBuildAfter=5000;//TODO: setting!
 begin
-  Result:=true;//default
-  tc:=GetTickCount;
-  if (tc-pce.LastCheck)>NoNextBuildAfter then
+  Result:=true;//default;
+  if (GetTickCount-Entry.LastCheck)>NoNextBuildAfter then
    begin
-    fn:=pce.ModulePath;//force get from registry outside of lock
-    EnterCriticalSection(BuildLock);
+    fn:=Entry.ModulePath;//force get from registry outside of lock
+    Entry.Lock;
     try
       //again for those that waited on lock
-      if (GetTickCount-pce.LastCheck)>NoNextBuildAfter then
+      if (GetTickCount-Entry.LastCheck)>NoNextBuildAfter then
       try
         //TODO: bidirectional xxl/xxmp mapping?
         BuildOutput:=TStringStream.Create('');
         try
-          BuildOutput.WriteString(Context.ContextString(csVersion));
-          BuildOutput.WriteString(#13#10);
+          BuildOutput.WriteString(Context.ContextString(csVersion)+#13#10);
           //CanCreate would disturb standalone xxl
           WebProject:=TXxmWebProject.Create(fn,DoBuildOutput,false);
           try
             b:=WebProject.CheckFiles(false);
-            wsig:=Signature(WebProject.RootFolder+WebProject.ProjectFile);
-            if not(b) and not(pce.Signature=wsig) then
+            wsig:=GetFileSignature(WebProject.RootFolder+WebProject.ProjectFile);
+            if not(b) and (Entry.Signature<>wsig) then
               b:=WebProject.GenerateProjectFiles(false);
             if b or not(FileExists(fn)) then
              begin
-              pce.Release;//try? silent?
+              Entry.Release;
               //only compile when changes detected
               //only save when compile success
               if WebProject.Compile then
                begin
                 WebProject.Update;
-                wsig:=Signature(WebProject.RootFolder+WebProject.ProjectFile);
-                pce.Signature:=wsig;
-                pce.LastCheck:=GetTickCount;
+                wsig:=GetFileSignature(WebProject.RootFolder+WebProject.ProjectFile);
+                Entry.Signature:=wsig;
+                Entry.LastCheck:=GetTickCount;
                end
               else
                begin
@@ -98,7 +92,7 @@ begin
                end;
              end
             else
-              pce.LastCheck:=GetTickCount;
+              Entry.LastCheck:=GetTickCount;
           finally
             WebProject.Free;
           end;
@@ -120,13 +114,9 @@ begin
          end;
       end;
     finally
-      LeaveCriticalSection(BuildLock);
+      Entry.Unlock;
     end;
    end;
 end;
 
-initialization
-  InitializeCriticalSection(BuildLock);
-finalization
-  DeleteCriticalSection(BuildLock);
 end.

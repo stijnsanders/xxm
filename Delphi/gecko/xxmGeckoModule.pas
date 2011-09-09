@@ -11,7 +11,7 @@ type
   TCIDEntry=record
     cid:PGUID;
     service:boolean;
-    getFactoryProc:pointer;//TGetFactoryProcPtr;
+    getFactoryProc:pointer;//TGetFactoryProcPtr; see below
     constructorProc:TConstructorProcPtr;
   end;
   TContractIDEntry=record
@@ -23,13 +23,13 @@ type
   end;
 
   //ported from http://mxr.mozilla.org/mozilla-central/source/xpcom/components/Module.h
-  TXPCOMModule=packed record
-    //kVersion:integer;//=2; static;
+  TXPCOMModule=record
+    //kVersion:integer=...; static; //see below
     mVersion:cardinal;//kModuleVersion
     mCIDs:^TCIDEntry;//pointer to first in array, last should be nil
     mContractIDs:^TContractIDEntry;//pointer to first in array, last should be nil
     mCategoryEntries:^TCategoryEntry;//pointer to first in array, last should be nil
-    getFactoryProcPtr:pointer;//TGetFactoryProcPtr;
+    getFactoryProc:pointer;//TGetFactoryProcPtr;
     loadProc:TLoadFuncPrt;
     unloadProd:TUnloadFuncPrt;
   end;
@@ -48,17 +48,19 @@ const
   );
 
   Categories:array[0..0] of TCategoryEntry=(
+    //'http-startup-category'?
+    //(category:'profile-after-change';entry:'xxmGeckoDev';value:'@mozilla.org/network/protocol;1?name=xxm'),
     (category:nil;entry:nil;value:nil;)
   );
 
   NSModuleData:TXPCOMModule=(
-    mVersion:2;
+    mVersion:7; //keep up-to-date with firefox version
     mCIDs:@CIDs[0];
     mContractIDs:@ContractIDs[0];
     mCategoryEntries:@Categories[0];
-    getFactoryProcPtr:nil;
-    loadProc:nil;//TODO:
-    unloadProd:nil;//TODO:
+    getFactoryProc:nil;
+    loadProc:nil;
+    unloadProd:nil;
   );
 
 var

@@ -4,60 +4,56 @@ interface
 
 uses xxm, xxmPReg;
 
-function AutoUpdate(pce:TXxmProjectEntry;
-  Context:IXxmContext; ProjectName:WideString):boolean;
+function AutoUpdate(Entry :TXxmProjectEntry; Context: IXxmContext; ProjectName: WideString): boolean;
 
 implementation
 
-uses Windows, SysUtils;
+uses Windows, SysUtils, xxmCommonUtils;
 
-var
-  UpdateLock:TRTLCriticalSection;
-
-function AutoUpdate(pce:TXxmProjectEntry;
-  Context:IXxmContext; ProjectName:WideString):boolean;
+function AutoUpdate(Entry: TXxmProjectEntry; Context: IXxmContext; ProjectName: WideString): boolean;
 var
   fn,fn1:AnsiString;
-  tc:cardinal;
   i:integer;
 const
   NoNextUpdateAfter=1000;//TODO: setting!
 begin
-  Result:=true;//default
-  tc:=GetTickCount;
-  if (tc-pce.LastCheck)>NoNextUpdateAfter then
-   begin
-    fn:=pce.ModulePath;//force get from registry outside of lock
-    EnterCriticalSection(UpdateLock);
-    try
-      //again for those that waited on lock
-      if (GetTickCount-pce.LastCheck)>NoNextUpdateAfter then
+  try
+    if cardinal(GetTickCount-Entry.LastCheck)>NoNextUpdateAfter then
+     begin
+      fn:=Entry.ModulePath;//force get from registry outside of lock
+      i:=Length(fn);
+      while (i<>0) and (fn[i]<>'.') do dec(i);
+      fn1:=Copy(fn,1,i-1)+'.xxu';
+      if (GetFileSignature(fn)<>Entry.LoadSignature) or (GetFileSignature(fn1)<>'') then
        begin
-        i:=Length(fn);
-        while not(i=0) and not(fn[i]='.') do dec(i);
-        fn1:=Copy(fn,1,i-1)+'.xxu';
-        if FileExists(fn1) then
-         begin
-          pce.Release;
-          if not(DeleteFileA(PAnsiChar(fn))) then MoveFileA(PAnsiChar(fn),PAnsiChar(fn+'.bak'));
-          if not(MoveFileA(PAnsiChar(fn1),PAnsiChar(fn))) then
+        Entry.Lock;
+        try
+          //check again for threads that were waiting for lock
+          if cardinal(GetTickCount-Entry.LastCheck)>NoNextUpdateAfter then
            begin
-            Result:=false;
-            Context.Send('AutoUpdate failed "'+fn1+'"'#13#10+
-              SysErrorMessage(GetLastError));
+            Entry.LastCheck:=GetTickCount;
+            Entry.Release;
+            if GetFileSignature(fn1)<>'' then
+             begin
+              //switcheroo
+              if not(DeleteFileA(PAnsiChar(fn))) then MoveFileA(PAnsiChar(fn),PAnsiChar(fn+'.bak'));
+              if not(MoveFileA(PAnsiChar(fn1),PAnsiChar(fn))) then RaiseLastOSError;
+              //TODO: non-xxmIsapi handlers could still have xxl locked? take xxu as update?
+             end;
            end;
-         end;
-        pce.LastCheck:=GetTickCount;
+        finally
+          Entry.Unlock;
+        end;
        end;
-    finally
-      LeaveCriticalSection(UpdateLock);
-    end;
-   end;
+     end;
+    Result:=true;
+  except
+    on e:Exception do
+     begin
+      Context.Send('AutoUpdate failed: '+e.Message);
+      Result:=false;//caller raises EXxmAutoBuildFailed
+     end;
+  end;
 end;
-
-initialization
-  InitializeCriticalSection(UpdateLock);
-finalization
-  DeleteCriticalSection(UpdateLock);
 
 end.

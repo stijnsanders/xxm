@@ -6,7 +6,6 @@ uses Windows, SysUtils, Classes;
 
 procedure ListFilesInPath(FileList:TStringList;Path:AnsiString);
 function GetInternalIdentifier(FileName:AnsiString;var cPathIndex,fExtIndex,fPathIndex:integer):AnsiString;
-function Signature(Path:AnsiString):AnsiString;
 function GetFileSize(Path:AnsiString):integer;
 function GetSelfPath:AnsiString;
 
@@ -169,23 +168,6 @@ begin
     i:=0;
     while (i<ResWordsCount) and (y<>ResWords[i]) do inc(i);
     Result:=i<ResWordsCount;
-   end;
-end;
-
-function Signature(Path:AnsiString):AnsiString;
-var
-  fh:THandle;
-  fd:TWin32FindDataA;
-begin
-  fh:=FindFirstFileA(PAnsiChar(Path),fd);
-  if fh=INVALID_HANDLE_VALUE then Result:='' else
-   begin
-    //assert(fd.nFileSizeHigh=0
-    Result:=
-      IntToHex(fd.ftLastWriteTime.dwHighDateTime,8)+
-      IntToHex(fd.ftLastWriteTime.dwLowDateTime,8)+'_'+
-      IntToStr(fd.nFileSizeLow);
-    Windows.FindClose(fh);
    end;
 end;
 

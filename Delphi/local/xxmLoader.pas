@@ -121,12 +121,12 @@ begin
   FHttpNegotiate:=nil;
   BindInfo:=nil;
   ProtSink:=nil;
-  if not(FReqHeaders=nil) then
+  if FReqHeaders<>nil then
    begin
     (FReqHeaders as IUnknown)._Release;
     FReqHeaders:=nil;
    end;
-  if not(FResHeaders=nil) then
+  if FResHeaders<>nil then
    begin
     (FResHeaders as IUnknown)._Release;
     FResHeaders:=nil;
@@ -163,7 +163,7 @@ begin
     bi.cbSize:=SizeOf(bi);
     BindInfo.GetBindInfo(ba,bi);
 
-    //if not((ba and BINDF_)=0) then
+    //if (ba and BINDF_)<>0 then
     {
     BINDF_ASYNCSTORAGE
     BINDF_NOPROGRESSIVERENDERING
@@ -193,13 +193,13 @@ begin
     if bi.szExtraInfo=nil then FExtraInfo:='' else FExtraInfo:=bi.szExtraInfo;
     //bi.grfBindInfoF
     //bi.dwCodePage?
-    if not(bi.cbstgmedData=0) then FPostData:=StgMediumAsStream(bi.stgmedData);
+    if bi.cbstgmedData<>0 then FPostData:=StgMediumAsStream(bi.stgmedData);
 
     OleCheck(ProtSink.ReportProgress(BINDSTATUS_FINDINGRESOURCE, nil));
     //parse URL
     i:=1;
     l:=Length(FURL);
-    while (i<=l) and not(FURL[i]=':') do inc(i);
+    while (i<=l) and (FURL[i]<>':') do inc(i);
     inc(i);
     //assert starts with 'xxm:'
     if (i>l) then
@@ -215,7 +215,7 @@ begin
       j:=i;
       if (i<=l) and (FURL[i]='/') then inc(i);
       if (i<=l) and (FURL[i]='/') then inc(i);
-      if not(i-j=2) then
+      if i-j<>2 then
        begin
         FURL:=Copy(FURL,1,j-1)+'//'+Copy(FURL,i,l-i+1);
         i:=j+2;
@@ -247,7 +247,7 @@ begin
     FFragmentName:=Copy(FURL,j,i-j);
     if (FURL[i]='?') then inc(i);
     j:=i;
-    while (j<=l) and not(FURL[j]='#') do inc(j);
+    while (j<=l) and (FURL[j]<>'#') do inc(j);
     FQueryString:=Copy(FURL,i,j-i);
 
     //IHttpNegotiate here? see GetRequestParam
@@ -357,7 +357,7 @@ var
   b:boolean;
 begin
   inherited;
-  if not(Data='') then
+  if Data<>'' then
    begin
     //report mime type makes handler lock, so check before lock
     b:=CheckSendStart;
@@ -400,7 +400,7 @@ var
   d:array[0..SendBufferSize-1] of byte;
 begin
   inherited;
-  //if not(s.Size=0) then
+  //if s.Size<>0 then
    begin
     CheckSendStart;
     //no autoencoding here!
@@ -417,7 +417,7 @@ begin
         Unlock;
       end;
       ReportData;
-    until not(l=SendBufferSize) or Aborted;
+    until (l<>SendBufferSize) or Aborted;
    end;
 end;
 
@@ -438,7 +438,21 @@ begin
     csVerb:              Result:=FVerb;
     csQueryString:       Result:=FQueryString;
     //strange, not all bindstrings are supported!
-    csUserAgent:         st:=BINDSTRING_USER_AGENT;
+    csUserAgent:
+     begin
+      c:=1024;
+      SetLength(def,c);
+      if ObtainUserAgentString(0,PAnsiChar(def),c)=0 then
+       begin
+        SetLength(def,c-1);
+        Result:=def;
+       end
+      else
+       begin
+        //raise? Result:=''?
+        st:=BINDSTRING_USER_AGENT;//try this way
+       end;
+     end;
     csAcceptedMimeTypes: Result:='*/*';//st:=BINDSTRING_ACCEPT_MIMES;//invalid index?
     //csCookie:            st:=BINDSTRING_POST_COOKIE;//nothing about cookies! it's a secundary cache key!
     csPostMimeType:
@@ -467,7 +481,7 @@ begin
       raise EXxmContextStringUnknown.Create(StringReplace(
         SXxmContextStringUnknown,'__',IntToHex(integer(cs),8),[]));
   end;
-  if not(st=0) then
+  if st<>0 then
    begin
     r:=BindInfo.GetBindString(st,@d,256,c);
     //TODO: not enough mem?
@@ -566,7 +580,7 @@ begin
           m:=nil;
          end;
       finally
-        if not(m=nil) then m.Free;
+        if m<>nil then m.Free;
         s:=nil;
       end;
      end;
@@ -685,7 +699,7 @@ begin
       SetLength(s,3);
       f.Read(s[1],3);
       //TODO: other encodings?
-      if not(s=Utf8ByteOrderMark) then
+      if s<>Utf8ByteOrderMark then
         raise Exception.Create('File "'+fn+'" is not UTF8');
       l:=f.Size-3;
       SetLength(s,l);

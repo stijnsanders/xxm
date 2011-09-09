@@ -10,7 +10,7 @@ library [[ProjectName]];
 
   Prototype-file used:
   "[[ProtoFile]]"
-  $Rev$ $Date$
+  $Rev: 125 $ $Date: 2011-04-30 01:14:06 +0200 (za, 30 apr 2011) $
 }
 
 [[ProjectSwitches]]

@@ -391,17 +391,12 @@ end;
 
 function TIStringImpl.SIToString: WideString;
 var
-  p: PWideChar;
-  l: Longword;
-  i: Longword;
+  p:PWideChar;
+  l:Longword;
 begin
-  l := NS_StringGetData(FString, p);
-  SetLength(Result, l);
-  for i:=1 to l do
-  begin
-    Result[i] := p^;
-    Inc(p);
-  end;
+  l:=NS_StringGetData(FString,p);
+  SetLength(Result,l);
+  Move(p^,Result[1],l*2);
 end;
 
 type
@@ -520,7 +515,6 @@ begin
     Error(reOutOfMemory);
   FOwn := True;
   FString := @FContainer;
-  inherited Create;
 end;
 
 constructor TICStringImpl.Create(src: AnsiString);
@@ -649,17 +643,12 @@ end;
 
 function TICStringImpl.ToAnsiString: AnsiString;
 var
-  p: PAnsiChar;
-  l: Longword;
-  i: Longword;
+  p:PAnsiChar;
+  l:Longword;
 begin
-  l := NS_CStringGetData(FString, p);
-  SetLength(Result, l);
-  for i:=1 to l do
-  begin
-    Result[i] := p^;
-    Inc(p);
-  end;
+  l:=NS_CStringGetData(FString,p);
+  SetLength(Result,l);
+  Move(p^,Result[1],l);
 end;
 
 constructor TIUTF8StringImpl.Create;
@@ -669,7 +658,6 @@ begin
     Error(reOutOfMemory);
   FOwn := True;
   FString := @FContainer;
-  inherited Create;
 end;
 
 constructor TIUTF8StringImpl.Create(src: UTF8String);
@@ -792,17 +780,12 @@ end;
 
 function TIUTF8StringImpl.ToUTF8String:UTF8String;
 var
-  p: PAnsiChar;
-  l: Longword;
-  i: Longword;
+  p:PAnsiChar;
+  l:Longword;
 begin
-  l := NS_CStringGetData(FString, p);
-  SetLength(Result, l);
-  for i:=1 to l do
-  begin
-    Result[i] := p^;
-    Inc(p);
-  end;
+  l:=NS_CStringGetData(FString,p);
+  SetLength(Result,l);
+  Move(p^,Result[1],l);
 end;
 
 end.

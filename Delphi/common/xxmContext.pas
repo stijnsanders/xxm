@@ -180,10 +180,12 @@ begin
   FProjectEntry:=GetProjectEntry(FProjectName);
   if @XxmAutoBuildHandler<>nil then
     if not(XxmAutoBuildHandler(FProjectEntry,Self,FProjectName)) then
+     begin
+      FProjectEntry:=nil;
       raise EXxmAutoBuildFailed.Create(FProjectName);
+     end;
   FProjectEntry.OpenContext;
   FPage:=GetProjectPage(FFragmentName);
-
   if FPage=nil then
    begin
     //find a file

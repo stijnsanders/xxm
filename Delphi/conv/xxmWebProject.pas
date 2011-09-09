@@ -11,7 +11,7 @@ type
   private
     Data:DOMDocument;
     DataStartSize:integer;
-    DataFileName,FProjectName,FRootFolder,FSrcFolder,FProtoPathDef,FProtoPath:AnsiString;
+    DataFileName,FProjectName,FRootFolder,FSrcFolder,FHandlerPath,FProtoPathDef,FProtoPath:AnsiString;
     RootNode,DataFiles:IXMLDOMElement;
     Modified:boolean;
     Signatures:TStringList;
@@ -51,8 +51,7 @@ type
 
 implementation
 
-uses Variants, ComObj,
-  xxmUtilities, xxmProtoParse, xxmPageParse, IniFiles;
+uses Variants, ComObj, xxmUtilities, xxmProtoParse, xxmPageParse, IniFiles, xxmCommonUtils;
 
 { TXxmWebProject }
 
@@ -113,7 +112,7 @@ begin
         while (i<>0) and (FRootFolder[i]<>PathDelim) do dec(i);
         FProjectName:=Copy(FRootFolder,i+1,Length(FRootFolder)-i-1);
         s:='<XxmWebProject>'#13#10#9'<ProjectName></ProjectName>'#13#10#9+
-          '<CompileCommand>dcc32 -U..\..\public -Q [[ProjectName]].dpr</CompileCommand>'#13#10'</XxmWebProject>';
+          '<CompileCommand>dcc32 -U[[HandlerPath]]public -Q [[ProjectName]].dpr</CompileCommand>'#13#10'</XxmWebProject>';
         f:=TFileStream.Create(FRootFolder+DataFileName,fmCreate);
         try
           f.Write(s[1],Length(s));
@@ -126,7 +125,8 @@ begin
           SXxmWebProjectNotFound,'__',SourcePath,[]));
    end;
 
-  FProtoPathDef:=GetSelfPath+ProtoDirectory+PathDelim;
+  FHandlerPath:=GetSelfPath;
+  FProtoPathDef:=FHandlerPath+ProtoDirectory+PathDelim;
   FSrcFolder:=FRootFolder+SourceDirectory+PathDelim;
 
   Signatures:=TStringList.Create;
@@ -298,7 +298,7 @@ begin
         //TODO: setting no pas subdirs?
 
         //TODO: proto signature? (setting?)
-        s:=Signature(FRootFolder+fn);
+        s:=GetFileSignature(FRootFolder+fn);
         if Rebuild or (Signatures.Values[uname]<>s) or not(
           FileExists(FSrcFolder+upath+uname+DelphiExtension)) then
          begin
@@ -373,7 +373,7 @@ begin
         upath:=VarToStr(xFile.getAttribute('UnitPath'));
         fn:=upath+uname+DelphiExtension;
 
-        s:=Signature(FRootFolder+fn);
+        s:=GetFileSignature(FRootFolder+fn);
         if Signatures.Values[uname]<>s then
          begin
           Signatures.Values[uname]:=s;
@@ -396,7 +396,7 @@ begin
       while xFile<>nil do
        begin
         fn:=ForceNode(xFile,'Path','',-1).text;
-        s:=Signature(FRootFolder+fn);
+        s:=GetFileSignature(FRootFolder+fn);
         uname:=':'+StringReplace(fn,'=','_',[rfReplaceAll]);
         if Signatures.Values[uname]<>s then
          begin
@@ -670,10 +670,12 @@ var
       StringReplace(
       StringReplace(
       StringReplace(
+      StringReplace(
         cmd,
           '[[ProjectName]]',FProjectName,[rfReplaceAll]),
           '[[SrcPath]]',FSrcFolder,[rfReplaceAll]),
-          '[[ProjectPath]]',FRootFolder,[rfReplaceAll])
+          '[[ProjectPath]]',FRootFolder,[rfReplaceAll]),
+          '[[HandlerPath]]',FHandlerPath,[rfReplaceAll])
           //more?
       ),
       nil,nil,true,NORMAL_PRIORITY_CLASS,nil,PAnsiChar(fld),si,pi)) then
