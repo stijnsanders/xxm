@@ -145,7 +145,7 @@ begin
      end;
     inc(q);
 
-    if not(q-p=2) then
+    if q-p<>2 then
      begin
       r:=p;
       while (r<=q) and (char(Value[r]) in [#1..#32]) do inc(r);
@@ -154,7 +154,7 @@ begin
         SetLength(Params,i+1);
         Params[i].NameStart:=p;
         r:=p;
-        while (r<=q) and not(Value[r]=':') do inc(r);
+        while (r<=q) and (Value[r]<>':') do inc(r);
         Params[i].NameLength:=r-p;
         inc(r);
         while (r<=q) and (char(Value[r]) in [#1..#32]) do inc(r);
@@ -179,20 +179,19 @@ var
 begin
   l:=ValueStart+ValueLength-1;
   i:=ValueStart;//set to 0 to start parsing sub-values
-  if i=0 then inc(l) else while (i<=l) and not(Value[i]=';') do inc(i);
-  if (i<=l) then
+  if i=0 then inc(l) else while (i<=l) and (Value[i]<>';') do inc(i);
+  if i<=l then
    begin
     if i=0 then Result:='' else Result:=Copy(Value,ValueStart,i-ValueStart);
     q:=0;
-
-    while (i<=l) do
+    while i<=l do
      begin
       SetLength(Params,q+1);
       inc(i);
       while (i<=l) and (char(Value[i]) in [#1..#32]) do inc(i);
       Params[q].NameStart:=i;
       j:=i;
-      while (j<=l) and not(Value[j]='=') do inc(j);
+      while (j<=l) and (Value[j]<>'=') do inc(j);
       Params[q].NameLength:=j-i;
       i:=j+1;
       if (i<=l) and (Value[i]='"') then
@@ -201,22 +200,21 @@ begin
         inc(i);
         Params[q].ValueStart:=i;
         j:=i;
-        while (j<=l) and not(Value[j]='"') do inc(j);
+        while (j<=l) and (Value[j]<>'"') do inc(j);
         Params[q].ValueLength:=j-i;
-        while (j<=l) and not(Value[j]=';') do inc(j);//ignore
+        while (j<=l) and (Value[j]<>';') do inc(j);//ignore
        end
       else
        begin
         //not in quotes
         Params[q].ValueStart:=i;
         j:=i;
-        while (j<=l) and not(Value[j]=';') do inc(j);
+        while (j<=l) and (Value[j]<>';') do inc(j);
         Params[q].ValueLength:=j-i;
        end;
       i:=j;
       inc(q);
      end;
-
    end
   else
    begin
@@ -232,7 +230,7 @@ var
 begin
   l:=Length(Params);
   i:=0;
-  while (i<l) and not(CompareText(Copy(Data,Params[i].NameStart,Params[i].NameLength),Name)=0) do inc(i);
+  while (i<l) and (CompareText(Copy(Data,Params[i].NameStart,Params[i].NameLength),Name)<>0) do inc(i);
   if (i<l) then Result:=Copy(Data,Params[i].ValueStart,Params[i].ValueLength) else Result:='';
 end;
 
@@ -273,11 +271,11 @@ end;
 
 procedure TStreamNozzle.Flush;
 const
-  FlushTreshold=$1000;
+  FlushThreshold=$1000;
 var
   l:integer;
 begin
-  if (Index>FlushTreshold) then
+  if Index>FlushThreshold then
    begin
     l:=Size-Index+1;
     Move(Data[Index],Data[1],l);
@@ -301,7 +299,7 @@ begin
   bl:=Length(Boundary);
   Ensure(bl+5);
   //assert Index=1;
-  if not(Copy(Data,3,bl)=Boundary) then
+  if Copy(Data,3,bl)<>Boundary then
     raise Exception.Create('Multipart data does not start with boundary');
   Index:=bl+3;
   //TODO:detect EOL now?
@@ -321,7 +319,7 @@ begin
   q:=1;
   i:=0;
   s:=0;
-  while Ensure(1) and not(q-p=2) do //2 being Length(EOL)
+  while Ensure(1) and (q-p<>2) do //2 being Length(EOL)
    begin
     p:=q;
     b:=false;
@@ -341,12 +339,12 @@ begin
     inc(Index);
     inc(q);
 
-    if not(q-p=2) then
+    if q-p<>2 then
      begin
       SetLength(Params,i+1);
       Params[i].NameStart:=p;
       r:=p;
-      while (r<=q) and not(Result[r]=':') do inc(r);
+      while (r<=q) and (Result[r]<>':') do inc(r);
       Params[i].NameLength:=r-p;
       inc(r);
       while (r<=q) and (char(Result[r]) in [#1..#32]) do inc(r);
@@ -366,11 +364,11 @@ begin
   l:=Length(Boundary);
   p:=0;
   q:=Index;
-  while Ensure(l) and not(p=l) do
+  while Ensure(l) and (p<>l) do
    begin
     p:=0;
     while (p<l) and (Data[p+Index]=Boundary[p+1]) do inc(p);
-    if not(p=l) then inc(Index);
+    if p<>l then inc(Index);
    end;
   SetLength(Result,Index-q);
   Move(Data[q],Result[1],Index-q);
@@ -386,12 +384,12 @@ begin
   Pos:=Done+Index-1;
   l:=Length(Boundary);
   p:=0;
-  while Ensure(l) and not(p=l) do
+  while Ensure(l) and (p<>l) do
    begin
-    Flush;//depends on flush treshold
+    Flush;//depends on flush threshold
     p:=0;
     while (p<l) and (Data[p+Index]=Boundary[p+1]) do inc(p);
-    if not(p=l) then inc(Index);
+    if p<>l then inc(Index);
    end;
   Len:=Done+Index-(Pos+1);
   //skip boundary
@@ -446,7 +444,7 @@ begin
   if VarIsNumeric(Name) then i:=integer(Name) else
    begin
     i:=0;
-    while (i<l) and not(CompareText(Copy(FData,FIdx[i].NameStart,FIdx[i].NameLength),Name)=0) do inc(i);//lower?
+    while (i<l) and (CompareText(Copy(FData,FIdx[i].NameStart,FIdx[i].NameLength),Name)<>0) do inc(i);//lower?
    end;
   if (i<l) then
     sv:=TRequestSubValues.Create(FData,FIdx[i].ValueStart,FIdx[i].ValueLength,Result)
@@ -532,7 +530,7 @@ var
   i:integer;
 begin
   for i:=0 to Length(FItems)-1 do
-    if not(FItems[i].SubValues=nil) then
+    if FItems[i].SubValues<>nil then
       (FItems[i].SubValues as IUnknown)._Release;
   SetLength(FItems,0);
   inherited;
@@ -550,7 +548,7 @@ begin
   if VarIsNumeric(Name) then i:=integer(Name) else
    begin
     i:=0;
-    while (i<Length(FItems)) and not(CompareText(FItems[i].Name,Name)=0) do inc(i);
+    while (i<Length(FItems)) and (CompareText(FItems[i].Name,Name)<>0) do inc(i);
    end;
   if (i<Length(FItems)) then Result:=FItems[i].Value else Result:='';
 end;
@@ -560,12 +558,14 @@ procedure TResponseHeaders.SetItem(Name: OleVariant;
 var
   i:integer;
 begin
-  if FBuilt then raise EXxmResponseHeaderAlreadySent.Create(SXxmResponseHeaderAlreadySent);
+  if FBuilt then
+    raise EXxmResponseHeaderAlreadySent.Create(SXxmResponseHeaderAlreadySent);
+  //TODO: add sorted, query with minimax
   if VarIsNumeric(Name) then i:=integer(Name) else
    begin
     i:=0;
-    while (i<Length(FItems)) and not(CompareText(FItems[i].Name,Name)=0) do inc(i);
-    if not(i<Length(FItems)) then
+    while (i<Length(FItems)) and (CompareText(FItems[i].Name,Name)<>0) do inc(i);
+    if i=Length(FItems) then
      begin
       SetLength(FItems,i+1);
       FItems[i].Name:=Name;
@@ -583,8 +583,8 @@ begin
   if VarIsNumeric(Name) then i:=integer(Name) else
    begin
     i:=0;
-    while (i<Length(FItems)) and not(CompareText(FItems[i].Name,Name)=0) do inc(i);
-    if not(i<Length(FItems)) then
+    while (i<Length(FItems)) and (CompareText(FItems[i].Name,Name)<>0) do inc(i);
+    if i=Length(FItems) then
      begin
       SetLength(FItems,i+1);
       FItems[i].Name:=Name;
@@ -611,7 +611,7 @@ begin
       ss.WriteString(FItems[i].Name);
       ss.WriteString(': ');
       ss.WriteString(FItems[i].Value);//TODO: encoding?
-      if not(FItems[i].SubValues=nil) then
+      if FItems[i].SubValues<>nil then
         FItems[i].SubValues.Build(ss);
       ss.WriteString(#13#10);
      end;
@@ -640,8 +640,8 @@ var
   i:integer;
 begin
   i:=0;
-  while (i<Length(FItems)) and not(CompareText(FItems[i].Name,Name)=0) do inc(i);
-  if not(i<Length(FItems)) then
+  while (i<Length(FItems)) and (CompareText(FItems[i].Name,Name)<>0) do inc(i);
+  if i=Length(FItems) then
    begin
     SetLength(FItems,i+1);
     FItems[i].Name:=Name;
@@ -660,17 +660,17 @@ var
 begin
   i:=0;
   l:=Length(FItems);
-  while (i<l) and not(CompareText(FItems[i].Name,Name)=0) do inc(i);
-  if (i<l) then
+  while (i<l) and (CompareText(FItems[i].Name,Name)<>0) do inc(i);
+  if i<l then
    begin
-    if not(FItems[i].SubValues=nil) then FItems[i].SubValues.Free;
+    if FItems[i].SubValues<>nil then FItems[i].SubValues.Free;
     dec(l);
-    while (i<l) do
+    while i<l do
      begin
       FItems[i]:=FItems[i+1];
       inc(i);
      end;
-    if not(FItems[i].SubValues=nil) then FItems[i].SubValues.Free;
+    if FItems[i].SubValues<>nil then FItems[i].SubValues.Free;
     SetLength(FItems,l);
    end;
 end;
@@ -713,7 +713,7 @@ begin
   if VarIsNumeric(Name) then i:=integer(Name) else
    begin
     i:=0;
-    while (i<Length(FItems)) and not(CompareText(FItems[i].Name,Name)=0) do inc(i);
+    while (i<Length(FItems)) and (CompareText(FItems[i].Name,Name)<>0) do inc(i);
    end;
   if (i<Length(FItems)) then Result:=FItems[i].Value else Result:='';
 end;
@@ -727,8 +727,8 @@ begin
   if VarIsNumeric(Name) then i:=integer(Name) else
    begin
     i:=0;
-    while (i<Length(FItems)) and not(CompareText(FItems[i].Name,Name)=0) do inc(i);
-    if not(i<Length(FItems)) then
+    while (i<Length(FItems)) and (CompareText(FItems[i].Name,Name)<>0) do inc(i);
+    if i=Length(FItems) then
      begin
       SetLength(FItems,i+1);
       FItems[i].Name:=Name;

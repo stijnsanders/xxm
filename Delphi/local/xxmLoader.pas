@@ -534,7 +534,7 @@ var
   f:TFileStream;
   s:IStream;
 const
-  StreamTreshold=$10000;//TODO: setting?
+  StreamThreshold=$10000;//TODO: setting?
 begin
   case stgmed.tymed of
     TYMED_HGLOBAL:
@@ -553,18 +553,18 @@ begin
      begin
       m:=TMemoryStream.Create;
       try
-        l:=StreamTreshold;
+        l:=StreamThreshold;
         m.SetSize(l);
         s:=IUnknown(stgmed.stm) as IStream;
         OleCheck(s.Read(m.Memory,l,@l));
-        if l=StreamTreshold then
+        if l=StreamThreshold then
          begin
           SetLength(FPostTempFile,$400);
           SetLength(FPostTempFile,GetTempPathA($400,PAnsiChar(FPostTempFile)));//TODO: setting
           FPostTempFile:=FPostTempFile+'xxm_'+IntToHex(integer(Self),8)+'.dat';
           f:=TFileStream.Create(FPostTempFile,fmCreate);
           f.Write(m.Memory^,l);
-          while l=StreamTreshold do
+          while l=StreamThreshold do
            begin
             OleCheck(s.Read(m.Memory,l,@l));
             f.Write(m.Memory^,l);

@@ -160,9 +160,9 @@ begin
    begin
     p:=r;
     q:=r;
-    while (q<=l) and not(pd[q]='=') do inc(q);
+    while (q<=l) and (pd[q]<>'=') do inc(q);
     r:=q+1;
-    while (r<=l) and not(pd[r]='&') do inc(r);
+    while (r<=l) and (pd[r]<>'&') do inc(r);
     Add(TXxmReqParGet.Create(Self,
       UTF8Decode(Copy(pd,p,q-p)),
       URLDecode(UTF8Decode(Copy(pd,q+1,r-q-1)))));
@@ -198,9 +198,9 @@ begin
        begin
         p:=r;
         q:=r;
-        while (q<=l) and not(pd[q]='=') do inc(q);
+        while (q<=l) and (pd[q]<>'=') do inc(q);
         r:=q+1;
-        while (r<=l) and not(pd[r]='&') do inc(r);
+        while (r<=l) and (pd[r]<>'&') do inc(r);
         Add(TXxmReqParPost.Create(Self,
           URLDecode(Copy(pd,p,q-p)),
           URLDecode(Copy(pd,q+1,r-q-1))));
@@ -281,7 +281,7 @@ var
 begin
   i:=0;
   //case sensitive?
-  while (i<Length(FParams)) and not(FParams[i].Name=Key) do inc(i);
+  while (i<Length(FParams)) and (FParams[i].Name<>Key) do inc(i);
   if (i<Length(FParams)) then Result:=FParams[i] else
    begin
     //TODO: setting: nil or create empty?
@@ -299,12 +299,12 @@ var
   Key:WideString;
 begin
   i:=0;
-  while (i<Length(FParams)) and not(FParams[i]=Par) do inc(i);
+  while (i<Length(FParams)) and (FParams[i]<>Par) do inc(i);
   if (i<Length(FParams)) then
    begin
     Key:=FParams[i].Name;//lower?
     inc(i);
-    while (i<Length(FParams)) and not(FParams[i].Name=Key) do inc(i);
+    while (i<Length(FParams)) and (FParams[i].Name<>Key) do inc(i);
     if (i<Length(FParams)) then Result:=FParams[i] else Result:=nil;
    end
   else

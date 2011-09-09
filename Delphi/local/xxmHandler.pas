@@ -161,7 +161,7 @@ var
   ReadSize:integer;
   BArr:PBArr;
 const
-  CollapseTreshold=$20000;//128KB
+  CollapseThreshold=$20000;//128KB
 begin
   FContext.Lock;
   try
@@ -203,7 +203,7 @@ begin
      end
     else
      begin
-      if (FContext.OutputData is TMemoryStream) and (FDataPos>=CollapseTreshold) then
+      if (FContext.OutputData is TMemoryStream) and (FDataPos>=CollapseThreshold) then
        begin
         FContext.OutputSize:=FContext.OutputSize-FDataPos;
         BArr:=PBArr((FContext.OutputData as TMemoryStream).Memory);

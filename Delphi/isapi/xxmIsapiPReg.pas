@@ -11,7 +11,7 @@ type
     function GetExtensionMimeType(x:AnsiString): AnsiString; override;
     procedure LoadProject; override;
   published
-    constructor Create(Name,FilePath:WideString);
+    constructor Create(Name,FilePath:WideString;LoadCopy:boolean);
   public
     destructor Destroy; override;
   end;
@@ -52,7 +52,7 @@ var
 
 implementation
 
-uses Registry, Variants;
+uses Registry, Variants, xxmCommonUtils;
 
 resourcestring
   SXxmProjectRegistryError='Could not open project registry "__"';
@@ -64,10 +64,11 @@ resourcestring
 
 { TXxmProjectCacheEntry }
 
-constructor TXxmProjectCacheEntry.Create(Name, FilePath: WideString);
+constructor TXxmProjectCacheEntry.Create(Name, FilePath: WideString; LoadCopy: boolean);
 begin
   inherited Create(LowerCase(Name));//lowercase here!
   FFilePath:=FilePath;
+  if LoadCopy then FLoadPath:=FFilePath+'_'+IntToHex(GetCurrentProcessId,4);
 end;
 
 destructor TXxmProjectCacheEntry.Destroy;
@@ -78,7 +79,7 @@ end;
 
 function TXxmProjectCacheEntry.GetExtensionMimeType(x:AnsiString): AnsiString;
 begin
-  if (x='.xxl') or (x='.exe') or (x='.dll') or (x='.xxmp') or (x='.udl') then //more? settings?
+  if (x='.xxl') or (x='.xxu') or (x='.exe') or (x='.dll') or (x='.xxmp') or (x='.udl') then //more? settings?
     raise EXxmFileTypeAccessDenied.Create(SXxmFileTypeAccessDenied);
   Result:=inherited GetExtensionMimeType(x);
 end;
@@ -252,7 +253,7 @@ begin
        end;
       y:=x.selectSingleNode('ModulePath') as IXMLDOMElement;
       if y=nil then n:='' else n:=y.text;
-      Result:=TXxmProjectCacheEntry.Create(Name,n);
+      Result:=TXxmProjectCacheEntry.Create(Name,n,VarToStr(x.getAttribute('LoadCopy'))<>'0');
       Result.FSignature:=LowerCase(VarToStr(x.getAttribute('Signature')));
     finally
       y:=nil;

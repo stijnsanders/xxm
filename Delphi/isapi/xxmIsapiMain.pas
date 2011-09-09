@@ -139,7 +139,7 @@ end;
 
 function TerminateExtension(dwFlags: DWORD): BOOL; stdcall;
 begin
-  //TODO: terminate all threads (thread pool?)
+  FreeAndNil(IsapiHandlerPool);
   Result:=true;
 end;
 
@@ -183,12 +183,12 @@ end;
 
 destructor TXxmIsapiContext.Destroy;
 begin
-  if not(FReqHeaders=nil) then
+  if FReqHeaders<>nil then
    begin
     (FReqHeaders as IUnknown)._Release;
     FReqHeaders:=nil;
    end;
-  if not(FResHeaders=nil) then
+  if FResHeaders<>nil then
    begin
     (FResHeaders as IUnknown)._Release;
     FResHeaders:=nil;
@@ -224,7 +224,7 @@ begin
     //project name
     i:=1;
     if i>Length(x) then Redirect('/',true) else
-      if not(x[i]='/') then Redirect('/'+Copy(x,i,Length(x)-i+1),true);
+      if x[i]<>'/' then Redirect('/'+Copy(x,i,Length(x)-i+1),true);
     //redirect raises EXxmPageRedirected
     inc(i);
     if XxmProjectCache.SingleProject='' then
@@ -241,7 +241,7 @@ begin
       FPageClass:='['+FProjectName+']';
       FRedirectPrefix:=FRedirectPrefix+'/'+FProjectName;
       if i>Length(x) then Redirect('/',true) else
-        if not(x[i]='/') then Redirect('/'+Copy(x,i,Length(x)-i+1),true);
+        if x[i]<>'/' then Redirect('/'+Copy(x,i,Length(x)-i+1),true);
       //redirect raises EXxmPageRedirected
       inc(i);
      end
@@ -379,7 +379,7 @@ var
   s:AnsiString;
   l:cardinal;
 begin
-  if not(Data='') then
+  if Data<>'' then
    begin
     if CheckSendStart then
       case FAutoEncoding of
@@ -431,7 +431,7 @@ var
 begin
   inherited;
   //TODO: keep-connection since content-length known?
-  //if not(s.Size=0) then
+  //if s.Size<>0 then
    begin
     CheckSendStart;
     //no autoencoding here
@@ -501,13 +501,13 @@ begin
   if Relative then
    begin
     //TODO: proper combine?
-    if not(RedirectURL='') and (RedirectURL[1]='/') then
+    if (RedirectURL<>'') and (RedirectURL[1]='/') then
       s:='http://'+GetVar(ecb,'HTTP_HOST')+FRedirectPrefix+RedirectURL
     else
      begin
       s:=FURI;
       i:=Length(s);
-      while not(i=0) and not(s[i]='/') do dec(i);
+      while (i<>0) and (s[i]<>'/') do dec(i);
       s:='http://'+GetVar(ecb,'HTTP_HOST')+Copy(s,1,i)+RedirectURL;
      end;
    end
@@ -550,11 +550,11 @@ begin
   FResHeaders['Cache-Control']:='no-cache="set-cookie"';
   x:=Name+'="'+Value+'"';
   //'; Version=1';
-  if not(Comment='') then
+  if Comment<>'' then
     x:=x+'; Comment="'+Comment+'"';
-  if not(Domain='') then
+  if Domain<>'' then
     x:=x+'; Domain="'+Domain+'"';
-  if not(Path='') then
+  if Path<>'' then
     x:=x+'; Path="'+Path+'"';
   x:=x+'; Max-Age='+IntToStr(KeepSeconds)+
     '; Expires="'+RFC822DateGMT(Now+KeepSeconds/86400)+'"';
@@ -660,7 +660,7 @@ begin
     if FHandlerSize<x then
      begin
       SetLength(FHandlers,x);
-      while not(FHandlerSize=x) do
+      while FHandlerSize<>x do
        begin
         FHandlers[FHandlerSize]:=nil;
         inc(FHandlerSize);
@@ -668,11 +668,11 @@ begin
      end
     else
      begin
-      while not(FHandlerSize=X) do
+      while FHandlerSize<>X do
        begin
         dec(FHandlerSize);
         //FreeAndNil(FHandlers[FHandlerSize]);
-        if not(FHandlers[FHandlerSize]=nil) then
+        if FHandlers[FHandlerSize]<>nil then
          begin
           FHandlers[FHandlerSize].FreeOnTerminate:=true;
           FHandlers[FHandlerSize].Terminate;
@@ -700,7 +700,7 @@ begin
     if FQueue=nil then FQueue:=Context else
      begin
       c:=FQueue;
-      while not(c.Queue=nil) do c:=c.Queue;
+      while c.Queue<>nil do c:=c.Queue;
       c.Queue:=Context;
      end;
   finally
@@ -710,7 +710,7 @@ begin
   //fire thread
   //TODO: see if a rotary index matters in any way
   i:=0;
-  while (i<FHandlerSize) and not(FHandlers[i]=nil) and FHandlers[i].InUse do inc(i);
+  while (i<FHandlerSize) and (FHandlers[i]<>nil) and FHandlers[i].InUse do inc(i);
   if i=FHandlerSize then
    begin
     //pool full, leave on queue
@@ -732,7 +732,7 @@ begin
     EnterCriticalSection(FLock);
     try
       Result:=FQueue;
-      if not(Result=nil) then
+      if Result<>nil then
        begin
         FQueue:=FQueue.Queue;
         Result.Queue:=nil;
@@ -746,6 +746,7 @@ end;
 initialization
   IsapiHandlerPool:=TXxmIsapiHandlerPool.Create;
 finalization
+  //assert IsapiHandlerPool=nil by TerminateExtension
   FreeAndNil(IsapiHandlerPool);
 end.
 

@@ -5,8 +5,6 @@ interface
 uses xxm, SysUtils;
 
 type
-  TXxmProjectEntry=class;
-
   TXxmProjectEntry=class(TObject)
   private
     FName:WideString;
@@ -76,7 +74,7 @@ begin
   FSignature:='';//used for auto-build
   FLoadSignature:='';//used for auto-update
   FCheckMutex:=0;
-  LastCheck:=GetTickCount-100000;
+  LastCheck:=GetTickCount;
 end;
 
 procedure TXxmProjectEntry.AfterConstruction;
@@ -138,7 +136,11 @@ begin
     FreeLibrary(FHandle);
     FHandle:=0;
     //FContextCount:=0;
-    if FLoadPath<>'' then DeleteFileW(PWideChar(FLoadPath));
+    if FLoadPath<>'' then
+     begin
+      //SetFileAttributesW(PWideChar(FLoadPath),0);
+      DeleteFileW(PWideChar(FLoadPath));
+     end;
    end;
 end;
 
@@ -196,7 +198,7 @@ begin
   //TODO: virtual directories?
   rf:=FFilePath;
   i:=Length(rf);
-  while not(i=0) and not(rf[i]=PathDelim) do dec(i);
+  while not(i=0) and (rf[i]<>PathDelim) do dec(i);
   SetLength(rf,i);
   sf:='';
   i:=1;
@@ -213,7 +215,7 @@ begin
      begin
       //try to go back, but not into rf (raise?)
       i:=Length(sf)-1;
-      while (i>0) and not(sf[i]=PathDelim) do dec(i);
+      while (i>0) and (sf[i]<>PathDelim) do dec(i);
       SetLength(sf,i);
      end
     else
@@ -225,7 +227,7 @@ begin
 
   //find a MIME-type from registry
   i:=Length(sf)-1;
-  while (i>0) and not(sf[i]='.') do dec(i);
+  while (i>0) and (sf[i]<>'.') do dec(i);
   MimeType:=GetExtensionMimeType(LowerCase(copy(sf,i,Length(sf)-i+1)));
 end;
 

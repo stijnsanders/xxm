@@ -38,7 +38,7 @@ resourcestring
   SXxmPostDataReadOnly='Post-data is read-only';
 
 const
-  SwitchToFileTreshold=$100000;//TODO: setting?
+  SwitchToFileThreshold=$100000;//TODO: setting?
 
 { TxxmGeckoUploadStream }
 
@@ -50,7 +50,7 @@ begin
   FData:=TMemoryStream.Create;
   FDataPos:=0;
   FDataSize:=0;
-  //TODO: check header Content-length, if larger than SwitchToFileTreshold start with TFileStream
+  //TODO: check header Content-length, if larger than SwitchToFileThreshold start with TFileStream
   FDataFile:='';
 end;
 
@@ -119,7 +119,7 @@ begin
     //assert FDataPos=FDataLen
     inc(Result,FUploadStream.Read(PAnsiChar(@Buffer),c));
     //assert c=Result
-    if (FDataFile='') and (FDataSize+Result>=SwitchToFileTreshold) then
+    if (FDataFile='') and (FDataSize+Result>=SwitchToFileThreshold) then
      begin
       SetLength(FDataFile,$400);
       SetLength(FDataFile,GetTempPathA($400,PAnsiChar(FDataFile)));//TODO: setting

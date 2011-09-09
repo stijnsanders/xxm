@@ -78,7 +78,9 @@ type
     procedure SendError(res:AnsiString;vals:array of AnsiString);
     procedure ForceStatus(Code: Integer; Text: WideString);
 
+    procedure BeginRequest; virtual;
     procedure BuildPage;
+    procedure EndRequest; virtual;
 
     property ProjectEntry: TXxmProjectEntry read FProjectEntry;
   public
@@ -120,6 +122,17 @@ constructor TXxmGeneralContext.Create(URL: WideString);
 begin
   inherited Create;
   FURL:=URL;
+  BeginRequest;
+end;
+
+destructor TXxmGeneralContext.Destroy;
+begin
+  EndRequest;
+  inherited;
+end;
+
+procedure TXxmGeneralContext.BeginRequest;
+begin
   FProjectEntry:=nil;
   FContentType:='text/html';//default (setting?)
   FAutoEncoding:=aeUtf8;//default (setting?)
@@ -138,8 +151,9 @@ begin
   FFragmentName:='';//parsed from URL later
 end;
 
-destructor TXxmGeneralContext.Destroy;
+procedure TXxmGeneralContext.EndRequest;
 begin
+  //is called from destructor (also) so prepare for sequential calls without BeginRequest calls inbetween
   if FProjectEntry<>nil then
    begin
     FProjectEntry.CloseContext;
@@ -156,7 +170,7 @@ begin
     //silent
   end;
   FreeAndNil(FParams);
-  inherited;
+  FURL:='';
 end;
 
 function TXxmGeneralContext.GetURL: WideString;

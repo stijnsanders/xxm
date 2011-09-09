@@ -25,6 +25,8 @@ type
     FCookie: AnsiString;
     FCookieIdx: TParamIndexes;
     FQueryStringIndex:integer;
+    FKeepConnection:boolean;
+    procedure HandleRequest;
   protected
 
     function GetSessionID: WideString; override;
@@ -43,6 +45,9 @@ type
     procedure SendHeader; override;
     procedure AddResponseHeader(Name, Value: WideString); override;
 
+    procedure BeginRequest; override;
+    procedure EndRequest; override;
+
     function GetRequestHeaders:IxxmDictionaryEx;
     function GetResponseHeaders:IxxmDictionaryEx;
 
@@ -52,7 +57,7 @@ type
     procedure PreProcessRequest; virtual;
     procedure PreProcessRequestPage; virtual;
     procedure PostProcessRequest; virtual;
-    
+
     property HTTPVersion: AnsiString read FHTTPVersion;
     property ReqHeaders:TRequestHeaders read FReqHeaders;
     property ResHeaders:TResponseHeaders read FResHeaders;
@@ -81,7 +86,7 @@ resourcestring
 
 const
   HTTPMaxHeaderLines=$400;
-  PostDataTreshold=$100000;
+  PostDataThreshold=$100000;
 
 procedure XxmRunServer;
 type
@@ -107,10 +112,10 @@ begin
    begin
     s:=ParamStr(i);
     j:=1;
-    while (j<=Length(s)) and not(s[j]='=') do inc(j);
+    while (j<=Length(s)) and (s[j]<>'=') do inc(j);
     t:=LowerCase(Copy(s,1,j-1));
     par:=TParameters(0);
-    while not(par=cp_Unknown) and not(t=ParameterKey[par]) do inc(par);
+    while (par<>cp_Unknown) and (t<>ParameterKey[par]) do inc(par);
     case par of
       cpPort:Port:=StrToInt(Copy(s,j+1,Length(s)-j));
       //add new here
@@ -128,7 +133,7 @@ begin
 
     repeat
       if GetMessage(Msg,0,0,0) then
-        if not(Msg.message=WM_QUIT) then
+        if Msg.message<>WM_QUIT then
          begin
           TranslateMessage(Msg);
           DispatchMessage(Msg);
@@ -167,6 +172,17 @@ constructor TXxmHttpContext.Create(Socket:TCustomIpClient);
 begin
   inherited Create('');//URL is parsed by Execute
   FSocket:=Socket;
+end;
+
+destructor TXxmHttpContext.Destroy;
+begin
+  //nothing here, see EndRequest
+  inherited;
+end;
+
+procedure TXxmHttpContext.BeginRequest;
+begin
+  inherited;
   FReqHeaders:=nil;
   FResHeaders:=TResponseHeaders.Create;
   (FResHeaders as IUnknown)._AddRef;
@@ -177,22 +193,37 @@ begin
   FURI:='';//see Execute
 end;
 
-destructor TXxmHttpContext.Destroy;
+procedure TXxmHttpContext.EndRequest;
 begin
-  if not(FReqHeaders=nil) then
+  inherited;
+  if FReqHeaders<>nil then
    begin
     (FReqHeaders as IUnknown)._Release;
     FReqHeaders:=nil;
    end;
-  if not(FResHeaders=nil) then
+  if FResHeaders<>nil then
    begin
     (FResHeaders as IUnknown)._Release;
     FResHeaders:=nil;
    end;
-  inherited;
 end;
 
 procedure TXxmHttpContext.Execute;
+begin
+  FKeepConnection:=true;
+  while FKeepConnection do
+   begin
+    FKeepConnection:=false;
+    BeginRequest;
+    try
+      HandleRequest;
+    finally
+      EndRequest;
+    end;
+   end;
+end;
+
+procedure TXxmHttpContext.HandleRequest;
 var
   i,j,l:integer;
   x,y:AnsiString;
@@ -204,11 +235,11 @@ begin
     x:=FSocket.Receiveln;
     l:=Length(x);
     j:=l;
-    while (j>0) and not(x[j]=' ') do dec(j);
+    while (j>0) and (x[j]<>' ') do dec(j);
     FHTTPVersion:=Copy(x,j+1,l-j);
     dec(j);
     i:=0;
-    while (i<l) and not(x[i]=' ') do inc(i);
+    while (i<l) and (x[i]<>' ') do inc(i);
     FVerb:=UpperCase(Copy(x,1,i-1));
     inc(i);
 
@@ -219,7 +250,7 @@ begin
     x:='';
     repeat
      y:=FSocket.Receiveln;
-     if not(y='') then
+     if y<>'' then
       begin
        inc(i);
        if i=HTTPMaxHeaderLines then
@@ -236,7 +267,7 @@ begin
 
     //TODO: RequestHeaders['Host']?
     l:=Length(FURI);
-    if not(FURI='') and (FURI[1]='/') then
+    if (FURI<>'') and (FURI[1]='/') then
      begin
       i:=2;
       if XxmProjectCache.SingleProject='' then
@@ -285,12 +316,12 @@ begin
 
     PreProcessRequest;
 
-    //if not(Verb='GET') then?
+    //if Verb<>'GET' then?
     x:=FReqHeaders['Content-Length'];
     if x<>'' then
      begin
       si:=StrToInt(x);
-      if si<PostDataTreshold then
+      if si<PostDataThreshold then
         s:=TMemoryStream.Create
       else
        begin
@@ -413,11 +444,11 @@ begin
   FResHeaders['Cache-Control']:='no-cache="set-cookie"';
   x:=Name+'="'+Value+'"';
   //'; Version=1';
-  if not(Comment='') then
+  if Comment<>'' then
     x:=x+'; Comment="'+Comment+'"';
-  if not(Domain='') then
+  if Domain<>'' then
     x:=x+'; Domain="'+Domain+'"';
-  if not(Path='') then
+  if Path<>'' then
     x:=x+'; Path="'+Path+'"';
   x:=x+'; Max-Age='+IntToStr(KeepSeconds)+
     '; Expires="'+RFC822DateGMT(Now+KeepSeconds/86400)+'"';
@@ -466,7 +497,7 @@ var
   l:cardinal;
   d:array of byte;
 begin
-  if not(Data='') then
+  if Data<>'' then
    begin
     if CheckSendStart then
       case FAutoEncoding of
@@ -517,7 +548,7 @@ procedure TXxmHttpContext.SendStream(s: IStream);
 var
   os:TOleStream;
 begin
-  //if not(s.Size=0) then
+  //if s.Size<>0 then
    begin
     CheckSendStart;
     //no autoencoding here
@@ -543,8 +574,6 @@ const
     '; charset="iso-8859-15"'
   );
 begin
-  //TODO: Content-Length?
-  //TODO: Connection keep?
   //use FResHeader.Complex?
   FResHeaders['Content-Type']:=FContentType+AutoEncodingCharset[FAutoEncoding];
   x:=FHTTPVersion+' '+IntToStr(StatusCode)+' '+StatusText+#13#10+
@@ -553,6 +582,8 @@ begin
   SetLength(d,l);
   Move(x[1],d[0],l);
   FSocket.SendBuf(d[0],l);
+  if FResHeaders['Content-Length']<>'' then FKeepConnection:=true;
+  //TODO: transfer encoding chunked
 end;
 
 procedure TXxmHttpContext.AddResponseHeader(Name, Value: WideString);
@@ -579,13 +610,13 @@ begin
 
   //data (Content-Length
 
-  FResHeaders['X-Powered-By']:=SelfVersion;
+  FResHeaders['Server']:=SelfVersion; //X-Powered-By?
   FURL:=FReqHeaders['Host'];
   if FURL='' then
    begin
     FURL:='localhost';//TODO: from binding? setting;
-    if not(FSocket.RemotePort='80') then
-      FURL:=FURL+':'+FSocket.RemotePort;
+    if FSocket.LocalPort<>'80' then
+      FURL:=FURL+':'+FSocket.LocalPort;
    end;
   FURL:='http://'+FURL+FURI;//TODO: 'https' if SSL?
 end;

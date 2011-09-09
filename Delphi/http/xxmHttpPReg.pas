@@ -10,7 +10,7 @@ type
     procedure SetSignature(const Value: AnsiString); override;
     function GetExtensionMimeType(x:AnsiString): AnsiString; override;
   published
-    constructor Create(Name,FilePath:WideString);
+    constructor Create(Name,FilePath:WideString;LoadCopy:boolean);
   public
     destructor Destroy; override;
   end;
@@ -60,10 +60,11 @@ resourcestring
 
 { TXxmProjectCacheEntry }
 
-constructor TXxmProjectCacheEntry.Create(Name, FilePath: WideString);
+constructor TXxmProjectCacheEntry.Create(Name, FilePath: WideString; LoadCopy: boolean);
 begin
   inherited Create(LowerCase(Name));//lowercase here!
   FFilePath:=FilePath;
+  if LoadCopy then FLoadPath:=FFilePath+'_'+IntToHex(GetCurrentProcessId,4);
 end;
 
 destructor TXxmProjectCacheEntry.Destroy;
@@ -110,7 +111,7 @@ begin
   SetLength(FRegFilePath,GetModuleFileNameA(HInstance,PAnsiChar(FRegFilePath),$400));
   if Copy(FRegFilePath,1,4)='\\?\' then FRegFilePath:=Copy(FRegFilePath,5,Length(FRegFilePath)-4);
   i:=Length(FRegFilePath);
-  while not(i=0) and not(FRegFilePath[i]=PathDelim) do dec(i);
+  while not(i=0) and (FRegFilePath[i]<>PathDelim) do dec(i);
   FRegFilePath:=Copy(FRegFilePath,1,i)+'xxm.xml';
 
   //settings?
@@ -166,7 +167,7 @@ begin
       IntToStr(fd.nFileSizeLow);
     Windows.FindClose(fh);
    end;
-  if not(FRegSignature=s) then
+  if FRegSignature<>s then
    begin
     if not(FRegDoc.load(FRegFilePath)) then
       raise EXxmProjectRegistryError.Create(StringReplace(
@@ -197,7 +198,7 @@ begin
       found:=false;
       repeat
         x:=LoadRegistry.selectSingleNode('Project[@Name="'+n+'"]');
-        if not(x=nil) then
+        if x<>nil then
          begin
           y:=x.attributes.getNamedItem('Alias');
           if y=nil then found:=true else
@@ -216,12 +217,15 @@ begin
 
       //TODO: extra flags,settings?
 
-      Result:=TXxmProjectCacheEntry.Create(Name,y.text);
+      Result:=TXxmProjectCacheEntry.Create(
+        Name,
+        y.text,
+        VarToStr((x as IXMLDOMElement).getAttribute('LoadCopy'))<>'0');//='1');
 
       Result.FSignature:=VarToStr((x as IXMLDOMElement).getAttribute('Signature'));
 
       i:=0;
-      while (i<ProjectCacheSize) and not(ProjectCache[i]=nil) do inc(i);
+      while (i<ProjectCacheSize) and (ProjectCache[i]<>nil) do inc(i);
       if (i=ProjectCacheSize) then i:=Grow;
       ProjectCache[i]:=Result;
      end
@@ -238,7 +242,7 @@ var
 begin
   i:=FindProject(Name);
   //if i=-1 then raise?
-  if not(i=-1) then FreeAndNil(ProjectCache[i]);
+  if i<>-1 then FreeAndNil(ProjectCache[i]);
 end;
 
 procedure TXxmProjectCache.ClearAll;
