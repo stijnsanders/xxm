@@ -168,13 +168,16 @@ begin
     FHandle:=LoadLibraryW(PWideChar(FFilePath))
   else
    begin
-    if not(CopyFileW(PWideChar(FFilePath),PWideChar(FLoadPath),false)) then RaiseLastOSError;
+    if not(CopyFileW(PWideChar(FFilePath),PWideChar(FLoadPath),false)) then
+      raise EXxmProjectLoadFailed.Create('LoadProject: Create load copy failed: '+SysErrorMessage(GetLastError));
     SetFileAttributesW(PWideChar(FLoadPath),FILE_ATTRIBUTE_HIDDEN or FILE_ATTRIBUTE_SYSTEM);
     FHandle:=LoadLibraryW(PWideChar(FLoadPath));
    end;
-  if FHandle=0 then RaiseLastOSError;
+  if FHandle=0 then
+    raise EXxmProjectLoadFailed.Create('LoadProject: LoadLibrary failed: '+SysErrorMessage(GetLastError));
   @lp:=GetProcAddress(FHandle,'XxmProjectLoad');
-  if @lp=nil then RaiseLastOSError;
+  if @lp=nil then
+    raise EXxmProjectLoadFailed.Create('LoadProject: GetProcAddress failed: '+SysErrorMessage(GetLastError));
   FProject:=lp(FName);//try?
 end;
 
@@ -254,13 +257,15 @@ end;
 procedure TXxmProjectEntry.Lock;
 begin
   //assert FCheckMutex<>0
-  if WaitForSingleObject(FCheckMutex,INFINITE)<>WAIT_OBJECT_0 then RaiseLastOSError;
+  if WaitForSingleObject(FCheckMutex,INFINITE)<>WAIT_OBJECT_0 then
+    raise Exception.Create('ProjectEntry acquire UpdateLock failed: '+SysErrorMessage(GetLastError));
 end;
 
 procedure TXxmProjectEntry.Unlock;
 begin
   //assert FCheckMutex<>0
-  ReleaseMutex(FCheckMutex);
+  if not ReleaseMutex(FCheckMutex) then
+    raise Exception.Create('ProjectEntry release UpdateLock failed: '+SysErrorMessage(GetLastError));
 end;
 
 end.

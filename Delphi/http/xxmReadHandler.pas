@@ -69,26 +69,33 @@ function THandlerReadStreamAdapter.Read(var Buffer;
 begin
   if FPosition=FStorePosition then
    begin
-    Result:=FSocket.ReceiveBuf(Buffer,Count);
-    FStore.Write(Buffer,Result);
-    inc(FPosition,Result);
-    inc(FStorePosition,Result);
+    if FPosition+Count>FSize then
+      Result:=FSize-FPosition
+    else
+      Result:=Count;
+    if Result<>0 then
+     begin
+      Result:=FSocket.ReceiveBuf(Buffer,Result);
+      FStore.Write(Buffer,Result);
+      inc(FPosition,Result);
+      inc(FStorePosition,Result);
+     end;
    end
   else
-   if FPosition<FStorePosition then
-    begin
-     if FPosition+Count>FStorePosition then
-       Result:=FStorePosition-FPosition
-     else
-       Result:=Count;
-     FStore.Position:=FPosition;
-     Result:=FStore.Read(Buffer,Result);
-     inc(FPosition,Result);
-     FStore.Position:=FStorePosition;
-     //TODO: read FPosition+Count-FStorePosition
-    end
-   else
-     raise Exception.Create('THandlerReadStreamAdapter.Read past current incoming position not allowed');//TODO: force read?
+    if FPosition<FStorePosition then
+     begin
+      if FPosition+Count>FStorePosition then
+        Result:=FStorePosition-FPosition
+      else
+        Result:=Count;
+      FStore.Position:=FPosition;
+      Result:=FStore.Read(Buffer,Result);
+      inc(FPosition,Result);
+      FStore.Position:=FStorePosition;
+      //TODO: read FPosition+Count-FStorePosition
+     end
+    else
+      raise Exception.Create('THandlerReadStreamAdapter.Read past current incoming position not allowed');//TODO: force read?
 end;
 
 procedure THandlerReadStreamAdapter.SetSize(NewSize: Integer);

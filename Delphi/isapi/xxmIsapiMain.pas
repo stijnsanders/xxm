@@ -294,7 +294,7 @@ begin
   end;
   //TODO: support keep connection?
   ecb.dwHttpStatusCode:=StatusCode;
-  ServerFunction(HSE_REQ_CLOSE_CONNECTION,nil,nil,nil);
+  //ServerFunction(HSE_REQ_CLOSE_CONNECTION,nil,nil,nil);
   ServerFunction(HSE_REQ_DONE_WITH_SESSION,nil,nil,nil);
 end;
 
@@ -471,7 +471,7 @@ begin
   //TODO cookies? redirect?
   head.pszHeader:=PAnsiChar(t);
   head.cchHeader:=Length(t);
-  head.fKeepConn:=false;//TODO: true if content-length known?
+  head.fKeepConn:=FResHeaders['Content-Length']<>'';//TODO: chunked encoding
   ServerFunction(HSE_REQ_SEND_RESPONSE_HEADER_EX,@head,nil,nil);
 end;
 
@@ -668,15 +668,19 @@ begin
      end
     else
      begin
-      while FHandlerSize<>X do
+      while FHandlerSize<>x do
        begin
         dec(FHandlerSize);
         //FreeAndNil(FHandlers[FHandlerSize]);
         if FHandlers[FHandlerSize]<>nil then
          begin
-          FHandlers[FHandlerSize].FreeOnTerminate:=true;
-          FHandlers[FHandlerSize].Terminate;
-          FHandlers[FHandlerSize].Resume;
+          try
+            FHandlers[FHandlerSize].Terminate;
+            FHandlers[FHandlerSize].Resume;
+            FHandlers[FHandlerSize].Free;
+          except
+            //silent
+          end;
           FHandlers[FHandlerSize]:=nil;
          end;
        end;

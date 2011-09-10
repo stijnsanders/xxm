@@ -17,6 +17,7 @@ var
 const
   NoNextUpdateAfter=1000;//TODO: setting!
 begin
+  //fn:='['+ProjectName+']';
   try
     if cardinal(GetTickCount-Entry.LastCheck)>NoNextUpdateAfter then
      begin
@@ -37,7 +38,8 @@ begin
              begin
               //switcheroo
               if not(DeleteFileA(PAnsiChar(fn))) then MoveFileA(PAnsiChar(fn),PAnsiChar(fn+'.bak'));
-              if not(MoveFileA(PAnsiChar(fn1),PAnsiChar(fn))) then RaiseLastOSError;
+              if not(MoveFileA(PAnsiChar(fn1),PAnsiChar(fn))) then
+                raise Exception.Create('MoveFile xxu failed: '+SysErrorMessage(GetLastError));
               //TODO: non-xxmIsapi handlers could still have xxl locked? take xxu as update?
              end;
            end;
@@ -51,6 +53,7 @@ begin
     on e:Exception do
      begin
       Context.Send('AutoUpdate failed: '+e.Message);
+      //output fn, projectname, selfversion?
       Result:=false;//caller raises EXxmAutoBuildFailed
      end;
   end;
