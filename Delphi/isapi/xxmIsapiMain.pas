@@ -324,7 +324,7 @@ begin
          begin
           SetLength(FPostTempFile,$400);
           SetLength(FPostTempFile,GetTempPathA($400,PAnsiChar(FPostTempFile)));//TODO: setting
-          FPostTempFile:=FPostTempFile+'xxm_'+IntToHex(ecb.ConnID,8)+'.dat';
+          FPostTempFile:=FPostTempFile+'xxm_'+IntToHex(GetCurrentThreadId,4)+'_'+IntToHex(ecb.ConnID,8)+'.dat';
           FPostData:=TXxmIsapiStreamAdapter.Create(ecb,TFileStream.Create(FPostTempFile,fmCreate));
          end;
         FPostData.Seek(0,soFromBeginning);

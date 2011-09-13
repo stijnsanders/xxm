@@ -74,7 +74,7 @@ begin
   FSignature:='';//used for auto-build
   FLoadSignature:='';//used for auto-update
   FCheckMutex:=0;
-  LastCheck:=GetTickCount;
+  LastCheck:=GetTickCount-100000;
 end;
 
 procedure TXxmProjectEntry.AfterConstruction;

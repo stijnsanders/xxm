@@ -7,7 +7,8 @@ uses xxm, Classes, SysUtils, ActiveX;
 type
   TXxmReqPars=class(TObject)
   private
-    FParams:array of IXxmParameter;
+    FParams: array of IXxmParameter;
+    FParamsSize,FParamsCount: integer;
     procedure Fill(Context: IXxmContext; PostData: TStream);
   public
     PostDataOnRedirect:boolean;
@@ -126,6 +127,8 @@ end;
 constructor TXxmReqPars.Create(Context:IXxmContext; PostData: TStream);
 begin
   inherited Create;
+  FParamsSize:=0;
+  FParamsCount:=0;
   PostDataOnRedirect:=false;
   Fill(Context,PostData);
 end;
@@ -134,7 +137,7 @@ destructor TXxmReqPars.Destroy;
 var
   i:integer;
 begin
-  for i:=0 to Length(FParams)-1 do
+  for i:=0 to FParamsCount-1 do
     try
       FParams[i]._Release;
       FParams[i]:=nil;
@@ -265,13 +268,17 @@ begin
 end;
 
 procedure TXxmReqPars.Add(Par: IXxmParameter);
-var
-  i:integer;
+const
+  GrowStep=$100;
 begin
-  i:=Length(FParams);
-  SetLength(FParams,i+1);
-  FParams[i]:=Par;
+  if FParamsCount=FParamsSize then
+   begin
+    inc(FParamsSize,GrowStep);
+    SetLength(FParams,FParamsSize);
+   end;
+  FParams[FParamsCount]:=Par;
   Par._AddRef;
+  inc(FParamsCount);
 end;
 
 function TXxmReqPars.Get(Key: WideString): IXxmParameter;
@@ -281,8 +288,8 @@ var
 begin
   i:=0;
   //case sensitive?
-  while (i<Length(FParams)) and (FParams[i].Name<>Key) do inc(i);
-  if (i<Length(FParams)) then Result:=FParams[i] else
+  while (i<FParamsCount) and (FParams[i].Name<>Key) do inc(i);
+  if (i<FParamsCount) then Result:=FParams[i] else
    begin
     //TODO: setting: nil or create empty?
     //Result:=nil;
@@ -299,13 +306,13 @@ var
   Key:WideString;
 begin
   i:=0;
-  while (i<Length(FParams)) and (FParams[i]<>Par) do inc(i);
-  if (i<Length(FParams)) then
+  while (i<FParamsCount) and (FParams[i]<>Par) do inc(i);
+  if (i<FParamsCount) then
    begin
     Key:=FParams[i].Name;//lower?
     inc(i);
-    while (i<Length(FParams)) and (FParams[i].Name<>Key) do inc(i);
-    if (i<Length(FParams)) then Result:=FParams[i] else Result:=nil;
+    while (i<FParamsCount) and (FParams[i].Name<>Key) do inc(i);
+    if (i<FParamsCount) then Result:=FParams[i] else Result:=nil;
    end
   else
     Result:=nil;
@@ -318,7 +325,7 @@ end;
 
 function TXxmReqPars.Count: integer;
 begin
-  Result:=Length(FParams);
+  Result:=FParamsCount;
 end;
 
 { TXxmReqPar }

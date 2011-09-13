@@ -4,7 +4,7 @@ v1.1.2.280
 - xxmIsapi: support for multi-process hosting (multiple w3wp.exe instances)
 - xxmLocal: fixed ContextString(csUserAgent)
 - xxmGecko: support for FireFox 7 (only, couldn't get 6 to work any more, sorry)
-- xxmHttp: keep connection when Context-Length set (e.g. files)
+- xxmHttp,xxmIsapi: keep connection when Context-Length set (e.g. files)
 - xxmHttp: fixed issue with streaming post data less than 1MB
 
 v1.1.1.277

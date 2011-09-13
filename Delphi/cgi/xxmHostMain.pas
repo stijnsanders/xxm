@@ -25,6 +25,7 @@ type
     FCGIValues:array of record
       Name,Value:AnsiString;
     end;
+    FCGIValuesSize,FCGIValuesCount:integer;
     FReqHeaders:TRequestHeaders;
     FResHeaders:TResponseHeaders;
     FConnected:boolean;
@@ -95,6 +96,8 @@ begin
   FQueryStringIndex:=1;
   FSessionID:='';//see GetSessionID
   FRedirectPrefix:='';
+  FCGIValuesSize:=0;
+  FCGIValuesCount:=0;
 end;
 
 destructor TXxmHostedContext.Destroy;
@@ -121,6 +124,8 @@ var
   i,j,k,l,m:integer;
   l1:cardinal;
   x,y:AnsiString;
+const
+  CGIValuesGrowStep=$100;
 begin
   try
     //read CGI values
@@ -143,14 +148,19 @@ begin
       else
         if j<=l then
          begin
-          SetLength(FCGIValues,m+1);
-          FCGIValues[m].Name:=Copy(x,i,j-i);
-          FCGIValues[m].Value:=Copy(x,j+1,k-j-1);
-          inc(m);
-          if i=HTTPMaxHeaderLines then
-            raise EXxmMaximumHeaderLines.Create(SXxmMaximumHeaderLines);
+          if FCGIValuesCount=FCGIValuesSize then
+           begin
+            inc(FCGIValuesSize,CGIValuesGrowStep);
+            SetLength(FCGIValues,FCGIValuesSize);
+           end;
+          FCGIValues[FCGIValuesCount].Name:=Copy(x,i,j-i);
+          FCGIValues[FCGIValuesCount].Value:=Copy(x,j+1,k-j-1);
+          inc(FCGIValuesCount);
          end;
       i:=k+1;
+      inc(m);
+      if m=HTTPMaxHeaderLines then
+        raise EXxmMaximumHeaderLines.Create(SXxmMaximumHeaderLines);
      end;
     y:=y+#13#10;
 
@@ -466,12 +476,11 @@ end;
 
 function TXxmHostedContext.GetCGIValue(Name: AnsiString): AnsiString;
 var
-  i,l:integer;
+  i:integer;
 begin
   i:=0;
-  l:=Length(FCGIValues);
-  while (i<l) and not(Name=FCGIValues[i].Name) do inc(i); //TODO: case-insensitive?
-  if i=l then Result:='' else Result:=FCGIValues[i].Value;
+  while (i<FCGIValuesCount) and not(Name=FCGIValues[i].Name) do inc(i); //TODO: case-insensitive?
+  if i=FCGIValuesCount then Result:='' else Result:=FCGIValues[i].Value;
 end;
 
 procedure TXxmHostedContext.AddResponseHeader(Name, Value: WideString);
