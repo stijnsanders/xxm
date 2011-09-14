@@ -435,13 +435,14 @@ begin
    begin
     CheckSendStart;
     //no autoencoding here
-    l:=dSize;
     repeat
+      l:=dSize;
       OleCheck(s.Read(@d[0],l,@l));
-      if not(ecb.WriteClient(ecb.ConnID,@d[0],l,HSE_IO_SYNC)) then
-        RaiseLastOSError;
+      if l<>0 then
+        if not(ecb.WriteClient(ecb.ConnID,@d[0],l,HSE_IO_SYNC)) then
+          RaiseLastOSError;
       //ReportData;
-    until l<>dSize;
+    until l=0;
    end;
 end;
 

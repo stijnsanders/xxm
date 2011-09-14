@@ -81,6 +81,7 @@ var
 
 const
   MimeFormUrlEncoded='application/x-www-form-urlencoded';
+  MimeFormData='multipart/form-data';
 
 implementation
 
@@ -191,7 +192,7 @@ begin
         SetLength(pd,p+q);
         q:=ps.Read(pd[p+1],q);
         inc(p,q);
-      until not(q=$400);
+      until q=0;
       SetLength(pd,p);
 
       //TODO: revert &#[0-9]+?;
@@ -212,7 +213,7 @@ begin
 
      end
     else
-    if pn='multipart/form-data' then
+    if pn=MimeFormData then
      begin
       pb:=GetParamValue(pm,pa,'boundary');
       if pb='' then raise Exception.Create('unable to get boundary from header for multipart/form-data');

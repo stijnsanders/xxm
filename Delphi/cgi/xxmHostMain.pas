@@ -429,13 +429,15 @@ var
   d:array[0..dSize-1] of byte;
 begin
   CheckSendStart;
-  l:=dSize;
-  while l=dSize do
-   begin
+  repeat
+    l:=dSize;
     OleCheck(s.Read(@d[0],l,@l));
-    if not(WriteFile(FPipeOut,d[0],l,l1,nil)) then RaiseLastOSError;
-    if l<>l1 then raise Exception.Create('Stream Write Failed');
-   end;
+    if l<>0 then
+     begin
+      if not(WriteFile(FPipeOut,d[0],l,l1,nil)) then RaiseLastOSError;
+      if l<>l1 then raise Exception.Create('Stream Write Failed');
+     end;
+  until l=0;
 end;
 
 procedure TXxmHostedContext.SendHeader;

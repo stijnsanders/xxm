@@ -101,7 +101,7 @@ DebugSourceDirs=
 UsePackages=0
 [Parameters]
 RunParams=xxm://demo/A.xxm
-HostApplication=C:\Program Files\TB.exe
+HostApplication=c:\Program Files\Internet Explorer\iexplore.exe
 Launcher=
 UseLauncher=0
 DebugCWD=

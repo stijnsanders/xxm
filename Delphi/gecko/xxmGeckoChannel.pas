@@ -958,17 +958,17 @@ begin
    begin
     CheckSendStart; //SendHeader out of lock
     //no autoencoding here!
-    l:=SendBufferSize;
     repeat
       Lock;
       try
+        l:=SendBufferSize;
         OleCheck(s.Read(@d[0],l,@l));
-        Write(d[0],l);
+        if l<>0 then Write(d[0],l);
       finally
         Unlock;
       end;
       ReportData;
-    until (l<>SendBufferSize) or not(FConnected);
+    until (l=0) or not(FConnected);
    end;
 end;
 

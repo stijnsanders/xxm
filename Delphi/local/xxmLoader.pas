@@ -404,20 +404,20 @@ begin
    begin
     CheckSendStart;
     //no autoencoding here!
-    l:=SendBufferSize;
     repeat
       Lock;
       try
+        l:=SendBufferSize;
         if OutputData=nil then OutputData:=TMemoryStream.Create;
         OutputData.Position:=OutputSize;
         OleCheck(s.Read(@d[0],l,@l));
-        OutputData.Write(d[0],l);
+        if l<>0 then OutputData.Write(d[0],l);
         OutputSize:=OutputData.Position;
       finally
         Unlock;
       end;
       ReportData;
-    until (l<>SendBufferSize) or Aborted;
+    until (l=0) or Aborted;
    end;
 end;
 
@@ -564,10 +564,11 @@ begin
           FPostTempFile:=FPostTempFile+'xxm_'+IntToHex(integer(Self),8)+'.dat';
           f:=TFileStream.Create(FPostTempFile,fmCreate);
           f.Write(m.Memory^,l);
-          while l=StreamThreshold do
+          while l<>0 do
            begin
+            l:=StreamThreshold;
             OleCheck(s.Read(m.Memory,l,@l));
-            f.Write(m.Memory^,l);
+            if l<>0 then f.Write(m.Memory^,l);
            end;
           f.Seek(0,soFromBeginning);
           Result:=f;

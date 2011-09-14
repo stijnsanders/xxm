@@ -337,17 +337,23 @@ begin
   }
   CheckSendStart;
   repeat
+    l:=dSize;
     OleCheck(s.Read(@d[0],dSize,@l));
-    if not(ap_rwrite(d[0],l,rq)=l) then raise EXxmRWriteFailed.Create(SXxmRWriteFailed);
-    ap_rflush(rq);//?
-  until l<>dSize;
+    if l<>0 then
+     begin
+      if not(ap_rwrite(d[0],l,rq)=l) then
+        raise EXxmRWriteFailed.Create(SXxmRWriteFailed);
+      ap_rflush(rq);//?
+     end;
+  until l=0;
 end;
 
 procedure TxxmApacheContext.SetStatus(Code: integer; Text: WideString);
 begin
   inherited;
   rq.status:=Code;
-  rq.status_line:=apr_pstrdup(rq.pool,PAnsiChar(IntToStr(Code)+' '+AnsiString(Text)));
+  rq.status_line:=apr_pstrdup(rq.pool,
+    PAnsiChar(IntToStr(Code)+' '+AnsiString(Text)));
 end;
 
 procedure TxxmApacheContext.SendHeader;

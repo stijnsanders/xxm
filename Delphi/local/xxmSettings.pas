@@ -48,7 +48,7 @@ begin
       //LockingLevel:=ReadInt('LockingLevel',0);
       StatusException:=200;//ReadInt('StatusException',500);
       StatusBuildError:=200;//ReadInt('StatusBuildError',503);
-      StatusFileNotFound:=ReadInt('StatusFileNotFound',404);
+      StatusFileNotFound:=200;//ReadInt('StatusFileNotFound',404);
       DefaultProjectName:=ReadString('DefaultProject','xxm');
       //TODO: more settings?
      end;
