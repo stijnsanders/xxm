@@ -4,7 +4,7 @@ library xxmLocalAU;
 
 uses
   ComServ,
-  xxm in '..\public\xxm.pas',
+  xxm in '..\bin\public\xxm.pas',
   xxmHandler in 'xxmHandler.pas',
   xxmLoader in 'xxmLoader.pas',
   xxmSettings in 'xxmSettings.pas',
@@ -13,7 +13,7 @@ uses
   xxmPRegLocal in 'xxmPRegLocal.pas',
   xxmParams in '..\common\xxmParams.pas',
   xxmParUtils in '..\common\xxmParUtils.pas',
-  xxmHeaders in '..\public\xxmHeaders.pas',
+  xxmHeaders in '..\bin\public\xxmHeaders.pas',
   xxmThreadPool in 'xxmThreadPool.pas',
   xxmAutoUpdate in '..\common\xxmAutoUpdate.pas',
   xxmCommonUtils in '..\common\xxmCommonUtils.pas',

@@ -5,10 +5,10 @@ program xxmHttp;
 uses
   SysUtils,
   xxmHttpMain in 'xxmHttpMain.pas',
-  xxm in '..\public\xxm.pas',
+  xxm in '..\bin\public\xxm.pas',
   xxmParams in '..\common\xxmParams.pas',
   xxmParUtils in '..\common\xxmParUtils.pas',
-  xxmHeaders in '..\public\xxmHeaders.pas',
+  xxmHeaders in '..\bin\public\xxmHeaders.pas',
   xxmPReg in '..\common\xxmPReg.pas',
   xxmHttpPReg in 'xxmHttpPReg.pas',
   xxmCommonUtils in '..\common\xxmCommonUtils.pas',

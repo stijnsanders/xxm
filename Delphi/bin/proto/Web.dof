@@ -1,6 +1,6 @@
 [Directories]
 OutputDir=..\
-SearchPath=..\..\public
+SearchPath=..\..\bin\public
 UnitOutputDir=dcu
 [Parameters]
 RunParams=xxm://

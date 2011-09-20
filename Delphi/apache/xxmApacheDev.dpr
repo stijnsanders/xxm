@@ -5,8 +5,8 @@ library xxmApacheDev;
 
 uses
   HTTPD2 in 'HTTPD2.pas',
-  xxm in '..\public\xxm.pas',
-  xxmHeaders in '..\public\xxmHeaders.pas',
+  xxm in '..\bin\public\xxm.pas',
+  xxmHeaders in '..\bin\public\xxmHeaders.pas',
   xxmParUtils in '..\common\xxmParUtils.pas',
   xxmParams in '..\common\xxmParams.pas',
   xxmApacheModule in 'xxmApacheModule.pas',

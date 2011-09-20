@@ -5,8 +5,8 @@ library xxmGeckoDev;
 
 uses
   SysUtils,
-  xxm in '..\public\xxm.pas',
-  xxmHeaders in '..\public\xxmHeaders.pas',
+  xxm in '..\bin\public\xxm.pas',
+  xxmHeaders in '..\bin\public\xxmHeaders.pas',
   xxmGeckoProtocol in 'xxmGeckoProtocol.pas',
   xxmGeckoChannel in 'xxmGeckoChannel.pas',
   xxmGeckoModule in 'xxmGeckoModule.pas',
