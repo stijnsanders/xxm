@@ -291,6 +291,6 @@ end;
 initialization
   XxmProjectCache:=TXxmProjectCache.Create;
 finalization
-  XxmProjectCache.Free;
-
+  //assert XxmProjectCache=nil by TerminateExtension
+  FreeAndNil(XxmProjectCache);
 end.

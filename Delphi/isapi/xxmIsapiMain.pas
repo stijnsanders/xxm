@@ -139,7 +139,16 @@ end;
 
 function TerminateExtension(dwFlags: DWORD): BOOL; stdcall;
 begin
-  FreeAndNil(IsapiHandlerPool);
+  try
+    FreeAndNil(IsapiHandlerPool);
+  except
+    //silent (log?)
+  end;
+  try
+    FreeAndNil(XxmProjectCache);
+  except
+    //silent (log?)
+  end;
   Result:=true;
 end;
 
