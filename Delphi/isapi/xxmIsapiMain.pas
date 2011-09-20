@@ -285,12 +285,12 @@ begin
             y:='unknown';
           end;
           SendError('error',[
-            'URL',HTMLEncode(FURL),
+            'ERRORCLASS',e.ClassName,
+            'ERROR',HTMLEncode(e.Message),
             'CLASS',FPageClass,
+            'URL',HTMLEncode(FURL),
             'POSTDATA',y,
             'QUERYSTRING',ecb.lpszQueryString,
-            'ERROR',e.Message,
-            'ERRORCLASS',e.ClassName,
             'VERSION',ContextString(csVersion)
           ]);
          end;

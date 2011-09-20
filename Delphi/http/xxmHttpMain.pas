@@ -300,12 +300,12 @@ begin
       FProjectName:='';
       FFragmentName:='';
       SendError('error',[
-        'URL',HTMLEncode(FURI),
+        'ERRORCLASS','',
+        'ERROR','Bad Request',
         'CLASS','',
+        'URL',HTMLEncode(FURI),
         'POSTDATA','',
         'QUERYSTRING','',
-        'ERROR','Bad Request',
-        'ERRORCLASS','',
         'VERSION',ContextString(csVersion)
       ]);
       raise EXxmPageRedirected.Create(FHTTPVersion+' 400 Bad Request');
@@ -351,12 +351,12 @@ begin
         x:='unknown';
       end;
       SendError('error',[
-        'URL',HTMLEncode(ContextString(csURL)),
+        'ERRORCLASS',e.ClassName,
+        'ERROR',HTMLEncode(e.Message),
         'CLASS',FPageClass,
+        'URL',HTMLEncode(ContextString(csURL)),
         'POSTDATA',x,
         'QUERYSTRING',HTMLEncode(ContextString(csQueryString)),
-        'ERROR',HTMLEncode(e.Message),
-        'ERRORCLASS',e.ClassName,
         'VERSION',ContextString(csVersion)
       ]);
      end;

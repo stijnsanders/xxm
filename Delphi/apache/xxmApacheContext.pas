@@ -9,13 +9,11 @@ type
   TxxmApacheContext=class(TXxmGeneralContext, IxxmHttpHeaders)
   private
     rq: Prequest_rec;
-
     FConnected: boolean;
     FRedirectPrefix, FSessionID: AnsiString;
     FCookieParsed: boolean;
     FCookie: AnsiString;
     FCookieIdx: TParamIndexes;
-
   protected
     procedure SendStream(s:IStream); override;
     function GetSessionID:WideString; override;
@@ -33,15 +31,12 @@ type
     function GetProjectEntry(ProjectName: WideString):TXxmProjectEntry; override;
     procedure AddResponseHeader(Name: WideString; Value: WideString); override;
     procedure SetStatus(Code:integer;Text:WideString); override;
-
     //IxxmHttpHeaders
     function GetRequestHeaders:IxxmDictionaryEx;
     function GetResponseHeaders:IxxmDictionaryEx;
-
   public
     constructor Create(r:Prequest_rec);
     destructor Destroy; override;
-
     procedure Execute;
   end;
 
@@ -131,12 +126,12 @@ begin
         x:='unknown';
       end;
       SendError('error',[
-        'URL',HTMLEncode(rq.unparsed_uri),
+        'ERRORCLASS',e.ClassName,
+        'ERROR',HTMLEncode(e.Message),
         'CLASS',FPageClass,
+        'URL',HTMLEncode(rq.unparsed_uri),
         'POSTDATA',x,
         'QUERYSTRING',HTMLEncode(rq.args),
-        'ERROR',HTMLEncode(e.Message),
-        'ERRORCLASS',e.ClassName,
         'VERSION',SelfVersion
       ]);
      end;

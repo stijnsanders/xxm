@@ -277,12 +277,12 @@ begin
         x:='unknown';
       end;
       SendError('error',[
-        'URL',HTMLEncode(FURL),
+        'ERRORCLASS',e.ClassName,
+        'ERROR',HTMLEncode(e.Message),
         'CLASS',FPageClass,
+        'URL',HTMLEncode(FURL),
         'POSTDATA',x,
         'QUERYSTRING',FQueryString,
-        'ERROR',HTMLEncode(e.Message),
-        'ERRORCLASS',e.ClassName,
         'VERSION',ContextString(csVersion)
       ]);
      end;
