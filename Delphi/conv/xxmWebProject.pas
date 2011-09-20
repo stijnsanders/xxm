@@ -518,7 +518,7 @@ begin
               CopyFileA(PAnsiChar(FProtoPath+s),PAnsiChar(fn1),false);
              end;
            end;
-        until not(FindNextFile(fh,fd));
+        until not(FindNextFileA(fh,fd));
         Windows.FindClose(fh);
        end;
 
@@ -538,7 +538,7 @@ begin
               CopyFileA(PAnsiChar(FProtoPathDef+s),PAnsiChar(fn1),false);
              end;
            end;
-        until not(FindNextFile(fh,fd));
+        until not(FindNextFileA(fh,fd));
         Windows.FindClose(fh);
        end;
 
@@ -666,7 +666,7 @@ var
   end;
   function DoCommand(cmd,fld:AnsiString):boolean;
   begin
-    if not(CreateProcessA(nil,PAnsiChar(
+    if not(CreateProcessA(nil,PAnsiChar(AnsiString(
       StringReplace(
       StringReplace(
       StringReplace(
@@ -677,7 +677,7 @@ var
           '[[ProjectPath]]',FRootFolder,[rfReplaceAll]),
           '[[HandlerPath]]',FHandlerPath,[rfReplaceAll])
           //more?
-      ),
+      )),
       nil,nil,true,NORMAL_PRIORITY_CLASS,nil,PAnsiChar(fld),si,pi)) then
       //RaiseLastOSError;
       raise EXxmWebProjectCompile.Create('Error performing'#13#10'"'+cmd+'":'#13#10+SysErrorMessage(GetLastError));

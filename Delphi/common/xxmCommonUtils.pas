@@ -2,7 +2,7 @@ unit xxmCommonUtils;
 
 interface
 
-function RFC822DateGMT(dd: TDateTime): AnsiString;
+function RFC822DateGMT(dd: TDateTime): string;
 function GetFileModifiedDateTime(FilePath:AnsiString;var FileSize:Int64):TDateTime;
 function GetFileSignature(Path:AnsiString):AnsiString;
 
@@ -10,13 +10,13 @@ implementation
 
 uses Windows, SysUtils;
 
-function RFC822DateGMT(dd: TDateTime): AnsiString;
+function RFC822DateGMT(dd: TDateTime): string;
 const
-  Days:array [1..7] of AnsiString=
+  Days:array [1..7] of string=
     ('Sun','Mon','Tue','Wed','Thu','Fri','Sat');
-  Months:array [1..12] of AnsiString=
+  Months:array [1..12] of string=
     ('Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec');
-//  SignStr:array[boolean] of AnsiString=('-','+');
+//  SignStr:array[boolean] of string=('-','+');
 var
   dg:TDateTime;
   y,m,d,wd,th,tm,ts,tms:Word;

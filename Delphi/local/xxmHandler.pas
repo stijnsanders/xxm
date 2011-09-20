@@ -7,12 +7,25 @@ interface
 //ms-help://MS.MSDNQTR.2003FEB.1033/networking/workshop/networking/pluggable/pluggable.htm
 
 uses
-  Windows, SysUtils, ActiveX, Classes, ComObj, UrlMon,
-  xxm, xxmLoader;
+  Windows, SysUtils, ActiveX, Classes, ComObj, UrlMon, xxm, xxmLoader;
 
 type
-  TXxmLocalHandler=class(TComObject, IInternetProtocol, IWinInetHttpInfo, IInternetProtocolInfo)
-  //TODO: IInternetProtocolInfo
+  //odd, old UrlMon.pas has an errorin ParseUrl?
+  IInternetProtocolInfoX = interface
+    ['{79eac9ec-baf9-11ce-8c82-00aa004ba90b}']
+    function ParseUrl(pwzUrl: LPCWSTR; ParseAction: TParseAction; dwParseFlags: DWORD;
+      pwzResult: LPWSTR; cchResult: DWORD; out pcchResult: DWORD;
+      dwReserved: DWORD): HResult; stdcall;
+    function CombineUrl(pwzBaseUrl, pwzRelativeUrl: LPCWSTR; dwCombineFlags: DWORD;
+      pwzResult: LPWSTR; cchResult: DWORD; out pcchResult: DWORD;
+      dwReserved: DWORD): HResult; stdcall;
+    function CompareUrl(pwzUrl1, pwzUrl2: LPCWSTR; dwCompareFlags: DWORD): HResult; stdcall;
+    function QueryInfo(pwzUrl: LPCWSTR; QueryOption: TQueryOption; dwQueryFlags: DWORD;
+      pBuffer: Pointer; cbBuffer: DWORD; var cbBuf: DWORD; dwReserved: DWORD): HResult; stdcall;
+  end;
+
+
+  TXxmLocalHandler=class(TComObject, IInternetProtocol, IWinInetHttpInfo, IInternetProtocolInfoX)
   private
     FDataPos: Int64;
     FContext: TXxmLocalContext;
@@ -42,7 +55,7 @@ type
       var cbBuf, dwFlags, dwReserved: DWORD): HResult; stdcall;
     { IInternetProtocolInfo }
     function ParseUrl(pwzUrl: LPCWSTR; ParseAction: TParseAction; dwParseFlags: DWORD;
-      pwzResult: LPWSTR; cchResult: DWORD; pcchResult: DWORD;
+      pwzResult: LPWSTR; cchResult: DWORD; out pcchResult: DWORD;
       dwReserved: DWORD): HResult; stdcall;
     function CombineUrl(pwzBaseUrl, pwzRelativeUrl: LPCWSTR; dwCombineFlags: DWORD;
       pwzResult: LPWSTR; cchResult: DWORD; out pcchResult: DWORD;
@@ -50,7 +63,7 @@ type
     function CompareUrl(pwzUrl1, pwzUrl2: LPCWSTR; dwCompareFlags: DWORD): HResult; stdcall;
     function P1QueryInfo(pwzUrl: LPCWSTR; QueryOption: TQueryOption; dwQueryFlags: DWORD;
       pBuffer: Pointer; cbBuffer: DWORD; var cbBuf: DWORD; dwReserved: DWORD): HResult; stdcall;
-    function IInternetProtocolInfo.QueryInfo=P1QueryInfo;
+    function IInternetProtocolInfoX.QueryInfo=P1QueryInfo;
 
   public
     procedure Initialize; override;
@@ -345,9 +358,9 @@ begin
   Result:=INET_E_DEFAULT_ACTION;
 end;
 
-function TXxmLocalHandler.ParseUrl(pwzUrl: LPCWSTR;
-  ParseAction: TParseAction; dwParseFlags: DWORD; pwzResult: LPWSTR;
-  cchResult, pcchResult, dwReserved: DWORD): HResult;
+function TXxmLocalHandler.ParseUrl(pwzUrl: LPCWSTR; ParseAction: TParseAction;
+  dwParseFlags: DWORD; pwzResult: LPWSTR; cchResult: DWORD; out pcchResult: DWORD;
+  dwReserved: DWORD): HResult;
 var
   i,j,l:integer;
   FURL,w:WideString;

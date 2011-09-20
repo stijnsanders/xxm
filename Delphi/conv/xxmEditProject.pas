@@ -405,7 +405,7 @@ begin
                 n.SelectedIndex:=n.ImageIndex;
                end;
              end;
-        until not(FindNextFile(fh,fd));
+        until not(FindNextFileA(fh,fd));
       finally
         Windows.FindClose(fh);
       end;
@@ -616,11 +616,11 @@ begin
       y.appendChild(x);
       y.appendChild(ProjectData.createTextNode(#13#10#9));
       Modified:=true;
-      MessageBoxA(Handle,PChar('Unit "'+s+'" added'),
+      MessageBoxA(Handle,PAnsiChar('Unit "'+s+'" added'),
         'xxm Project',MB_OK or MB_ICONINFORMATION);
      end
     else
-      MessageBoxA(Handle,PChar('Unit "'+s+'" is aready added to the project'),
+      MessageBoxA(Handle,PAnsiChar('Unit "'+s+'" is aready added to the project'),
         'xxm Project',MB_OK or MB_ICONERROR);
    end;
 end;

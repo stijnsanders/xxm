@@ -120,7 +120,7 @@ begin
      
          end;
 
-      until not(FindNextFile(fh,fd)) or AbandonDirectory;
+      until not(FindNextFileA(fh,fd)) or AbandonDirectory;
       Windows.FindClose(fh);
       FirstLevel:=false;
      end;
@@ -160,7 +160,7 @@ var
   i:integer;
 begin
   //assert x<>''
-  c:=UpCase(x[1]);
+  c:=char(UpCase(x[1]));
   //skip anything longer than longest word
   if not(c in ['A'..'B']) or (Length(x)>ResWordMaxLength[c]) then Result:=false else
    begin
