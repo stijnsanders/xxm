@@ -590,8 +590,9 @@ begin
     j:=Length(s);
     i:=1;
     while (i<=l) and (i<=j) and (UpCase(s[i])=UpCase(ProjectFolder[i])) do inc(i);
+    while (i>0) and (s[i]<>PathDelim) do dec(i);
     //assert (i<=l)
-    s:=Copy(s,i,j-i+1);
+    s:=Copy(s,i+1,j-i);
     while i<=l do
      begin
       if ProjectFolder[i]=PathDelim then s:='..'+PathDelim+s;
