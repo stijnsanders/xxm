@@ -50,7 +50,7 @@ type
     procedure SetCookie(Name,Value:WideString; KeepSeconds:cardinal;
       Comment,Domain,Path:WideString; Secure,HttpOnly:boolean); overload; override;
 
-    function GetProjectEntry(ProjectName: WideString):TXxmProjectEntry; override;
+    function GetProjectEntry:TXxmProjectEntry; override;
     procedure AddResponseHeader(Name, Value: WideString); override;
 
     function GetRequestHeaders:IxxmDictionaryEx;
@@ -105,12 +105,12 @@ begin
   FlushFileBuffers(FPipeOut);
   CloseHandle(FPipeIn);
   CloseHandle(FPipeOut);
-  if not(FReqHeaders=nil) then
+  if FReqHeaders<>nil then
    begin
     (FReqHeaders as IUnknown)._Release;
     FReqHeaders:=nil;
    end;
-  if not(FResHeaders=nil) then
+  if FResHeaders<>nil then
    begin
     (FResHeaders as IUnknown)._Release;
     FResHeaders:=nil;
@@ -138,9 +138,9 @@ begin
     while (i<l) do
      begin
       j:=i;
-      while (j<=l) and not(x[j]='=') do inc(j);
+      while (j<=l) and (x[j]<>'=') do inc(j);
       k:=j+1;
-      while (k<=l) and not(x[k]=#0) do inc(k);
+      while (k<=l) and (x[k]<>#0) do inc(k);
       if (j-i>4) and (Copy(x,i,5)='HTTP_') then
        begin
         y:=y+x[i+5]+LowerCase(StringReplace(Copy(x,i+6,j-i-6),'_','-',[rfReplaceAll]))+': '+Copy(x,j+1,k-j-1)+#13#10;
@@ -170,7 +170,7 @@ begin
     x:=GetCGIValue('SERVER_PROTOCOL');//http or https
     i:=1;
     l:=Length(x);
-    while (i<=l) and not(x[i]='/') do inc(i);
+    while (i<=l) and (x[i]<>'/') do inc(i);
     y:=FReqHeaders['Host'];
     if y='' then y:='localhost';//if not port=80 then +':'+?
     FURLPrefix:=LowerCase(Copy(x,1,i-1))+'://'+y;
@@ -232,9 +232,9 @@ begin
     //assert headers read and parsed
     //TODO: HTTP/1.1 100 Continue?
 
-    //if not(Verb='GET') then?
+    //if Verb<>'GET' then?
     x:=GetCGIValue('CONTENT_LENGTH');
-    if not(x='') then FPostData:=TXxmPostDataStream.Create(FPipeIn,StrToInt(x));
+    if x<>'' then FPostData:=TXxmPostDataStream.Create(FPipeIn,StrToInt(x));
 
     BuildPage;
 
@@ -265,8 +265,7 @@ begin
   end;
 end;
 
-function TXxmHostedContext.GetProjectEntry(
-  ProjectName: WideString): TXxmProjectEntry;
+function TXxmHostedContext.GetProjectEntry: TXxmProjectEntry;
 begin
   Result:=XxmProjectCache.GetProject(FProjectName);
 end;
@@ -340,11 +339,11 @@ begin
   FResHeaders['Cache-Control']:='no-cache="set-cookie"';
   x:=Name+'="'+Value+'"';
   //'; Version=1';
-  if not(Comment='') then
+  if Comment<>'' then
     x:=x+'; Comment="'+Comment+'"';
-  if not(Domain='') then
+  if Domain<>'' then
     x:=x+'; Domain="'+Domain+'"';
-  if not(Path='') then
+  if Path<>'' then
     x:=x+'; Path="'+Path+'"';
   x:=x+'; Max-Age='+IntToStr(KeepSeconds)+
     '; Expires="'+RFC822DateGMT(Now+KeepSeconds/86400)+'"';
@@ -375,15 +374,22 @@ end;
 procedure TXxmHostedContext.Redirect(RedirectURL: WideString;
   Relative: boolean);
 var
-  s:AnsiString;
+  NewURL,RedirBody:WideString;
 begin
   inherited;
-  SetStatus(301,'Moved Permamently');//does CheckHeaderNotSent;
-  s:=RedirectURL;
-  if Relative and not(RedirectURL='') and (RedirectURL[1]='/') then s:=FRedirectPrefix+s;
-  FResHeaders['Location']:=s;
-  SendHTML('<a href="'+HTMLEncode(s)+'">'+HTMLEncode(s)+'</a>');
-  raise EXxmPageRedirected.Create(s);
+  SetStatus(301,'Moved Permanently');//does CheckHeaderNotSent;
+  //TODO: move this to execute's except?
+  NewURL:=RedirectURL;
+  if Relative and (NewURL<>'') and (NewURL[1]='/') then NewURL:=FRedirectPrefix+NewURL;
+  RedirBody:='<a href="'+HTMLEncode(NewURL)+'">'+HTMLEncode(NewURL)+'</a>'#13#10;
+  FResHeaders['Location']:=NewURL;
+  case FAutoEncoding of
+    aeUtf8:FResHeaders['Content-Length']:=IntToStr(Length(UTF8Encode(RedirBody))+3);
+    aeUtf16:FResHeaders['Content-Length']:=IntToStr(Length(RedirBody)*2+2);
+    aeIso8859:FResHeaders['Content-Length']:=IntToStr(Length(AnsiString(RedirBody)));
+  end;
+  SendRaw(RedirBody);
+  raise EXxmPageRedirected.Create(RedirectURL);
 end;
 
 procedure TXxmHostedContext.SendRaw(Data:WideString);
@@ -395,7 +401,7 @@ var
   l:cardinal;
 begin
   //TODO: catch WriteFile returned values!
-  if not(Data='') then
+  if Data<>'' then
    begin
     if CheckSendStart then
       case FAutoEncoding of
@@ -467,7 +473,7 @@ end;
 
 function TXxmHostedContext.GetRequestHeaders: IxxmDictionaryEx;
 begin
-  //assert not(FReqHeaders=nil) since parsed at start of Execute
+  //assert FReqHeaders<>nil since parsed at start of Execute
   Result:=FReqHeaders;
 end;
 
@@ -481,7 +487,7 @@ var
   i:integer;
 begin
   i:=0;
-  while (i<FCGIValuesCount) and not(Name=FCGIValues[i].Name) do inc(i); //TODO: case-insensitive?
+  while (i<FCGIValuesCount) and (Name<>FCGIValues[i].Name) do inc(i); //TODO: case-insensitive?
   if i=FCGIValuesCount then Result:='' else Result:=FCGIValues[i].Value;
 end;
 
@@ -518,7 +524,7 @@ begin
   if l>FInputRead then
    begin
     dec(l,FInputRead);
-    if not(l=0) then
+    if l<>0 then
      begin
       p:=Memory;
       inc(cardinal(p),FInputRead);

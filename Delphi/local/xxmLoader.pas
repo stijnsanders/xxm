@@ -39,7 +39,7 @@ type
     procedure SetCookie(Name,Value:WideString; KeepSeconds:cardinal;
       Comment,Domain,Path:WideString; Secure,HttpOnly:boolean); overload; override;
     function GetRequestParam(Name: AnsiString):AnsiString;
-    function GetProjectEntry(ProjectName: WideString):TXxmProjectEntry; override;
+    function GetProjectEntry:TXxmProjectEntry; override;
     function GetProjectPage(FragmentName: WideString):IXxmFragment; override;
     function GetRequestHeaders:IxxmDictionaryEx;
     function GetResponseHeaders:IxxmDictionaryEx;
@@ -136,7 +136,7 @@ begin
   inherited;
 end;
 
-function TXxmLocalContext.GetProjectEntry(ProjectName: WideString): TXxmProjectEntry;
+function TXxmLocalContext.GetProjectEntry: TXxmProjectEntry;
 begin
   OleCheck(ProtSink.ReportProgress(BINDSTATUS_CONNECTING, PWideChar(FProjectName)));
   if XxmProjectCache=nil then XxmProjectCache:=TXxmProjectCache.Create;
@@ -258,7 +258,7 @@ begin
     on EXxmPageRedirected do
      begin
       ForceStatus(301,'Moved Permanently');
-      //SendHTML('Redirected to <a href=""></a>')?
+      //SendRaw('Redirected to <a href=""></a>')?
      end;
 
     on EXxmAutoBuildFailed do

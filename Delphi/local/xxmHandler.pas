@@ -405,7 +405,7 @@ begin
     if cchResult<cardinal(Length(w)+1) then Result:=S_FALSE else
      begin
       Move(PWideChar(w)^,pwzResult^,Length(w)*2+2);
-      PDWORD(pcchResult)^:=Length(w)+1;
+      pcchResult:=Length(w)+1;
       Result:=S_OK;
      end;
 end;

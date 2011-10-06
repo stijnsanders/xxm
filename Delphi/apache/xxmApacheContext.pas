@@ -28,7 +28,7 @@ type
     //procedure SetCookie2();
     procedure SendHeader; override;
     procedure SendRaw(Data: WideString); override;
-    function GetProjectEntry(ProjectName: WideString):TXxmProjectEntry; override;
+    function GetProjectEntry:TXxmProjectEntry; override;
     procedure AddResponseHeader(Name: WideString; Value: WideString); override;
     procedure SetStatus(Code:integer;Text:WideString); override;
     //IxxmHttpHeaders
@@ -91,12 +91,13 @@ begin
       FProjectName:=Copy(x,2,i-2);
       if FProjectName='' then
        begin
-        if (i<=l) and not(x[i]='/') then x:='/'+x;
+        if (i<=l) and (x[i]<>'/') then x:='/'+x;
         Redirect('/'+XxmProjectCache.DefaultProject+x,true);
        end;
       FPageClass:='['+FProjectName+']';
       if (i>l) and (l>1) then Redirect(x+'/',true) else
         if (x[i]='/') then inc(i);
+      FRedirectPrefix:=FRedirectPrefix+'/'+FProjectName;
      end
     else
      begin
@@ -106,7 +107,7 @@ begin
     FFragmentName:=Copy(x,i,l-i+1);
 
     x:=apr_table_get(rq.headers_in,'Content-Length');
-    if not(x='') then FPostData:=TxxmApacheClientStream.Create(rq);
+    if x<>'' then FPostData:=TxxmApacheClientStream.Create(rq);
 
     BuildPage;
 
@@ -138,8 +139,7 @@ begin
   end;
 end;
 
-function TxxmApacheContext.GetProjectEntry(
-  ProjectName: WideString): TXxmProjectEntry;
+function TxxmApacheContext.GetProjectEntry: TXxmProjectEntry;
 begin
   Result:=XxmProjectCache.GetProject(FProjectName);
 end;
@@ -213,11 +213,11 @@ begin
   AddResponseHeader('Cache-Control','no-cache="set-cookie"');
   x:=Name+'="'+Value+'"';
   //'; Version=1';
-  if not(Comment='') then
+  if Comment<>'' then
     x:=x+'; Comment="'+Comment+'"';
-  if not(Domain='') then
+  if Domain<>'' then
     x:=x+'; Domain="'+Domain+'"';
-  if not(Path='') then
+  if Path<>'' then
     x:=x+'; Path="'+Path+'"';
   x:=x+'; Max-Age='+IntToStr(KeepSeconds)+
     '; Expires="'+RFC822DateGMT(Now+KeepSeconds/86400)+'"';
@@ -259,13 +259,16 @@ end;
 
 procedure TxxmApacheContext.Redirect(RedirectURL: WideString;
   Relative: boolean);
+var
+  NewURL:WideString;
 begin
   //HeaderOK;//see SetStatus
   SetStatus(301,'Moved Permanently');
-  //TODO: relative
-  AddResponseHeader('Location',RedirectURL);
+  NewURL:=RedirectURL;
+  if Relative and (NewURL<>'') and (NewURL[1]='/') then NewURL:=FRedirectPrefix+NewURL;
+  AddResponseHeader('Location',NewURL);
   //TODO: move this to execute's except?
-  SendHTML('<a href="'+HTMLEncode(RedirectURL)+'">'+HTMLEncode(RedirectURL)+'</a>');
+  SendRaw('<a href="'+HTMLEncode(NewURL)+'">'+HTMLEncode(NewURL)+'</a>'#13#10);
   raise EXxmPageRedirected.Create(RedirectURL);
 end;
 
@@ -277,38 +280,38 @@ var
   s:AnsiString;
   l:integer;
 begin
-  if not(Data='') then
+  if Data<>'' then
    begin
     if CheckSendStart then
       case FAutoEncoding of
         aeUtf8:
          begin
           s:=Utf8ByteOrderMark;
-          if not(ap_rwrite(s[1],3,rq)=3) then raise EXxmRWriteFailed.Create(SXxmRWriteFailed);
+          if ap_rwrite(s[1],3,rq)<>3 then raise EXxmRWriteFailed.Create(SXxmRWriteFailed);
          end;
         aeUtf16:
          begin
           s:=Utf16ByteOrderMark;
-          if not(ap_rwrite(s[1],2,rq)=2) then raise EXxmRWriteFailed.Create(SXxmRWriteFailed);
+          if ap_rwrite(s[1],2,rq)<>2 then raise EXxmRWriteFailed.Create(SXxmRWriteFailed);
          end;
       end;
     case FAutoEncoding of
       aeUtf16:
        begin
         l:=Length(Data)*2;
-        if not(ap_rwrite(Data[1],l,rq)=l) then raise EXxmRWriteFailed.Create(SXxmRWriteFailed);
+        if ap_rwrite(Data[1],l,rq)<>l then raise EXxmRWriteFailed.Create(SXxmRWriteFailed);
        end;
       aeUtf8:
        begin
         s:=UTF8Encode(Data);
         l:=Length(s);
-        if not(ap_rwrite(s[1],l,rq)=l) then raise EXxmRWriteFailed.Create(SXxmRWriteFailed);
+        if ap_rwrite(s[1],l,rq)<>l then raise EXxmRWriteFailed.Create(SXxmRWriteFailed);
        end;
       else
        begin
         s:=Data;
         l:=Length(s);
-        if not(ap_rwrite(s[1],l,rq)=l) then raise EXxmRWriteFailed.Create(SXxmRWriteFailed);
+        if ap_rwrite(s[1],l,rq)<>l then raise EXxmRWriteFailed.Create(SXxmRWriteFailed);
        end;
     end;
     ap_rflush(rq);//? only every x bytes?
@@ -336,7 +339,7 @@ begin
     OleCheck(s.Read(@d[0],dSize,@l));
     if l<>0 then
      begin
-      if not(ap_rwrite(d[0],l,rq)=l) then
+      if ap_rwrite(d[0],l,rq)<>l then
         raise EXxmRWriteFailed.Create(SXxmRWriteFailed);
       ap_rflush(rq);//?
      end;

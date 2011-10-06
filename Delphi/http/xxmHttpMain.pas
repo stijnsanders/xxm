@@ -20,7 +20,7 @@ type
     FReqHeaders:TRequestHeaders;
     FResHeaders:TResponseHeaders;
     FConnected:boolean;
-    FHTTPVersion,FVerb,FURI,FSessionID:AnsiString;
+    FHTTPVersion,FVerb,FURI,FRedirectPrefix,FSessionID:AnsiString;
     FCookieParsed: boolean;
     FCookie: AnsiString;
     FCookieIdx: TParamIndexes;
@@ -41,7 +41,7 @@ type
     procedure SetCookie(Name,Value:WideString; KeepSeconds:cardinal;
       Comment,Domain,Path:WideString; Secure,HttpOnly:boolean); overload; override;
 
-    function GetProjectEntry(ProjectName: WideString):TXxmProjectEntry; override;
+    function GetProjectEntry:TXxmProjectEntry; override;
     procedure SendHeader; override;
     procedure AddResponseHeader(Name, Value: WideString); override;
 
@@ -130,6 +130,8 @@ begin
     Server.LocalPort:=IntToStr(Port);
     //TODO: listen on multiple ports
     Server.Open;
+    if not Server.Listening then
+      raise Exception.Create('Failed to listen on port '+Server.LocalPort);
 
     repeat
       if GetMessage(Msg,0,0,0) then
@@ -191,6 +193,7 @@ begin
   FQueryStringIndex:=1;
   FSessionID:='';//see GetSessionID
   FURI:='';//see Execute
+  FRedirectPrefix:='';
 end;
 
 procedure TXxmHttpContext.EndRequest;
@@ -282,6 +285,7 @@ begin
         FPageClass:='['+FProjectName+']';
         if (i>l) and (l>1) then Redirect(FURI+'/',true) else
           if (FURI[i]='/') then inc(i);
+        FRedirectPrefix:='/'+FProjectName;
        end
       else
        begin
@@ -364,7 +368,7 @@ begin
   PostProcessRequest;
 end;
 
-function TXxmHttpContext.GetProjectEntry(ProjectName: WideString):TXxmProjectEntry;
+function TXxmHttpContext.GetProjectEntry:TXxmProjectEntry;
 begin
   Result:=XxmProjectCache.GetProject(FProjectName);
 end;
@@ -478,13 +482,22 @@ end;
 
 procedure TXxmHttpContext.Redirect(RedirectURL: WideString;
   Relative: boolean);
+var
+  NewURL,RedirBody:WideString;
 begin
   inherited;
   SetStatus(301,'Moved Permanently');
-  //TODO: relative
-  FResHeaders['Location']:=RedirectURL;
   //TODO: move this to execute's except?
-  SendHTML('<a href="'+HTMLEncode(RedirectURL)+'">'+HTMLEncode(RedirectURL)+'</a>');
+  NewURL:=RedirectURL;
+  if Relative and (NewURL<>'') and (NewURL[1]='/') then NewURL:=FRedirectPrefix+NewURL;
+  RedirBody:='<a href="'+HTMLEncode(NewURL)+'">'+HTMLEncode(NewURL)+'</a>'#13#10;
+  FResHeaders['Location']:=NewURL;
+  case FAutoEncoding of
+    aeUtf8:FResHeaders['Content-Length']:=IntToStr(Length(UTF8Encode(RedirBody))+3);
+    aeUtf16:FResHeaders['Content-Length']:=IntToStr(Length(RedirBody)*2+2);
+    aeIso8859:FResHeaders['Content-Length']:=IntToStr(Length(AnsiString(RedirBody)));
+  end;
+  SendRaw(RedirBody);
   raise EXxmPageRedirected.Create(RedirectURL);
 end;
 

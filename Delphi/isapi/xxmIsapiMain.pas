@@ -35,7 +35,7 @@ type
     procedure SetCookie(Name,Value:WideString; KeepSeconds:cardinal;
       Comment,Domain,Path:WideString; Secure,HttpOnly:boolean); overload; override;
 
-    function GetProjectEntry(ProjectName: WideString):TXxmProjectEntry; override;
+    function GetProjectEntry:TXxmProjectEntry; override;
     function GetProjectPage(FragmentName: WideString):IXxmFragment; override;
     procedure SendHeader; override;
     procedure SetStatus(Code: Integer; Text: WideString); override;
@@ -307,7 +307,7 @@ begin
   ServerFunction(HSE_REQ_DONE_WITH_SESSION,nil,nil,nil);
 end;
 
-function TXxmIsapiContext.GetProjectEntry(ProjectName: WideString):TXxmProjectEntry;
+function TXxmIsapiContext.GetProjectEntry:TXxmProjectEntry;
 begin
   Result:=XxmProjectCache.GetProject(FProjectName);
 end;

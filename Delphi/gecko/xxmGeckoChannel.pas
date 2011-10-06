@@ -171,7 +171,7 @@ type
       Comment,Domain,Path:WideString; Secure,HttpOnly:boolean); overload; override;
 
     //other TXxmGeneralContext abstract methods
-    function GetProjectEntry(ProjectName: WideString):TXxmProjectEntry; override;
+    function GetProjectEntry:TXxmProjectEntry; override;
     procedure SendHeader; override;
     procedure AddResponseHeader(Name, Value: WideString); override;
 
@@ -410,7 +410,7 @@ begin
     on EXxmPageRedirected do
      begin
       ForceStatus(301,'Moved Permanently');
-      //SendHTML('Redirected to <a href=""></a>')?
+      //SendRaw('Redirected to <a href=""></a>')?
      end;
 
     on EXxmAutoBuildFailed do
@@ -454,10 +454,10 @@ begin
   FComplete:=true;
 end;
 
-function TxxmChannel.GetProjectEntry(ProjectName: WideString):TXxmProjectEntry;
+function TxxmChannel.GetProjectEntry:TXxmProjectEntry;
 begin
   if XxmProjectCache=nil then XxmProjectCache:=TXxmProjectCache.Create;
-  Result:=XxmProjectCache.GetProject(ProjectName);
+  Result:=XxmProjectCache.GetProject(FProjectName);
 end;
 
 procedure TxxmChannel.GetName(aName: nsAUTF8String);

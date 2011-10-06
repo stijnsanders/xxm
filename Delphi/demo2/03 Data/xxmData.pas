@@ -153,7 +153,7 @@ begin
   for i:=0 to Length(Values)-1 do
    begin
     vt:=VarType(Values[i]);
-    if (vt=varString) or (vt=varOleStr) then
+    if (vt=varNull) or (vt=varString) or (vt=varOleStr) then
       cmd.Parameters.Append(cmd.CreateParameter('',adVariant,adParamInput,0,Values[i]))
     else
       cmd.Parameters.Append(cmd.CreateParameter('',vt,adParamInput,0,Values[i]));

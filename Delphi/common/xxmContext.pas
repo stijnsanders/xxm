@@ -67,7 +67,7 @@ type
     procedure AddParameter(Param: IUnknown);//IxxmParameter
 
     {  }
-    function GetProjectEntry(ProjectName: WideString):TXxmProjectEntry; virtual; abstract;
+    function GetProjectEntry:TXxmProjectEntry; virtual; abstract;
     procedure SendHeader; virtual; abstract;
     procedure AddResponseHeader(Name, Value: WideString); virtual; abstract;
 
@@ -191,7 +191,7 @@ var
   fs:Int64;
   d:TDateTime;
 begin
-  FProjectEntry:=GetProjectEntry(FProjectName);
+  FProjectEntry:=GetProjectEntry;//(FProjectName);
   if @XxmAutoBuildHandler<>nil then
     if not(XxmAutoBuildHandler(FProjectEntry,Self,FProjectName)) then
      begin
@@ -331,7 +331,7 @@ begin
       FAutoEncoding:=aeContentDefined;//?
      end;
    end;
-  SendHTML(s);
+  SendRaw(s);
 end;
 
 function TXxmGeneralContext.GetContentType: WideString;
