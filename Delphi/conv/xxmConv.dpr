@@ -28,11 +28,18 @@ begin
   protodir:='';
   srcdir:='';
 
-  if ParamCount=0 then
+  if (ParamCount=0) or ((ParamCount=1) and (ParamStr(1)='/?')) then
    begin
-    Writeln('Usage: xxmConv <file or dir>');
-    Writeln('Usage: xxmConv /install');
-    Writeln('  registers a compile option on xxmp file type');
+    Writeln('Usage: ');
+    Writeln('  xxmConv [/wait] [/rebuild] [/nocompile] [/proto <proto dir>] <file or dir>...');
+    Writeln('    parses and compiles one or more xxm projects');
+    Writeln('    /wait       end with "Press enter to continue" message');
+    Writeln('    /rebuild    force processing of all files');
+    Writeln('    /nocompile  process files only, don''t compile');
+    Writeln('    /proto      use an alternative unit templates folder');
+    Writeln('    /src        use an alternative source output folder');
+    Writeln('  xxmConv /install');
+    Writeln('    registers a context-menu compile option on xxmp file type');
    end;
 
   i:=1;

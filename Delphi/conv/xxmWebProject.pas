@@ -306,34 +306,42 @@ begin
           Modified:=true;
           BuildOutput(':'+FProjectName+':'+fn+':'+uname+':'+cid+#13#10);
 
-          //TODO: alternate proto? either XML tag or default file.
-          s:=FRootFolder+fn+XxmProtoExtension;
-          if not(FileExists(s)) then s:=FProtoPath+uext+DelphiExtension;
-          if not(FileExists(s)) then s:=FProtoPathDef+uext+DelphiExtension;
-          p.Parse(ReadString(s));
-          q.Parse(ReadString(FRootFolder+fn));
-          m.Clear;
-          repeat
-            m.MapLine(p.NextEOLs,0);
-            case p.GetNext of
-              ptProjectName:p.Output(FProjectName);
-              ptProtoFile:p.Output(FProtoPath+uext+DelphiExtension);
-              ptFragmentID:p.Output(cid);
-              ptFragmentUnit:p.Output(uname);
-              ptFragmentAddress:p.Output(fnu);
-              ptUsesClause:p.Output(CheckTrailingComma(q.AllSections(psUses,m)));
-              ptFragmentDefinitions:p.Output(q.AllSections(psDefinitions,m));
-              ptFragmentHeader:p.Output(q.AllSections(psHeader,m));
-              ptFragmentBody:p.Output(q.BuildBody(m));
-              ptFragmentFooter:p.Output(q.AllSections(psFooter,m));
-              //else raise?
-            end;
-          until p.Done;
-          //m.MapLine(0,q.TotalLines);//map EOF?
-          ForceDirectories(FSrcFolder+upath);
-          p.Save(FSrcFolder+upath+uname+DelphiExtension);
-          m.Save(FSrcFolder+upath+uname+LinesMapExtension);
-          Result:=true;
+          try
+            //TODO: alternate proto? either XML tag or default file.
+            s:=FRootFolder+fn+XxmProtoExtension;
+            if not(FileExists(s)) then s:=FProtoPath+uext+DelphiExtension;
+            if not(FileExists(s)) then s:=FProtoPathDef+uext+DelphiExtension;
+            p.Parse(ReadString(s));
+            q.Parse(ReadString(FRootFolder+fn));
+            m.Clear;
+            repeat
+              m.MapLine(p.NextEOLs,0);
+              case p.GetNext of
+                ptProjectName:p.Output(FProjectName);
+                ptProtoFile:p.Output(FProtoPath+uext+DelphiExtension);
+                ptFragmentID:p.Output(cid);
+                ptFragmentUnit:p.Output(uname);
+                ptFragmentAddress:p.Output(fnu);
+                ptUsesClause:p.Output(CheckTrailingComma(q.AllSections(psUses,m)));
+                ptFragmentDefinitions:p.Output(q.AllSections(psDefinitions,m));
+                ptFragmentHeader:p.Output(q.AllSections(psHeader,m));
+                ptFragmentBody:p.Output(q.BuildBody(m));
+                ptFragmentFooter:p.Output(q.AllSections(psFooter,m));
+                //else raise?
+              end;
+            until p.Done;
+            //m.MapLine(0,q.TotalLines);//map EOF?
+            ForceDirectories(FSrcFolder+upath);
+            p.Save(FSrcFolder+upath+uname+DelphiExtension);
+            m.Save(FSrcFolder+upath+uname+LinesMapExtension);
+            Result:=true;
+          except
+            on e:Exception do
+             begin
+              e.Message:=fn+':'+uname+':'+cid+#13#10+e.Message;
+              raise;
+             end;
+          end;
          end;
        end;
 
