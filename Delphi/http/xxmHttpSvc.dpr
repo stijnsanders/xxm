@@ -21,6 +21,6 @@ uses
 
 begin
   Application.Initialize;
-  Application.CreateForm(TTxxmService, TxxmService);
+  Application.CreateForm(TxxmService, xxmService);
   Application.Run;
 end.

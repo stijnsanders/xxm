@@ -104,6 +104,7 @@ IIS configuration allows to route files of a certain file-extension to an ISAPI 
 </pre>
 <p>A project entry may have an <code>Alias</code> attribute to have a project name map to the same library as another project:</p>
 <pre>  &lt;Project Name=&quot;otherdemo&quot; Alias=&quot;demo&quot;&gt;&lt;/Project&gt;</pre>
+<p>To disable creating a copy of the <code>.xxl</code> file to load, add attribute <code>LoadCopy="0"</code> to the project entry.</p>
 <p>If you want to host only one single xxm project, add a <code>SingleProject</code> attribute to the ProjectRegistry document element, to refer to a project definition.</p>
 
 <p class="title"><a name="apache"></a>xxmApache (mod_xxm, Apache 2.2 module)</p>
@@ -143,6 +144,7 @@ SetHandler xxm-handler
 </pre>
 <p>A project entry may have an <code>Alias</code> attribute to have a project name map to the same library as another project:</p>
 <pre>  &lt;Project Name=&quot;otherdemo&quot; Alias=&quot;demo&quot;&gt;&lt;/Project&gt;</pre>
+<p>To disable creating a copy of the <code>.xxl</code> file to load, add attribute <code>LoadCopy="0"</code> to the project entry.</p>
 <p>If you want to host only one single xxm project, add a <code>SingleProject</code> attribute to the ProjectRegistry document element, to refer to a project definition.</p>
 
 <p><b>follow these instructions to install <code>xxmCGI.exe</code>:</b></p>
@@ -194,6 +196,8 @@ SetHandler xxm-handler
 <dl>
 <dt>Port=<i>&lt;TcpPort&gt;</i></dt>
 <dd>set the TCP port to listen on for requests (default 80)</dd>
+<dt>LoadCopy=0</dt>
+<dd>disable creating a copy of the <code>.xxl</code> module for loading. (default enabled, use when debugging an xxm project with xxmHttp.exe as host application)</dd>
 </dl>
 <p>xxmHttp resolves projects by name using the projects definition file <code>xxm.xml</code>, in the same directory as the xxmHttp executable. An example <code>xxm.xml</code> with a single project definition may look like this:<br />
 </p><pre>&lt;ProjectRegistry&gt;
@@ -203,7 +207,10 @@ SetHandler xxm-handler
 &lt;/ProjectRegistry&gt;
 </pre>
 <p>A project entry may have an <code>Alias</code> attribute to have a project name map to the same library as another project.</p>
+<pre>  &lt;Project Name=&quot;otherdemo&quot; Alias=&quot;demo&quot;&gt;&lt;/Project&gt;</pre>
+<p>To disable creating a copy of the <code>.xxl</code> file to load, add attribute <code>LoadCopy="0"</code> to the project entry.</p>
 <p>If you want to host only one single xxm project, add a <code>SingleProject</code> attribute to the ProjectRegistry document element, to refer to a project definition.</p>
+
 <p class="title"><a name="project"></a>xxmProject</p>
 <p>xxmProject provides a basic interface to create a new project, or edit an existing project.</p>
 <p class="title"><a name="conv"></a>xxmConv</p>

@@ -4,7 +4,7 @@ program xxmHttpSvcAU;
 
 uses
   SvcMgr,
-  xxmHttpSvcMain in 'xxmHttpSvcMain.pas' {TxxmService: TService},
+  xxmHttpSvcMain in 'xxmHttpSvcMain.pas' {xxmService: TService},
   xxmHttpMain in 'xxmHttpMain.pas',
   xxm in '..\bin\public\xxm.pas',
   xxmParams in '..\common\xxmParams.pas',
@@ -23,6 +23,6 @@ uses
 begin
   XxmAutoBuildHandler:=AutoUpdate;
   Application.Initialize;
-  Application.CreateForm(TTxxmService, TxxmService);
+  Application.CreateForm(TxxmService, xxmService);
   Application.Run;
 end.

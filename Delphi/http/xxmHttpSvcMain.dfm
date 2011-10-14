@@ -1,4 +1,4 @@
-object TxxmService: TTxxmService
+object xxmService: TxxmService
   OldCreateOrder = False
   AllowPause = False
   DisplayName = 'xxm'

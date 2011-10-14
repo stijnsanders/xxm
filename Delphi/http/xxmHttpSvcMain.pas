@@ -7,7 +7,7 @@ uses
     xxmHttpMain;
 
 type
-  TTxxmService = class(TService)
+  TxxmService = class(TService)
     procedure ServiceStart(Sender: TService; var Started: Boolean);
     procedure ServiceStop(Sender: TService; var Stopped: Boolean);
   private
@@ -17,39 +17,47 @@ type
   end;
 
 var
-  TxxmService: TTxxmService;
+  xxmService: TxxmService;
 
 implementation
 
-uses Registry;
+uses Registry, xxmHttpPReg;
 
 {$R *.dfm}
 
 procedure ServiceController(CtrlCode: DWord); stdcall;
 begin
-  TxxmService.Controller(CtrlCode);
+  xxmService.Controller(CtrlCode);
 end;
 
-function TTxxmService.GetServiceController: TServiceController;
+function TxxmService.GetServiceController: TServiceController;
 begin
   Result := ServiceController;
 end;
 
-procedure TTxxmService.ServiceStart(Sender: TService;
+procedure TxxmService.ServiceStart(Sender: TService;
   var Started: Boolean);
 var
   p:integer;
   r:TRegistry;
+  s:string;
+const
+  ParameterKey:array[TXxmHttpRunParameters] of string=(
+    'Port',
+    'LoadCôpy',
+    //add new here
+    '');
 begin
-  p:=80;//default;
+  p:=80;//default
+  GlobalAllowLoadCopy:=true;//default
   r:=TRegistry.Create;
   try
     r.RootKey:=HKEY_LOCAL_MACHINE;
     r.OpenKey('\Software\xxm\service',true);
-    if r.ValueExists('Port') then
-      p:=r.ReadInteger('Port')
-    else
-      r.WriteInteger('Port',p);
+    s:=ParameterKey[rpPort];
+    if r.ValueExists(s) then p:=r.ReadInteger(s) else r.WriteInteger(s,p);
+    s:=ParameterKey[rpLoadCopy];
+    if r.ValueExists(s) then GlobalAllowLoadCopy:=r.ReadBool(s) else r.WriteBool(s,GlobalAllowLoadCopy);
   finally
     r.Free;
   end;
@@ -58,7 +66,7 @@ begin
   FServer.Open;
 end;
 
-procedure TTxxmService.ServiceStop(Sender: TService; var Stopped: Boolean);
+procedure TxxmService.ServiceStop(Sender: TService; var Stopped: Boolean);
 begin
   FServer.Free;
 end;

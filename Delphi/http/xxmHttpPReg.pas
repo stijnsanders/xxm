@@ -45,6 +45,7 @@ type
 
 var
   XxmProjectCache:TXxmProjectCache;
+  GlobalAllowLoadCopy:boolean;
 
 implementation
 
@@ -220,7 +221,7 @@ begin
       Result:=TXxmProjectCacheEntry.Create(
         Name,
         y.text,
-        VarToStr((x as IXMLDOMElement).getAttribute('LoadCopy'))<>'0');//='1');
+        GlobalAllowLoadCopy and (VarToStr((x as IXMLDOMElement).getAttribute('LoadCopy'))<>'0'));//='1'));
 
       Result.FSignature:=VarToStr((x as IXMLDOMElement).getAttribute('Signature'));
 
@@ -266,6 +267,7 @@ begin
 end;
 
 initialization
+  GlobalAllowLoadCopy:=true;//default
   //XxmProjectCache:=TXxmProjectCache.Create;//moved to project source
 finalization
   XxmProjectCache.Free;

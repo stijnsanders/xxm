@@ -74,6 +74,12 @@ type
   EXxmUnknownPostDataTymed=class(Exception);
   EXxmPageRedirected=class(Exception);
 
+  TXxmHttpRunParameters=(
+    rpPort,
+    rpLoadCopy,
+    //add new here
+    rp_Unknown);
+
 procedure XxmRunServer;
 
 implementation
@@ -89,13 +95,10 @@ const
   PostDataThreshold=$100000;
 
 procedure XxmRunServer;
-type
-  TParameters=(cpPort,
-  //add new here
-  cp_Unknown);
 const
-  ParameterKey:array[TParameters] of AnsiString=(
+  ParameterKey:array[TXxmHttpRunParameters] of AnsiString=(
     'port',
+    'loadcopy',
     //add new here (lowercase)
     '');
   WM_QUIT = $0012;//from Messages
@@ -104,7 +107,7 @@ var
   i,j,Port:integer;
   s,t:AnsiString;
   Msg:TMsg;
-  par:TParameters;
+  par:TXxmHttpRunParameters;
 begin
   Port:=80;//default
 
@@ -114,12 +117,15 @@ begin
     j:=1;
     while (j<=Length(s)) and (s[j]<>'=') do inc(j);
     t:=LowerCase(Copy(s,1,j-1));
-    par:=TParameters(0);
-    while (par<>cp_Unknown) and (t<>ParameterKey[par]) do inc(par);
+    par:=TXxmHttpRunParameters(0);
+    while (par<>rp_Unknown) and (t<>ParameterKey[par]) do inc(par);
     case par of
-      cpPort:Port:=StrToInt(Copy(s,j+1,Length(s)-j));
+      rpPort:
+        Port:=StrToInt(Copy(s,j+1,Length(s)-j));
+      rpLoadCopy:
+        GlobalAllowLoadCopy:=Copy(s,j+1,Length(s)-j)<>'0';
       //add new here
-      cp_Unknown: raise Exception.Create('Unknown setting: '+t);
+      rp_Unknown: raise Exception.Create('Unknown setting: '+t);
     end;
    end;
 
@@ -628,7 +634,7 @@ begin
   if FURL='' then
    begin
     FURL:='localhost';//TODO: from binding? setting;
-    if FSocket.LocalPort<>'80' then
+    if (FSocket.LocalPort<>'') and (FSocket.LocalPort<>'80') then
       FURL:=FURL+':'+FSocket.LocalPort;
    end;
   FURL:='http://'+FURL+FURI;//TODO: 'https' if SSL?
