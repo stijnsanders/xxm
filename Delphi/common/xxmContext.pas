@@ -265,6 +265,13 @@ begin
       FBuilding:=FPage;
       FPage.Build(Self,nil,[],[]);//any parameters?
 
+      //any content?
+      if not FHeaderSent then
+       begin
+        SetStatus(204,'No Content');//?
+        SendHeader;
+       end;
+
     finally
       FBuilding:=nil;
       //let project decide to free or not
@@ -445,9 +452,9 @@ var
 begin
   inherited;
   //TODO: auto mimetype by extension?
-  b:=not(FHeaderSent);
+  b:=FHeaderSent;
   SendStream(TStreamAdapter.Create(TFileStream.Create(FilePath,fmOpenRead or fmShareDenyNone),soOwned));//does CheckSendStart
-  if b then FSingleFileSent:=FilePath;
+  if b then FSingleFileSent:='' else FSingleFileSent:=FilePath;
 end;
 
 procedure TXxmGeneralContext.Send(Value: integer);
