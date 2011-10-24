@@ -95,8 +95,8 @@ type
   end;
 
   nsIThreadManager = interface(nsISupports)
-  ['{487c10bf-0a22-4148-89fa-790d819dd559}']
-    function newThread(creationFlag: PRUint32): nsIThread; safecall;
+  ['{2bbbc38c-cf96-4099-ba6b-f6a44d8b014c}']
+    function newThread(creationFlag: PRUint32; stackSize: PRUint32 = 0): nsIThread; safecall;
     function getThreadFromPRThread(prthread: Pointer): nsIThread; safecall;
     function getMainThread: nsIThread; safecall;
     property mainThread: nsIThread read getMainThread;

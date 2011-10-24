@@ -375,7 +375,7 @@ begin
   for i:=0 to SectionsCount-1 do
     if Sections[i].SectionType=ps then
      begin
-      Move(FData[Sections[i].Index],Result[j],Sections[i].Length);
+      Move(PAnsiChar(@FData[Sections[i].Index])^,PAnsiChar(@Result[j])^,Sections[i].Length);
       inc(j,Sections[i].Length);
       map.MapLine(EOLs(i),Sections[i].LineNr);
      end;

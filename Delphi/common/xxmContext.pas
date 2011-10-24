@@ -226,8 +226,7 @@ begin
       FPage:=FProjectEntry.Project.LoadPage(Self,'404.xxm');
       if FPage=nil then
        begin
-        FStatusCode:=StatusFileNotFound;
-        FStatusText:='File not found';
+        ForceStatus(StatusFileNotFound,'File not found');
         SendError('fnf',[
           'URL',HTMLEncode(FURL),
           'PROJECT',FProjectName,
@@ -268,7 +267,8 @@ begin
       //any content?
       if not FHeaderSent then
        begin
-        SetStatus(204,'No Content');//?
+        ForceStatus(204,'No Content');
+        AddResponseHeader('Content-Length','0');
         SendHeader;
        end;
 

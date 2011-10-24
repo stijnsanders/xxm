@@ -278,7 +278,7 @@ begin
   if Index>FlushThreshold then
    begin
     l:=Size-Index+1;
-    Move(Data[Index],Data[1],l);
+    Move(PAnsiChar(@Data[Index])^,PAnsiChar(@Data[1])^,l);
     SetLength(Data,l);
     Size:=l;
     inc(Done,Index-1);
@@ -371,7 +371,7 @@ begin
     if p<>l then inc(Index);
    end;
   SetLength(Result,Index-q);
-  Move(Data[q],Result[1],Index-q);
+  Move(PAnsiChar(@Data[q])^,PAnsiChar(@Result[1])^,Index-q);
   inc(Index,l);
   SkipWhiteSpace;
   Flush;

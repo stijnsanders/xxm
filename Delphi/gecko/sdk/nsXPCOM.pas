@@ -1250,11 +1250,13 @@ type
   end;
 
   nsIComponentManager = interface(nsISupports)
-  ['{a88e5a60-205a-4bb1-94e1-2628daf51eae}']
+  ['{1d940426-5fe5-42c3-84ae-a300f2d9ebd5}']
     procedure GetClassObject(const aClass: TGUID; const aIID: TGUID; out _result); safecall;
     procedure GetClassObjectByContractID(const aContractID: PAnsiChar; const aIID: TGUID; out _result); safecall;
-    procedure CreateInstance(const aClass: TGUID; aDelegate: nsISupports; const aIID: TGUID; out _result); safecall;
-    procedure CreateInstanceByContractID(const aContractID: PAnsiChar; aDelegate: nsISupports; const aIID: TGUID; out _result); safecall;
+    procedure CreateInstance(const aClass: TGUID; const aDelegate: nsISupports; const aIID: TGUID; out _result); safecall;
+    procedure CreateInstanceByContractID(const aContractID: PAnsiChar; const aDelegate: nsISupports; const aIID: TGUID; out _result); safecall;
+    procedure AddBootstappedManifestLocation(const aLocation: nsILocalFile); safecall;
+    procedure RemoverBootstrappedManifestLocation(const aLocation: nsILocalFile); safecall;
   end;
 
   nsIComponentRegistrar = interface(nsISupports)
@@ -2961,11 +2963,11 @@ type
   nsIFactory = interface(nsISupports)
   ['{00000001-0000-0000-c000-000000000046}']
     procedure CreateInstance(aOuter: nsISupports; const iid: TGUID; out _result); safecall;
-    procedure LockFactory(lock: PRBool); safecall;
+    procedure LockFactory(lock: boolean); safecall;
   end;
 
   nsIURI = interface(nsISupports)
-  ['{12120b20-0929-40e9-88cf-6e08766e8b23}']
+  ['{395fe045-7d18-4adb-a3fd-af98c8a1af11}']
     procedure GetSpec(aSpec: nsAUTF8String); safecall;
     procedure SetSpec(const aSpec: nsAUTF8String); safecall;
     procedure GetPrePath(aPrePath: nsAUTF8String); safecall;

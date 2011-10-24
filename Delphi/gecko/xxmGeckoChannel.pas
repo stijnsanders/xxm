@@ -7,6 +7,8 @@ uses nsXPCOM, nsTypes, nsGeckoStrings, nsThreadUtils, xxm, xxmContext,
   xxmPReg, xxmPRegLocal, xxmParams, xxmGeckoInterfaces, xxmGeckoStreams;
 
 type
+  TxxmChannelReports=class;//forward
+
   TxxmChannel=class(TXxmGeneralContext,
     nsIRequest,
     nsIChannel,
@@ -27,14 +29,12 @@ type
     IxxmHttpHeaders)
   private
     FOwner:nsISupports;
+    FReports:TxxmChannelReports;
     FURI,FOrigURI,FDocURI,FReferer:nsIURI;
     FLoadFlags:nsLoadFlags;
     FLoadGroup:nsILoadGroup;
-    FListenerContext:nsISupports;
-    FListener:nsIStreamListener;
     FCallBacks:nsIInterfaceRequestor;
-    FReportToThread:nsIThread;
-    FConnected,FComplete,FAllowPipelining,FGotSessionID:boolean;
+    FComplete,FAllowPipelining,FGotSessionID:boolean;
     FStatus,FSuspendCount,FRedirectionLimit:integer;
     FVerb,FQueryString:AnsiString;
     FRequestHeaders,FResponseHeaders:TResponseHeaders;//both TResponseHeaders?! see Create
@@ -42,18 +42,17 @@ type
     FCookieIdx: TParamIndexes;
     FCookieParsed: boolean;
     FTotalSize,FOutputSize,FExportSize,FReportSize:int64;
-    FReportPending:boolean;
     FData:TMemoryStream;
     FLock:TRTLCriticalSection;
     FRedirectChannel:nsIChannel;//see Redirect
-    FChannelIsForDownload:boolean;
+    FChannelIsForDownload,FForceAllowThirdPartyCookie:boolean;
     procedure CheckSuspend;
     procedure Lock;
     procedure Unlock;
     procedure ReportData;//call within lock!
     function Write(const Buffer; Count: Longint): Longint;//call within lock!
-    procedure ReadCheck;
-    procedure RedirectSync;
+    procedure DoneReading(Count:cardinal);
+    procedure RedirectSync(Listener:nsIStreamListener;Context:nsISupports);
   protected
     //nsIInterfaceRequestor
     //procedure nsGetInterface(const uuid: TGUID; out _result); safecall;
@@ -210,19 +209,32 @@ type
     function Unqueue:TxxmChannel;//called from threads
   end;
 
-  TxxmListenerCall=(lcActivate,lcStart,lcData,lcStop,lcAbort,lcRedirect);
+  TxxmChannelState=(csSending,csClosed,csRedirect);
 
-  TxxmListenerCaller=class(TInterfacedObject, nsIRunnable)
+  TxxmChannelReports=class(TObject,IInterface,nsIRunnable)
   private
-    FOwner:TxxmChannel;
-    FCall:TxxmListenerCall;
-    FOffset,FCount:cardinal;
+    FFirst: boolean;
+    FDispatchCount: integer;
+    procedure SetState(const Value: TxxmChannelState);
   protected
+    FOwner:TxxmChannel;
+    FState:TxxmChannelState;
+    FListener:nsIStreamListener;
+    FContext:nsISupports;
+    FReportToThread:nsIThread;
+    FRefCount,FCount:cardinal;
+    //IInterface
+    function QueryInterface(const IID: TGUID; out Obj): HResult; stdcall;
+    function _AddRef: Integer; stdcall;
+    function _Release: Integer; stdcall;
+    //nsIRunnable
     procedure run; safecall;
   public
-    constructor Create(Owner:TxxmChannel;Call:TxxmListenerCall;
-      Offset,Count:cardinal);
-    destructor Destroy; override;
+    constructor Create(Owner:TxxmChannel;Listener:nsIStreamListener;Context:nsISupports);
+    procedure Fire;
+    procedure DataReady(Count:cardinal);
+    property State:TxxmChannelState read FState write SetState;
+    property DispatchCount:integer read FDispatchCount;
   end;
 
   EXxmContextStringUnknown=class(Exception);
@@ -283,9 +295,9 @@ begin
   aURI.GetSpec(x.AUTF8String);
   inherited Create(UTF8Decode(x.ToString));
   FOwner:=nil;
+  FReports:=nil;
   FLoadGroup:=nil;
   FLoadFlags:=0;//?
-  FListener:=nil;
   FCallBacks:=nil;
   FURI:=aURI;
   FOrigURI:=aURI;
@@ -294,7 +306,6 @@ begin
   FGotSessionID:=false;
   FData:=TMemoryStream.Create;
   InitializeCriticalSection(FLock);
-  FReportPending:=false;
   FOutputSize:=0;
   FReportSize:=0;
   FTotalSize:=0;
@@ -307,7 +318,6 @@ begin
   (FResponseHeaders as IUnknown)._AddRef;
   FCookieParsed:=false;
   FSuspendCount:=1;//see AsyncOpen, TxxmListenerCaller/lcActivate
-  FConnected:=false;//see AsyncOpen
   FComplete:=false;
   FAllowPipelining:=true;//?
   FStatus:=NS_OK;
@@ -318,19 +328,19 @@ begin
   FRedirectionLimit:=32;//set later?
   FRedirectChannel:=nil;
   FChannelIsForDownload:=false;
+  FForceAllowThirdPartyCookie:=false;//?
 end;
 
 destructor TxxmChannel.Destroy;
 begin
   FOwner:=nil;
-  FListenerContext:=nil;
-  FListener:=nil;
   FCallBacks:=nil;
   FOrigURI:=nil;
   FDocURI:=nil;
   FReferer:=nil;
   FURI:=nil;
   //assert not ReportPending
+  FreeAndNil(FReports);
   FData.Free;
   DeleteCriticalSection(FLock);
   (FRequestHeaders as IUnknown)._Release;
@@ -350,10 +360,8 @@ end;
 procedure TxxmChannel.AsyncOpen(aListener: nsIStreamListener;
   aContext: nsISupports);
 begin
-  FConnected:=true;
-  FListener:=aListener;
-  FListenerContext:=aContext;
-  FReportToThread:=NS_GetCurrentThread;//NS_GetMainThread?
+  if aListener=nil then raise Exception.Create('xxm AsyncOpen not allowed without listener');
+  FReports:=TxxmChannelReports.Create(Self,aListener,aContext);
   if FLoadGroup<>nil then FLoadGroup.AddRequest(Self as nsIRequest,nil);
   GeckoLoaderPool.Queue(Self);
 end;
@@ -441,12 +449,12 @@ begin
   end;
 
   try
-    if FConnected and not(FReportPending) then
+    if FReports.State=csSending then
      begin
       CheckSuspend;
-      FReportToThread.dispatch(TxxmListenerCaller.Create(Self,lcStop,0,0),NS_DISPATCH_NORMAL);//_SYNC?
-      FConnected:=false;
+      FReports.State:=csClosed;//done
      end;
+    while FReports.DispatchCount<>0 do Sleep(10);
   except
     //silent!
   end;
@@ -515,10 +523,8 @@ end;
 
 procedure TxxmChannel.Cancel(aStatus: nsresult);
 begin
-  //TODO: test here
-  if FConnected then FReportToThread.dispatch(TxxmListenerCaller.Create(Self,lcAbort,0,0),NS_DISPATCH_NORMAL);//_SYNC?
-  FStatus:=aStatus;
-  FConnected:=false;
+  if FReports.State=csSending then FReports.State:=csClosed;//abort
+  //FStatus:=aStatus;//?
 end;
 
 function TxxmChannel.GetAllowPipelining: PRBool;
@@ -735,7 +741,7 @@ end;
 function TxxmChannel.Connected: boolean;
 begin
   //TODO: test this!
-  Result:=FConnected;
+  Result:=FReports.State=csSending;
 end;
 
 function BuildUserAgent: WideString;
@@ -860,13 +866,11 @@ var
 begin
   //TODO:
   //if 307 then forward as POST else as GET? (see RedirectSync)
-
   if FRedirectionLimit=0 then
    begin
     Cancel(NS_ERROR_REDIRECT_LOOP);
     raise Exception.Create('Redirection limit reached');
    end;
-
   x:=NewCString;
   u:=FURI.Clone;
   if Relative then
@@ -874,19 +878,14 @@ begin
   else
     x.Assign(RedirectURL);
   u.SetSpec(x.ACString);
-
   FRedirectChannel:=NS_GetIOService.NewChannelFromURI(u);
-
-  FReportToThread.dispatch(TxxmListenerCaller.Create(Self,lcRedirect,0,0),NS_DISPATCH_NORMAL);
-
   FStatus:=integer(NS_BINDING_REDIRECTED);
-  FConnected:=false;
+  FReports.State:=csRedirect;
   raise EXxmPageRedirected.Create(x.ToString);
-
   //TODO: PromptTempRedirect?
 end;
 
-procedure TxxmChannel.RedirectSync;
+procedure TxxmChannel.RedirectSync(Listener:nsIStreamListener;Context:nsISupports);
 var
   h:nsIHttpChannel;
   hi:nsIHttpChannelInternal;
@@ -939,8 +938,7 @@ begin
       //silent?
     end;
 
-    FRedirectChannel.AsyncOpen(FListener,FListenerContext);//???
-
+    FRedirectChannel.AsyncOpen(Listener,Context);
   finally
     FRedirectChannel:=nil;
   end;
@@ -964,22 +962,22 @@ begin
         l:=SendBufferSize;
         OleCheck(s.Read(@d[0],l,@l));
         if l<>0 then Write(d[0],l);
+        ReportData;
       finally
         Unlock;
       end;
-      ReportData;
-    until (l=0) or not(FConnected);
+    until (l=0) or (FReports.State<>csSending);
    end;
 end;
 
 procedure TxxmChannel.SendHeader;
 begin
   //assert not in Lock
-  if FConnected then
+  if FReports.State=csSending then
    begin
     CheckSuspend;
     FResponseHeaders['Content-Type']:=FContentType;
-    FReportToThread.dispatch(TxxmListenerCaller.Create(Self,lcStart,0,0),NS_DISPATCH_NORMAL);
+    FReports.Fire;
    end;
 end;
 
@@ -1076,11 +1074,10 @@ end;
 procedure TxxmChannel.ReportData;
 begin
   //assert within Lock/Unlock try/finally!
-  if FConnected and not(FReportPending) and (FReportSize<>0) then
+  if (FReports.State=csSending) and (FReportSize<>0) then
    begin
     CheckSuspend;//is this no problem inside of lock?
-    FReportPending:=true;
-    FReportToThread.dispatch(TxxmListenerCaller.Create(Self,lcData,0,FReportSize),NS_DISPATCH_NORMAL);
+    FReports.DataReady(FReportSize);
    end;
 end;
 
@@ -1112,7 +1109,7 @@ end;
 
 procedure TxxmChannel.Close;
 begin
-  FConnected:=false;
+  FReports.State:=csClosed;//abort
   //raise Exception.Create('Closing stream not supported.');
 end;
 
@@ -1129,15 +1126,7 @@ begin
     FData.Position:=FExportSize;
     Result:=FData.Read(aBuf^,aCount);
     //assert Result=aCount
-    FExportSize:=FExportSize+Result;
-    if aCount>FReportSize then FReportSize:=0 else FReportSize:=FReportSize-aCount;
-    if FExportSize=FOutputSize then
-     begin
-      //assert FReportSize=0
-      FOutputSize:=0; //don't set size, this saves on allocations
-      FExportSize:=0;
-     end;
-    ReadCheck;
+    DoneReading(Result);
   finally
     Unlock;
   end;
@@ -1155,39 +1144,30 @@ begin
     inc(integer(p),FExportSize);
     aWriter(Self,aClosure,p,0,aCount,Result);//TODO: evaluate result
     //assert Result=aCount
-    FExportSize:=FExportSize+Result;
-    if aCount>FReportSize then FReportSize:=0 else FReportSize:=FReportSize-aCount;
-    if FExportSize=FOutputSize then
-     begin
-      //assert FReportSize=0
-      FOutputSize:=0; //don't set size, this saves on allocations
-      FExportSize:=0;
-     end;
-    ReadCheck;
+    DoneReading(Result);
   finally
     Unlock;
   end;
 end;
 
-procedure TxxmChannel.ReadCheck;
+procedure TxxmChannel.DoneReading(Count:cardinal);
 begin
+  FExportSize:=FExportSize+Count;
+  if Count>FReportSize then FReportSize:=0 else FReportSize:=FReportSize-Count;
+  if FExportSize=FOutputSize then
+   begin
+    //assert FReportSize=0
+    FOutputSize:=0; //don't actualy change size, this saves on memory allocations
+    FExportSize:=0;
+   end;
   //don't call CheckSuspend here, since called from main thread!
-  FReportPending:=false;
-  if FConnected then
+  if FReports.State=csSending then
     if FReportSize=0 then
      begin
-      if FComplete then
-       begin
-        FReportToThread.dispatch(TxxmListenerCaller.Create(Self,lcStop,0,0),NS_DISPATCH_NORMAL);
-        FConnected:=false;
-       end;
+      if FComplete then FReports.State:=csClosed;//done
      end
     else
-      if FSuspendCount=0 then
-       begin
-        FReportPending:=true;
-        FReportToThread.dispatch(TxxmListenerCaller.Create(Self,lcData,0,FReportSize),NS_DISPATCH_NORMAL);
-       end;
+      if FSuspendCount=0 then FReports.DataReady(FReportSize);
 end;
 
 function TxxmChannel.GetRequestHeaders: IxxmDictionaryEx;
@@ -1258,7 +1238,7 @@ end;
 
 function TxxmChannel.GetCanceled: PRBool;
 begin
-  Result:=not FConnected;
+  Result:=FReports.State<>csSending;
 end;
 
 function TxxmChannel.GetChannelIsForDownload: PRBool;
@@ -1274,7 +1254,7 @@ end;
 
 function TxxmChannel.GetForceAllowThirdPartyCookie: PRBool;
 begin
-  Result:=false;
+  Result:=FForceAllowThirdPartyCookie;
 end;
 
 procedure TxxmChannel.GetLocalAddress(aLocalAddress: nsAUTF8String);
@@ -1311,7 +1291,7 @@ end;
 procedure TxxmChannel.SetForceAllowThirdPartyCookie(
   aForceAllowThirdPartyCookie: PRBool);
 begin
-
+  FForceAllowThirdPartyCookie:=aForceAllowThirdPartyCookie;//?
 end;
 
 procedure TxxmChannel.OnRedirectVerifyCallback(aResult: nsresult);
@@ -1463,46 +1443,104 @@ begin
    end;
 end;
 
-{ TxxmListenerCaller }
+{ TxxmChannelReports }
 
-const
-  lcName:array[TxxmListenerCall] of string=(
-    'SyncActivate',
-    'OnStartRequest',
-    'OnDataAvailable',
-    'OnStopRequest',
-    'SyncAbort',
-    'SyncRedirect');
-
-constructor TxxmListenerCaller.Create(Owner: TxxmChannel;
-  Call: TxxmListenerCall;Offset,Count:cardinal);
+constructor TxxmChannelReports.Create(Owner:TxxmChannel;
+  Listener:nsIStreamListener;Context:nsISupports);
 begin
   inherited Create;
+  FRefCount:=1;
   FOwner:=Owner;
-  FOwner._AddRef;
-  FCall:=Call;
-  FOffset:=Offset;
+  FListener:=Listener;
+  FContext:=Context;
+  FReportToThread:=NS_GetCurrentThread;//NS_GetMainThread?
+  FFirst:=true;
+  FState:=csSending;
+  FCount:=0;
+  FDispatchCount:=0;
+end;
+
+function TxxmChannelReports._AddRef: Integer;
+begin
+  //Result:=InterlockedIncrement(FRefCount);
+  inc(FRefCount);
+  Result:=FRefCount;
+end;
+
+function TxxmChannelReports._Release: Integer;
+begin
+  //Result:=InterlockedDecrement(FRefCount);
+  dec(FRefCount);
+  Result:=FRefCount;
+end;
+
+function TxxmChannelReports.QueryInterface(const IID: TGUID;
+  out Obj): HResult;
+begin
+  if GetInterface(IID,Obj) then Result:=0 else Result:=E_NOINTERFACE;
+end;
+
+procedure TxxmChannelReports.run;
+var
+  c:cardinal;
+begin
+  try
+    if FFirst then
+     begin
+      FFirst:=false;
+      FListener.OnStartRequest(FOwner,FContext);
+     end;
+    while FCount<>0 do
+     begin
+      FOwner.Lock;
+      try
+        c:=FCount;
+        FCount:=0;
+      finally
+        FOwner.Unlock;
+      end;
+      FListener.OnDataAvailable(FOwner,FContext,FOwner,0,c);
+     end;
+    if (FState in [csClosed,csRedirect]) and (FListener<>nil) then
+     begin
+      if FState=csRedirect then
+        FOwner.RedirectSync(FListener,FContext)
+      else
+        FListener.OnStopRequest(FOwner,FContext,FOwner.StatusCode);
+      FOwner.FLoadGroup.RemoveRequest(FOwner as nsIRequest,nil,NS_OK);
+      FReportToThread:=nil;
+      FListener:=nil;
+      FContext:=nil;
+     end;
+  except
+    //silent
+  end;
+  InterlockedDecrement(FDispatchCount);
+end;
+
+procedure TxxmChannelReports.Fire;
+begin
+  if FDispatchCount=0 then
+  //if ((FCount=0) or (FState<>csSending)) and (FReportToThread<>nil) then
+   begin
+    InterlockedIncrement(FDispatchCount);
+    FReportToThread.dispatch(Self,NS_DISPATCH_NORMAL);
+   end;
+end;
+
+procedure TxxmChannelReports.DataReady(Count: cardinal);
+begin
+  //assert within FOwner.Lock/Unlock
+  Fire;
   FCount:=Count;
 end;
 
-destructor TxxmListenerCaller.Destroy;
-begin
-  FOwner._Release;
-  //if FCall=lcStop then FOwner._Release;
-  inherited;
-end;
+const StateNAme:array[TxxmChannelState] of string=('Sending','Closed','Redirect');
 
-procedure TxxmListenerCaller.run;
+procedure TxxmChannelReports.SetState(const Value: TxxmChannelState);
 begin
-  case FCall of
-    lcActivate:FOwner.Resume;
-    lcStart:FOwner.FListener.OnStartRequest(FOwner,FOwner.FListenerContext);
-    lcData:FOwner.FListener.OnDataAvailable(FOwner,FOwner.FListenerContext,FOwner,FOffset,FCount);
-    lcStop:FOwner.FListener.OnStopRequest(FOwner,FOwner.FListenerContext,FOwner.StatusCode);
-    lcRedirect:FOwner.RedirectSync;
-  end;
-  if (FCall in [lcStop,lcAbort,lcRedirect]) and (FOwner.FLoadGroup<>nil) then
-    FOwner.FLoadGroup.RemoveRequest(FOwner as nsIRequest,nil,NS_OK);
+  FState:=Value;
+  Fire;
 end;
 
 initialization

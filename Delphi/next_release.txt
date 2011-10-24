@@ -3,6 +3,8 @@ v1.1.3.?
 - redirect responses set Content-Length to keep connection
 - open code block at end allowed
 - xxmHttp LoadCopy parameter/setting (set LoadCopy=0 when debugging with xxmHttp as host application)
+- send 204 response when no content
+- xxmGecko: support for FireFox 8, revised data ready reporting
 
 v1.1.2.280
 - revised auto-build/auto-update: global mutex instead of local critical section
