@@ -7,9 +7,11 @@ uses Windows, SysUtils, xxm, xxmPReg, MSXML2_TLB;
 type
   TXxmProjectCacheEntry=class(TXxmProjectEntry)
   protected
+    FAllowInclude:boolean;
     procedure SetSignature(const Value: AnsiString); override;
     function GetExtensionMimeType(x:AnsiString): AnsiString; override;
     procedure LoadProject; override;
+    function GetAllowInclude: boolean; override;
   published
     constructor Create(Name,FilePath:WideString;LoadCopy:boolean);
   public
@@ -24,7 +26,7 @@ type
     FRegFileLoaded:boolean;
     procedure ClearAll;
     function Grow:integer;
-    function FindOpenProject(LowerCaseName:AnsiString):integer;
+    function FindProject(Name:WideString):integer;
   public
     constructor Create;
     destructor Destroy; override;
@@ -36,9 +38,6 @@ type
     property DefaultProject:AnsiString read FDefaultProject;
     property SingleProject:AnsiString read FSingleProject;
   end;
-
-  TXxmAutoBuildHandler=function(pce:TXxmProjectCacheEntry;
-    Context: IXxmContext; ProjectName:WideString):boolean;
 
   EXxmProjectRegistryError=class(Exception);
   EXxmProjectNotFound=class(Exception);
@@ -68,6 +67,7 @@ constructor TXxmProjectCacheEntry.Create(Name, FilePath: WideString; LoadCopy: b
 begin
   inherited Create(LowerCase(Name));//lowercase here!
   FFilePath:=FilePath;
+  FAllowInclude:=false;//default
   if LoadCopy then FLoadPath:=FFilePath+'_'+IntToHex(GetCurrentProcessId,4);
 end;
 
@@ -117,6 +117,11 @@ begin
   end;
 end;
 
+function TXxmProjectCacheEntry.GetAllowInclude: boolean;
+begin
+  Result:=FAllowInclude;//TODO: get from xxm.xml
+end;
+
 { TXxmProjectCache }
 
 constructor TXxmProjectCache.Create;
@@ -132,7 +137,7 @@ begin
   SetLength(FRegFilePath,GetModuleFileNameA(HInstance,PAnsiChar(FRegFilePath),$400));
   if Copy(FRegFilePath,1,4)='\\?\' then FRegFilePath:=Copy(FRegFilePath,5,Length(FRegFilePath)-4);
   i:=Length(FRegFilePath);
-  while not(i=0) and not(FRegFilePath[i]=PathDelim) do dec(i);
+  while (i<>0) and (FRegFilePath[i]<>PathDelim) do dec(i);
   FRegFilePath:=Copy(FRegFilePath,1,i)+'xxm.xml';
   FRegFileLoaded:=false;
 
@@ -160,12 +165,15 @@ begin
    end;
 end;
 
-function TXxmProjectCache.FindOpenProject(LowerCaseName: AnsiString): integer;
+function TXxmProjectCache.FindProject(Name: WideString): integer;
+var
+  l:AnsiString;
 begin
   Result:=0;
+  l:=LowerCase(Name);
   //assert cache stores ProjectName already LowerCase!
   while (Result<ProjectCacheSize) and (
-    (ProjectCache[Result]=nil) or not(ProjectCache[Result].Name=LowerCaseName)) do inc(Result);
+    (ProjectCache[Result]=nil) or (ProjectCache[Result].Name<>l)) do inc(Result);
   if Result=ProjectCacheSize then Result:=-1;
 end;
 
@@ -195,15 +203,15 @@ end;
 function TXxmProjectCache.GetProject(Name: WideString): TXxmProjectCacheEntry;
 var
   i,d:integer;
-  n:AnsiString;
+  n:WideString;
   found:boolean;
   doc:DOMDocument;
   xl:IXMLDOMNodeList;
   x,y:IXMLDOMElement;
 begin
   Result:=nil;//counter warning
-  n:=LowerCase(Name);
-  i:=FindOpenProject(n);
+  n:=Name;
+  i:=FindProject(Name);
   if i=-1 then
    begin
     //assert CoInitialize called
@@ -229,15 +237,15 @@ begin
         //TODO: selectSingleNode case-insensitive?
         xl:=doc.documentElement.selectNodes('Project');
         x:=xl.nextNode as IXMLDOMElement;
-        while not(found) and not(x=nil) do
-          if LowerCase(VarToStr(x.getAttribute('Name')))=n then
+        while not(found) and (x<>nil) do
+          if CompareText(VarToStr(x.getAttribute('Name')),n)=0 then
             found:=true
           else
             x:=xl.nextNode as IXMLDOMElement;
         if found then
          begin
-          n:=LowerCase(VarToStr(x.getAttribute('Alias')));
-          if not(n='') then
+          n:=VarToStr(x.getAttribute('Alias'));
+          if n<>'' then
            begin
             inc(d);
             if d=8 then raise EXxmProjectAliasDepth.Create(StringReplace(
@@ -248,13 +256,14 @@ begin
         else
          begin
           raise EXxmProjectNotFound.Create(StringReplace(
-            SXxmProjectNotFound,'__',Name,[]));
+            SXxmProjectNotFound,'__',n,[]));
          end;
        end;
       y:=x.selectSingleNode('ModulePath') as IXMLDOMElement;
       if y=nil then n:='' else n:=y.text;
       Result:=TXxmProjectCacheEntry.Create(Name,n,VarToStr(x.getAttribute('LoadCopy'))<>'0');
       Result.FSignature:=LowerCase(VarToStr(x.getAttribute('Signature')));
+      Result.FAllowInclude:=VarToStr(x.getAttribute('AllowInclude'))='1';
     finally
       y:=nil;
       x:=nil;
@@ -262,7 +271,7 @@ begin
       doc:=nil;
     end;
     i:=0;
-    while (i<ProjectCacheSize) and not(ProjectCache[i]=nil) do inc(i);
+    while (i<ProjectCacheSize) and (ProjectCache[i]<>nil) do inc(i);
     if (i=ProjectCacheSize) then i:=Grow;
     ProjectCache[i]:=Result;
    end
@@ -274,9 +283,9 @@ procedure TXxmProjectCache.ReleaseProject(Name: WideString);
 var
   i:integer;
 begin
-  i:=FindOpenProject(LowerCase(Name));
+  i:=FindProject(Name);
   //if i=-1 then raise?
-  if not(i=-1) then FreeAndNil(ProjectCache[i]);
+  if i<>-1 then FreeAndNil(ProjectCache[i]);
 end;
 
 procedure TXxmProjectCache.ClearAll;

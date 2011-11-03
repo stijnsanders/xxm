@@ -9,6 +9,7 @@ type
   protected
     procedure SetSignature(const Value: AnsiString); override;
     function GetExtensionMimeType(x:AnsiString): AnsiString; override;
+    function GetAllowInclude: boolean; override;
   published
     constructor Create(Name,FilePath:WideString;LoadCopy:boolean);
   public
@@ -74,11 +75,11 @@ begin
   inherited;
 end;
 
-function TXxmProjectCacheEntry.GetExtensionMimeType(
-  x: AnsiString): AnsiString;
+function TXxmProjectCacheEntry.GetExtensionMimeType(x: AnsiString): AnsiString;
 begin
-  if (x='.xxl') or (x='.exe') or (x='.dll') or (x='.xxmp') or (x='.udl') then //more? settings?
+  if (x='.xxl') or (x='.xxu') or (x='.exe') or (x='.dll') or (x='.xxmp') or (x='.udl') then //more? settings?
     raise EXxmFileTypeAccessDenied.Create(SXxmFileTypeAccessDenied);
+  Result:=inherited GetExtensionMimeType(x);
 end;
 
 procedure TXxmProjectCacheEntry.SetSignature(const Value: AnsiString);
@@ -93,6 +94,18 @@ begin
       SXxmProjectNotFound,'__',Name,[]));
   x.setAttribute('Signature',FSignature);
   x.ownerDocument.save(XxmProjectCache.FRegFilePath);
+end;
+
+function TXxmProjectCacheEntry.GetAllowInclude: boolean;
+var
+  x:IXMLDOMElement;
+begin
+  x:=XxmProjectCache.LoadRegistry.selectSingleNode(
+    'Project[@Name="'+Name+'"]') as IXMLDOMElement;
+  if x=nil then
+    raise EXxmProjectNotFound.Create(StringReplace(
+      SXxmProjectNotFound,'__',Name,[]));
+  Result:=VarToStr(x.getAttribute('AllowInclude'))='1';
 end;
 
 { TXxmProjectCache }
@@ -112,7 +125,7 @@ begin
   SetLength(FRegFilePath,GetModuleFileNameA(HInstance,PAnsiChar(FRegFilePath),$400));
   if Copy(FRegFilePath,1,4)='\\?\' then FRegFilePath:=Copy(FRegFilePath,5,Length(FRegFilePath)-4);
   i:=Length(FRegFilePath);
-  while not(i=0) and (FRegFilePath[i]<>PathDelim) do dec(i);
+  while (i<>0) and (FRegFilePath[i]<>PathDelim) do dec(i);
   FRegFilePath:=Copy(FRegFilePath,1,i)+'xxm.xml';
 
   //settings?
@@ -149,7 +162,7 @@ begin
   l:=LowerCase(Name);
   //assert cache stores ProjectName already LowerCase!
   while (Result<ProjectCacheSize) and (
-    (ProjectCache[Result]=nil) or not(ProjectCache[Result].Name=l)) do inc(Result);
+    (ProjectCache[Result]=nil) or (ProjectCache[Result].Name<>l)) do inc(Result);
   if Result=ProjectCacheSize then Result:=-1;
 end;
 

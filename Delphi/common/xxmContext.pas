@@ -395,28 +395,69 @@ procedure TXxmGeneralContext.Include(Address: WideString;
 var
   f,fb:IXxmFragment;
   pc:AnsiString;
+  pn:WideString;
+  pe:TXxmProjectEntry;
+  i,j,l:integer;
 begin
   if FIncludeDepth=XxmMaxIncludeDepth then
     raise EXxmIncludeStackFull.Create(SXxmIncludeStackFull);
-  //FPage.Project?
-  f:=FProjectEntry.Project.LoadFragment(Self,Address,FBuilding.RelativePath);
-  if f=nil then
-    raise EXxmIncludeFragmentNotFound.Create(StringReplace(
-      SXxmIncludeFragmentNotFound,'__',Address,[]));
+  pe:=FProjectEntry;
+  pn:=FProjectName;
   fb:=FBuilding;
   pc:=FPageClass;
-  FBuilding:=f;
   inc(FIncludeDepth);
   try
-    FPageClass:=f.ClassNameEx+' < '+pc;
-    f.Build(Self,fb,Values,Objects);//queue to avoid building up stack?
+    if (Copy(Address,1,4)='xxm:') and pe.AllowInclude then
+     begin
+      //cross-project include
+      l:=Length(Address);
+      i:=5;
+      if (i<=l) and (Address[i]='/') then inc(i);
+      if (i<=l) and (Address[i]='/') then inc(i);
+      j:=i;
+      while (j<=l) and not(char(Address[j]) in ['/','?','&','$','#']) do inc(j);
+      FProjectName:=Copy(Address,i,j-i);
+      if (j<=l) and (Address[j]='/') then inc(j);
+      FProjectEntry:=GetProjectEntry;
+      f:=FProjectEntry.Project.LoadFragment(Self,Copy(Address,j,l-j+1),FBuilding.RelativePath);
+      //TODO: call XxmAutoBuildHandler? and prevent deadlocks!!!
+      if f=nil then
+        raise EXxmIncludeFragmentNotFound.Create(StringReplace(
+          SXxmIncludeFragmentNotFound,'__',Address,[]));
+      FBuilding:=f;
+      FProjectEntry.OpenContext;
+      try
+        FPageClass:=FProjectEntry.Name+':'+f.ClassNameEx+' < '+pc;
+        f.Build(Self,fb,Values,Objects);//queue to avoid building up stack?
+      finally
+        FProjectEntry.Project.UnloadFragment(f);
+        f:=nil;
+        FProjectEntry.CloseContext;
+      end;
+     end
+    else
+     begin
+      //FPage.Project?
+      pn:='';
+      f:=FProjectEntry.Project.LoadFragment(Self,Address,FBuilding.RelativePath);
+      if f=nil then
+        raise EXxmIncludeFragmentNotFound.Create(StringReplace(
+          SXxmIncludeFragmentNotFound,'__',Address,[]));
+      FBuilding:=f;
+      try
+        FPageClass:=f.ClassNameEx+' < '+pc;
+        f.Build(Self,fb,Values,Objects);//queue to avoid building up stack?
+      finally
+        FProjectEntry.Project.UnloadFragment(f);
+        f:=nil;
+      end;
+     end;
     FPageClass:=pc;
   finally
     dec(FIncludeDepth);
+    FProjectEntry:=pe;
     FBuilding:=fb;
     fb:=nil;
-    FProjectEntry.Project.UnloadFragment(f);
-    f:=nil;
   end;
 end;
 

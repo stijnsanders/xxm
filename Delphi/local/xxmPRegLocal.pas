@@ -18,6 +18,7 @@ type
     procedure LoadProject; override;
     function GetModulePath:WideString; override;
     procedure SetSignature(const Value: AnsiString); override;
+    function GetAllowInclude: Boolean; override;
   published
     constructor Create(Name:WideString);
   public
@@ -230,6 +231,29 @@ function TXxmProjectCacheEntry.GetModulePath: WideString;
 begin
   if FFilePath='' then GetRegisteredPath;
   Result:=FFilePath;
+end;
+
+function TXxmProjectCacheEntry.GetAllowInclude: Boolean;
+var
+  r:TRegistry;
+  k:AnsiString;
+begin
+  Result:=false;//default
+  k:='\Software\xxm\local\'+Name;
+  r:=TRegistry.Create;
+  try
+    r.RootKey:=HKEY_CURRENT_USER;
+    if not(r.OpenKeyReadOnly(k)) then
+     begin
+      r.RootKey:=HKEY_LOCAL_MACHINE;
+      if not(r.OpenKeyReadOnly(k)) then
+        raise EXxmProjectNotFound.Create(StringReplace(
+          SXxmProjectNotFound,'__',Name,[]));
+     end;
+    if r.ValueExists('AllowInclude') then Result:=r.ReadBool('AllowInclude');
+  finally
+    r.Free;
+  end;
 end;
 
 { TXxmProjectCache }

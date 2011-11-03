@@ -22,6 +22,7 @@ type
     procedure SetSignature(const Value: AnsiString); virtual; abstract;
     function ProjectLoaded:boolean;
     function GetExtensionMimeType(x:AnsiString): AnsiString; virtual;
+    function GetAllowInclude:boolean; virtual; abstract;
   published
     constructor Create(Name:WideString);//abstract! only here for initialization
     destructor Destroy; override;
@@ -35,6 +36,7 @@ type
     property ModulePath:WideString read GetModulePath;
     property Signature:AnsiString read FSignature write SetSignature;
     property LoadSignature:AnsiString read FLoadSignature;
+    property AllowInclude:boolean read GetAllowInclude;
 
     //used by xxmContext
     procedure OpenContext;

@@ -75,9 +75,6 @@ type
     function Unqueue:TXxmIsapiContext;//called from threads
   end;
 
-  TXxmAutoBuildHandler=function(pce:TXxmProjectCacheEntry;
-    Context: IXxmContext; ProjectName:WideString):boolean;
-
   EXxmContextStringUnknown=class(Exception);
   EXxmAutoBuildFailed=class(Exception);
   EXxmPageRedirected=class(Exception);
