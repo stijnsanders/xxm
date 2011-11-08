@@ -98,7 +98,7 @@ Context.SendHTML('&lt;/b&gt;');</code></p>
 <p>so be sure to use <code>begin</code> and <code>end</code>:</p>
 <p><code style="background-color:#FFFFFF;">if MyBoolean then <span style="background-color:#CCFFCC">begin</span>]]&lt;b&gt;priority:[[=PriorityLevel]]&lt;/b&gt;[[<span style="background-color:#CCFFCC">end</span>;</code></p>
 
-<p class="title"><a name="embedhtml"></a>Embed HTML</p>
+<p class="title"><a name="embedhtml"></a>Embed HTML <span class="newver">1.1.1</span></p>
 
 <p>To improve readability, sections with HTML elements can also be enclosed in an extra set of angled brackets ("<code>&lt;&gt;</code>") to escape them from a code block, for example:</p>
 
@@ -192,7 +192,10 @@ property ParameterCount:integer</code></dt>
     &nbsp;  const Values: array of OleVariant;<br />
     &nbsp;  const Objects: array of TObject); overload;<br />
 </code></dt>
-<dd>load an include fragment and call the Build method with provided Values and Objects. Use Context.Include in favor of creating an instance of the fragment class directly, to enable xxm's built-in exception handling and to enable performance enhancements provided by the fragment registry.</dd>
+<dd><p>load an include fragment and call the Build method with provided Values and Objects. Use Context.Include in favor of creating an instance of the fragment class directly, to enable xxm's built-in exception handling and to enable performance enhancements provided by the fragment registry.</p>
+
+<p><span class="newver">1.1.3</span> To load a fragment from another project, prefix the fragment address with <code>xxm://project2/</code> where <code>project2</code> is the name of the other project. <b>Attention:</b> this is disallowed by default, to enable this add <code>AllowInclude=1</code> to the xxm handler's project registry (Windows registry or <code>xxm.xml</code>).</p>
+</dd>
 
 <dt><a name="ContextString"></a><code>function ContextString(cs:TXxmContextString):WideString;</code></dt>
 <dd>

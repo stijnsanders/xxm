@@ -1,0 +1,28 @@
+[[!var
+i,x:integer;
+]][[
+
+<<h3>Cross-project include demo</h3>
+<p>Click one of below links to start a sub1/sub2 sequence of including eachother.
+(Please be sure to register both 'sub1' and 'sub2' with your xxm handler,
+and set AllowInclude=1 on both projects and this project also.)</p>
+<p>>
+
+x:=Context['x'].AsInteger;
+for i:=1 to 100 do
+ begin
+  if x=i then
+   begin
+    <<b>[[=i]]</b>>
+   end
+  else
+   begin
+    <<a href="?x=[[=i]]">[[=i]]</a>>
+   end;
+  ]] [[
+ end;
+ <</p>
+ <hr />>
+ 
+if x<>0 then Context.Include('xxm:sub1/A.xxmi',[x]);
+]]

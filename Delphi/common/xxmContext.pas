@@ -16,6 +16,7 @@ type
     FStatusText, FSingleFileSent: WideString;
     FHeaderSent: boolean;
     FParams: TXxmReqPars;
+    FIncludeCheck: pointer;//see Include
   protected
     FURL, FContentType, FProjectName, FPageClass, FFragmentName: WideString;
     FAutoEncoding: TXxmAutoEncoding;
@@ -98,6 +99,7 @@ type
   EXxmDirectInclude=class(Exception);
   EXxmIncludeStackFull=class(Exception);
   EXxmIncludeFragmentNotFound=class(Exception);
+  EXxmIncludeCrossProjectDisabled=class(Exception);
 
 var
   //see xxmSettings
@@ -112,9 +114,10 @@ implementation
 uses Variants, xxmCommonUtils, xxmParUtils;
 
 const //resourcestring?
-  SXxmDirectInclude='Direct call to include fragment is not allowed.';
+  SXxmDirectInclude='Direct call to include fragment is not allowed';
   SXxmIncludeStackFull='Maximum level of includes exceeded';
   SXxmIncludeFragmentNotFound='Include fragment not found "__"';
+  SXxmIncludeCrossProjectDisabled='Cross-project includes not enabled';
   
 { TXxmGeneralContext }
 
@@ -144,6 +147,7 @@ begin
   FPageClass:='';
   FHeaderSent:=false;
   FIncludeDepth:=0;
+  FIncludeCheck:=nil;
   FStatusCode:=200;//default
   FStatusText:='OK';//default
   StatusSet:=false;
@@ -390,6 +394,14 @@ begin
   Include(Address, Values, []);
 end;
 
+type
+  TXxmCrossProjectIncludeCheck=class(TObject)
+  public
+    Entry:TXxmProjectEntry;
+    Next:TXxmCrossProjectIncludeCheck;
+    constructor Create(AEntry:TXxmProjectEntry;ANext:TXxmCrossProjectIncludeCheck);
+  end;
+
 procedure TXxmGeneralContext.Include(Address: WideString;
   const Values: array of OleVariant; const Objects: array of TObject);
 var
@@ -397,6 +409,7 @@ var
   pc:AnsiString;
   pn:WideString;
   pe:TXxmProjectEntry;
+  px:TXxmCrossProjectIncludeCheck;
   i,j,l:integer;
 begin
   if FIncludeDepth=XxmMaxIncludeDepth then
@@ -407,34 +420,53 @@ begin
   pc:=FPageClass;
   inc(FIncludeDepth);
   try
-    if (Copy(Address,1,4)='xxm:') and pe.AllowInclude then
-     begin
-      //cross-project include
-      l:=Length(Address);
-      i:=5;
-      if (i<=l) and (Address[i]='/') then inc(i);
-      if (i<=l) and (Address[i]='/') then inc(i);
-      j:=i;
-      while (j<=l) and not(char(Address[j]) in ['/','?','&','$','#']) do inc(j);
-      FProjectName:=Copy(Address,i,j-i);
-      if (j<=l) and (Address[j]='/') then inc(j);
-      FProjectEntry:=GetProjectEntry;
-      f:=FProjectEntry.Project.LoadFragment(Self,Copy(Address,j,l-j+1),FBuilding.RelativePath);
-      //TODO: call XxmAutoBuildHandler? and prevent deadlocks!!!
-      if f=nil then
-        raise EXxmIncludeFragmentNotFound.Create(StringReplace(
-          SXxmIncludeFragmentNotFound,'__',Address,[]));
-      FBuilding:=f;
-      FProjectEntry.OpenContext;
-      try
-        FPageClass:=FProjectEntry.Name+':'+f.ClassNameEx+' < '+pc;
-        f.Build(Self,fb,Values,Objects);//queue to avoid building up stack?
-      finally
-        FProjectEntry.Project.UnloadFragment(f);
-        f:=nil;
-        FProjectEntry.CloseContext;
-      end;
-     end
+    if Copy(Address,1,4)='xxm:' then
+      if pe.AllowInclude then
+       begin
+        //cross-project include
+        l:=Length(Address);
+        i:=5;
+        if (i<=l) and (Address[i]='/') then inc(i);
+        if (i<=l) and (Address[i]='/') then inc(i);
+        j:=i;
+        while (j<=l) and not(char(Address[j]) in ['/','?','&','$','#']) do inc(j);
+        FProjectName:=Copy(Address,i,j-i);
+        if (j<=l) and (Address[j]='/') then inc(j);
+        FProjectEntry:=GetProjectEntry;
+        //XxmAutoBuildHandler but check for recurring PE's to avoid deadlock
+        if (@XxmAutoBuildHandler<>nil) then
+         begin
+          px:=FIncludeCheck;
+          while (px<>nil) and (px.Entry<>FProjectEntry) do px:=px.Next;
+          if px=nil then
+            if not(XxmAutoBuildHandler(FProjectEntry,Self,FProjectName)) then
+              raise EXxmAutoBuildFailed.Create(FProjectName);
+          //if px<>nil then raise? just let the request complete
+         end;
+        f:=FProjectEntry.Project.LoadFragment(Self,Copy(Address,j,l-j+1),FBuilding.RelativePath);
+        if f=nil then
+          raise EXxmIncludeFragmentNotFound.Create(StringReplace(
+            SXxmIncludeFragmentNotFound,'__',Address,[]));
+        FBuilding:=f;
+        px:=TXxmCrossProjectIncludeCheck.Create(pe,FIncludeCheck);
+        try
+          FIncludeCheck:=px;
+          FProjectEntry.OpenContext;
+          try
+            FPageClass:=FProjectEntry.Name+':'+f.ClassNameEx+' < '+pc;
+            f.Build(Self,fb,Values,Objects);//queue to avoid building up stack?
+          finally
+            FProjectEntry.Project.UnloadFragment(f);
+            f:=nil;
+            FProjectEntry.CloseContext;
+          end;
+        finally
+          FIncludeCheck:=px.Next;
+          px.Free;
+        end;
+       end
+      else
+        raise EXxmIncludeCrossProjectDisabled.Create(SXxmIncludeCrossProjectDisabled)
     else
      begin
       //FPage.Project?
@@ -567,6 +599,16 @@ procedure TXxmGeneralContext.AddParameter(Param: IInterface);
 begin
   if FParams=nil then FParams:=TXxmReqPars.Create(Self,FPostData);
   FParams.Add(Param as IXxmParameter);
+end;
+
+{ TXxmCrossProjectIncludeCheck }
+
+constructor TXxmCrossProjectIncludeCheck.Create(AEntry: TXxmProjectEntry;
+  ANext: TXxmCrossProjectIncludeCheck);
+begin
+  inherited Create;
+  Entry:=AEntry;
+  Next:=ANext;
 end;
 
 end.
