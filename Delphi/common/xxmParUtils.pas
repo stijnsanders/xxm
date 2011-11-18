@@ -96,17 +96,20 @@ type
     FSource: TStream;
     SourceAtEnd: boolean;
     Data: AnsiString;
-    Size,Index,Done:integer;
-    function Ensure(EnsureSize:integer):boolean;
+    Size, Index, Done, ReportStep: integer;
+    FDataAgent, FFileAgent: IxxmUploadProgressAgent;
+    function Ensure(EnsureSize: integer): boolean;
     procedure Flush;
     procedure SkipWhiteSpace;
   public
-    constructor Create(Source:TStream);
-    procedure CheckBoundary(var Boundary:AnsiString);
-    function GetHeader(var Params:TParamIndexes):AnsiString;
-    function GetString(Boundary:AnsiString):AnsiString;
-    procedure GetData(Boundary:AnsiString;var Pos:integer;var Len:integer);
-    function MultiPartDone:boolean;
+    constructor Create(Source: TStream; DataProgressAgent, FileProgressAgent: IxxmUploadProgressAgent;
+      FileProgressStep: integer);
+    destructor Destroy; override;
+    procedure CheckBoundary(var Boundary: AnsiString);
+    function GetHeader(var Params: TParamIndexes): AnsiString;
+    function GetString(Boundary: AnsiString): AnsiString;
+    procedure GetData(Boundary, FieldName, FileName: AnsiString; var Pos: integer;var Len: integer);
+    function MultiPartDone: boolean;
   end;
 
   ExxmRequestHeadersReadOnly=class(Exception);
@@ -236,7 +239,8 @@ end;
 
 { TStreamNozzle }
 
-constructor TStreamNozzle.Create(Source: TStream);
+constructor TStreamNozzle.Create(Source: TStream; DataProgressAgent, FileProgressAgent: IxxmUploadProgressAgent;
+  FileProgressStep: integer);
 begin
   inherited Create;
   FSource:=Source;
@@ -244,6 +248,16 @@ begin
   Index:=1;
   Done:=0;
   SourceAtEnd:=false;
+  FDataAgent:=DataProgressAgent;
+  FFileAgent:=FileProgressAgent;
+  ReportStep:=FileProgressStep;
+end;
+
+destructor TStreamNozzle.Destroy;
+begin
+  FDataAgent:=nil;
+  FFileAgent:=nil;
+  inherited;
 end;
 
 function TStreamNozzle.Ensure(EnsureSize: integer):boolean;
@@ -263,6 +277,7 @@ begin
       inc(Size,i);
       if i=0 then SourceAtEnd:=true;
       Result:=Index+EnsureSize<=Size;
+      if FDataAgent<>nil then FDataAgent.ReportProgress('','',Done+Size);
      end;
    end
   else
@@ -377,19 +392,49 @@ begin
   Flush;
 end;
 
-procedure TStreamNozzle.GetData(Boundary: AnsiString; var Pos: integer; var Len: integer);
+procedure TStreamNozzle.GetData(Boundary, FieldName, FileName: AnsiString; var Pos: integer; var Len: integer);
 var
-  l,p:integer;
+  l,p,x,s:integer;
 begin
   Pos:=Done+Index-1;
   l:=Length(Boundary);
   p:=0;
-  while Ensure(l) and (p<>l) do
+  if (ReportStep=0) or (FFileAgent=nil) then
    begin
-    Flush;//depends on flush threshold
-    p:=0;
-    while (p<l) and (Data[p+Index]=Boundary[p+1]) do inc(p);
-    if p<>l then inc(Index);
+    //short loop
+    while Ensure(l) and (p<>l) do
+     begin
+      Flush;//depends on flush threshold
+      p:=0;
+      while (p<l) and (Data[p+Index]=Boundary[p+1]) do inc(p);
+      if p<>l then inc(Index);
+     end;
+   end
+  else
+   begin
+    //full loop
+    x:=ReportStep;
+    s:=0;
+    while Ensure(l) and (p<>l) do
+     begin
+      Flush;//depends on flush threshold
+      p:=0;
+      while (p<l) and (Data[p+Index]=Boundary[p+1]) do inc(p);
+      if p<>l then
+       begin
+        inc(Index);
+        inc(s);
+        dec(x);
+        if x=0 then
+         begin
+          FFileAgent.ReportProgress(FieldName,FileName,s);
+          x:=ReportStep;
+         end
+        else
+          inc(x);
+       end;
+      FFileAgent.ReportProgress(FieldName,FileName,s);
+     end;
    end;
   Len:=Done+Index-(Pos+1);
   //skip boundary

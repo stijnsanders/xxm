@@ -637,6 +637,7 @@ end;
 procedure TXxmLocalContext.CheckReqHeaders;
 var
   px:PWideChar;
+  ps:AnsiString;
 begin
   if FReqHeaders=nil then
    begin
@@ -646,7 +647,9 @@ begin
       OleCheck((ProtSink as IServiceProvider).QueryService(
         IID_IHttpNegotiate,IID_IHttpNegotiate,FHttpNegotiate));
     OleCheck(FHttpNegotiate.BeginningTransaction(PWideChar(FURL),nil,0,px));
-    FReqHeaders:=TRequestHeaders.Create(px);
+    ps:=px;//TODO: encoding?
+    if FPostData<>nil then ps:=ps+'Content-Length: '+IntToStr(FPostData.Size)+#13#10;
+    FReqHeaders:=TRequestHeaders.Create(ps);
     (FReqHeaders as IUnknown)._AddRef;
    end;
 end;

@@ -1,0 +1,14 @@
+[[@xxmSession,]][[
+//TODO: support multiple concurrent uploads per session with upload identifiers
+if Session.UploadProgressLength=0 then
+ begin
+  <<p>no upload in progress</p>>
+ end
+else
+ begin
+  <<p>[[=Session.UploadProgressPosition div 1024]]/[[=Session.UploadProgressLength div 1024]] KB
+  ([[=Format('%.2f',[Session.UploadProgressPosition/Session.UploadProgressLength*100.0])]]%)</p>>
+ end;
+<<script><!--
+window.setTimeout(function(){document.location.reload(true);},250);
+//--></script>

@@ -1,0 +1,41 @@
+[[@Windows,xxmSession,xxmHeaders,]][[:
+
+type
+  TdemoProgressAgent=class(TInterfacedObject, IxxmUploadProgressAgent)
+  private
+    FSession:TxxmSession;
+    procedure ReportProgress(FieldName, FileName: AnsiString; Position: integer);
+  public
+    constructor Create(ASession: TxxmSession);
+  end;
+
+constructor TdemoProgressAgent.Create(ASession: TxxmSession);
+begin
+  inherited Create;
+  FSession:=ASession;
+end;
+  
+procedure TdemoProgressAgent.ReportProgress(FieldName, FileName: AnsiString; Position: integer);
+begin
+  FSession.UploadProgressPosition:=Position;
+  Sleep(250);//slow it down for this demonstration
+end;
+
+]][[!var
+doc:IXxmParameterPostFile;
+dir:string;
+]][[
+
+SetLength(dir,MAX_PATH);
+SetLength(dir,GetModuleFileName(HInstance,PChar(dir),MAX_PATH));
+
+//TODO: support multiple concurrent uploads per session with upload identifiers
+Session.UploadProgressLength:=StrToIntDef((Context as IxxmHttpHeaders).GetRequestHeaders['Content-Length'],0);
+Session.UploadProgressPosition:=0;
+(Context as IxxmUploadProgressService).AttachAgent(TdemoProgressAgent.Create(Session),xxmUploadProgressAttach_PostData,0);
+
+doc:=Context.Parameter['doc'] as IXxmParameterPostFile;
+doc.SaveToFile(ExtractFilePath(dir)+'files\'+ExtractFileName(doc.Value));
+Context.Redirect('Default.xxm',true);
+
+]]

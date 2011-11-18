@@ -2,23 +2,26 @@ unit xxmParams;
 
 interface
 
-uses xxm, Classes, SysUtils, ActiveX;
+uses xxm, Classes, SysUtils, ActiveX, xxmHeaders;
 
 type
   TXxmReqPars=class(TObject)
   private
     FParams: array of IXxmParameter;
     FParamsSize,FParamsCount: integer;
-    procedure Fill(Context: IXxmContext; PostData: TStream);
+    FFilled: boolean;
   public
-    PostDataOnRedirect:boolean;
-    constructor Create(Context: IXxmContext; PostData: TStream);
+    DataProgressAgent, FileProgressAgent: IxxmUploadProgressAgent;
+    FileProgressStep: integer;
+    constructor Create;
     destructor Destroy; override;
+    function Fill(Context: IXxmContext; PostData: TStream): boolean;
     function Get(Key:WideString):IXxmParameter;
     function GetNext(Par:IXxmParameter):IXxmParameter;
     function GetItem(Key:integer):IXxmParameter;
     function Count:integer;
     procedure Add(Par:IXxmParameter);
+    property Filled: boolean read FFilled;
   end;
 
   TXxmReqPar=class(TInterfacedObject, IXxmParameter)
@@ -125,19 +128,24 @@ end;
 
 { TXxmReqPars }
 
-constructor TXxmReqPars.Create(Context:IXxmContext; PostData: TStream);
+constructor TXxmReqPars.Create;
 begin
   inherited Create;
   FParamsSize:=0;
   FParamsCount:=0;
-  PostDataOnRedirect:=false;
-  Fill(Context,PostData);
+  FFilled:=false;
+  //Fill(Context,PostData);
+  DataProgressAgent:=nil;
+  FileProgressAgent:=nil;
+  FileProgressStep:=0;
 end;
 
 destructor TXxmReqPars.Destroy;
 var
   i:integer;
 begin
+  DataProgressAgent:=nil;
+  FileProgressAgent:=nil;
   for i:=0 to FParamsCount-1 do
     try
       FParams[i]._Release;
@@ -148,7 +156,7 @@ begin
   inherited;
 end;
 
-procedure TXxmReqPars.Fill(Context: IXxmContext; PostData: TStream);
+function TXxmReqPars.Fill(Context: IXxmContext; PostData: TStream): boolean;
 var
   i,p,q,r,l:integer;
   ps:TStream;
@@ -156,6 +164,7 @@ var
   pa,pax:TParamIndexes;
   sn:TStreamNozzle;
 begin
+  Result:=false;//return wether to free PostData
   pd:=UTF8Encode(Context.ContextString(csQueryString));
   //TODO: revert &#[0-9]+?;
   l:=Length(pd);
@@ -180,8 +189,8 @@ begin
     pm:=Context.ContextString(csPostMimeType);
     pn:=SplitHeaderValue(pm,1,Length(pm),pa);//lower?
 
-    //pm='' with redirect in response to POST request, but StgMed prevails! dorp it
-    if pm='' then PostDataOnRedirect:=true else
+    //pm='' with redirect in response to POST request, but StgMed prevails! drop it
+    if pm='' then Result:=true else
     if pn=MimeFormUrlEncoded then
      begin
       //read into string
@@ -192,6 +201,7 @@ begin
         SetLength(pd,p+q);
         q:=ps.Read(pd[p+1],q);
         inc(p,q);
+        if DataProgressAgent<>nil then DataProgressAgent.ReportProgress('','',p);
       until q=0;
       SetLength(pd,p);
 
@@ -218,7 +228,7 @@ begin
       pb:=GetParamValue(pm,pa,'boundary');
       if pb='' then raise Exception.Create('unable to get boundary from header for multipart/form-data');
 
-      sn:=TStreamNozzle.Create(ps);
+      sn:=TStreamNozzle.Create(ps,DataProgressAgent,FileProgressAgent,FileProgressStep);
       try
         //initialization, find first boundary
         sn.CheckBoundary(pb);
@@ -249,7 +259,7 @@ begin
 
           if pm='' then Add(TXxmReqParPost.Create(Self,px,sn.GetString(pb))) else
            begin
-            sn.GetData(pb,p,q);
+            sn.GetData(pb,px,pf,p,q);
             Add(TXxmReqParPostFile.Create(Self,px,pf,pm,ps,p,q));
            end;
 
@@ -266,6 +276,8 @@ begin
 
     ps.Seek(0,soFromBeginning);
    end;
+  DataProgressAgent:=nil;
+  FileProgressAgent:=nil;
 end;
 
 procedure TXxmReqPars.Add(Par: IXxmParameter);

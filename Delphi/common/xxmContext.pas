@@ -8,7 +8,11 @@ const
   XxmMaxIncludeDepth=64;//TODO: setting?
 
 type
-  TXxmGeneralContext=class(TInterfacedObject, IXxmContext, IxxmParameterCollection) //abstract!
+  TXxmGeneralContext=class(TInterfacedObject,
+    IXxmContext,
+    IxxmParameterCollection,
+    IxxmUploadProgressService)
+    //abstract!
   private
     FProjectEntry: TXxmProjectEntry;
     FPage, FBuilding: IXxmFragment;
@@ -67,6 +71,9 @@ type
     { IxxmParameterCollection }
     procedure AddParameter(Param: IUnknown);//IxxmParameter
 
+    { IxxmUploadProgressService }
+    procedure AttachAgent(Agent: IxxmUploadProgressAgent; Flags, Step: integer);
+
     {  }
     function GetProjectEntry:TXxmProjectEntry; virtual; abstract;
     procedure SendHeader; virtual; abstract;
@@ -100,6 +107,7 @@ type
   EXxmIncludeStackFull=class(Exception);
   EXxmIncludeFragmentNotFound=class(Exception);
   EXxmIncludeCrossProjectDisabled=class(Exception);
+  EXxmParametersAlreadyParsed=class(Exception);
 
 var
   //see xxmSettings
@@ -118,7 +126,8 @@ const //resourcestring?
   SXxmIncludeStackFull='Maximum level of includes exceeded';
   SXxmIncludeFragmentNotFound='Include fragment not found "__"';
   SXxmIncludeCrossProjectDisabled='Cross-project includes not enabled';
-  
+  SXxmParametersAlreadyParsed='Can''t attach progress agent, parameters already parsed';
+
 { TXxmGeneralContext }
 
 constructor TXxmGeneralContext.Create(URL: WideString);
@@ -570,12 +579,10 @@ var
   iKey:integer;
 begin
   //parse parameters on first use
-  if FParams=nil then
-   begin
-    FParams:=TXxmReqPars.Create(Self,FPostData);
-    //redirect on post? invalidate postdata!
-    if FParams.PostDataOnRedirect then FreeAndNil(FPostData);
-   end;
+  if FParams=nil then FParams:=TXxmReqPars.Create;
+  if not FParams.Filled then
+    if FParams.Fill(Self,FPostData) then
+      FreeAndNil(FPostData);//redirect on post? invalidate postdata!
   if VarIsNumeric(Key) then
    begin
     iKey:=integer(Key);
@@ -591,14 +598,37 @@ end;
 
 function TXxmGeneralContext.GetParameterCount: Integer;
 begin
-  if FParams=nil then FParams:=TXxmReqPars.Create(Self,FPostData);
+  //parse parameters on first use
+  if FParams=nil then FParams:=TXxmReqPars.Create;
+  if not FParams.Filled then
+    if FParams.Fill(Self,FPostData) then
+      FreeAndNil(FPostData);//redirect on post? invalidate postdata!
   Result:=FParams.Count;
 end;
 
 procedure TXxmGeneralContext.AddParameter(Param: IInterface);
 begin
-  if FParams=nil then FParams:=TXxmReqPars.Create(Self,FPostData);
+  if FParams=nil then FParams:=TXxmReqPars.Create;//fill: postpone to first GetParameter call
   FParams.Add(Param as IXxmParameter);
+end;
+
+procedure TXxmGeneralContext.AttachAgent(Agent: IxxmUploadProgressAgent;
+  Flags, Step: integer);
+const
+  DefaultProgressStep=$10000;
+begin
+  if FParams=nil then FParams:=TXxmReqPars.Create;//fill: postpone to first GetParameter call
+  if FParams.Filled then raise EXxmParametersAlreadyParsed.Create(SXxmParametersAlreadyParsed);
+  if (Flags and xxmUploadProgressAttach_PostData)<>0 then
+    FParams.DataProgressAgent:=Agent;
+  if (Flags and xxmUploadProgressAttach_FileFields)<>0 then
+   begin
+    FParams.FileProgressAgent:=Agent;
+    if Step=0 then
+      FParams.FileProgressStep:=DefaultProgressStep
+    else
+      FParams.FileProgressStep:=Step;
+   end;
 end;
 
 { TXxmCrossProjectIncludeCheck }

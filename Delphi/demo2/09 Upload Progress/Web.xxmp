@@ -1,0 +1,16 @@
+<XxmWebProject>
+	<ProjectName>demo</ProjectName>
+	<CompileCommand>dcc32 -U[[HandlerPath]]public -Q [[ProjectName]].dpr</CompileCommand>
+	<Files>
+		<Unit UnitName="xxmSession"/>
+		<File ID="default_xxm" UnitName="default_xxm1" UnitPath=""><Path>Default.xxm</Path></File>
+		<File ID="ihead_xxmi" UnitName="ihead_xxmi1" UnitPath=""><Path>iHead.xxmi</Path></File>
+		<File ID="aadd_xxm" UnitName="aadd_xxm1" UnitPath=""><Path>aAdd.xxm</Path></File>
+		<File ID="fadd_xxm" UnitName="fadd_xxm1" UnitPath=""><Path>fAdd.xxm</Path></File>
+		<File ID="ifoot_xxmi" UnitName="ifoot_xxmi1" UnitPath=""><Path>iFoot.xxmi</Path></File>
+		<File ID="progress_xxm" UnitName="progress_xxm1" UnitPath=""><Path>Progress.xxm</Path></File>
+		<File ID="files__default_xxm" UnitName="default_xxm2" UnitPath="files\"><Path>files/Default.xxm</Path></File>
+	</Files>
+	<UUID>{C328CEF5-380E-4A29-8659-C7584F56A134}</UUID>
+	<LastModified>2011-11-18T21:33:52</LastModified>
+</XxmWebProject>

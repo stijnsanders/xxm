@@ -33,6 +33,20 @@ type
     procedure AddParameter(Param: IUnknown);//IxxmParameter
   end;
 
+  IxxmUploadProgressAgent=interface
+    ['{78786D00-0000-0011-C000-000000000011}']
+    procedure ReportProgress(FieldName, FileName: AnsiString; Position: integer);
+  end;
+
+  IxxmUploadProgressService=interface
+    ['{78786D00-0000-0012-C000-000000000012}']
+    procedure AttachAgent(Agent: IxxmUploadProgressAgent; Flags, Step: integer);
+  end;
+
+const
+  xxmUploadProgressAttach_PostData   = $00000001;
+  xxmUploadProgressAttach_FileFields = $00000002;
+
 implementation
 
 end.

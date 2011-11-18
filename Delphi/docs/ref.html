@@ -20,7 +20,7 @@
 <li><a href="#project">Project</a></li>
 <li><a href="#syntax">Syntax</a></li>
 <li><a href="#proto">Proto</a></li>
-<li><a href="#embedhtml">Embed HTML</a></li>
+<li><a href="#embedhtml">Embed HTML</a>  <span class="newver">1.1.1</span></li>
 <li><a href="#interface">Interface</a></li>
 <li><a href="#xxmproject">TxxmProject</a></li>
 <li><a href="#xxmfragment">TxxmFragment, TxxmPage, TxxmInclude</a></li>
@@ -28,7 +28,8 @@
 <li><a href="#xxmparameter">IxxmParameter</a></li>
 <li><a href="#xxmversion">XxmVersion</a></li>
 <li><a href="#htmlencode">HTMLEncode</a></li>
-<li><a href="#headers">Headers</a></li>
+<li><a href="#headers">Headers</a> <span class="newver">1.1.0</span></li>
+<li><a href="#uploadprogress">Upload progress</a> <span class="newver">1.1.4</span></li>
 </ul>
 
 <p class="title"><a name="intro"></a>Introduction</p>
@@ -111,11 +112,11 @@ Context.SendHTML('&lt;/b&gt;');</code></p>
 
 <p>An xxm project uses the xxm.pas file that declares classes, interfaces and types required for the xxm interface. Your xxm installation should provide a recent copy of the xxm.pas file in the "public" folder.</p>
 
-<p><code>TXxmProjectLoadProc=function(AProjectName:WideString): IXxmProject; stdcall;</code></p>
+<p><code>TXxmProjectLoadProc = function(AProjectName:WideString): IXxmProject; stdcall;</code></p>
 <p>Each xxm project must export a function named "XxmProjectLoad", that creates an instance of the project. (by default provided in the xxmp.pas file)</p>
 
 <dl>
-<dt class="title"><a name="xxmproject"></a><code>TXxmProject=class(TInterfacedObject, IXxmProject)</code></dt>
+<dt class="title"><a name="xxmproject"></a><code>TXxmProject = class(TInterfacedObject, IXxmProject)</code></dt>
 <dd>An xxm project implements the IXxmProject. (by default provided in the xxmp.pas file)</dd>
 
 <dt><code>function LoadPage(Context:IXxmContext;Address:WideString):IXxmFragment;</code></dt>
@@ -128,9 +129,9 @@ Context.SendHTML('&lt;/b&gt;');</code></p>
 <dd>Pages and include fragments are passed to the UnloadFragment procedure to allow the xxm project to perform clean-up or re-use of object instances.</dd>
 
 <dt class="title"><a name="xxmfragment"></a><a name="xxmpage"></a><a name="xxminclude"></a><code>
-  TXxmFragment=class(TInterfacedObject, IXxmFragment)<br />
-  TXxmPage=class(TXxmFragment, IXxmPage)<br />
-  TXxmInclude=class(TXxmFragment, IXxmInclude)</code></dt>
+  TXxmFragment = class(TInterfacedObject, IXxmFragment)<br />
+  TXxmPage = class(TXxmFragment, IXxmPage)<br />
+  TXxmInclude = class(TXxmFragment, IXxmInclude)</code></dt>
 <dd>the default xxm and xxmi prototype files convert xxm and xxmi source files into a definition of a descendant class of TXxmPage or TXxmInclude.</dd>
 <dt><code>procedure Build(const Context: IXxmContext; const Caller: IXxmFragment;<br />
 &nbsp;      const Values: array of OleVariant;<br />
@@ -143,7 +144,7 @@ Context.SendHTML('&lt;/b&gt;');</code></p>
 </ul>
 </dd>
 
-<dt class="title"><code><a name="xxmcontext"></a>IXxmContext=interface</code></dt>
+<dt class="title"><code><a name="xxmcontext"></a>IXxmContext = interface</code></dt>
 <dd>an xxm context handles all interfacing to the incoming request and the outgoing response</dd>
 
 <dt><code>property URL:WideString</code></dt>
@@ -244,7 +245,7 @@ provides information about the incoming request
 <dt><code>procedure DispositionAttach(FileName: WideString);</code></dt>
 <dd>notifies the browser to show a 'save as' dialog to store the contents of the response</dd>
 
-<dt class="title"><code><a name="xxmparameter"></a>IXxmParameter=interface</code></dt>
+<dt class="title"><code><a name="xxmparameter"></a>IXxmParameter = interface</code></dt>
 <dd>all parameters inherit from IXxmParameter</dd>
 
 <dt><code>property Name:WideString</code></dt>
@@ -259,13 +260,13 @@ provides information about the incoming request
 <dt><code>function NextBySameName:IXxmParameter;</code></dt>
 <dd>gets the next parameter in sequence with the same name, if any</dd>
 
-<dt class="title"><code>IXxmParameterGet=interface(IXxmParameter)</code></dt>
+<dt class="title"><code>IXxmParameterGet = interface(IXxmParameter)</code></dt>
 <dd>a parameter provided in the QueryString URL</dd>
 
-<dt class="title"><code>IxxmParameterPost=interface(IXxmParameter)</code></dt>
+<dt class="title"><code>IxxmParameterPost = interface(IXxmParameter)</code></dt>
 <dd>a parameter provided in posted data</dd>
 
-<dt class="title"><code>IxxmParameterPostFile=interface(IxxmParameterPost)</code></dt>
+<dt class="title"><code>IxxmParameterPostFile = interface(IxxmParameterPost)</code></dt>
 <dd>a file uploaded in posted data</dd>
 
 <dt><code>property Size:integer</code></dt>
@@ -281,7 +282,7 @@ provides information about the incoming request
 <dd>saves the uploaded content to a stream  (use <code>TStreamAdapter</code> from the Classes unit to provide an <code>IStream</code> interface on a <code>TStream</code> object)</dd>
 
 <dt class="title"><a name="XxmVersion"></a><code>function XxmVersion:TXxmVersion;<br />
-  TXxmVersion=record Major,Minor,Release,Build:integer; end;
+  TXxmVersion = record Major,Minor,Release,Build:integer; end;
 </code></dt>
 <dd>gets the xxm version, use the xxm version to check if newer features are available</dd>
 
@@ -297,18 +298,18 @@ function URLDecode(Data:string):WideString;
 
 </dl>
 
-<p class="title"><a name="headers"></a>Headers</p>
+<p class="title"><a name="headers"></a>Headers <span class="newver">1.1.0</span></p>
 
 <p>The xxm context objects provide separate interfaces to allow access to request and response HTTP headers and parameters. Include the <code>xxmHeaders.pas</code> and query the Context object for an IxxmHttpHeaders or IxxmParameterCollection interface pointer.</p>
 
 <dl>
-<dt class="title"><code>IxxmHttpHeaders=interface</code></dt>
+<dt class="title"><code>IxxmHttpHeaders = interface</code></dt>
 <dd>an interface provided by the context object to allow access to request and response HTTP headers.</dd>
 <dt><code>property RequestHeaders:IxxmDictionaryEx</code></dt>
 <dd>a read-only dictionary of name-value pairs of the request HTTP header</dd>
 <dt><code>property ResponseHeaders:IxxmDictionaryEx</code></dt>
 <dd>a dictionary of name-value pairs of the response HTTP header</dd>
-<dt class="title"><code>IxxmDictionary=interface</code></dt>
+<dt class="title"><code>IxxmDictionary = interface</code></dt>
 <dd>a dictionary contains name-value pairs</dd>
 <dt><code>property Item[Name:OleVariant]:WideString default;</code></dt>
 <dd>gets or sets the value for the name-value pair</dd>
@@ -316,10 +317,10 @@ function URLDecode(Data:string):WideString;
 <dd>read-only, the number of name-value pair in the dictionary</dd>
 <dt><code>property Name[Idx:integer]:WideString</code></dt>
 <dd>gets or sets the name for the name-value pair</dd>
-<dt class="title"><code>IxxmDictionaryEx=interface(IxxmDictionary)</code></dt>
+<dt class="title"><code>IxxmDictionaryEx = interface(IxxmDictionary)</code></dt>
 <dd>extends IxxmDictionary with support for complex entries with sub-values, e.g.:<br />
 <code>Content-Type: text/plain; charset="iso-8859-15"<br />Content-Disposition: inline; name="file1"; filename="somefile.txt"</code></dd>
-<dt><code>function Complex(Name:OleVariant;out Items:IxxmDictionary):WideString;<code></dt>
+<dt><code>function Complex(Name:OleVariant;out Items:IxxmDictionary):WideString;</code></dt>
 <dd>returns opening value and sets Items to a dictionary containing further name-value pairs</dd>
 </dl>
 
@@ -330,6 +331,37 @@ function URLDecode(Data:string):WideString;
 <dd>an interface provided by the context object that enables adding extra parameters, e.g. from the project's LoadPage method.</dd>
 <dt><code>procedure AddParameter(Param: IXxmParameter);</code></dt>
 <dd>adds an object to the parameter collection that implements the IXxmParameter interface.</dd>
+</dl>
+
+<p class="title"><a name="uploadprogress"></a>Upload progress <span class="newver">1.1.4</span></p>
+
+<p>To display the progress of uploading a large file, you need to attach an upload progress agent to the context <b>before</b> any context parameter is accessed. The request data is parsed when <code>Context.Parameter</code> is first accessed.</p>
+
+<dl>
+<dt class="title"><code>IxxmUploadProgressService = interface</code></dt>
+<dd>an interface provided by the context object that enables attaching an upload progress agent.</dd>
+<dt><code>procedure AttachAgent(Agent: IxxmUploadProgressAgent; Flags, Step: integer);</code></dt>
+<dd>attaches an upload progress agent to the context. Attach any agents before calling <code>Context.Parameter</code>.<br />
+Flags:
+<ul>
+<li><code>xxmUploadProgressAttach_PostData</code>: report progress parsing the entire request data</li>
+<li><code>xxmUploadProgressAttach_FileFields</code>: report progress parsing each file</li>
+</ul>
+Step:
+<ul>
+<li><code>xxmUploadProgressAttach_PostData</code>: not used</li>
+<li><code>xxmUploadProgressAttach_FileFields</code>: report progress every <i>x</i> bytes</li>
+</ul>
+</dd>
+<dt><code>IxxmUploadProgressAgent = interface</code></dt>
+<dd>implement this interface on an object to use it as an upload progress agent</dd>
+<dt><code>procedure ReportProgress(FieldName, FileName: AnsiString; Position: integer);</code></dt>
+<dd>
+<ul>
+<li><code>xxmUploadProgressAttach_PostData</code>: FieldName, FileName not used</li>
+<li><code>xxmUploadProgressAttach_FileFields</code>: FieldName, FileName of post form field being parsed</li>
+</ul>
+</dd>
 </dl>
 
 </body>
