@@ -27,6 +27,7 @@ type
     FPostData: TStream;
     FPostTempFile: AnsiString;
     StatusSet: boolean;
+    FBufferSize: integer;
 
     { IXxmContext }
     function GetURL: WideString;
@@ -68,6 +69,10 @@ type
     procedure SetCookie(Name,Value:WideString; KeepSeconds:cardinal;
       Comment,Domain,Path:WideString; Secure,HttpOnly:boolean); overload; virtual; abstract;
 
+    function GetBufferSize: integer;
+    procedure SetBufferSize(ABufferSize: integer); virtual;
+    procedure Flush; virtual; abstract;
+
     { IxxmParameterCollection }
     procedure AddParameter(Param: IUnknown);//IxxmParameter
 
@@ -108,6 +113,7 @@ type
   EXxmIncludeFragmentNotFound=class(Exception);
   EXxmIncludeCrossProjectDisabled=class(Exception);
   EXxmParametersAlreadyParsed=class(Exception);
+  EXxmBufferSizeInvalid=class(Exception);
 
 var
   //see xxmSettings
@@ -127,6 +133,7 @@ const //resourcestring?
   SXxmIncludeFragmentNotFound='Include fragment not found "__"';
   SXxmIncludeCrossProjectDisabled='Cross-project includes not enabled';
   SXxmParametersAlreadyParsed='Can''t attach progress agent, parameters already parsed';
+  SXxmBufferSizeInvalid='BufferSize exceeds maximum';
 
 { TXxmGeneralContext }
 
@@ -162,6 +169,7 @@ begin
   StatusSet:=false;
   FProjectName:='';//parsed from URL later
   FFragmentName:='';//parsed from URL later
+  FBufferSize:=0;//TOOD: from project settings?
 end;
 
 procedure TXxmGeneralContext.EndRequest;
@@ -260,6 +268,7 @@ begin
           FPage:=nil;
         end;
      end;
+    if FBufferSize<>0 then Flush;
    end
   else
     try
@@ -283,8 +292,10 @@ begin
         ForceStatus(204,'No Content');
         AddResponseHeader('Content-Length','0');
         SendHeader;
-       end;
-
+       end
+      else
+        if FBufferSize<>0 then Flush;
+        
     finally
       FBuilding:=nil;
       //let project decide to free or not
@@ -352,6 +363,7 @@ begin
      end;
    end;
   SendRaw(s);
+  if FBufferSize<>0 then Flush;
 end;
 
 function TXxmGeneralContext.GetContentType: WideString;
@@ -629,6 +641,21 @@ begin
     else
       FParams.FileProgressStep:=Step;
    end;
+end;
+
+function TXxmGeneralContext.GetBufferSize: integer;
+begin
+  Result:=FBufferSize;
+end;
+
+procedure TXxmGeneralContext.SetBufferSize(ABufferSize: integer);
+const
+  MaxBufferSize=$100000;
+begin
+  if (ABufferSize<0) or (ABufferSize>MaxBufferSize) then
+    raise EXxmBufferSizeInvalid.Create(SXxmBufferSizeInvalid);
+  FBufferSize:=ABufferSize;
+  //TODO: flush? inheritants should if needed
 end;
 
 { TXxmCrossProjectIncludeCheck }

@@ -37,6 +37,9 @@ type
     procedure SetCookie(Name,Value:WideString; KeepSeconds:cardinal;
       Comment,Domain,Path:WideString; Secure,HttpOnly:boolean); overload;
     procedure SetStatus(Code: Integer; Text: WideString);
+    function GetBufferSize: integer;
+    procedure SetBufferSize(ABufferSize: integer);
+    procedure Flush;
   public
     constructor Create(AContext: IXxmContext; ACaller: IXxmFragment);
     destructor Destroy; override;
@@ -319,6 +322,22 @@ var
 begin
   for i:=0 to Length(Values)-1 do
     WriteString(VarToStr(Values[i]));
+end;
+
+procedure TStringContext.Flush;
+begin
+  //ignore
+end;
+
+function TStringContext.GetBufferSize: integer;
+begin
+  //ignore
+  Result:=-1;
+end;
+
+procedure TStringContext.SetBufferSize(ABufferSize: integer);
+begin
+  //ignore
 end;
 
 end.

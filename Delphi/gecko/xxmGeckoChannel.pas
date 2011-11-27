@@ -168,6 +168,7 @@ type
     procedure SetCookie(Name: WideString; Value: WideString); overload; override;
     procedure SetCookie(Name,Value:WideString; KeepSeconds:cardinal;
       Comment,Domain,Path:WideString; Secure,HttpOnly:boolean); overload; override;
+    procedure Flush; override;
 
     //other TXxmGeneralContext abstract methods
     function GetProjectEntry:TXxmProjectEntry; override;
@@ -962,7 +963,7 @@ begin
         l:=SendBufferSize;
         OleCheck(s.Read(@d[0],l,@l));
         if l<>0 then Write(d[0],l);
-        ReportData;
+        if FOutputSize>=FBufferSize then ReportData;
       finally
         Unlock;
       end;
@@ -1046,7 +1047,7 @@ begin
     startdata:=CheckSendStart; //SendHeader outside of lock
     Lock;
     try
-      if startdata then
+      if startdata then        
         case FAutoEncoding of
           aeUtf8:Write(Utf8ByteOrderMark,3);
           aeUtf16:Write(Utf16ByteOrderMark,2);
@@ -1064,7 +1065,7 @@ begin
           Write(s[1],Length(s));
          end;
         end;
-      ReportData;
+      if FOutputSize>=FBufferSize then ReportData;
     finally
       Unlock;
     end;
@@ -1297,6 +1298,18 @@ end;
 procedure TxxmChannel.OnRedirectVerifyCallback(aResult: nsresult);
 begin
   //called when redirecting
+end;
+
+procedure TxxmChannel.Flush;
+begin
+  inherited;
+  Lock;
+  try
+    ReportData;
+  finally
+    Unlock;
+  end;
+  //TODO: wait until data read?
 end;
 
 { TXxmGeckoLoader }

@@ -34,6 +34,7 @@ type
     FCookie: AnsiString;
     FCookieIdx: TParamIndexes;
     FQueryStringIndex:integer;
+    FBuffer:TMemoryStream;
     function GetCGIValue(Name:AnsiString):AnsiString;
   protected
     procedure SendRaw(Data: WideString); override;
@@ -44,11 +45,12 @@ type
     function Connected:boolean; override;
     function GetSessionID:WideString; override;
     procedure SendHeader; override;
-
     function GetCookie(Name:WideString):WideString; override;
     procedure SetCookie(Name,Value:WideString); overload; override;
     procedure SetCookie(Name,Value:WideString; KeepSeconds:cardinal;
       Comment,Domain,Path:WideString; Secure,HttpOnly:boolean); overload; override;
+    procedure SetBufferSize(ABufferSize: Integer); override;
+    procedure Flush; override;
 
     function GetProjectEntry:TXxmProjectEntry; override;
     procedure AddResponseHeader(Name, Value: WideString); override;
@@ -95,6 +97,7 @@ begin
   FCookieParsed:=false;
   FQueryStringIndex:=1;
   FSessionID:='';//see GetSessionID
+  FBuffer:=nil;
   FRedirectPrefix:='';
   FCGIValuesSize:=0;
   FCGIValuesCount:=0;
@@ -105,6 +108,11 @@ begin
   FlushFileBuffers(FPipeOut);
   CloseHandle(FPipeIn);
   CloseHandle(FPipeOut);
+  if FBuffer<>nil then
+   begin
+    FBuffer.Free;
+    FBuffer:=nil;
+   end;
   if FReqHeaders<>nil then
    begin
     (FReqHeaders as IUnknown)._Release;
@@ -389,6 +397,7 @@ begin
     aeIso8859:FResHeaders['Content-Length']:=IntToStr(Length(AnsiString(RedirBody)));
   end;
   SendRaw(RedirBody);
+  if FBufferSize<>0 then Flush;  
   raise EXxmPageRedirected.Create(RedirectURL);
 end;
 
@@ -406,24 +415,40 @@ begin
     if CheckSendStart then
       case FAutoEncoding of
         aeUtf8:
-          WriteFile(FPipeOut,Utf8ByteOrderMark[1],3,l,nil);
+          if FBuffer=nil then
+            WriteFile(FPipeOut,Utf8ByteOrderMark[1],3,l,nil)
+          else
+            FBuffer.Write(Utf8ByteOrderMark[1],3);
         aeUtf16:
-          WriteFile(FPipeOut,Utf16ByteOrderMark[1],2,l,nil);
+          if FBuffer=nil then
+            WriteFile(FPipeOut,Utf16ByteOrderMark[1],2,l,nil)
+          else
+            FBuffer.Write(Utf16ByteOrderMark[1],2);
       end;
     case FAutoEncoding of
       aeUtf16:
-        WriteFile(FPipeOut,Data[1],Length(Data)*2,l,nil);
+        if FBuffer=nil then
+          WriteFile(FPipeOut,Data[1],Length(Data)*2,l,nil)
+        else
+          FBuffer.Write(Data[1],Length(Data)*2);
       aeUtf8:
        begin
         s:=UTF8Encode(Data);
-        WriteFile(FPipeOut,s[1],Length(s),l,nil);
+        if FBuffer=nil then
+          WriteFile(FPipeOut,s[1],Length(s),l,nil)
+        else
+          FBuffer.Write(s[1],Length(s));
        end;
       else
        begin
         s:=Data;
-        WriteFile(FPipeOut,s[1],Length(s),l,nil);
+        if FBuffer=nil then
+          WriteFile(FPipeOut,s[1],Length(s),l,nil)
+        else
+          FBuffer.Write(s[1],Length(s));
        end;
     end;
+    if (FBuffer<>nil) and (FBuffer.Position>=FBufferSize) then Flush;
    end;
 end;
 
@@ -440,6 +465,7 @@ begin
     OleCheck(s.Read(@d[0],l,@l));
     if l<>0 then
      begin
+      if FBuffer<>nil then Flush;
       if not(WriteFile(FPipeOut,d[0],l,l1,nil)) then RaiseLastOSError;
       if l<>l1 then raise Exception.Create('Stream Write Failed');
      end;
@@ -495,6 +521,41 @@ procedure TXxmHostedContext.AddResponseHeader(Name, Value: WideString);
 begin
   inherited;
   FResHeaders[Name]:=Value;
+end;
+
+procedure TXxmHostedContext.Flush;
+var
+  i,l:cardinal;
+begin
+  if FBuffer<>nil then
+   begin
+    i:=FBuffer.Position;
+    if i<>0 then
+     begin
+      WriteFile(FPipeOut,FBuffer.Memory^,i,l,nil);
+      FBuffer.Position:=0;
+     end;
+   end;
+end;
+
+procedure TXxmHostedContext.SetBufferSize(ABufferSize: Integer);
+begin
+  inherited;
+  if ABufferSize=0 then
+   begin
+    if FBuffer<>nil then
+     begin
+      Flush;
+      FBuffer.Free;
+      FBuffer:=nil;
+     end;
+   end
+  else
+   begin
+    if FBuffer=nil then FBuffer:=TMemoryStream.Create;//TODO: tmp file when large buffer
+    if FBuffer.Position>ABufferSize then Flush;
+    FBuffer.Size:=ABufferSize;
+   end;
 end;
 
 { TXxmPostDataStream }

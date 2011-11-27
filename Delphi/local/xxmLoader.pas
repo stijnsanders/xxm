@@ -44,6 +44,7 @@ type
     function GetRequestHeaders:IxxmDictionaryEx;
     function GetResponseHeaders:IxxmDictionaryEx;
     procedure AddResponseHeader(Name: WideString; Value: WideString); override;
+    procedure Flush; override;
   public
     OutputData:TStream;
     OutputSize,ClippedSize:Int64;
@@ -320,8 +321,7 @@ begin
       if PrPos>PrMax then PrMax:=PrMax*10;
       OleCheck(ProtSink.ReportData(BSCF_INTERMEDIATEDATANOTIFICATION,PrPos,PrMax));
      end;
-
-  //if Aborted then raise?   
+  //if Aborted then raise?
 end;
 
 procedure TXxmLocalContext.DispositionAttach(FileName: WideString);
@@ -388,7 +388,7 @@ begin
     finally
       Unlock;
     end;
-    ReportData;
+    if OutputSize>=FBufferSize then ReportData;
    end;
 end;
 
@@ -416,7 +416,7 @@ begin
       finally
         Unlock;
       end;
-      ReportData;
+      if OutputSize>=FBufferSize then ReportData;
     until (l=0) or Aborted;
    end;
 end;
@@ -827,6 +827,12 @@ end;
 procedure TXxmLocalContext.AddResponseHeader(Name, Value: WideString);
 begin
   FResHeaders.Add(Name,Value);
+end;
+
+procedure TXxmLocalContext.Flush;
+begin
+  ReportData;
+  //TODO: stall until read?
 end;
 
 { TXxmPageLoader }

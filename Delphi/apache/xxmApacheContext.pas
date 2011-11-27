@@ -14,6 +14,7 @@ type
     FCookieParsed: boolean;
     FCookie: AnsiString;
     FCookieIdx: TParamIndexes;
+    FBuffer: TMemoryStream;
   protected
     procedure SendStream(s:IStream); override;
     function GetSessionID:WideString; override;
@@ -26,6 +27,8 @@ type
     procedure SetCookie(Name,Value:WideString; KeepSeconds:cardinal;
       Comment,Domain,Path:WideString; Secure,HttpOnly:boolean); overload; override;
     //procedure SetCookie2();
+    procedure SetBufferSize(ABufferSize: Integer); override;
+    procedure Flush; override;
     procedure SendHeader; override;
     procedure SendRaw(Data: WideString); override;
     function GetProjectEntry:TXxmProjectEntry; override;
@@ -61,11 +64,13 @@ begin
   FRedirectPrefix:='';//see Execute
   FCookieParsed:=false;
   FSessionID:='';//see GetSessionID
+  FBuffer:=nil;
 end;
 
 destructor TxxmApacheContext.Destroy;
 begin
   rq:=nil;
+  if FBuffer<>nil then FBuffer.Free;
   inherited;
 end;
 
@@ -269,6 +274,7 @@ begin
   AddResponseHeader('Location',NewURL);
   //TODO: move this to execute's except?
   SendRaw('<a href="'+HTMLEncode(NewURL)+'">'+HTMLEncode(NewURL)+'</a>'#13#10);
+  if FBufferSize<>0 then Flush;
   raise EXxmPageRedirected.Create(RedirectURL);
 end;
 
@@ -287,34 +293,52 @@ begin
         aeUtf8:
          begin
           s:=Utf8ByteOrderMark;
-          if ap_rwrite(s[1],3,rq)<>3 then raise EXxmRWriteFailed.Create(SXxmRWriteFailed);
+          if FBuffer<>nil then
+            FBuffer.Write(s[1],3)
+          else
+            if ap_rwrite(s[1],3,rq)<>3 then raise EXxmRWriteFailed.Create(SXxmRWriteFailed);
          end;
         aeUtf16:
          begin
           s:=Utf16ByteOrderMark;
-          if ap_rwrite(s[1],2,rq)<>2 then raise EXxmRWriteFailed.Create(SXxmRWriteFailed);
+          if FBuffer<>nil then
+            FBuffer.Write(s[1],2)
+          else
+            if ap_rwrite(s[1],2,rq)<>2 then raise EXxmRWriteFailed.Create(SXxmRWriteFailed);
          end;
       end;
     case FAutoEncoding of
       aeUtf16:
        begin
         l:=Length(Data)*2;
-        if ap_rwrite(Data[1],l,rq)<>l then raise EXxmRWriteFailed.Create(SXxmRWriteFailed);
+        if FBuffer<>nil then
+          FBuffer.Write(Data[1],l)
+        else
+          if ap_rwrite(Data[1],l,rq)<>l then raise EXxmRWriteFailed.Create(SXxmRWriteFailed);
        end;
       aeUtf8:
        begin
         s:=UTF8Encode(Data);
         l:=Length(s);
-        if ap_rwrite(s[1],l,rq)<>l then raise EXxmRWriteFailed.Create(SXxmRWriteFailed);
+        if FBuffer<>nil then
+          FBuffer.Write(s[1],l)
+        else
+          if ap_rwrite(s[1],l,rq)<>l then raise EXxmRWriteFailed.Create(SXxmRWriteFailed);
        end;
       else
        begin
         s:=Data;
         l:=Length(s);
-        if ap_rwrite(s[1],l,rq)<>l then raise EXxmRWriteFailed.Create(SXxmRWriteFailed);
+        if FBuffer<>nil then
+          FBuffer.Write(s[1],l)
+        else
+          if ap_rwrite(s[1],l,rq)<>l then raise EXxmRWriteFailed.Create(SXxmRWriteFailed);
        end;
     end;
-    ap_rflush(rq);//? only every x bytes?
+    if FBuffer=nil then
+      ap_rflush(rq)//? only every x bytes?
+    else
+      if FBuffer.Position>=FBufferSize then Flush;
    end;
 end;
 
@@ -334,6 +358,7 @@ begin
    end;
   }
   CheckSendStart;
+  if FBuffer<>nil then Flush;
   repeat
     l:=dSize;
     OleCheck(s.Read(@d[0],dSize,@l));
@@ -372,6 +397,42 @@ begin
   apr_table_set(rq.headers_out,
     apr_pstrdup(rq.pool,PAnsiChar(AnsiString(Name))),
     apr_pstrdup(rq.pool,PAnsiChar(AnsiString(Value))));
+end;
+
+procedure TxxmApacheContext.Flush;
+var
+  i:int64;
+begin
+  if FBuffer<>nil then
+   begin
+    i:=FBuffer.Position;
+    if i<>0 then
+     begin
+      if ap_rwrite(FBuffer.Memory^,i,rq)<>i then raise EXxmRWriteFailed.Create(SXxmRWriteFailed);
+      FBuffer.Position:=0;
+      ap_rflush(rq)//?
+     end;
+   end;
+end;
+
+procedure TxxmApacheContext.SetBufferSize(ABufferSize: Integer);
+begin
+  inherited;
+  if ABufferSize=0 then
+   begin
+    if FBuffer<>nil then
+     begin
+      Flush;
+      FBuffer.Free;
+      FBuffer:=nil;
+     end;
+   end
+  else
+   begin
+    if FBuffer=nil then FBuffer:=TMemoryStream.Create;//TODO: tmp file when large buffer
+    if FBuffer.Position>ABufferSize then Flush;
+    FBuffer.Size:=ABufferSize;
+   end;
 end;
 
 end.

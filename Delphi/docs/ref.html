@@ -245,6 +245,13 @@ provides information about the incoming request
 <dt><code>procedure DispositionAttach(FileName: WideString);</code></dt>
 <dd>notifies the browser to show a 'save as' dialog to store the contents of the response</dd>
 
+<dt><code>property BufferSize: integer;</code> <span class="newver">1.1.4</span></dt>
+<dd>set a buffer size to store sent data before actually transmitting. When the buffer is full, data is transmitted. It's not guaranteed that the size of sent chunks will be of the exact number of bytes as defined. Set buffer size to 0 to disable buffering and send everything rightaway. It's highly recommended to set <code>Context.BufferSize=$10000;</code>, for example in the LoadPage method in <code>xxmp.pas</code>. This improves performance on projects that call the Send methods many times with small bits if data, but could be confusing when debugging a project. (default value: 0)<br />
+It is allowed to set BufferSize to a new value while data is already sent, but whether any data still in the output buffer will get flushed or not depends on the implementation of the xxm handler.</dd>
+
+<dt><code>procedure Flush;</code> <span class="newver">1.1.4</span></dt>
+<dd>write any data waiting in the output buffer rightaway. Call this right before any operation that could take some time server-side, to be sure any progress display HTML is actually transmitted to the browser.</dd>
+
 <dt class="title"><code><a name="xxmparameter"></a>IXxmParameter = interface</code></dt>
 <dd>all parameters inherit from IXxmParameter</dd>
 

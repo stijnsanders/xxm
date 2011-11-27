@@ -1,5 +1,6 @@
 v1.1.4.?
 - upload progress monitoring interface
+- new IXxmContext members: BufferSize, Flush
 
 v1.1.3.282
 - exception handling: error message detects ContentType text/plain

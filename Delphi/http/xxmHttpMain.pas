@@ -26,6 +26,7 @@ type
     FCookieIdx: TParamIndexes;
     FQueryStringIndex:integer;
     FKeepConnection:boolean;
+    FBuffer:TMemoryStream;
     procedure HandleRequest;
   protected
 
@@ -40,6 +41,8 @@ type
     procedure SetCookie(Name: WideString; Value: WideString); overload; override;
     procedure SetCookie(Name,Value:WideString; KeepSeconds:cardinal;
       Comment,Domain,Path:WideString; Secure,HttpOnly:boolean); overload; override;
+    procedure SetBufferSize(ABufferSize: Integer); override;
+    procedure Flush; override;
 
     function GetProjectEntry:TXxmProjectEntry; override;
     procedure SendHeader; override;
@@ -94,6 +97,9 @@ const
   HTTPMaxHeaderLines=$400;
   PostDataThreshold=$100000;
 
+var
+  HttpSelfVersion:AnsiString;  
+
 procedure XxmRunServer;
 const
   ParameterKey:array[TXxmHttpRunParameters] of AnsiString=(
@@ -111,6 +117,7 @@ var
 begin
   Port:=80;//default
 
+  //process command line parameters
   for i:=1 to ParamCount do
    begin
     s:=ParamStr(i);
@@ -129,6 +136,13 @@ begin
     end;
    end;
 
+  //build HTTP version string
+  i:=Length(SelfVersion);
+  while (i<>0) and (SelfVersion[i]<>' ') do dec(i);
+  HttpSelfVersion:=StringReplace(Copy(SelfVersion,1,i-1),' ','_',[rfReplaceAll])+
+    '/'+Copy(SelfVersion,i+1,Length(SelfVersion)-i);
+
+  //
   CoInitialize(nil);
   XxmProjectCache:=TXxmProjectCache.Create;
   Server:=TxxmHttpServer.Create(nil);
@@ -200,11 +214,18 @@ begin
   FSessionID:='';//see GetSessionID
   FURI:='';//see Execute
   FRedirectPrefix:='';
+  FBuffer:=nil;
 end;
 
 procedure TXxmHttpContext.EndRequest;
 begin
   inherited;
+  if FBuffer<>nil then
+   begin
+    FBuffer.Free;
+    FBuffer:=nil;
+    //TODO: keep buffers on a pool? (by BufferSize?)
+   end;
   if FReqHeaders<>nil then
    begin
     (FReqHeaders as IUnknown)._Release;
@@ -348,7 +369,7 @@ begin
 
   except
     on e:EXxmPageRedirected do
-      ;//assert output done
+      Flush;//assert output done
     on EXxmAutoBuildFailed do
       ;//assert output done
     on e:Exception do
@@ -492,11 +513,11 @@ var
   NewURL,RedirBody:WideString;
 begin
   inherited;
-  SetStatus(301,'Moved Permanently');
+  SetStatus(302,'Object moved');//SetStatus(301,'Moved Permanently');
   //TODO: move this to execute's except?
   NewURL:=RedirectURL;
   if Relative and (NewURL<>'') and (NewURL[1]='/') then NewURL:=FRedirectPrefix+NewURL;
-  RedirBody:='<a href="'+HTMLEncode(NewURL)+'">'+HTMLEncode(NewURL)+'</a>'#13#10;
+  RedirBody:='<h1>Object moved</h1><p><a href="'+HTMLEncode(NewURL)+'">'+HTMLEncode(NewURL)+'</a></p>'#13#10;
   FResHeaders['Location']:=NewURL;
   case FAutoEncoding of
     aeUtf8:FResHeaders['Content-Length']:=IntToStr(Length(UTF8Encode(RedirBody))+3);
@@ -504,6 +525,7 @@ begin
     aeIso8859:FResHeaders['Content-Length']:=IntToStr(Length(AnsiString(RedirBody)));
   end;
   SendRaw(RedirBody);
+  if FBufferSize<>0 then Flush;
   raise EXxmPageRedirected.Create(RedirectURL);
 end;
 
@@ -521,19 +543,15 @@ begin
     if CheckSendStart then
       case FAutoEncoding of
         aeUtf8:
-         begin
-          l:=3;
-          SetLength(d,l);
-          Move(Utf8ByteOrderMark[1],d[0],l);
-          FSocket.SendBuf(d[0],l);
-         end;
+          if FBuffer=nil then
+            FSocket.SendBuf(PAnsiChar(Utf8ByteOrderMark)^,3)
+          else
+            FBuffer.Write(Utf8ByteOrderMark[1],3);
         aeUtf16:
-         begin
-          l:=2;
-          SetLength(d,l);
-          Move(Utf16ByteOrderMark[1],d[0],l);
-          FSocket.SendBuf(d[0],l);
-         end;
+          if FBuffer=nil then
+            FSocket.SendBuf(PAnsiChar(Utf16ByteOrderMark)^,2)
+          else
+            FBuffer.Write(Utf16ByteOrderMark[1],2);
       end;
     case FAutoEncoding of
       aeUtf16:
@@ -541,7 +559,6 @@ begin
         l:=Length(Data)*2;
         SetLength(d,l);
         Move(Data[1],d[0],l);
-        FSocket.SendBuf(d[0],l);
        end;
       aeUtf8:
        begin
@@ -549,7 +566,6 @@ begin
         l:=Length(s);
         SetLength(d,l);
         Move(s[1],d[0],l);
-        FSocket.SendBuf(d[0],l);
        end;
       else
        begin
@@ -557,9 +573,15 @@ begin
         l:=Length(s);
         SetLength(d,l);
         Move(s[1],d[0],l);
-        FSocket.SendBuf(d[0],l);
        end;
     end;
+    if FBuffer=nil then
+      FSocket.SendBuf(d[0],l)
+    else
+     begin
+      FBuffer.Write(d[0],l);
+      if FBuffer.Position>=FBufferSize then Flush;
+     end;
    end;
 end;
 
@@ -570,6 +592,7 @@ begin
   //if s.Size<>0 then
    begin
     CheckSendStart;
+    if FBufferSize<>0 then Flush;
     //no autoencoding here
     os:=TOleStream.Create(s);
     try
@@ -629,7 +652,7 @@ begin
 
   //data (Content-Length
 
-  FResHeaders['Server']:=SelfVersion; //X-Powered-By?
+  FResHeaders['Server']:=HttpSelfVersion; //X-Powered-By?
   FURL:=FReqHeaders['Host'];
   if FURL='' then
    begin
@@ -653,6 +676,41 @@ end;
 procedure TXxmHttpContext.PostProcessRequest;
 begin
   //inheritants can perform pre-page-build logging or checking here
+end;
+
+procedure TXxmHttpContext.Flush;
+var
+  i:int64;
+begin
+  if FBuffer<>nil then
+   begin
+    i:=FBuffer.Position;
+    if i<>0 then
+     begin
+      FSocket.SendBuf(FBuffer.Memory^,i);
+      FBuffer.Position:=0;
+     end;
+   end;
+end;
+
+procedure TXxmHttpContext.SetBufferSize(ABufferSize: Integer);
+begin
+  inherited;
+  if ABufferSize=0 then
+   begin
+    if FBuffer<>nil then
+     begin
+      Flush;
+      FBuffer.Free;
+      FBuffer:=nil;
+     end;
+   end
+  else
+   begin
+    if FBuffer=nil then FBuffer:=TMemoryStream.Create;//TODO: tmp file when large buffer
+    if FBuffer.Position>ABufferSize then Flush;
+    FBuffer.Size:=ABufferSize;
+   end;
 end;
 
 end.

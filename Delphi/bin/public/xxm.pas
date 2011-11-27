@@ -5,8 +5,8 @@ interface
 uses SysUtils, Classes, ActiveX;
 
 const
-  //$Date: 2010-12-13 21:40:40 +0100 (ma, 13 dec 2010) $
-  XxmRevision='$Rev: 111 $';
+  //$Date: 2011-11-22 22:46:42 +0100 (di, 22 nov 2011) $
+  XxmRevision='$Rev: 175 $';
 
 type
   IXxmContext=interface;//forward
@@ -108,6 +108,10 @@ type
     procedure Send(const Values:array of OleVariant); overload;
     procedure SendHTML(const Values:array of OleVariant); overload;
 
+    function GetBufferSize: integer;
+    procedure SetBufferSize(ABufferSize: integer);
+    procedure Flush;
+
     property URL:WideString read GetURL;
     property ContentType:WideString read GetContentType write SetContentType;
     property AutoEncoding:TXxmAutoEncoding read GetAutoEncoding write SetAutoEncoding;
@@ -116,6 +120,7 @@ type
     property ParameterCount:integer read GetParameterCount;
     property SessionID:WideString read GetSessionID;
     property Cookie[Name:WideString]:WideString read GetCookie;
+    property BufferSize: integer read GetBufferSize write SetBufferSize;
   end;
 
   IXxmFragment=interface
