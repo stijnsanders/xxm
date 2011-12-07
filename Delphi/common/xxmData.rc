@@ -4,6 +4,6 @@
 4 icon "..\img\xxm_doc.ico"
 5 icon "..\img\xxmi.ico"
 6 icon "..\img\xxu.ico"
-error 23 "..\common\error.html"
-fnf 23 "..\common\fnf.html"
+error 23 "error.html"
+fnf 23 "fnf.html"
 

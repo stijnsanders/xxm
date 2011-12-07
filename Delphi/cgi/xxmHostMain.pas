@@ -3,8 +3,8 @@ unit xxmHostMain;
 interface
 
 uses
-  SysUtils, ActiveX, xxm, Classes, xxmContext, xxmPReg,
-  xxmHttpPReg, xxmParams, xxmParUtils, xxmHeaders;
+  SysUtils, ActiveX, xxm, Classes, xxmContext, xxmThreadPool,
+  xxmPReg, xxmHttpPReg, xxmParams, xxmParUtils, xxmHeaders;
 
 type
   TXxmPostDataStream=class(TCustomMemoryStream)
@@ -19,7 +19,7 @@ type
     procedure SetSize(NewSize: Integer); override;
   end;
 
-  TXxmHostedContext=class(TXxmGeneralContext, IxxmHttpHeaders)
+  TXxmHostedContext=class(TXxmQueueContext, IxxmHttpHeaders)
   private
     FPipeIn,FPipeOut:THandle;
     FCGIValues:array of record
@@ -63,7 +63,7 @@ type
     constructor Create(PipeIn,PipeOut:THandle);
     destructor Destroy; override;
 
-    procedure Execute;
+    procedure Execute; override;
   end;
 
   EXxmMaximumHeaderLines=class(Exception);
@@ -73,7 +73,7 @@ type
 
 implementation
 
-uses Windows, Variants, ComObj, xxmCommonUtils, xxmThreadPool;
+uses Windows, Variants, ComObj, xxmCommonUtils;
 
 resourcestring
   SXxmMaximumHeaderLines='Maximum header lines exceeded.';
@@ -203,10 +203,7 @@ begin
     //'If-Modified-Since' ? 304
     //'Connection: Keep-alive' ? with sent Content-Length
 
-    //data (Content-Length
-
     FResHeaders['X-Powered-By']:=SelfVersion;
-
     if XxmProjectCache=nil then XxmProjectCache:=TXxmProjectCache.Create;
 
     //TODO: RequestHeaders['Host']?
@@ -252,24 +249,25 @@ begin
     on EXxmAutoBuildFailed do
       ;//assert output done
     on e:Exception do
-     begin
-      //TODO: get fragment 500.xxm?
-      ForceStatus(500,'Internal Server Error');//TODO:setting?
-      try
-        if FPostData=nil then x:='none' else x:=IntToStr(FPostData.Size)+' bytes';
-      except
-        x:='unknown';
-      end;
-      SendError('error',[
-        'ERRORCLASS',e.ClassName,
-        'ERROR',HTMLEncode(e.Message),
-        'CLASS',FPageClass,
-        'URL',HTMLEncode(ContextString(csURL)),
-        'POSTDATA',x,
-        'QUERYSTRING',HTMLEncode(ContextString(csQueryString)),
-        'VERSION',ContextString(csVersion)
-      ]);
-     end;
+      if not HandleException(e) then
+       begin
+        //TODO: get fragment 500.xxm?
+        ForceStatus(500,'Internal Server Error');//TODO:setting?
+        try
+          if FPostData=nil then x:='none' else x:=IntToStr(FPostData.Size)+' bytes';
+        except
+          x:='unknown';
+        end;
+        SendError('error',[
+          'ERRORCLASS',e.ClassName,
+          'ERROR',HTMLEncode(e.Message),
+          'CLASS',FPageClass,
+          'URL',HTMLEncode(ContextString(csURL)),
+          'POSTDATA',x,
+          'QUERYSTRING',HTMLEncode(ContextString(csQueryString)),
+          'VERSION',ContextString(csVersion)
+        ]);
+       end;
   end;
 end;
 
@@ -593,8 +591,7 @@ begin
       inc(FInputRead,l);
      end;
    end;
-    l:=inherited Read(Buffer,Count);
-  Result:=l;
+  Result:=inherited Read(Buffer,Count);
 end;
 
 procedure TXxmPostDataStream.SetSize(NewSize: Integer);

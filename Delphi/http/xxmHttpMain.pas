@@ -337,7 +337,7 @@ begin
         'URL',HTMLEncode(FURI),
         'POSTDATA','',
         'QUERYSTRING','',
-        'VERSION',ContextString(csVersion)
+        'VERSION',SelfVersion
       ]);
       raise EXxmPageRedirected.Create(FHTTPVersion+' 400 Bad Request');
      end;
@@ -373,24 +373,25 @@ begin
     on EXxmAutoBuildFailed do
       ;//assert output done
     on e:Exception do
-     begin
-      //TODO: get fragment 500.xxm?
-      ForceStatus(500,'Internal Server Error');
-      try
-        if FPostData=nil then x:='none' else x:=IntToStr(FPostData.Size)+' bytes';
-      except
-        x:='unknown';
-      end;
-      SendError('error',[
-        'ERRORCLASS',e.ClassName,
-        'ERROR',HTMLEncode(e.Message),
-        'CLASS',FPageClass,
-        'URL',HTMLEncode(ContextString(csURL)),
-        'POSTDATA',x,
-        'QUERYSTRING',HTMLEncode(ContextString(csQueryString)),
-        'VERSION',ContextString(csVersion)
-      ]);
-     end;
+      if not HandleException(e) then
+       begin
+        //TODO: get fragment 500.xxm?
+        ForceStatus(500,'Internal Server Error');
+        try
+          if FPostData=nil then x:='none' else x:=IntToStr(FPostData.Size)+' bytes';
+        except
+          x:='unknown';
+        end;
+        SendError('error',[
+          'ERRORCLASS',e.ClassName,
+          'ERROR',HTMLEncode(e.Message),
+          'CLASS',FPageClass,
+          'URL',HTMLEncode(ContextString(csURL)),
+          'POSTDATA',x,
+          'QUERYSTRING',HTMLEncode(ContextString(csQueryString)),
+          'VERSION',SelfVersion
+        ]);
+       end;
   end;
   PostProcessRequest;
 end;
@@ -649,8 +650,6 @@ begin
   //'Authorization' ?
   //'If-Modified-Since' ? 304
   //'Connection: Keep-alive' ? with sent Content-Length
-
-  //data (Content-Length
 
   FResHeaders['Server']:=HttpSelfVersion; //X-Powered-By?
   FURL:=FReqHeaders['Host'];

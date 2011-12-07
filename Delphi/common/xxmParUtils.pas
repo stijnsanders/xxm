@@ -11,7 +11,7 @@ type
 
   TRequestHeaders=class(TInterfacedObject, IxxmDictionary, IxxmDictionaryEx)
   private
-    FData:WideString;
+    FData:AnsiString;
     FIdx:TParamIndexes;
     function GetItem(Name: OleVariant): WideString;
     procedure SetItem(Name: OleVariant; const Value: WideString);

@@ -429,24 +429,25 @@ begin
      end;
 
     on e:Exception do
-     begin
-      ForceStatus(StatusException,'ERROR');
-      //TODO: get fragment 500.xxm?
-      try
-        if FPostData=nil then x:='none' else x:=IntToStr(FPostData.Size)+' bytes';
-      except
-        x:='unknown';
-      end;
-      SendError('error',[
-        'ERRORCLASS',e.ClassName,
-        'ERROR',HTMLEncode(e.Message),
-        'CLASS',FPageClass,
-        'URL',HTMLEncode(FURL),
-        'POSTDATA',x,
-        'QUERYSTRING',FQueryString,
-        'VERSION',ContextString(csVersion)
-      ]);
-     end;
+      if not HandleException(e) then
+       begin
+        ForceStatus(StatusException,'ERROR');
+        //TODO: get fragment 500.xxm?
+        try
+          if FPostData=nil then x:='none' else x:=IntToStr(FPostData.Size)+' bytes';
+        except
+          x:='unknown';
+        end;
+        SendError('error',[
+          'ERRORCLASS',e.ClassName,
+          'ERROR',HTMLEncode(e.Message),
+          'CLASS',FPageClass,
+          'URL',HTMLEncode(FURL),
+          'POSTDATA',x,
+          'QUERYSTRING',FQueryString,
+          'VERSION',SelfVersion
+        ]);
+       end;
   end;
 
   try

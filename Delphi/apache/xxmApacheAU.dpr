@@ -1,6 +1,6 @@
 library xxmApacheAU;
 
-{$R 'xxmData.res' 'xxmData.rc'}
+{$R '..\common\xxmData.res' '..\common\xxmData.rc'}
 
 uses
   HTTPD2 in 'HTTPD2.pas',

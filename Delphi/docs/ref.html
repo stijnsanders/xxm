@@ -132,16 +132,29 @@ Context.SendHTML('&lt;/b&gt;');</code></p>
   TXxmFragment = class(TInterfacedObject, IXxmFragment)<br />
   TXxmPage = class(TXxmFragment, IXxmPage)<br />
   TXxmInclude = class(TXxmFragment, IXxmInclude)</code></dt>
-<dd>the default xxm and xxmi prototype files convert xxm and xxmi source files into a definition of a descendant class of TXxmPage or TXxmInclude.</dd>
+<dd>The default xxm and xxmi prototype files convert xxm and xxmi source files into a definition of a descendant class of TXxmPage or TXxmInclude.</dd>
 <dt><code>procedure Build(const Context: IXxmContext; const Caller: IXxmFragment;<br />
 &nbsp;      const Values: array of OleVariant;<br />
 &nbsp;      const Objects: array of TObject); virtual; abstract;</code></dt>
-<dd>a fragment's Build method is called to build the response
+<dd>A fragment's Build method is called to build the response
 <ul>
 <li>Context: an instance of IXxmContext to build the response with</li>
 <li>Caller: set to the fragment that calls Context.Include, nil otherwise</li>
 <li>Values, Objects: values and objects as passed onto Context.Include by the calling fragment</li>
 </ul>
+</dd>
+
+<dt class="title"><code>IXxmProjectEvents = interface</code> <span class="newver">1.1.4</span></dt>
+<dd>The project object can optionally expose this interface. If it does, the xxm handler will call its methods in certain events:</dd>
+
+<dt><code>function HandleException(Context:IxxmContext;PageClass:WideString;Ex:Exception):boolean;</code> <span class="newver">1.1.4</span></dt>
+<dd>An exception occurred while building a page
+<ul>
+<li>Context: the IXxmContext the page was being built with</li>
+<li>PageClass: an informational display of which fragment the exception occurred in, may contain a path of fragments that included eachother</li>
+<li>Ex: the exception object that was raised</li>
+</ul>
+Return whether the exception was handled. Return false to have the xxm handler send the default exception message.
 </dd>
 
 <dt class="title"><code><a name="xxmcontext"></a>IXxmContext = interface</code></dt>
@@ -239,7 +252,7 @@ provides information about the incoming request
 
 <dt><code>procedure SetCookie(Name,Value:WideString); overload;<br />
     procedure SetCookie(Name,Value:WideString; KeepSeconds:cardinal;<br />
-      Comment,Domain,Path:WideString; Secure,HttpOnly:boolean); overload;</code></dt>
+&nbsp;      Comment,Domain,Path:WideString; Secure,HttpOnly:boolean); overload;</code></dt>
 <dd>includes a cookie in the response, <b>Attention:</b> calling Cookie[] with the same Name as SetCookie has been called, will not return the same Value in the same request as SetCookie has been called.</dd>
 
 <dt><code>procedure DispositionAttach(FileName: WideString);</code></dt>
@@ -348,16 +361,10 @@ function URLDecode(Data:string):WideString;
 <dt class="title"><code>IxxmUploadProgressService = interface</code></dt>
 <dd>an interface provided by the context object that enables attaching an upload progress agent.</dd>
 <dt><code>procedure AttachAgent(Agent: IxxmUploadProgressAgent; Flags, Step: integer);</code></dt>
-<dd>attaches an upload progress agent to the context. Attach any agents before calling <code>Context.Parameter</code>.<br />
-Flags:
+<dd>attaches an upload progress agent to the context. Attach any agents before calling <code>Context.Parameter</code>.
 <ul>
-<li><code>xxmUploadProgressAttach_PostData</code>: report progress parsing the entire request data</li>
-<li><code>xxmUploadProgressAttach_FileFields</code>: report progress parsing each file</li>
-</ul>
-Step:
-<ul>
-<li><code>xxmUploadProgressAttach_PostData</code>: not used</li>
-<li><code>xxmUploadProgressAttach_FileFields</code>: report progress every <i>x</i> bytes</li>
+<li>Flags=<code>xxmUploadProgressAttach_PostData</code>: report progress parsing the entire request data (<i>Step</i> value ignored)</li>
+<li>Flags=<code>xxmUploadProgressAttach_FileFields</code>: report progress parsing each file, report progress every <i>Step</i> bytes</li>
 </ul>
 </dd>
 <dt><code>IxxmUploadProgressAgent = interface</code></dt>
@@ -365,8 +372,8 @@ Step:
 <dt><code>procedure ReportProgress(FieldName, FileName: AnsiString; Position: integer);</code></dt>
 <dd>
 <ul>
-<li><code>xxmUploadProgressAttach_PostData</code>: FieldName, FileName not used</li>
-<li><code>xxmUploadProgressAttach_FileFields</code>: FieldName, FileName of post form field being parsed</li>
+<li><code>xxmUploadProgressAttach_PostData</code>: Position into request body (FieldName, FileName not used)</li>
+<li><code>xxmUploadProgressAttach_FileFields</code>: FieldName, FileName of post form field being parsed; Position into file data</li>
 </ul>
 </dd>
 </dl>

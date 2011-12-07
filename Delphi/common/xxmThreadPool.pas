@@ -3,21 +3,36 @@ unit xxmThreadPool;
 interface
 
 uses
-  Windows, SysUtils, xxmLoader, Classes;
+  Windows, SysUtils, xxmContext, Classes;
 
 type
+  TXxmQueueContext=class(TXxmGeneralContext)
+  public
+    Queue:TXxmQueueContext;
+    procedure Execute; virtual; abstract;
+  end;
+
+  TXxmPageLoader=class(TThread)
+  protected
+    FInUse:boolean;
+    procedure Execute; override;
+  public
+    constructor Create;
+    property InUse:boolean read FInUse;
+  end;
+
   TXxmPageLoaderPool=class(TObject)
   private
     FLoaders:array of TXxmPageLoader;
     FLoaderSize:integer;
     FLock:TRTLCriticalSection;
-    FQueue:TXxmLocalContext;
+    FQueue:TXxmQueueContext;
     procedure SetSize(x:integer);
   public
     constructor Create;
     destructor Destroy; override;
-    procedure Queue(Context:TXxmLocalContext);//called from handler
-    function Unqueue:TXxmLocalContext;//called from threads
+    procedure Queue(Context:TXxmQueueContext);//called from handler
+    function Unqueue:TXxmQueueContext;//called from threads
   end;
 
 const
@@ -30,6 +45,9 @@ procedure SetThreadName(ThreadDisplayName:AnsiString);
 function IsDebuggerPresent: BOOL; stdcall;
 
 implementation
+
+uses
+  xxm, ActiveX;
 
 function IsDebuggerPresent; external 'kernel32.dll';
 
@@ -54,6 +72,46 @@ begin
         //
       end;
     end;
+end;
+
+{ TXxmPageLoader }
+
+constructor TXxmPageLoader.Create;
+begin
+  inherited Create(false);
+  //FInUse:=false;
+end;
+
+procedure TXxmPageLoader.Execute;
+var
+  Context:TXxmQueueContext;
+  ContextI:IXxmContext;
+begin
+  inherited;
+  CoInitialize(nil);
+  SetErrorMode(SEM_FAILCRITICALERRORS);
+  while not(Terminated) do
+   begin
+    Context:=PageLoaderPool.Unqueue;
+    if Context=nil then
+     begin
+      FInUse:=false;//used by PageLoaderPool.Queue
+      SetThreadName('(xxmPageLoader)');
+      Suspend;
+      FInUse:=true;
+     end
+    else
+     begin
+      ContextI:=Context;//keep refcount up for premature terminate
+      try
+        SetThreadName('xxmPageLoader:'+Context.FURL);
+        Context.Execute;//assert all exceptions handled!
+      finally
+        ContextI:=nil;
+      end;
+     end;
+   end;
+  //CoUninitialize;//? hangs thread
 end;
 
 { TXxmPageLoaderPool }
@@ -123,9 +181,9 @@ begin
   end;
 end;
 
-procedure TXxmPageLoaderPool.Queue(Context:TXxmLocalContext);
+procedure TXxmPageLoaderPool.Queue(Context:TXxmQueueContext);
 var
-  c:TXxmLocalContext;
+  c:TXxmQueueContext;
   i:integer;
 begin
   EnterCriticalSection(FLock);
@@ -159,7 +217,7 @@ begin
    end;
 end;
 
-function TXxmPageLoaderPool.Unqueue:TXxmLocalContext;
+function TXxmPageLoaderPool.Unqueue:TXxmQueueContext;
 begin
   if FQueue=nil then Result:=nil else
    begin

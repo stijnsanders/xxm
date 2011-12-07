@@ -1,6 +1,6 @@
 library xxmLocalAU;
 
-{$R 'xxmData.res' 'xxmData.rc'}
+{$R '..\common\xxmData.res' '..\common\xxmData.rc'}
 
 uses
   ComServ,
@@ -14,10 +14,10 @@ uses
   xxmParams in '..\common\xxmParams.pas',
   xxmParUtils in '..\common\xxmParUtils.pas',
   xxmHeaders in '..\bin\public\xxmHeaders.pas',
-  xxmThreadPool in 'xxmThreadPool.pas',
-  xxmAutoUpdate in '..\common\xxmAutoUpdate.pas',
+  xxmThreadPool in '..\common\xxmThreadPool.pas',
   xxmCommonUtils in '..\common\xxmCommonUtils.pas',
-  xxmContext in '..\common\xxmContext.pas';
+  xxmContext in '..\common\xxmContext.pas',
+  xxmAutoUpdate in '..\common\xxmAutoUpdate.pas';
 
 exports
   DllGetClassObject,

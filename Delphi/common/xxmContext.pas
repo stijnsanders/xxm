@@ -90,6 +90,7 @@ type
 
     procedure SendError(res:AnsiString;vals:array of AnsiString);
     procedure ForceStatus(Code: Integer; Text: WideString);
+    function HandleException(Ex: Exception): boolean;
 
     procedure BeginRequest; virtual;
     procedure BuildPage;
@@ -656,6 +657,19 @@ begin
     raise EXxmBufferSizeInvalid.Create(SXxmBufferSizeInvalid);
   FBufferSize:=ABufferSize;
   //TODO: flush? inheritants should if needed
+end;
+
+function TXxmGeneralContext.HandleException(Ex: Exception): boolean;
+var
+  pe:IxxmProjectEvents;
+begin
+  if (FProjectEntry=nil) or (FProjectEntry.Project.QueryInterface(IXxmProjectEvents,pe)<>S_OK) then Result:=false else
+    try
+      Result:=pe.HandleException(Self,FPageClass,Ex);
+    except
+      //raise?
+      Result:=false;
+    end;
 end;
 
 { TXxmCrossProjectIncludeCheck }

@@ -1,6 +1,6 @@
 program xxmHostAU;
 
-{$R 'xxmData.res' 'xxmData.rc'}
+{$R '..\common\xxmData.res' '..\common\xxmData.rc'}
 
 uses
   SysUtils,
@@ -8,6 +8,7 @@ uses
   xxmCGIHeader in 'xxmCGIHeader.pas',
   xxmHostRun in 'xxmHostRun.pas',
   xxmHostMain in 'xxmHostMain.pas',
+  xxmThreadPool in '..\common\xxmThreadPool.pas',
   xxmParams in '..\common\xxmParams.pas',
   xxmParUtils in '..\common\xxmParUtils.pas',
   xxmHeaders in '..\bin\public\xxmHeaders.pas',

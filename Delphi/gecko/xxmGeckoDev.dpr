@@ -1,7 +1,7 @@
 library xxmGeckoDev;
 
-{$R 'xxmData.res' 'xxmData.rc'}
-{$R 'xxmDataDev.res' 'xxmDataDev.rc'}
+{$R '..\common\xxmData.res' '..\common\xxmData.rc'}
+{$R '..\common\xxmDataDev.res' '..\common\xxmDataDev.rc'}
 
 uses
   SysUtils,

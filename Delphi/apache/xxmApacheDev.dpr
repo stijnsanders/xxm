@@ -1,7 +1,7 @@
 library xxmApacheDev;
 
-{$R 'xxmData.res' 'xxmData.rc'}
-{$R 'xxmDataDev.res' 'xxmDataDev.rc'}
+{$R '..\common\xxmData.res' '..\common\xxmData.rc'}
+{$R '..\common\xxmDataDev.res' '..\common\xxmDataDev.rc'}
 
 uses
   HTTPD2 in 'HTTPD2.pas',

@@ -278,34 +278,34 @@ begin
     on EXxmAutoBuildFailed do ;
      //assert AutoBuild handler already displays message
     on e:Exception do
-     begin
-      ForceStatus(500,'ERROR');
-      try
-        if Connected then
-         begin
-          //TODO: consider HSE_REQ_SEND_CUSTOM_ERROR?
-          //TODO: get fragment 500.xxm?
-          try
-            if FPostData=nil then y:='none' else y:=IntToStr(FPostData.Size)+' bytes';
-          except
-            y:='unknown';
-          end;
-          SendError('error',[
-            'ERRORCLASS',e.ClassName,
-            'ERROR',HTMLEncode(e.Message),
-            'CLASS',FPageClass,
-            'URL',HTMLEncode(FURL),
-            'POSTDATA',y,
-            'QUERYSTRING',ecb.lpszQueryString,
-            'VERSION',ContextString(csVersion)
-          ]);
-         end;
-      except
-        //silent
-      end;
-
-      //TODO:ServerFunction(HSE_REQ_ABORTIVE_CLOSE,nil,nil,nil);?
-     end;
+      if not HandleException(e) then
+       begin
+        ForceStatus(500,'ERROR');
+        try
+          if Connected then
+           begin
+            //TODO: consider HSE_REQ_SEND_CUSTOM_ERROR?
+            //TODO: get fragment 500.xxm?
+            try
+              if FPostData=nil then y:='none' else y:=IntToStr(FPostData.Size)+' bytes';
+            except
+              y:='unknown';
+            end;
+            SendError('error',[
+              'ERRORCLASS',e.ClassName,
+              'ERROR',HTMLEncode(e.Message),
+              'CLASS',FPageClass,
+              'URL',HTMLEncode(FURL),
+              'POSTDATA',y,
+              'QUERYSTRING',ecb.lpszQueryString,
+              'VERSION',ContextString(csVersion)
+            ]);
+           end;
+        except
+          //silent
+        end;
+        //TODO:ServerFunction(HSE_REQ_ABORTIVE_CLOSE,nil,nil,nil);?
+       end;
   end;
   //TODO: support keep connection?
   ecb.dwHttpStatusCode:=StatusCode;

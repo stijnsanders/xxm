@@ -276,6 +276,7 @@ begin
 
     ps.Seek(0,soFromBeginning);
    end;
+  FFilled:=true;
   DataProgressAgent:=nil;
   FileProgressAgent:=nil;
 end;

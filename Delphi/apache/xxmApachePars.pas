@@ -5,7 +5,7 @@ interface
 uses xxmHeaders, HTTPD2;
 
 type
-  TxxmApacheTable=class(TInterfacedObject, IxxmDictionaryEx)
+  TxxmApacheTable=class(TInterfacedObject, IxxmDictionary, IxxmDictionaryEx)
   private
     FPool:Papr_pool_t;
     FTable:Papr_table_t;

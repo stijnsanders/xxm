@@ -122,25 +122,26 @@ begin
     on EXxmAutoBuildFailed do
       ;//assert output done
     on e:Exception do
-     begin
-      //TODO: get fragment 500.xxm?
-      rq.status:=500;
-      rq.status_line:=apr_pstrdup(rq.pool,'500 Internal Server Error');
-      try
-        if FPostData=nil then x:='none' else x:=IntToStr(FPostData.Size)+' bytes';
-      except
-        x:='unknown';
-      end;
-      SendError('error',[
-        'ERRORCLASS',e.ClassName,
-        'ERROR',HTMLEncode(e.Message),
-        'CLASS',FPageClass,
-        'URL',HTMLEncode(rq.unparsed_uri),
-        'POSTDATA',x,
-        'QUERYSTRING',HTMLEncode(rq.args),
-        'VERSION',SelfVersion
-      ]);
-     end;
+      if not HandleException(e) then
+       begin
+        //TODO: get fragment 500.xxm?
+        rq.status:=500;
+        rq.status_line:=apr_pstrdup(rq.pool,'500 Internal Server Error');
+        try
+          if FPostData=nil then x:='none' else x:=IntToStr(FPostData.Size)+' bytes';
+        except
+          x:='unknown';
+        end;
+        SendError('error',[
+          'ERRORCLASS',e.ClassName,
+          'ERROR',HTMLEncode(e.Message),
+          'CLASS',FPageClass,
+          'URL',HTMLEncode(rq.unparsed_uri),
+          'POSTDATA',x,
+          'QUERYSTRING',HTMLEncode(rq.args),
+          'VERSION',SelfVersion
+        ]);
+       end;
   end;
 end;
 

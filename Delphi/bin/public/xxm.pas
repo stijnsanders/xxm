@@ -5,8 +5,8 @@ interface
 uses SysUtils, Classes, ActiveX;
 
 const
-  //$Date: 2011-11-22 22:46:42 +0100 (di, 22 nov 2011) $
-  XxmRevision='$Rev: 175 $';
+  //$Date: 2011-11-30 22:13:37 +0100 (wo, 30 nov 2011) $
+  XxmRevision='$Rev: 180 $';
 
 type
   IXxmContext=interface;//forward
@@ -66,7 +66,6 @@ type
 
   IXxmContext=interface
     ['{78786D00-0000-0003-C000-000000000003}']
-
     function GetURL:WideString;
     function GetPage:IXxmFragment;
     function GetContentType:WideString;
@@ -143,6 +142,11 @@ type
     ['{78786D00-0000-0006-C000-000000000006}']
   end;
 
+  IXxmProjectEvents=interface
+    ['{78786D00-0000-0013-C000-000000000013}']
+    function HandleException(Context:IxxmContext;PageClass:WideString;Ex:Exception):boolean;
+  end;
+
 const
   IID_IXxmProject: TGUID = '{78786D00-0000-0002-C000-000000000002}';
   IID_IXxmContext: TGUID = '{78786D00-0000-0003-C000-000000000003}';
@@ -153,6 +157,7 @@ const
   IID_IXxmParameterGet: TGUID = '{78786D00-0000-0008-C000-000000000008}';
   IID_IXxmParameterPost: TGUID = '{78786D00-0000-0009-C000-000000000009}';
   IID_IXxmParameterPostFile: TGUID = '{78786D00-0000-000A-C000-00000000000A}';
+  IID_IXxmProjectEvents: TGUID ='{78786D00-0000-0013-C000-000000000013}';
 
 const
   //TXxmContextString enumeration values

@@ -3,12 +3,10 @@ unit xxmLoader;
 interface
 
 uses Windows, SysUtils, ActiveX, UrlMon, Classes, xxm, xxmContext,
-  xxmPReg, xxmPRegLocal, xxmParams, xxmParUtils, xxmHeaders;
+  xxmPReg, xxmPRegLocal, xxmParams, xxmParUtils, xxmHeaders, xxmThreadPool;
 
 type
-  TXxmPageLoader=class;//forward
-
-  TXxmLocalContext=class(TxxmGeneralContext, IxxmHttpHeaders)
+  TXxmLocalContext=class(TXxmQueueContext, IxxmHttpHeaders)
   private
     FVerb: WideString;
     ProtSink: IInternetProtocolSink;
@@ -49,14 +47,13 @@ type
     OutputData:TStream;
     OutputSize,ClippedSize:Int64;
     PageComplete,Redirected,DataReported:boolean;
-    Queue:TXxmLocalContext;
     Loader:TXxmPageLoader;
 
     constructor Create(URL:WideString;
       OIProtSink: IInternetProtocolSink; OIBindInfo: IInternetBindInfo);
     destructor Destroy; override;
 
-    procedure Execute;
+    procedure Execute; override;
 
     procedure Lock;
     procedure Unlock;
@@ -65,15 +62,6 @@ type
     property Verb: WideString read FVerb;
   end;
   
-  TXxmPageLoader=class(TThread)
-  protected
-    FInUse:boolean;
-    procedure Execute; override;
-  public
-    constructor Create;
-    property InUse:boolean read FInUse;
-  end;
-
   EXxmContextStringUnknown=class(Exception);
   EXxmUnknownPostDataTymed=class(Exception);
   EXxmPageRedirected=class(Exception);
@@ -84,7 +72,7 @@ var
 
 implementation
 
-uses Variants, ComObj, AxCtrls, xxmThreadPool, xxmCommonUtils;
+uses Variants, ComObj, AxCtrls, xxmCommonUtils;
 
 const //resourcestring?
   SXxmContextStringUnknown='Unknown ContextString __';
@@ -269,24 +257,25 @@ begin
      end;
 
     on e:Exception do
-     begin
-      ForceStatus(StatusException,'ERROR');
-      //TODO: get fragment 500.xxm?
-      try
-        if FPostData=nil then x:='none' else x:=IntToStr(FPostData.Size)+' bytes';
-      except
-        x:='unknown';
-      end;
-      SendError('error',[
-        'ERRORCLASS',e.ClassName,
-        'ERROR',HTMLEncode(e.Message),
-        'CLASS',FPageClass,
-        'URL',HTMLEncode(FURL),
-        'POSTDATA',x,
-        'QUERYSTRING',FQueryString,
-        'VERSION',ContextString(csVersion)
-      ]);
-     end;
+      if not HandleException(e) then
+       begin
+        ForceStatus(StatusException,'ERROR');
+        //TODO: get fragment 500.xxm?
+        try
+          if FPostData=nil then x:='none' else x:=IntToStr(FPostData.Size)+' bytes';
+        except
+          x:='unknown';
+        end;
+        SendError('error',[
+          'ERRORCLASS',e.ClassName,
+          'ERROR',HTMLEncode(e.Message),
+          'CLASS',FPageClass,
+          'URL',HTMLEncode(FURL),
+          'POSTDATA',x,
+          'QUERYSTRING',FQueryString,
+          'VERSION',SelfVersion
+        ]);
+       end;
   end;
 
   PageComplete:=true;//see Handler.Read
@@ -833,46 +822,6 @@ procedure TXxmLocalContext.Flush;
 begin
   ReportData;
   //TODO: stall until read?
-end;
-
-{ TXxmPageLoader }
-
-constructor TXxmPageLoader.Create;
-begin
-  inherited Create(false);
-  //FInUse:=false;
-end;
-
-procedure TXxmPageLoader.Execute;
-var
-  Context:TXxmLocalContext;
-  ContextI:IXxmContext;
-begin
-  inherited;
-  CoInitialize(nil);
-  SetErrorMode(SEM_FAILCRITICALERRORS);
-  while not(Terminated) do
-   begin
-    Context:=PageLoaderPool.Unqueue;
-    if Context=nil then
-     begin
-      FInUse:=false;//used by PageLoaderPool.Queue
-      SetThreadName('(xxmPageLoader)');
-      Suspend;
-      FInUse:=true;
-     end
-    else
-     begin
-      ContextI:=Context;//keep refcount up for premature terminate
-      try
-        SetThreadName('xxmPageLoader:'+Context.FURL);
-        Context.Execute;//assert all exceptions handled!
-      finally
-        ContextI:=nil;
-      end;
-     end;
-   end;
-  //CoUninitialize;//? hangs thread
 end;
 
 end.
