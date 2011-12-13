@@ -1,6 +1,7 @@
 v1.1.5.285
-- bug fixed: parameters were parsed from request body multiple times
 - xxmHSYS: HTTPAPI handler
+- bug fixed: parameters were parsed from request body multiple times
+- when BufferSize is set, contexts keep buffers to save on allocating and releasing memory
 
 v1.1.4.284
 - upload progress monitoring interface

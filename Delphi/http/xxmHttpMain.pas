@@ -26,7 +26,6 @@ type
     FCookieIdx: TParamIndexes;
     FQueryStringIndex:integer;
     FKeepConnection:boolean;
-    FBuffer:TMemoryStream;
     procedure HandleRequest;
   protected
 
@@ -98,7 +97,10 @@ const
   PostDataThreshold=$100000;
 
 var
-  HttpSelfVersion:AnsiString;  
+  HttpSelfVersion:AnsiString;
+
+threadvar
+  ContentBuffer:TMemoryStream;
 
 procedure XxmRunServer;
 const
@@ -214,18 +216,11 @@ begin
   FSessionID:='';//see GetSessionID
   FURI:='';//see Execute
   FRedirectPrefix:='';
-  FBuffer:=nil;
 end;
 
 procedure TXxmHttpContext.EndRequest;
 begin
   inherited;
-  if FBuffer<>nil then
-   begin
-    FBuffer.Free;
-    FBuffer:=nil;
-    //TODO: keep buffers on a pool? (by BufferSize?)
-   end;
   if FReqHeaders<>nil then
    begin
     (FReqHeaders as IUnknown)._Release;
@@ -537,52 +532,42 @@ const
 var
   s:AnsiString;
   l:cardinal;
-  d:array of byte;
 begin
   if Data<>'' then
    begin
     if CheckSendStart then
       case FAutoEncoding of
         aeUtf8:
-          if FBuffer=nil then
+          if FBufferSize=0 then
             FSocket.SendBuf(PAnsiChar(Utf8ByteOrderMark)^,3)
           else
-            FBuffer.Write(Utf8ByteOrderMark[1],3);
+            ContentBuffer.Write(Utf8ByteOrderMark[1],3);
         aeUtf16:
-          if FBuffer=nil then
+          if FBufferSize=0 then
             FSocket.SendBuf(PAnsiChar(Utf16ByteOrderMark)^,2)
           else
-            FBuffer.Write(Utf16ByteOrderMark[1],2);
+            ContentBuffer.Write(Utf16ByteOrderMark[1],2);
       end;
     case FAutoEncoding of
       aeUtf16:
        begin
         l:=Length(Data)*2;
-        SetLength(d,l);
-        Move(Data[1],d[0],l);
+        if FBufferSize=0 then FSocket.SendBuf(Data[1],l) else ContentBuffer.Write(Data[1],l);
        end;
       aeUtf8:
        begin
         s:=UTF8Encode(Data);
         l:=Length(s);
-        SetLength(d,l);
-        Move(s[1],d[0],l);
+        if FBufferSize=0 then FSocket.SendBuf(s[1],l) else ContentBuffer.Write(s[1],l);
        end;
       else
        begin
         s:=Data;
         l:=Length(s);
-        SetLength(d,l);
-        Move(s[1],d[0],l);
+        if FBufferSize=0 then FSocket.SendBuf(s[1],l) else ContentBuffer.Write(s[1],l);
        end;
     end;
-    if FBuffer=nil then
-      FSocket.SendBuf(d[0],l)
-    else
-     begin
-      FBuffer.Write(d[0],l);
-      if FBuffer.Position>=FBufferSize then Flush;
-     end;
+    if (FBufferSize<>0) and (ContentBuffer.Position>=FBufferSize) then Flush;
    end;
 end;
 
@@ -681,34 +666,36 @@ procedure TXxmHttpContext.Flush;
 var
   i:int64;
 begin
-  if FBuffer<>nil then
+  if FBufferSize<>0 then
    begin
-    i:=FBuffer.Position;
+    i:=ContentBuffer.Position;
     if i<>0 then
      begin
-      FSocket.SendBuf(FBuffer.Memory^,i);
-      FBuffer.Position:=0;
+      FSocket.SendBuf(ContentBuffer.Memory^,i);
+      ContentBuffer.Position:=0;
      end;
    end;
 end;
 
 procedure TXxmHttpContext.SetBufferSize(ABufferSize: Integer);
+var
+  b:boolean;
 begin
+  b:=FBufferSize<>0;
   inherited;
   if ABufferSize=0 then
    begin
-    if FBuffer<>nil then
+    if b then
      begin
       Flush;
-      FBuffer.Free;
-      FBuffer:=nil;
+      //FreeAndNil(ContentBuffer);?
      end;
    end
   else
    begin
-    if FBuffer=nil then FBuffer:=TMemoryStream.Create;//TODO: tmp file when large buffer
-    if FBuffer.Position>ABufferSize then Flush;
-    FBuffer.Size:=ABufferSize;
+    if ContentBuffer=nil then ContentBuffer:=TMemoryStream.Create;//TODO: tmp file when large buffer
+    if ContentBuffer.Position>ABufferSize then Flush;
+    if ContentBuffer.Size<ABufferSize then ContentBuffer.Size:=ABufferSize;
    end;
 end;
 

@@ -49,7 +49,7 @@ var
   sv:TRequestSubValues;
   x:WideString;
 begin
-  l:=FTable.a.nelts;;
+  l:=FTable.a.nelts;
   if VarIsNumeric(Name) then i:=integer(Name) else
    begin
     i:=0;

@@ -663,13 +663,13 @@ function TXxmGeneralContext.HandleException(Ex: Exception): boolean;
 var
   pe:IxxmProjectEvents;
 begin
-  if (FProjectEntry=nil) or (FProjectEntry.Project.QueryInterface(IXxmProjectEvents,pe)<>S_OK) then Result:=false else
-    try
-      Result:=pe.HandleException(Self,FPageClass,Ex);
-    except
-      //raise?
-      Result:=false;
-    end;
+  try
+    pe:=FProjectEntry.GetProjectInterface(IXxmProjectEvents) as IXxmProjectEvents;
+    if pe=nil then Result:=false else Result:=pe.HandleException(Self,FPageClass,Ex);
+  except
+    //raise?
+    Result:=false;
+  end;
 end;
 
 { TXxmCrossProjectIncludeCheck }

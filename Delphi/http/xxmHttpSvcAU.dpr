@@ -4,7 +4,7 @@ program xxmHttpSvcAU;
 
 uses
   SvcMgr,
-  xxmHttpSvcMain in 'xxmHttpSvcMain.pas' {xxmService: TService},
+  xxmHttpSvcMain in 'xxmHttpSvcMain.pas' {TxxmService: TService},
   xxmHttpMain in 'xxmHttpMain.pas',
   xxm in '..\bin\public\xxm.pas',
   xxmParams in '..\common\xxmParams.pas',

@@ -41,6 +41,9 @@ const
 var
   PageLoaderPool:TXxmPageLoaderPool;
 
+threadvar
+  ContentBuffer: TMemoryStream;
+
 procedure SetThreadName(ThreadDisplayName:AnsiString);
 function IsDebuggerPresent: BOOL; stdcall;
 
@@ -90,6 +93,7 @@ begin
   inherited;
   CoInitialize(nil);
   SetErrorMode(SEM_FAILCRITICALERRORS);
+  ContentBuffer:=nil;
   while not(Terminated) do
    begin
     Context:=PageLoaderPool.Unqueue;
@@ -112,6 +116,7 @@ begin
      end;
    end;
   //CoUninitialize;//? hangs thread
+  if ContentBuffer<>nil then ContentBuffer.Free;
 end;
 
 { TXxmPageLoaderPool }

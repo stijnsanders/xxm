@@ -20,18 +20,23 @@
 <p>xxm provides a number of libraries and executables. This is a description of their purpose and how to install them.<br />
 Depending on what you require some library or executable may be better than the other options. Please review all options to carefully select which option suits your needs best.</p>
 
+<p><b>handlers:</b></p>
 <ul>
 <li><a href="#local">xxmLocal (Internet Explorer)</a></li>
 <li><a href="#firefox">xxmGecko (Firefox)</a></li>
 <li><a href="#isapi">xxmIsapi (IIS)</a></li>
 <li><a href="#apache">xxmApache (mod_xxm, Apache 2/2 module)</a></li>
+<li><a href="#httpapi">xxmHSys1 (HTTPAPI v1)</a> <span class="newver">1.1.5</span></li>
 <li><a href="#cgi">xxmCGI (CGI with Apache, IIS, ...)</a></li>
 <li><a href="#http">xxmHttp (stand-alone)</a></li>
+</ul>
+<p><b>tools:</b></p>
+<ul>
 <li><a href="#project">xxmProject (edit project properties)</a></li>
 <li><a href="#conv">xxmConv (pre-processor)</a></li>
 <li><a href="#run">xxmRun (satellite install runner)</a></li>
-<li><a href="#remarks"><i>remarks</i></a></li>
 </ul>
+<p><a href="#remarks">remarks</a></p>
 
 <p class="title"><a name="local"></a>xxmLocal (Internet Explorer)</p>
 <p>The xxmLocal libraries enable <a href="http://www.microsoft.com/windows/internet-explorer/">Internet Explorer</a> to load xxm projects directly using the &quot;xxm:&quot; URL scheme.<br />
@@ -70,7 +75,7 @@ This is a direct way to run an xxm project, since the project runs inside of the
 Each project has a key with the default value containing the full path to the xxl file.</p>
 
 <p class="title"><a name="isapi"></a>xxmIsapi (IIS)</p>
-<p>Use an xxm ISAPI extension to load xxm projects with IIS. An ISAPI extension can be loaded in several ways, see below for a list of options.</p>
+<p>Use an xxm ISAPI extension to load xxm projects with <a href="http://iis.net/">IIS</a>. An ISAPI extension can be loaded in several ways, see below for a list of options.</p>
 <dl>
 <dt>xxmIsapiEx.dll</dt>
 <dd>The default ISAPI extension, loads xxm projects.</dd>
@@ -108,7 +113,20 @@ IIS configuration allows to route files of a certain file-extension to an ISAPI 
 <p>If you want to host only one single xxm project, add a <code>SingleProject</code> attribute to the ProjectRegistry document element, to refer to a project definition.</p>
 
 <p class="title"><a name="apache"></a>xxmApache (mod_xxm, Apache 2.2 module)</p>
-<p><i>under construction...</i></p>
+<p>Use an Apache handler to run xxm projects with <a href="http://projects.apache.org/projects/http_server.html">Apache HTTP server</a>.</p>
+
+<dl>
+<dt>xxmApache.dll</dt>
+<dd>The default Apache module to load xxm projects</dd>
+<dt>xxmApacheDev.dll</dt>
+<dd>xxmApacheDev checks the project's xxmp file if any files have changed. If so, it unloads the project, generates source code where needed, compiles the project and reloads it. If files were added or removed, they are added to the xxmp file.<br />
+<b>Attention:</b> to compile a project, the current user may require access to common libraries and source files. Check which credentials are used to run Apache.<br />
+<b>Please don't use xxmApacheDev.dll in a live environment.</b></dd>
+<dt>xxmApacheAU.dll</dt>
+<dd>xxmApacheAU checks if there is a .xxu file in the directory of the .xxl file, and if so, unloads the project, replaces the xxl file and reloads the project (auto-update).</dd>
+</dl>
+
+<p>To configure Apache to use the xxm Apache handler, add a section similar to the example below to the <code>httpd.conf</code> file.</p>
 
 <pre>
 LoadModule xxm_module "C:/path/to/xxm/binaries/xxmApache.dll"
@@ -116,6 +134,27 @@ LoadModule xxm_module "C:/path/to/xxm/binaries/xxmApache.dll"
 SetHandler xxm-handler
 &lt;/Location&gt;
 </pre>
+
+<p><i>//TODO: document xxmApache's project registry</i></p>
+
+<p class="title"><a name="httpapi"></a>xxmHSys1 (HTTPAPI v1) <span class="newver">1.1.5</span></p>
+<p>xxmHSys processes use <a href="http://msdn.microsoft.com/en-us/library/windows/desktop/aa364510.aspx">HTTPAPI</a> calls to respond to HTTP requests handled by <code>http.sys</code> within the Windows kernel.</p>
+
+<dl>
+<dt>xxmHSys1.exe</dt>
+<dd>The default xxm HTTPAPI handler.</dd>
+<dt>xxmHSys1Dev.exe</dt>
+<dd>xxmHSys1Dev checks the project's xxmp file if any files have changed. If so, it unloads the project, generates source code where needed, compiles the project and reloads it. If files were added or removed, they are added to the xxmp file.<br />
+<b>Please don't use <code>xxmHSys1Dev.exe</code> in a live environment.</b></dd>
+<dt>xxmHSys1AU.exe</dt>
+<dd>xxmHSys1AU checks if there is a .xxu file in the directory of the .xxl file, and if so, unloads the project, replaces the xxl file and reloads the project (auto-update).</dd>
+<dt>xxmHSys1Svc.exe</dt>
+<dd>similar to xxmHSys1.exe, but runs as an NT-service. call "<code>xxmHSys1Svc /install</code>" to install the service ("</code>/uninstall</code>" to uninstall)</dd>
+<dt>xxmHSys1SvcAU.exe</dt>
+<dd>similar to xxmHSys1AU.exe, but runs as an NT-service. call "<code>xxmHSys1SvcAU /install</code>" to install the service ("</code>/uninstall</code>" to uninstall)</dd>
+</dl>
+
+<p><i>//TODO: Pending: this will change in a future version:</i> Start xxmHSys with one or more project names in the command line parameters. xxmHSys uses an <code>xxm.xml</code> file like xxmHttp and xxmHost to load the project.</p>
 
 <p class="title"><a name="cgi"></a>xxmCGI/xxmHost (CGI with Apache,IIS,...)</p>
 <p>Using the library built for a specific web-server is preferred over using CGI. CGI creates a new process for each request, which has a negative effect on performance. Because these 'short' processes only exist for the time it takes to respond to a request, <code>xxmCGI.exe</code> patches request/response-data to/from a separate xxmHost process, so that projects and their session data can stay loaded.</p>
@@ -130,9 +169,9 @@ SetHandler xxm-handler
 <dt>xxmHostAU.exe</dt>
 <dd>xxmHostAU checks if there is a .xxu file in the directory of the .xxl file, and if so, unloads the project, replaces the xxl file and reloads the project (auto-update).</dd>
 <dt>xxmHostSvc.exe</dt>
-<dd>similar to xxmHost, but runs as an NT-service. call "<code>xxmHostSvc /install</code>" to install the service ("</code>/uninstall</code>" to uninstall)</dd>
+<dd>similar to xxmHost.exe, but runs as an NT-service. call "<code>xxmHostSvc /install</code>" to install the service ("</code>/uninstall</code>" to uninstall)</dd>
 <dt>xxmHostSvcAU.exe</dt>
-<dd>similar to xxmHostAU, but runs as an NT-service. call "<code>xxmHostSvcAU /install</code>" to install the service ("</code>/uninstall</code>" to uninstall)</dd>
+<dd>similar to xxmHostAU.exe, but runs as an NT-service. call "<code>xxmHostSvcAU /install</code>" to install the service ("</code>/uninstall</code>" to uninstall)</dd>
 </dl>
 
 <p>xxmHost resolves projects by name using the projects definition file <code>xxm.xml</code>, in the same directory as the xxmHost executable. An example <code>xxm.xml</code> with a single project definition may look like this:<br />

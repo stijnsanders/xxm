@@ -42,6 +42,7 @@ type
     procedure OpenContext;
     procedure CloseContext;
     procedure GetFilePath(Address:WideString;var Path,MimeType:WideString);
+    function GetProjectInterface(const IID: TGUID):IUnknown;
     property Name: WideString read FName;
     property Project: IXxmProject read GetProject;
   end;
@@ -268,6 +269,11 @@ begin
   //assert FCheckMutex<>0
   if not ReleaseMutex(FCheckMutex) then
     raise Exception.Create('ProjectEntry release UpdateLock failed: '+SysErrorMessage(GetLastError));
+end;
+
+function TXxmProjectEntry.GetProjectInterface(const IID: TGUID): IUnknown;
+begin
+  if (Self=nil) or (FProject=nil) or (FProject.QueryInterface(IID,Result)<>S_OK) then Result:=nil;
 end;
 
 end.

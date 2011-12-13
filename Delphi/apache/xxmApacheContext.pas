@@ -430,6 +430,7 @@ begin
    end
   else
    begin
+    //TODO: keep in a pool after use, take from pool here
     if FBuffer=nil then FBuffer:=TMemoryStream.Create;//TODO: tmp file when large buffer
     if FBuffer.Position>ABufferSize then Flush;
     FBuffer.Size:=ABufferSize;

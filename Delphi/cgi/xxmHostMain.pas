@@ -34,7 +34,6 @@ type
     FCookie: AnsiString;
     FCookieIdx: TParamIndexes;
     FQueryStringIndex:integer;
-    FBuffer:TMemoryStream;
     function GetCGIValue(Name:AnsiString):AnsiString;
   protected
     procedure SendRaw(Data: WideString); override;
@@ -97,7 +96,6 @@ begin
   FCookieParsed:=false;
   FQueryStringIndex:=1;
   FSessionID:='';//see GetSessionID
-  FBuffer:=nil;
   FRedirectPrefix:='';
   FCGIValuesSize:=0;
   FCGIValuesCount:=0;
@@ -108,11 +106,6 @@ begin
   FlushFileBuffers(FPipeOut);
   CloseHandle(FPipeIn);
   CloseHandle(FPipeOut);
-  if FBuffer<>nil then
-   begin
-    FBuffer.Free;
-    FBuffer:=nil;
-   end;
   if FReqHeaders<>nil then
    begin
     (FReqHeaders as IUnknown)._Release;
@@ -413,40 +406,40 @@ begin
     if CheckSendStart then
       case FAutoEncoding of
         aeUtf8:
-          if FBuffer=nil then
+          if FBufferSize=0 then
             WriteFile(FPipeOut,Utf8ByteOrderMark[1],3,l,nil)
           else
-            FBuffer.Write(Utf8ByteOrderMark[1],3);
+            ContentBuffer.Write(Utf8ByteOrderMark[1],3);
         aeUtf16:
-          if FBuffer=nil then
+          if FBufferSize=0 then
             WriteFile(FPipeOut,Utf16ByteOrderMark[1],2,l,nil)
           else
-            FBuffer.Write(Utf16ByteOrderMark[1],2);
+            ContentBuffer.Write(Utf16ByteOrderMark[1],2);
       end;
     case FAutoEncoding of
       aeUtf16:
-        if FBuffer=nil then
+        if FBufferSize=0 then
           WriteFile(FPipeOut,Data[1],Length(Data)*2,l,nil)
         else
-          FBuffer.Write(Data[1],Length(Data)*2);
+          ContentBuffer.Write(Data[1],Length(Data)*2);
       aeUtf8:
        begin
         s:=UTF8Encode(Data);
-        if FBuffer=nil then
+        if FBufferSize=0 then
           WriteFile(FPipeOut,s[1],Length(s),l,nil)
         else
-          FBuffer.Write(s[1],Length(s));
+          ContentBuffer.Write(s[1],Length(s));
        end;
       else
        begin
         s:=Data;
-        if FBuffer=nil then
+        if FBufferSize=0 then
           WriteFile(FPipeOut,s[1],Length(s),l,nil)
         else
-          FBuffer.Write(s[1],Length(s));
+          ContentBuffer.Write(s[1],Length(s));
        end;
     end;
-    if (FBuffer<>nil) and (FBuffer.Position>=FBufferSize) then Flush;
+    if (FBufferSize<>0) and (ContentBuffer.Position>=FBufferSize) then Flush;
    end;
 end;
 
@@ -463,7 +456,7 @@ begin
     OleCheck(s.Read(@d[0],l,@l));
     if l<>0 then
      begin
-      if FBuffer<>nil then Flush;
+      if FBufferSize<>0 then Flush;
       if not(WriteFile(FPipeOut,d[0],l,l1,nil)) then RaiseLastOSError;
       if l<>l1 then raise Exception.Create('Stream Write Failed');
      end;
@@ -525,34 +518,36 @@ procedure TXxmHostedContext.Flush;
 var
   i,l:cardinal;
 begin
-  if FBuffer<>nil then
+  if FBufferSize<>0 then
    begin
-    i:=FBuffer.Position;
+    i:=ContentBuffer.Position;
     if i<>0 then
      begin
-      WriteFile(FPipeOut,FBuffer.Memory^,i,l,nil);
-      FBuffer.Position:=0;
+      WriteFile(FPipeOut,ContentBuffer.Memory^,i,l,nil);
+      ContentBuffer.Position:=0;
      end;
    end;
 end;
 
 procedure TXxmHostedContext.SetBufferSize(ABufferSize: Integer);
+var
+  b:boolean;
 begin
+  b:=FBufferSize<>0;
   inherited;
   if ABufferSize=0 then
    begin
-    if FBuffer<>nil then
+    if b then
      begin
       Flush;
-      FBuffer.Free;
-      FBuffer:=nil;
+      //FreeAndNil(ContentBuffer):?
      end;
    end
   else
    begin
-    if FBuffer=nil then FBuffer:=TMemoryStream.Create;//TODO: tmp file when large buffer
-    if FBuffer.Position>ABufferSize then Flush;
-    FBuffer.Size:=ABufferSize;
+    if ContentBuffer=nil then ContentBuffer:=TMemoryStream.Create;//TODO: tmp file when large buffer
+    if ContentBuffer.Position>ABufferSize then Flush;
+    if ContentBuffer.Size<ABufferSize then ContentBuffer.Size:=ABufferSize;
    end;
 end;
 

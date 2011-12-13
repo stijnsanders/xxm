@@ -20,7 +20,6 @@ type
     FCookieParsed: boolean;
     FCookie: AnsiString;
     FCookieIdx: TParamIndexes;
-    FBuffer:TMemoryStream;
     procedure ServerFunction(HSERRequest: DWORD; Buffer: Pointer; Size, DataType: LPDWORD);
   protected
 
@@ -94,6 +93,9 @@ uses Variants, ComObj, xxmCommonUtils, xxmIsapiStream;
 
 resourcestring
   SXxmContextStringUnknown='Unknown ContextString __';
+
+threadvar
+  ContentBuffer: TMemoryStream;
 
 function GetExtensionVersion(var Ver: THSE_VERSION_INFO): BOOL; stdcall;
 var
@@ -185,7 +187,6 @@ begin
   FURI:=uri;
   FCookieParsed:=false;
   FSessionID:='';//see GetSessionID
-  FBuffer:=nil;
   FReqHeaders:=nil;
   FResHeaders:=TResponseHeaders.Create;
   (FResHeaders as IUnknown)._AddRef;
@@ -193,11 +194,6 @@ end;
 
 destructor TXxmIsapiContext.Destroy;
 begin
-  if FBuffer<>nil then
-   begin
-    FBuffer.Free;
-    FBuffer:=nil;
-   end;
   if FReqHeaders<>nil then
    begin
     (FReqHeaders as IUnknown)._Release;
@@ -401,8 +397,8 @@ begin
         aeUtf8:
          begin
           l:=3;
-          if FBuffer<>nil then
-            FBuffer.Write(Utf8ByteOrderMark[1],l)
+          if FBufferSize<>0 then
+            ContentBuffer.Write(Utf8ByteOrderMark[1],l)
           else
             if not(ecb.WriteClient(ecb.ConnID,PAnsiChar(Utf8ByteOrderMark),l,HSE_IO_SYNC)) then
               RaiseLastOSError;
@@ -410,8 +406,8 @@ begin
         aeUtf16:
          begin
           l:=2;
-          if FBuffer<>nil then
-            FBuffer.Write(Utf16ByteOrderMark[1],l)
+          if FBufferSize<>0 then
+            ContentBuffer.Write(Utf16ByteOrderMark[1],l)
           else
             if not(ecb.WriteClient(ecb.ConnID,PAnsiChar(Utf16ByteOrderMark),l,HSE_IO_SYNC)) then
               RaiseLastOSError;
@@ -421,8 +417,8 @@ begin
       aeUtf16:
        begin
         l:=Length(Data)*2;
-        if FBuffer<>nil then
-          FBuffer.Write(PWideChar(Data)^,l)
+        if FBufferSize<>0 then
+          ContentBuffer.Write(PWideChar(Data)^,l)
         else
           if not(ecb.WriteClient(ecb.ConnID,PWideChar(Data),l,HSE_IO_SYNC)) then
             RaiseLastOSError;
@@ -431,8 +427,8 @@ begin
        begin
         s:=UTF8Encode(Data);
         l:=Length(s);
-        if FBuffer<>nil then
-          FBuffer.Write(PAnsiChar(s)^,l)
+        if FBufferSize<>0 then
+          ContentBuffer.Write(PAnsiChar(s)^,l)
         else
           if not(ecb.WriteClient(ecb.ConnID,PAnsiChar(s),l,HSE_IO_SYNC)) then
             RaiseLastOSError;
@@ -441,14 +437,14 @@ begin
        begin
         s:=Data;
         l:=Length(s);
-        if FBuffer<>nil then
-          FBuffer.Write(PAnsiChar(s)^,l)
+        if FBufferSize<>0 then
+          ContentBuffer.Write(PAnsiChar(s)^,l)
         else
           if not(ecb.WriteClient(ecb.ConnID,PAnsiChar(s),l,HSE_IO_SYNC)) then
             RaiseLastOSError;
        end;
     end;
-    if FBuffer<>nil then if FBuffer.Position>=FBufferSize then Flush;
+    if FBufferSize<>0 then if ContentBuffer.Position>=FBufferSize then Flush;
     //ReportData;
    end;
 end;
@@ -639,35 +635,37 @@ procedure TXxmIsapiContext.Flush;
 var
   l:cardinal;
 begin
-  if FBuffer<>nil then
+  if FBufferSize<>0 then
    begin
-    l:=FBuffer.Position;
+    l:=ContentBuffer.Position;
     if l<>0 then
      begin
-      if not(ecb.WriteClient(ecb.ConnID,FBuffer.Memory,l,HSE_IO_SYNC)) then
+      if not(ecb.WriteClient(ecb.ConnID,ContentBuffer.Memory,l,HSE_IO_SYNC)) then
         RaiseLastOSError;
-      FBuffer.Position:=0;
+      ContentBuffer.Position:=0;
      end;
    end;
 end;
 
 procedure TXxmIsapiContext.SetBufferSize(ABufferSize: integer);
+var
+  b:boolean;
 begin
+  b:=FBufferSize<>0;
   inherited;
   if ABufferSize=0 then
    begin
-    if FBuffer<>nil then
+    if b then
      begin
       Flush;
-      FBuffer.Free;
-      FBuffer:=nil;
+      //FreeAndNil(ContentBuffer);?
      end;
    end
   else
    begin
-    if FBuffer=nil then FBuffer:=TMemoryStream.Create;//TODO: tmp file when large buffer
-    if FBuffer.Position>ABufferSize then Flush;
-    FBuffer.Size:=ABufferSize;
+    if ContentBuffer=nil then ContentBuffer:=TMemoryStream.Create;//TODO: tmp file when large buffer
+    if ContentBuffer.Position>ABufferSize then Flush;
+    if ContentBuffer.Size<ABufferSize then ContentBuffer.Size:=ABufferSize;
    end;
 end;
 
@@ -701,6 +699,7 @@ begin
      end;
    end;
   CoUninitialize;
+  if ContentBuffer<>nil then ContentBuffer.Free;
 end;
 
 { TXxmIsapiHandlerPool }
