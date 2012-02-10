@@ -112,11 +112,13 @@ type
     function MultiPartDone: boolean;
   end;
 
-  ExxmRequestHeadersReadOnly=class(Exception);
+  EXxmRequestHeadersReadOnly=class(Exception);
+  EXxmResponseHeaderInvalidChar=class(Exception);
   EXxmResponseHeaderAlreadySent=class(Exception);
 
 const //resourcestring
-  SxxmRequestHeadersReadOnly='Request headers are read-only.';
+  SXxmRequestHeadersReadOnly='Request headers are read-only.';
+  SXxmResponseHeaderInvalidChar='Response header add: value contains invalid character.';
   SXxmResponseHeaderAlreadySent='Response header has already been send.';
 
 procedure SplitHeader(Value:AnsiString; var Params:TParamIndexes);
@@ -235,6 +237,24 @@ begin
   i:=0;
   while (i<l) and (CompareText(Copy(Data,Params[i].NameStart,Params[i].NameLength),Name)<>0) do inc(i);
   if (i<l) then Result:=Copy(Data,Params[i].ValueStart,Params[i].ValueLength) else Result:='';
+end;
+
+procedure CheckName(Name: WideString);
+var
+  i:integer;
+begin
+  for i:=1 to Length(Name) do if char(Name[i]) in [#0..' ',
+    '(',')','<','>','@',',',';',':','\','"','/',
+    '[',']','?','=','{','}',#127..#255] then
+    raise EXxmResponseHeaderInvalidChar.Create(SXxmResponseHeaderInvalidChar);
+end;
+
+procedure CheckValue(Value: WideString);
+var
+  i:integer;
+begin
+  for i:=1 to Length(Value) do if char(Value[i]) in [#0,#10,#13] then //more?
+    raise EXxmResponseHeaderInvalidChar.Create(SXxmResponseHeaderInvalidChar);
 end;
 
 { TStreamNozzle }
@@ -501,7 +521,7 @@ end;
 procedure TRequestHeaders.SetItem(Name: OleVariant;
   const Value: WideString);
 begin
-  raise ExxmRequestHeadersReadOnly.Create(SxxmRequestHeadersReadOnly);
+  raise EXxmRequestHeadersReadOnly.Create(SxxmRequestHeadersReadOnly);
 end;
 
 function TRequestHeaders.GetName(Idx: integer): WideString;
@@ -511,7 +531,7 @@ end;
 
 procedure TRequestHeaders.SetName(Idx: integer; Value: WideString);
 begin
-  raise ExxmRequestHeadersReadOnly.Create(SxxmRequestHeadersReadOnly);
+  raise EXxmRequestHeadersReadOnly.Create(SxxmRequestHeadersReadOnly);
 end;
 
 { TRequestSubValues }
@@ -553,12 +573,12 @@ end;
 procedure TRequestSubValues.SetItem(Name: OleVariant;
   const Value: WideString);
 begin
-  raise ExxmRequestHeadersReadOnly.Create(SxxmRequestHeadersReadOnly);
+  raise EXxmRequestHeadersReadOnly.Create(SxxmRequestHeadersReadOnly);
 end;
 
 procedure TRequestSubValues.SetName(Idx: integer; Value: WideString);
 begin
-  raise ExxmRequestHeadersReadOnly.Create(SxxmRequestHeadersReadOnly);
+  raise EXxmRequestHeadersReadOnly.Create(SxxmRequestHeadersReadOnly);
 end;
 
 { TResponseHeaders }
@@ -612,11 +632,13 @@ begin
     while (i<Length(FItems)) and (CompareText(FItems[i].Name,Name)<>0) do inc(i);
     if i=Length(FItems) then
      begin
+      CheckName(Name);
       SetLength(FItems,i+1);
       FItems[i].Name:=Name;
       FItems[i].SubValues:=nil;
      end;
    end;
+  CheckValue(Value);
   FItems[i].Value:=Value;
 end;
 
@@ -631,6 +653,7 @@ begin
     while (i<Length(FItems)) and (CompareText(FItems[i].Name,Name)<>0) do inc(i);
     if i=Length(FItems) then
      begin
+      CheckName(Name);
       SetLength(FItems,i+1);
       FItems[i].Name:=Name;
       FItems[i].Value:='';
@@ -672,6 +695,8 @@ procedure TResponseHeaders.Add(Name, Value: WideString);
 var
   i:integer;
 begin
+  CheckName(Name);
+  CheckValue(Value);
   i:=Length(FItems);
   SetLength(FItems,i+1);
   FItems[i].Name:=Name;
@@ -688,10 +713,12 @@ begin
   while (i<Length(FItems)) and (CompareText(FItems[i].Name,Name)<>0) do inc(i);
   if i=Length(FItems) then
    begin
+    CheckName(Name);
     SetLength(FItems,i+1);
     FItems[i].Name:=Name;
     FItems[i].SubValues:=nil;
    end;
+  CheckValue(Value);
   FItems[i].Value:=Value;
   if FItems[i].SubValues=nil then
     FItems[i].SubValues:=TResponseSubValues.Create;
@@ -728,6 +755,7 @@ end;
 procedure TResponseHeaders.SetName(Idx: integer; Value: WideString);
 begin
   if FBuilt then raise EXxmResponseHeaderAlreadySent.Create(SXxmResponseHeaderAlreadySent);
+  CheckName(Value);
   FItems[Idx].Name:=Value;
 end;
 
@@ -769,16 +797,20 @@ var
   i:integer;
 begin
   if FBuilt then raise EXxmResponseHeaderAlreadySent.Create(SXxmResponseHeaderAlreadySent);
+  for i:=1 to Length(Value) do if char(Value[i]) in [#0,#10,#13] then //more?
+    raise EXxmResponseHeaderInvalidChar.Create(SXxmResponseHeaderInvalidChar);
   if VarIsNumeric(Name) then i:=integer(Name) else
    begin
     i:=0;
     while (i<Length(FItems)) and (CompareText(FItems[i].Name,Name)<>0) do inc(i);
     if i=Length(FItems) then
      begin
+      CheckName(Name);
       SetLength(FItems,i+1);
       FItems[i].Name:=Name;
      end;
-   end;  
+   end;
+  CheckValue(Value);
   FItems[i].Value:=Value;
 end;
 
@@ -805,6 +837,7 @@ end;
 procedure TResponseSubValues.SetName(Idx: integer; Value: WideString);
 begin
   if FBuilt then raise EXxmResponseHeaderAlreadySent.Create(SXxmResponseHeaderAlreadySent);
+  CheckName(Value);
   FItems[Idx].Name:=Value;
 end;
 

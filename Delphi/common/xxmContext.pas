@@ -313,14 +313,17 @@ end;
 function TXxmGeneralContext.CheckSendStart: boolean;
 begin
   //FAutoEncoding: see SendHTML
-  Result:=not(FHeaderSent);
-  if Result then
+  if FHeaderSent then
+   begin
+    FSingleFileSent:='';
+    Result:=false;
+   end
+  else
    begin
     SendHeader;
     FHeaderSent:=true;
-   end
-  else
-    FSingleFileSent:='';
+    Result:=true;
+   end;
 end;
 
 procedure TXxmGeneralContext.CheckHeaderNotSent;

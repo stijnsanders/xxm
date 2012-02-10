@@ -72,16 +72,20 @@
 <dl>
 <dt><code>[[=i]]</code></dt><dd><b>send:</b> the expression is evaluated and sent to the context.</dd>
 <dt><code>[[#x]]</code></dt><dd><b>send HTML:</b> the expression is evaluated and sent to the context, without converting the text into HTML (i.e.: replacing angled brackets and ampersands into HTML code)</dd>
-<dt><code>[[@Variants,]]</code></dt><dd><b>uses clause:</b> adds code to the uses clause. <b>Important:</b> be sure to include a comma for each used unit, including the last, or Delphi syntaxis may break</dd>
-<dt><code>[[!var i:integer;]]</code></dt><dd><b>header:</b> adds code in front of 'begin' of the fragment's Build method implementation, use this to declare local variables</dd>
+<dt><code>[[@Variants,]]</code></dt><dd><b>uses clause:</b> adds units to the uses clause. Separate unit names with comma. It's advised to follow the last unit name with a comma as well, as required by Delphi syntaxis, (but the parser detects when the trailing comma is missing and adds it <span class="newver">1.0.3</span>).</dd>
+<dt><code>[[!var i:integer;]]</code></dt><dd><b>header:</b> adds code in front of 'begin' of the fragment's Build method implementation, use this to declare local variables and constants,
+	<br /><b style="color:red;">*:</b> read below remarks for proper use</dd>
 <dt><code>[[/ ]]</code></dt><dd><b>comment:</b> excludes a section of the xxm code</dd>
-<dt><code>[[:resourcestring SHelloWorld='Hello world!';]]</code></dt><dd><b>definitions:</b> adds code in front of the fragment's Build method implementation, read below remarks for proper use</dd>
-<dt><code>[[_ ]]</code></dt><dd><b>footer:</b> adds code right after the fragment's Build method implementation, read below remarks for proper use</dd>
+<dt><code>[[:resourcestring SHelloWorld='Hello world!';]]</code></dt><dd><b>definitions:</b> adds code in front of the fragment's Build method implementation,
+	<br /><b style="color:red;">*:</b> read below remarks for proper use</dd>
+<dt><code>[[_ ]]</code></dt><dd><b>footer:</b> adds code right after the fragment's Build method implementation,
+	<br /><b style="color:red;">*:</b> read below remarks for proper use</dd>
 <dt><code>[[[]]</code></dt><dd><b>opening square brackets:</b> is replaced by opening square brackets</dd>
 <dt><code>[[]]]</code></dt><dd><b>closing square brackets:</b> is replaced by closing square brackets</dd>
 </dl>
 
-<p><b>Attention:</b> avoid declaring (nested) procedures and functions in header, footer and definition blocks, use include fragments or plain pascal units for that. One reason to avoid them is because closing the current Delphi code block to output HTML doesn't work, because all HTML is parsed onto <code>Context.SendHTML();</code> calls <i>inside of</i> the fragment's Build method implementation, and breaks Delphi syntax.</i>
+<p><b>Attention<span style="color:red;">*:</span></b> you can declare (nested) procedures and functions in header, footer and definition blocks, but you can't use the <code>[[= ]]</code> and <code>[[# ]]</code> syntax and embedded HTML since this will break the <code>[[ ]]</code>-block the declaration is in.
+It is advised to use include fragments with <code>Context.Include</code> instead.</p>
 
 <p>Within a Delphi code block (including comment blocks), the number of opening and closing brackets and braces is counted (disregarding those in strings), this enables code like this: <code style="background-color:#FFFFFF;"><span style="background-color:#CCFFCC">[[</span>Context.Send('<span style="background-color:#FFCCCC;">]]</span>');<span style="background-color:#CCFFCC">]]</span></code> and <code><span style="background-color:#CCFFCC">[[</span>=MyArray[x<span style="background-color:#FFCCCC">]</span><span style="background-color:#FFFFCC">]</span><span style="background-color:#CCFFCC">]</span></code>, but also enables a comment block to 'comment out' a full block of both HTML and code blocks.</p>
 

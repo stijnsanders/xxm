@@ -260,7 +260,6 @@ begin
       if not HandleException(e) then
        begin
         ForceStatus(StatusException,'ERROR');
-        //TODO: get fragment 500.xxm?
         try
           if FPostData=nil then x:='none' else x:=IntToStr(FPostData.Size)+' bytes';
         except

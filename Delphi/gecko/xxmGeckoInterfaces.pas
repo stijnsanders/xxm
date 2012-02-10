@@ -47,6 +47,9 @@ const
   LOAD_CALL_CONTENT_SNIFFERS = $00200000;//1 shl 21
   LOAD_CLASSIFY_URI = $00400000;//1 shl 22
 
+  DISPOSITION_INLINE = 0;
+  DISPOSITION_ATTACHMENT = 1;
+
   //protocol flags, from nsIProtocolHandler.idl
   URI_STD = $00000000;
   URI_NORELATIVE = $00000001;//1 shl 0
@@ -66,6 +69,7 @@ const
   URI_OPENING_EXECUTES_SCRIPT = $00002000;//1 shl 13
   ALLOWS_PROXY = $00000004;//1 shl 2
   ALLOWS_PROXY_HTTP = $00000008;//1 shl 3
+  URI_FORBIDS_COOKIE_ACCESS = $00008000;//1 shl 15
 
   NS_NETWORK_PROTOCOL_CONTRACTID_PREFIX='@mozilla.org/network/protocol;1?name=';
 
@@ -115,7 +119,7 @@ type
   end;
 
   nsIHttpChannelInternal = interface(nsISupports)
-  ['{9363fd96-af59-47e8-bddf-1d5e91acd336}']
+  ['{4b967b6d-cd1c-49ae-a457-23ff76f5a2e8}']
     function GetDocumentURI: nsIURI; safecall;
     procedure SetDocumentURI(aDocumentURI: nsIURI); safecall;
     procedure getRequestVersion(var major:PRUint32; var minor:PRUint32); safecall;
@@ -124,7 +128,7 @@ type
     procedure setupFallbackChannel(aFallbackKey:PAnsiChar); safecall;//string?
     function GetForceAllowThirdPartyCookie: PRBool; safecall;
     procedure SetForceAllowThirdPartyCookie(aForceAllowThirdPartyCookie: PRBool); safecall;
-    function GetCanceled: PRBool; safecall;
+    function GetCancelled: PRBool; safecall;
     function GetChannelIsForDownload: PRBool; safecall;
     procedure SetChannelIsForDownload(aChannelIsForDownload: PRBool); safecall;
     procedure GetLocalAddress(aLocalAddress: nsAUTF8String); safecall;
@@ -133,6 +137,9 @@ type
     function GetRemotePort: PRUint32; safecall;
     procedure setCacheKeysRedirectChain(cacheKeys:pointer); safecall;//StringArray:nsTArray<nsCString>
     procedure HTTPUpgrade(aProtocolName: nsACString; aListener: nsISupports); safecall; //nsIHttpUpgradeListener
+    function GetAllowSpdy: PRBool; safecall;
+    procedure SetAllowSpdy(aAllowSpdy: PRBool); safecall;
+    property AllowSpdy: PRBool read GetAllowSpdy write SetAllowSpdy;
   end;
 
   nsIProtocolHandler = interface;

@@ -124,7 +124,6 @@ begin
     on e:Exception do
       if not HandleException(e) then
        begin
-        //TODO: get fragment 500.xxm?
         rq.status:=500;
         rq.status_line:=apr_pstrdup(rq.pool,'500 Internal Server Error');
         try

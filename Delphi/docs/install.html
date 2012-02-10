@@ -22,19 +22,19 @@ Depending on what you require some library or executable may be better than the 
 
 <p><b>handlers:</b></p>
 <ul>
-<li><a href="#local">xxmLocal (Internet Explorer)</a></li>
-<li><a href="#firefox">xxmGecko (Firefox)</a></li>
-<li><a href="#isapi">xxmIsapi (IIS)</a></li>
-<li><a href="#apache">xxmApache (mod_xxm, Apache 2/2 module)</a></li>
-<li><a href="#httpapi">xxmHSys1 (HTTPAPI v1)</a> <span class="newver">1.1.5</span></li>
-<li><a href="#cgi">xxmCGI (CGI with Apache, IIS, ...)</a></li>
-<li><a href="#http">xxmHttp (stand-alone)</a></li>
+<li><a href="#local">xxmLocal</a>: Internet Explorer</li>
+<li><a href="#firefox">xxmGecko</a>: Firefox</li>
+<li><a href="#isapi">xxmIsapi</a>: IIS</li>
+<li><a href="#apache">xxmApache</a>: mod_xxm, Apache 2.2 module</li>
+<li><a href="#httpapi">xxmHSys1</a>: HTTPAPI v1 <span class="newver">1.1.5</span></li>
+<li><a href="#cgi">xxmCGI</a>: CGI with Apache, IIS, ...</li>
+<li><a href="#http">xxmHttp</a>: stand-alone</li>
 </ul>
 <p><b>tools:</b></p>
 <ul>
-<li><a href="#project">xxmProject (edit project properties)</a></li>
-<li><a href="#conv">xxmConv (pre-processor)</a></li>
-<li><a href="#run">xxmRun (satellite install runner)</a></li>
+<li><a href="#project">xxmProject</a>: edit project properties</li>
+<li><a href="#conv">xxmConv</a>: pre-processor</li>
+<li><a href="#run">xxmRun</a>: satellite install runner</li>
 </ul>
 <p><a href="#remarks">remarks</a></p>
 
@@ -100,6 +100,7 @@ IIS configuration allows to route files of a certain file-extension to an ISAPI 
 <dd>IIS 6 and above supports a mapping of &quot;.*&quot; to an ISAPI extension, and even provides an option to skip checking if the file exists the URL maps to. This enables all requests to pass through the xxm ISAPI extension, so the project may perform authentication, optionally based on user sessions.</dd>
 </dl>
 <p>IIS 7 requires ISAPI dll's to be added to the list of accepted plugins in the security administration</p>
+<p>IIS 7.5 offers to add the dll to the allowed modules when you create a wildcard application mapping. On 64-bit machines, set the 'enable 32-bit applications' option in the application pool advanced settings. Also the folder containing the xxl module file(s) may need a security setting for <code>IIS APPPOOL\DefaultAppPool</code> or the approriate application pool (Don't look it up in the objects list, type it manually in the names box.)</p>
 <p>xxm ISAPI extensions resolve projects by name using the projects definition file <code>xxm.xml</code>, in the same directory as the xxm ISAPI extension library. An example <code>xxm.xml</code> with a single project definition may look like this:<br />
 </p><pre>&lt;ProjectRegistry&gt;
   &lt;Project Name=&quot;demo&quot;&gt;
@@ -126,7 +127,8 @@ IIS configuration allows to route files of a certain file-extension to an ISAPI 
 <dd>xxmApacheAU checks if there is a .xxu file in the directory of the .xxl file, and if so, unloads the project, replaces the xxl file and reloads the project (auto-update).</dd>
 </dl>
 
-<p>To configure Apache to use the xxm Apache handler, add a section similar to the example below to the <code>httpd.conf</code> file.</p>
+<p>To configure Apache to use the xxm Apache handler, add a section similar to the example below to the <code>httpd.conf</code> file.<br />
+<b>Attention:</b> use forward slash as path delimiter.</p>
 
 <pre>
 LoadModule xxm_module "C:/path/to/xxm/binaries/xxmApache.dll"

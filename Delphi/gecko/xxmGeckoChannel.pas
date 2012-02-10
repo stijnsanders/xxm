@@ -45,7 +45,7 @@ type
     FData:TMemoryStream;
     FLock:TRTLCriticalSection;
     FRedirectChannel:nsIChannel;//see Redirect
-    FChannelIsForDownload,FForceAllowThirdPartyCookie:boolean;
+    FChannelIsForDownload,FForceAllowThirdPartyCookie,FAllowSpdy:boolean;
     procedure CheckSuspend;
     procedure Lock;
     procedure Unlock;
@@ -91,6 +91,9 @@ type
       safecall;
     function GetContentLength: Integer; safecall;
     procedure SetContentLength(aContentLength: Integer); safecall;
+    function GetContentDisposition: PRUint32; safecall;
+    procedure GetContentDispositionFileName(aContentDispositionFileName: nsACString); safecall;
+    procedure GetContentDispositionHeader(aContentDispositionHeader: nsACString); safecall;
     //nsIHttpChannel
     procedure GetRequestMethod(aRequestMethod: nsACString); safecall;
     procedure SetRequestMethod(const aRequestMethod: nsACString); safecall;
@@ -126,7 +129,7 @@ type
     procedure setupFallbackChannel(aFallbackKey:PAnsiChar); safecall;//string?
     function GetForceAllowThirdPartyCookie: PRBool; safecall;
     procedure SetForceAllowThirdPartyCookie(aForceAllowThirdPartyCookie: PRBool); safecall;
-    function GetCanceled: PRBool; safecall;
+    function GetCancelled: PRBool; safecall;
     function GetChannelIsForDownload: PRBool; safecall;
     procedure SetChannelIsForDownload(aChannelIsForDownload: PRBool); safecall;
     procedure GetLocalAddress(aLocalAddress: nsAUTF8String); safecall;
@@ -135,6 +138,8 @@ type
     function GetRemotePort: PRUint32; safecall;
     procedure setCacheKeysRedirectChain(cacheKeys:pointer); safecall;//StringArray:nsTArray<nsCString>
     procedure HTTPUpgrade(aProtocolName: nsACString; aListener: nsISupports); safecall; //nsIHttpUpgradeListener
+    function GetAllowSpdy: PRBool; safecall;
+    procedure SetAllowSpdy(aAllowSpdy: PRBool); safecall;
     //nsIUploadChannel
     procedure SetUploadStream(aStream: nsIInputStream; const aContentType: nsACString; aContentLength: PRInt32); safecall;
     function GetUploadStream(): nsIInputStream; safecall;
@@ -330,6 +335,7 @@ begin
   FRedirectChannel:=nil;
   FChannelIsForDownload:=false;
   FForceAllowThirdPartyCookie:=false;//?
+  FAllowSpdy:=true;//sure, don't see why not
 end;
 
 destructor TxxmChannel.Destroy;
@@ -432,7 +438,6 @@ begin
       if not HandleException(e) then
        begin
         ForceStatus(StatusException,'ERROR');
-        //TODO: get fragment 500.xxm?
         try
           if FPostData=nil then x:='none' else x:=IntToStr(FPostData.Size)+' bytes';
         except
@@ -868,6 +873,7 @@ var
 begin
   //TODO:
   //if 307 then forward as POST else as GET? (see RedirectSync)
+  CheckHeaderNotSent;
   if FRedirectionLimit=0 then
    begin
     Cancel(NS_ERROR_REDIRECT_LOOP);
@@ -1238,7 +1244,7 @@ begin
   raise EInvalidOp.Create('Not implemented');
 end;
 
-function TxxmChannel.GetCanceled: PRBool;
+function TxxmChannel.GetCancelled: PRBool;
 begin
   Result:=FReports.State<>csSending;
 end;
@@ -1311,6 +1317,39 @@ begin
     Unlock;
   end;
   //TODO: wait until data read?
+end;
+
+function TxxmChannel.GetContentDisposition: PRUint32;
+begin
+  if FResponseHeaders['Content-Disposition']='' then
+    Result:=DISPOSITION_INLINE
+  else
+    Result:=DISPOSITION_ATTACHMENT;
+end;
+
+procedure TxxmChannel.GetContentDispositionFileName(
+  aContentDispositionFileName: nsACString);
+var
+  x:IxxmDictionary;
+begin
+  FResponseHeaders.Complex('Content-Disposition',x);//returns 'attachment'?
+  SetCString(aContentDispositionFileName,x['filename']);
+end;
+
+procedure TxxmChannel.GetContentDispositionHeader(
+  aContentDispositionHeader: nsACString);
+begin
+  SetCString(aContentDispositionHeader,FResponseHeaders['Content-Disposition']);
+end;
+
+function TxxmChannel.GetAllowSpdy: PRBool;
+begin
+  Result:=FAllowSpdy;
+end;
+
+procedure TxxmChannel.SetAllowSpdy(aAllowSpdy: PRBool);
+begin
+  FAllowSpdy:=aAllowSpdy;
 end;
 
 { TXxmGeckoLoader }

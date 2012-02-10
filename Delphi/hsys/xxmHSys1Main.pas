@@ -187,7 +187,6 @@ begin
     on e:Exception do
       if not HandleException(e) then
        begin
-        //TODO: get fragment 500.xxm?
         ForceStatus(500,'Internal Server Error');//TODO:setting?
         try
           if FPostData=nil then x:='none' else x:=IntToStr(FPostData.Size)+' bytes';

@@ -1188,7 +1188,7 @@ type
   end;
 
   nsIChannel = interface(nsIRequest)
-  ['{c63a055a-a676-4e71-bf3c-6cfa11082018}']
+  ['{06f6ada3-7729-4e72-8d3f-bf8ba630ff9b}']
     function GetOriginalURI(): nsIURI; safecall;
     procedure SetOriginalURI(aOriginalURI: nsIURI); safecall;
     property OriginalURI: nsIURI read GetOriginalURI write SetOriginalURI;
@@ -1211,6 +1211,10 @@ type
     property ContentLength: PRInt32 read GetContentLength write SetContentLength;
     function Open(): nsIInputStream; safecall;
     procedure AsyncOpen(aListener: nsIStreamListener; aContext: nsISupports); safecall;
+    function GetContentDisposition: PRUint32; safecall;
+    property ContentDisposition: PRUint32 read GetContentDisposition;
+    procedure GetContentDispositionFileName(aContentDispositionFileName: nsACString); safecall;
+    procedure GetContentDispositionHeader(aContentDispositionHeader: nsACString); safecall;
   end;
 
   nsIClassInfo = interface(nsISupports)

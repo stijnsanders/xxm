@@ -54,7 +54,7 @@ const
   );
 
   NSModuleData:TXPCOMModule=(
-    mVersion:8; //keep up-to-date with firefox version
+    mVersion:11; //keep up-to-date with firefox version
     mCIDs:@CIDs[0];
     mContractIDs:@ContractIDs[0];
     mCategoryEntries:@Categories[0];

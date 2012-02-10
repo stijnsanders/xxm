@@ -1,3 +1,6 @@
+v1.1.6.?
+- xxmGecko: support for FireFox 11
+
 v1.1.5.285
 - xxmHSYS: HTTPAPI handler
 - bug fixed: parameters were parsed from request body multiple times
