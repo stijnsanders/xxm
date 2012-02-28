@@ -81,16 +81,21 @@ end;
 procedure TxxmApacheTable.SetItem(Name: OleVariant;
   const Value: WideString);
 begin
+  HeaderCheckValue(Value);
   if VarIsNumeric(Name) then
     //TODO: check this!
     Ptable_entries(FTable.a.elts)[integer(Name)].val:=apr_pstrdup(FPool,PAnsiChar(AnsiString(Value)))
   else
+   begin
+    HeaderCheckName(VarToWideStr(Name));
     apr_table_set(FTable,PAnsiChar(AnsiString(Name)),PAnsiChar(AnsiString(Value)));
+   end;
 end;
 
 procedure TxxmApacheTable.SetName(Idx: integer; Value: WideString);
 begin
   //TODO: check this!
+  HeaderCheckName(Value);
   Ptable_entries(FTable.a.elts)[Idx].key:=apr_pstrdup(FPool,PAnsiChar(AnsiString(Value)));
 end;
 

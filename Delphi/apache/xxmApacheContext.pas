@@ -97,10 +97,10 @@ begin
       if FProjectName='' then
        begin
         if (i<=l) and (x[i]<>'/') then x:='/'+x;
-        Redirect('/'+XxmProjectCache.DefaultProject+x,true);
+        Redirect('/'+XxmProjectCache.DefaultProject+x,false);
        end;
       FPageClass:='['+FProjectName+']';
-      if (i>l) and (l>1) then Redirect(x+'/',true) else
+      if (i>l) and (l>1) then Redirect(x+'/',false) else
         if (x[i]='/') then inc(i);
       FRedirectPrefix:=FRedirectPrefix+'/'+FProjectName;
      end
@@ -394,6 +394,8 @@ end;
 
 procedure TxxmApacheContext.AddResponseHeader(Name: WideString; Value: WideString);
 begin
+  HeaderCheckName(Name);
+  HeaderCheckValue(Value);
   apr_table_set(rq.headers_out,
     apr_pstrdup(rq.pool,PAnsiChar(AnsiString(Name))),
     apr_pstrdup(rq.pool,PAnsiChar(AnsiString(Value))));

@@ -374,7 +374,7 @@ procedure TXxmHostedContext.Redirect(RedirectURL: WideString;
 var
   NewURL,RedirBody:WideString;
 begin
-  inherited;
+  //inherited;
   SetStatus(301,'Moved Permanently');//does CheckHeaderNotSent;
   //TODO: move this to execute's except?
   NewURL:=RedirectURL;
@@ -509,7 +509,7 @@ end;
 
 procedure TXxmHostedContext.AddResponseHeader(Name, Value: WideString);
 begin
-  inherited;
+  //inherited;?
   FResHeaders[Name]:=Value;
 end;
 

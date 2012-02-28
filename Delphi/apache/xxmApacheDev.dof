@@ -101,7 +101,7 @@ DebugSourceDirs=
 UsePackages=0
 [Parameters]
 RunParams=-X
-HostApplication=C:\Program Files\Apache Software Foundation\Apache2.2\bin\httpd.exe
+HostApplication=C:\Program Files (x86)\Apache Software Foundation\Apache2.2\bin\httpd.exe
 Launcher=
 UseLauncher=0
 DebugCWD=
@@ -110,7 +110,7 @@ IncludeVerInfo=1
 AutoIncBuild=0
 MajorVer=1
 MinorVer=1
-Release=5
+Release=6
 Build=286
 Debug=0
 PreRelease=0
@@ -122,7 +122,7 @@ CodePage=1252
 [Version Info Keys]
 CompanyName=
 FileDescription=xxm Apache 2.2 Module (AutoBuild)
-FileVersion=1.1.5.286
+FileVersion=1.1.6.286
 InternalName=xxmApache
 LegalCopyright=
 LegalTrademarks=

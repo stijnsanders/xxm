@@ -126,6 +126,8 @@ function SplitHeaderValue(Value:AnsiString;ValueStart,ValueLength:integer;
   var Params:TParamIndexes):AnsiString;
 function GetParamValue(Data:AnsiString;
   Params:TParamIndexes; Name:AnsiString):AnsiString;
+procedure HeaderCheckName(Name: WideString);
+procedure HeaderCheckValue(Value: WideString);
 
 implementation
 
@@ -239,7 +241,7 @@ begin
   if (i<l) then Result:=Copy(Data,Params[i].ValueStart,Params[i].ValueLength) else Result:='';
 end;
 
-procedure CheckName(Name: WideString);
+procedure HeaderCheckName(Name: WideString);
 var
   i:integer;
 begin
@@ -249,7 +251,7 @@ begin
     raise EXxmResponseHeaderInvalidChar.Create(SXxmResponseHeaderInvalidChar);
 end;
 
-procedure CheckValue(Value: WideString);
+procedure HeaderCheckValue(Value: WideString);
 var
   i:integer;
 begin
@@ -632,13 +634,13 @@ begin
     while (i<Length(FItems)) and (CompareText(FItems[i].Name,Name)<>0) do inc(i);
     if i=Length(FItems) then
      begin
-      CheckName(Name);
+      HeaderCheckName(Name);
       SetLength(FItems,i+1);
       FItems[i].Name:=Name;
       FItems[i].SubValues:=nil;
      end;
    end;
-  CheckValue(Value);
+  HeaderCheckValue(Value);
   FItems[i].Value:=Value;
 end;
 
@@ -653,7 +655,7 @@ begin
     while (i<Length(FItems)) and (CompareText(FItems[i].Name,Name)<>0) do inc(i);
     if i=Length(FItems) then
      begin
-      CheckName(Name);
+      HeaderCheckName(Name);
       SetLength(FItems,i+1);
       FItems[i].Name:=Name;
       FItems[i].Value:='';
@@ -695,8 +697,8 @@ procedure TResponseHeaders.Add(Name, Value: WideString);
 var
   i:integer;
 begin
-  CheckName(Name);
-  CheckValue(Value);
+  HeaderCheckName(Name);
+  HeaderCheckValue(Value);
   i:=Length(FItems);
   SetLength(FItems,i+1);
   FItems[i].Name:=Name;
@@ -713,12 +715,12 @@ begin
   while (i<Length(FItems)) and (CompareText(FItems[i].Name,Name)<>0) do inc(i);
   if i=Length(FItems) then
    begin
-    CheckName(Name);
+    HeaderCheckName(Name);
     SetLength(FItems,i+1);
     FItems[i].Name:=Name;
     FItems[i].SubValues:=nil;
    end;
-  CheckValue(Value);
+  HeaderCheckValue(Value);
   FItems[i].Value:=Value;
   if FItems[i].SubValues=nil then
     FItems[i].SubValues:=TResponseSubValues.Create;
@@ -755,7 +757,7 @@ end;
 procedure TResponseHeaders.SetName(Idx: integer; Value: WideString);
 begin
   if FBuilt then raise EXxmResponseHeaderAlreadySent.Create(SXxmResponseHeaderAlreadySent);
-  CheckName(Value);
+  HeaderCheckName(Value);
   FItems[Idx].Name:=Value;
 end;
 
@@ -805,12 +807,12 @@ begin
     while (i<Length(FItems)) and (CompareText(FItems[i].Name,Name)<>0) do inc(i);
     if i=Length(FItems) then
      begin
-      CheckName(Name);
+      HeaderCheckName(Name);
       SetLength(FItems,i+1);
       FItems[i].Name:=Name;
      end;
    end;
-  CheckValue(Value);
+  HeaderCheckValue(Value);
   FItems[i].Value:=Value;
 end;
 
@@ -837,7 +839,7 @@ end;
 procedure TResponseSubValues.SetName(Idx: integer; Value: WideString);
 begin
   if FBuilt then raise EXxmResponseHeaderAlreadySent.Create(SXxmResponseHeaderAlreadySent);
-  CheckName(Value);
+  HeaderCheckName(Value);
   FItems[Idx].Name:=Value;
 end;
 

@@ -543,6 +543,8 @@ var
   x:THTTP_HEADER_ID;
 begin
   inherited;
+  HeaderCheckName(Name);
+  HeaderCheckValue(Value);
   //TODO: encode when non-UTF7 characters?
   x:=HttpHeaderStart;
   while (x<=HttpHeaderResponseMaximum) and (CompareText(HttpResponseHeaderName[x],Name)<>0) do inc(x);
