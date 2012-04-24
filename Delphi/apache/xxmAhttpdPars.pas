@@ -1,11 +1,11 @@
-unit xxmApachePars;
+unit xxmAhttpdPars;
 
 interface
 
 uses xxmHeaders, HTTPD2;
 
 type
-  TxxmApacheTable=class(TInterfacedObject, IxxmDictionary, IxxmDictionaryEx)
+  TxxmAhttpdTable=class(TInterfacedObject, IxxmDictionary, IxxmDictionaryEx)
   private
     FPool:Papr_pool_t;
     FTable:Papr_table_t;
@@ -28,21 +28,21 @@ type
   table_entries=array[0..0] of apr_table_entry_t;
   Ptable_entries=^table_entries;
 
-{ TxxmApacheTable }
+{ TxxmAhttpdTable }
 
-constructor TxxmApacheTable.Create(Pool: Papr_pool_t; Table: Papr_table_t);
+constructor TxxmAhttpdTable.Create(Pool: Papr_pool_t; Table: Papr_table_t);
 begin
   inherited Create;
   FPool:=Pool;
   FTable:=Table;
 end;
 
-function TxxmApacheTable.GetCount: integer;
+function TxxmAhttpdTable.GetCount: integer;
 begin
   Result:=FTable.a.nelts;
 end;
 
-function TxxmApacheTable.Complex(Name: OleVariant;
+function TxxmAhttpdTable.Complex(Name: OleVariant;
   out Items: IxxmDictionary): WideString;
 var
   l,i:integer;
@@ -65,7 +65,7 @@ begin
   if @Items=nil then sv.Free else Items:=sv;
 end;
 
-function TxxmApacheTable.GetItem(Name: OleVariant): WideString;
+function TxxmAhttpdTable.GetItem(Name: OleVariant): WideString;
 begin
   if VarIsNumeric(Name) then
     Result:=Ptable_entries(FTable.a.elts)[integer(Name)].val
@@ -73,12 +73,12 @@ begin
     Result:=apr_table_get(FTable,PAnsiChar(VarToStr(Name)));
 end;
 
-function TxxmApacheTable.GetName(Idx: integer): WideString;
+function TxxmAhttpdTable.GetName(Idx: integer): WideString;
 begin
   Result:=Ptable_entries(FTable.a.elts)[Idx].key;
 end;
 
-procedure TxxmApacheTable.SetItem(Name: OleVariant;
+procedure TxxmAhttpdTable.SetItem(Name: OleVariant;
   const Value: WideString);
 begin
   HeaderCheckValue(Value);
@@ -92,7 +92,7 @@ begin
    end;
 end;
 
-procedure TxxmApacheTable.SetName(Idx: integer; Value: WideString);
+procedure TxxmAhttpdTable.SetName(Idx: integer; Value: WideString);
 begin
   //TODO: check this!
   HeaderCheckName(Value);

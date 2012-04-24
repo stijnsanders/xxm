@@ -1,4 +1,4 @@
-library xxmApacheDev;
+library xxmAhttpdDev;
 
 {$R '..\common\xxmData.res' '..\common\xxmData.rc'}
 {$R '..\common\xxmDataDev.res' '..\common\xxmDataDev.rc'}
@@ -9,13 +9,13 @@ uses
   xxmHeaders in '..\bin\public\xxmHeaders.pas',
   xxmParUtils in '..\common\xxmParUtils.pas',
   xxmParams in '..\common\xxmParams.pas',
-  xxmApacheModule in 'xxmApacheModule.pas',
-  xxmApacheContext in 'xxmApacheContext.pas',
+  xxmAhttpdModule in 'xxmAhttpdModule.pas',
+  xxmAhttpdContext in 'xxmAhttpdContext.pas',
   xxmCommonUtils in '..\common\xxmCommonUtils.pas',
   xxmPReg in '..\common\xxmPReg.pas',
   xxmHttpPReg in '..\http\xxmHttpPReg.pas',
-  xxmApacheClientStream in 'xxmApacheClientStream.pas',
-  xxmApachePars in 'xxmApachePars.pas',
+  xxmAhttpdClientStream in 'xxmAhttpdClientStream.pas',
+  xxmAhttpdPars in 'xxmAhttpdPars.pas',
   xxmContext in '..\common\xxmContext.pas',
   xxmAutoBuild in '..\common\xxmAutoBuild.pas',
   xxmWebProject in '..\conv\xxmWebProject.pas',

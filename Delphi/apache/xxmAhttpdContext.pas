@@ -1,4 +1,4 @@
-unit xxmApacheContext;
+unit xxmAhttpdContext;
 
 interface
 
@@ -6,7 +6,7 @@ uses SysUtils, Classes, ActiveX, HTTPD2, xxm, xxmContext,
   xxmHeaders, xxmParams, xxmPReg, xxmHttpPReg, xxmParUtils;
 
 type
-  TxxmApacheContext=class(TXxmGeneralContext, IxxmHttpHeaders)
+  TxxmAhttpdContext=class(TXxmGeneralContext, IxxmHttpHeaders)
   private
     rq: Prequest_rec;
     FConnected: boolean;
@@ -49,14 +49,14 @@ type
 
 implementation
 
-uses Windows, Variants, ComObj, xxmCommonUtils, xxmApacheClientStream, xxmApachePars;
+uses Windows, Variants, ComObj, xxmCommonUtils, xxmAhttpdClientStream, xxmAhttpdPars;
 
 resourcestring
   SXxmRWriteFailed='ap_rwrite failed';
 
-{ TxxmApacheContext }
+{ TxxmAhttpdContext }
 
-constructor TxxmApacheContext.Create(r: Prequest_rec);
+constructor TxxmAhttpdContext.Create(r: Prequest_rec);
 begin
   inherited Create(ap_construct_url(r.pool,r.unparsed_uri,r));
   rq:=r;
@@ -67,14 +67,14 @@ begin
   FBuffer:=nil;
 end;
 
-destructor TxxmApacheContext.Destroy;
+destructor TxxmAhttpdContext.Destroy;
 begin
   rq:=nil;
   if FBuffer<>nil then FBuffer.Free;
   inherited;
 end;
 
-procedure TxxmApacheContext.Execute;
+procedure TxxmAhttpdContext.Execute;
 var
   x,y:AnsiString;
   i,l:integer;
@@ -112,7 +112,7 @@ begin
     FFragmentName:=Copy(x,i,l-i+1);
 
     x:=apr_table_get(rq.headers_in,'Content-Length');
-    if x<>'' then FPostData:=TxxmApacheClientStream.Create(rq);
+    if x<>'' then FPostData:=TxxmAhttpdClientStream.Create(rq);
 
     BuildPage;
 
@@ -144,18 +144,18 @@ begin
   end;
 end;
 
-function TxxmApacheContext.GetProjectEntry: TXxmProjectEntry;
+function TxxmAhttpdContext.GetProjectEntry: TXxmProjectEntry;
 begin
   Result:=XxmProjectCache.GetProject(FProjectName);
 end;
 
-function TxxmApacheContext.Connected: boolean;
+function TxxmAhttpdContext.Connected: boolean;
 begin
   //Result:=not(rq.connection.aborted);
   Result:=((rq.connection.flags1 and 1)=0);
 end;
 
-function TxxmApacheContext.ContextString(
+function TxxmAhttpdContext.ContextString(
   cs: TXxmContextString): WideString;
 begin
   case cs of
@@ -178,7 +178,7 @@ begin
   end;
 end;
 
-procedure TxxmApacheContext.DispositionAttach(FileName: WideString);
+procedure TxxmAhttpdContext.DispositionAttach(FileName: WideString);
 begin
   if FileName='' then
     AddResponseHeader('Content-Disposition','attachment')
@@ -186,7 +186,7 @@ begin
     AddResponseHeader('Content-Disposition','attachment; filename="'+FileName+'"');
 end;
 
-function TxxmApacheContext.GetCookie(Name: WideString): WideString;
+function TxxmAhttpdContext.GetCookie(Name: WideString): WideString;
 begin
   if not(FCookieParsed) then
    begin
@@ -197,7 +197,7 @@ begin
   Result:=GetParamValue(FCookie,FCookieIdx,Name);
 end;
 
-procedure TxxmApacheContext.SetCookie(Name, Value: WideString);
+procedure TxxmAhttpdContext.SetCookie(Name, Value: WideString);
 begin
   CheckHeaderNotSent;
   //check name?
@@ -206,7 +206,7 @@ begin
   AddResponseHeader('Set-Cookie',Name+'="'+Value+'"');
 end;
 
-procedure TxxmApacheContext.SetCookie(Name, Value: WideString;
+procedure TxxmAhttpdContext.SetCookie(Name, Value: WideString;
   KeepSeconds: cardinal; Comment, Domain, Path: WideString; Secure,
   HttpOnly: boolean);
 var
@@ -234,19 +234,19 @@ begin
   //TODO: Set-Cookie2
 end;
 
-function TxxmApacheContext.GetRequestHeaders: IxxmDictionaryEx;
+function TxxmAhttpdContext.GetRequestHeaders: IxxmDictionaryEx;
 begin
   //TODO: check freed by ref counting?
-  Result:=TxxmApacheTable.Create(rq.pool,rq.headers_in);
+  Result:=TxxmAhttpdTable.Create(rq.pool,rq.headers_in);
 end;
 
-function TxxmApacheContext.GetResponseHeaders: IxxmDictionaryEx;
+function TxxmAhttpdContext.GetResponseHeaders: IxxmDictionaryEx;
 begin
   //TODO: check freed by ref counting?
-  Result:=TxxmApacheTable.Create(rq.pool,rq.headers_out);
+  Result:=TxxmAhttpdTable.Create(rq.pool,rq.headers_out);
 end;
 
-function TxxmApacheContext.GetSessionID: WideString;
+function TxxmAhttpdContext.GetSessionID: WideString;
 const
   SessionCookie='xxmSessionID';
 begin
@@ -262,7 +262,7 @@ begin
   Result:=FSessionID;
 end;
 
-procedure TxxmApacheContext.Redirect(RedirectURL: WideString;
+procedure TxxmAhttpdContext.Redirect(RedirectURL: WideString;
   Relative: boolean);
 var
   NewURL:WideString;
@@ -278,7 +278,7 @@ begin
   raise EXxmPageRedirected.Create(RedirectURL);
 end;
 
-procedure TxxmApacheContext.SendRaw(Data: WideString);
+procedure TxxmAhttpdContext.SendRaw(Data: WideString);
 const
   Utf8ByteOrderMark=#$EF#$BB#$BF;
   Utf16ByteOrderMark=#$FF#$FE;
@@ -342,7 +342,7 @@ begin
    end;
 end;
 
-procedure TxxmApacheContext.SendStream(s: IStream);
+procedure TxxmAhttpdContext.SendStream(s: IStream);
 const
   dSize=$10000;
 var
@@ -371,7 +371,7 @@ begin
   until l=0;
 end;
 
-procedure TxxmApacheContext.SetStatus(Code: integer; Text: WideString);
+procedure TxxmAhttpdContext.SetStatus(Code: integer; Text: WideString);
 begin
   inherited;
   rq.status:=Code;
@@ -379,7 +379,7 @@ begin
     PAnsiChar(IntToStr(Code)+' '+AnsiString(Text)));
 end;
 
-procedure TxxmApacheContext.SendHeader;
+procedure TxxmAhttpdContext.SendHeader;
 begin
   //rq.status_line Sent by first ap_rwrite?
   rq.content_type:=apr_pstrdup(rq.pool,PAnsiChar(AnsiString(FContentType)));
@@ -392,7 +392,7 @@ begin
   //rq.connection.keepalive?//TODO
 end;
 
-procedure TxxmApacheContext.AddResponseHeader(Name: WideString; Value: WideString);
+procedure TxxmAhttpdContext.AddResponseHeader(Name: WideString; Value: WideString);
 begin
   HeaderCheckName(Name);
   HeaderCheckValue(Value);
@@ -401,7 +401,7 @@ begin
     apr_pstrdup(rq.pool,PAnsiChar(AnsiString(Value))));
 end;
 
-procedure TxxmApacheContext.Flush;
+procedure TxxmAhttpdContext.Flush;
 var
   i:int64;
 begin
@@ -417,14 +417,14 @@ begin
    end;
 end;
 
-procedure TxxmApacheContext.SetBufferSize(ABufferSize: Integer);
+procedure TxxmAhttpdContext.SetBufferSize(ABufferSize: Integer);
 begin
   inherited;
   if ABufferSize=0 then
    begin
     if FBuffer<>nil then
      begin
-      Flush;
+      //assert Flush called by inherited
       FBuffer.Free;
       FBuffer:=nil;
      end;

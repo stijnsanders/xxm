@@ -1,11 +1,11 @@
-unit xxmApacheClientStream;
+unit xxmAhttpdClientStream;
 
 interface
 
 uses SysUtils, Classes, HTTPD2;
 
 type
-  TxxmApacheClientStream=class(TStream)
+  TxxmAhttpdClientStream=class(TStream)
   private
     rq:Prequest_rec;
     FStarted:boolean;
@@ -35,9 +35,9 @@ resourcestring
 const
   SwitchToFileThreshold=$100000;//TODO: setting?
 
-{ TxxmApacheClientStream }
+{ TxxmAhttpdClientStream }
 
-constructor TxxmApacheClientStream.Create(r: Prequest_rec);
+constructor TxxmAhttpdClientStream.Create(r: Prequest_rec);
 begin
   inherited Create;
   rq:=r;
@@ -49,7 +49,7 @@ begin
   FDataFile:='';
 end;
 
-destructor TxxmApacheClientStream.Destroy;
+destructor TxxmAhttpdClientStream.Destroy;
 begin
   rq:=nil;
   FData.Free;
@@ -57,7 +57,7 @@ begin
   inherited;
 end;
 
-function TxxmApacheClientStream.Read(var Buffer; Count: Integer): Integer;
+function TxxmAhttpdClientStream.Read(var Buffer; Count: Integer): Integer;
 var
   c:integer;
   f:TFileStream;
@@ -99,19 +99,19 @@ begin
    end;
 end;
 
-function TxxmApacheClientStream.Seek(const Offset: Int64;
+function TxxmAhttpdClientStream.Seek(const Offset: Int64;
   Origin: TSeekOrigin): Int64;
 begin
   FDataPos:=FData.Seek(Offset,Origin);
   Result:=FDataPos;
 end;
 
-procedure TxxmApacheClientStream.SetSize(NewSize: Integer);
+procedure TxxmAhttpdClientStream.SetSize(NewSize: Integer);
 begin
   raise EXxmPostDataReadOnly.Create(SXxmPostDataReadOnly);
 end;
 
-function TxxmApacheClientStream.Write(const Buffer;
+function TxxmAhttpdClientStream.Write(const Buffer;
   Count: Integer): Integer;
 begin
   raise EXxmPostDataReadOnly.Create(SXxmPostDataReadOnly);

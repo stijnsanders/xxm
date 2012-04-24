@@ -1,4 +1,4 @@
-unit xxmApacheModule;
+unit xxmAhttpdModule;
 
 interface
 
@@ -13,17 +13,17 @@ exports
 
 implementation
 
-uses Windows, SysUtils, xxmApacheContext, ActiveX;
+uses Windows, SysUtils, xxmAhttpdContext, ActiveX;
 
 function xxm_handler(r:Prequest_rec): integer; cdecl;
 var
-  ctx:TxxmApacheContext;
+  ctx:TxxmAhttpdContext;
 begin
   if not(AnsiString(r.handler)='xxm-handler') then Result:=DECLINED else
    begin
     CoInitialize(nil);//TODO: keep threadvar flag?
 
-    ctx:=TxxmApacheContext.Create(r);
+    ctx:=TxxmAhttpdContext.Create(r);
     (ctx as IUnknown)._AddRef;
     try
       ctx.Execute;
@@ -44,7 +44,7 @@ end;
 var
   XxmModuleName:AnsiString;
 
-procedure InitXxmApacheModule;
+procedure InitXxmAhttpdModule;
 var
   i:integer;
 begin
@@ -66,5 +66,5 @@ begin
 end;
 
 initialization
-  InitXxmApacheModule;
+  InitXxmAhttpdModule;
 end.
