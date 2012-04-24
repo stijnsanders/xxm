@@ -490,7 +490,7 @@ begin
           //else raise?
         end;
       until p.Done;
-      ForceDirectories(FSrcFolder+'\dcu');//TODO: setting "create dcu folder"?
+      ForceDirectories(FSrcFolder+'dcu');//TODO: setting "create dcu folder"?
       p.Save(fn1);
 
       //xxmp.pas

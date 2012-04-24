@@ -22,7 +22,6 @@ type
     FCookieIdx: TParamIndexes;
     procedure ServerFunction(HSERRequest: DWORD; Buffer: Pointer; Size, DataType: LPDWORD);
   protected
-
     function GetSessionID: WideString; override;
     procedure DispositionAttach(FileName: WideString); override;
     procedure SendRaw(Data: WideString); override;
@@ -56,10 +55,13 @@ type
   TXxmIsapiHandler=class(TThread)
   private
     FInUse:boolean;
+    FNextJobEvent:THandle;
   protected
     procedure Execute; override;
   public
     constructor Create;
+    destructor Destroy; override;
+    procedure SignalNextJob;
     property InUse:boolean read FInUse;
   end;
 
@@ -485,6 +487,10 @@ var
   head:THSE_SEND_HEADER_EX_INFO;
   s,t:AnsiString;
 begin
+  //TODO: only IIS7 or higher? see http://support.microsoft.com/kb/946086
+  ecb.ServerSupportFunction(ecb.ConnID,HSE_REQ_SET_FLUSH_FLAG,pointer(true),nil,nil);
+
+  //send header
   s:=IntToStr(StatusCode)+' '+StatusText;
   head.pszStatus:=PAnsiChar(s);
   head.cchStatus:=Length(s);
@@ -648,20 +654,9 @@ begin
 end;
 
 procedure TXxmIsapiContext.SetBufferSize(ABufferSize: integer);
-var
-  b:boolean;
 begin
-  b:=FBufferSize<>0;
   inherited;
-  if ABufferSize=0 then
-   begin
-    if b then
-     begin
-      Flush;
-      //FreeAndNil(ContentBuffer);?
-     end;
-   end
-  else
+  if ABufferSize<>0 then
    begin
     if ContentBuffer=nil then ContentBuffer:=TMemoryStream.Create;//TODO: tmp file when large buffer
     if ContentBuffer.Position>ABufferSize then Flush;
@@ -675,6 +670,14 @@ constructor TXxmIsapiHandler.Create;
 begin
   inherited Create(false);
   //FInUse:=false;
+  FNextJobEvent:=CreateEventA(nil,true,false,
+    PAnsiChar('xxmIsapi:Handler:NextJob:'+IntToHex(GetCurrentThreadId,8)));
+end;
+
+destructor TXxmIsapiHandler.Destroy;
+begin
+  CloseHandle(FNextJobEvent);
+  inherited;
 end;
 
 procedure TXxmIsapiHandler.Execute;
@@ -689,7 +692,8 @@ begin
     if Context=nil then
      begin
       FInUse:=false;//used by PageLoaderPool.Queue
-      Suspend;
+      ResetEvent(FNextJobEvent);
+      WaitForSingleObject(FNextJobEvent,INFINITE);
       FInUse:=true;
      end
     else
@@ -700,6 +704,12 @@ begin
    end;
   CoUninitialize;
   if ContentBuffer<>nil then ContentBuffer.Free;
+end;
+
+procedure TXxmIsapiHandler.SignalNextJob;
+begin
+  //assert thread waiting on FNextJobEvent
+  SetEvent(FNextJobEvent);
 end;
 
 { TXxmIsapiHandlerPool }
@@ -744,7 +754,7 @@ begin
          begin
           try
             FHandlers[FHandlerSize].Terminate;
-            FHandlers[FHandlerSize].Resume;
+            FHandlers[FHandlerSize].SignalNextJob;
             FHandlers[FHandlerSize].Free;
           except
             //silent
@@ -792,7 +802,7 @@ begin
     if FHandlers[i]=nil then
       FHandlers[i]:=TXxmIsapiHandler.Create //start thread
     else
-      FHandlers[i].Resume; //resume on waiting unqueues
+      FHandlers[i].SignalNextJob; //resume on waiting unqueues
     //TODO: expire unused threads on low load
    end;
 end;

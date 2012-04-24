@@ -3,3 +3,4 @@ How To Prepare Next Version Release:
 - update version in project properties of all (changed) projects
 - update gecko/setup/xxmGecko*/install.rdf's <em:version>
 - (optionally check <em:maxVersion> https://addons.mozilla.org/en-US/firefox/pages/appversions/ )
+- update http://xxm.sf.net/ with docs/*.html

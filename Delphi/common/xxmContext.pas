@@ -658,8 +658,8 @@ const
 begin
   if (ABufferSize<0) or (ABufferSize>MaxBufferSize) then
     raise EXxmBufferSizeInvalid.Create(SXxmBufferSizeInvalid);
+  if FBufferSize>ABufferSize then Flush;
   FBufferSize:=ABufferSize;
-  //TODO: flush? inheritants should if needed
 end;
 
 function TXxmGeneralContext.HandleException(Ex: Exception): boolean;

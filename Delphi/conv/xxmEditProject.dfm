@@ -1,8 +1,8 @@
 object EditProjectMainForm: TEditProjectMainForm
   Left = 457
   Top = 125
-  Width = 425
-  Height = 469
+  Width = 435
+  Height = 502
   Caption = 'xxm Project Properties'
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -71,6 +71,15 @@ object EditProjectMainForm: TEditProjectMainForm
         TabOrder = 2
         OnClick = btnRegisterLocalClick
       end
+      object btnRegisterFile: TButton
+        Left = 0
+        Top = 120
+        Width = 153
+        Height = 25
+        Caption = 'Register with xxm.xml...'
+        TabOrder = 3
+        OnClick = btnRegisterFileClick
+      end
     end
     object TabSheet2: TTabSheet
       BorderWidth = 4
@@ -94,6 +103,16 @@ object EditProjectMainForm: TEditProjectMainForm
         OnExpanding = tvFilesExpanding
       end
     end
+  end
+  object StatusBar1: TStatusBar
+    Left = 0
+    Top = 425
+    Width = 419
+    Height = 19
+    Panels = <
+      item
+        Width = 50
+      end>
   end
   object MainMenu1: TMainMenu
     Left = 144
@@ -883,6 +902,14 @@ object EditProjectMainForm: TEditProjectMainForm
     Filter = 'Pascal Unit|*.pas|All files (*.*)|*.*'
     InitialDir = '.'
     Left = 272
+    Top = 8
+  end
+  object OpenDialog3: TOpenDialog
+    DefaultExt = 'xml'
+    FileName = 'xxm.xml'
+    Filter = 'xxm.xml|xxm.xml|xml file (*.xml)|*.xml|All files (*.*)|*.*'
+    Title = 'Select xxm.xml to register with'
+    Left = 304
     Top = 8
   end
 end

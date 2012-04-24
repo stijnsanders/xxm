@@ -71,7 +71,7 @@ procedure XxmProjectRegister(
 ); stdcall;
 var
   r:TRegistry;
-  s,t:AnsiString;
+  s,t,u:AnsiString;
   i,j:integer;
 begin
   s:=lpCmdLine;
@@ -84,21 +84,28 @@ begin
   t:=Copy(s,j,i-j);
 
   if MessageBoxA(GetDesktopWindow,PAnsiChar('Register xxm project "'+t+'" for local handler?'),
-    'xxm Local Handler',MB_OKCANCEL or MB_ICONQUESTION)=idOk then
+    'xxm Local Handler',MB_OKCANCEL or MB_ICONQUESTION or MB_SYSTEMMODAL)=idOk then
    begin
     r:=TRegistry.Create;
     try
       //r.RootKey:=HKEY_LOCAL_MACHINE;//setting?
       r.RootKey:=HKEY_CURRENT_USER;
       r.OpenKey('\Software\xxm\local\'+t,true);
-      r.WriteString('',s);
-      r.DeleteValue('Signature');
-      //TODO: default settings?
+      u:=r.ReadString('');
+      if (u='') or (u=s) or (MessageBoxA(GetDesktopWindow,PAnsiChar('Project "'+t+
+        '" was already registered as'#13#10'  '+u+
+        #13#10'Do you want to overwrite this registration?'#13#10'  '+s),
+        'xxm Local Handler',MB_OKCANCEL or MB_ICONQUESTION or MB_SYSTEMMODAL)=idOK) then
+       begin
+        r.WriteString('',s);
+        r.DeleteValue('Signature');
+        //TODO: default settings?
+        MessageBoxA(GetDesktopWindow,PAnsiChar('Project "'+t+'" registered.'),
+          'xxm Local Handler',MB_OK or MB_ICONINFORMATION or MB_SYSTEMMODAL);
+       end;
     finally
       r.Free;
     end;
-    MessageBoxA(GetDesktopWindow,PAnsiChar('Project "'+t+'" registered.'),
-      'xxm Local Handler',MB_OK or MB_ICONINFORMATION);
    end;
 end;
 

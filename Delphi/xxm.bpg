@@ -13,8 +13,8 @@ PROJECTS = xxmConv.exe xxmProto.xxl xxmProject.exe xxmRun.exe xxmLocal.dll \
   xxmLocalAU.dll xxmLocalDev.dll xxmGecko.dll xxmGeckoAU.dll xxmGeckoDev.dll \
   xxmIsapiEx.dll xxmIsapiAU.dll xxmIsapiDev.dll xxmHttp.exe xxmHttpAU.exe \
   xxmHttpDev.exe xxmHttpSvc.exe xxmHttpSvcAU.exe xxmCGI.exe xxmHost.exe \
-  xxmHostAU.exe xxmHostDev.exe xxmHostSvc.exe xxmHostSvcAU.exe xxmApache.dll \
-  xxmApacheAU.dll xxmApacheDev.dll xxmHSys1.exe xxmHSys1AU.exe xxmHSys1Dev.exe \
+  xxmHostAU.exe xxmHostDev.exe xxmHostSvc.exe xxmHostSvcAU.exe xxmAhttpd.dll \
+  xxmAhttpdAU.dll xxmAhttpdDev.dll xxmHSys1.exe xxmHSys1AU.exe xxmHSys1Dev.exe \
   xxmHSys1Svc.exe xxmHSys1SvcAU.exe
 #------------------------------------------------------------------------------
 default: $(PROJECTS)
@@ -80,7 +80,7 @@ xxmHostSvc.exe: cgi\xxmHostSvc.dpr
 xxmHostSvcAU.exe: cgi\xxmHostSvcAU.dpr
   $(DCC)
 
-xxmApache.dll: apache\xxmApache.dpr
+xxmAhttpd.dll: apache\xxmAhttpd.dpr
   $(DCC)
 
 xxmGecko.dll: gecko\xxmGecko.dpr
@@ -92,13 +92,13 @@ xxmGeckoAU.dll: gecko\xxmGeckoAU.dpr
 xxmGeckoDev.dll: gecko\xxmGeckoDev.dpr
   $(DCC)
 
-xxmApache.dll: apache\xxmApache.dpr
+xxmAhttpd.dll: apache\xxmAhttpd.dpr
   $(DCC)
 
-xxmApacheDev.dll: apache\xxmApacheDev.dpr
+xxmAhttpdDev.dll: apache\xxmAhttpdDev.dpr
   $(DCC)
 
-xxmApacheAU.dll: apache\xxmApacheAU.dpr
+xxmAhttpdAU.dll: apache\xxmAhttpdAU.dpr
   $(DCC)
 
 xxmProject.exe: conv\xxmProject.dpr

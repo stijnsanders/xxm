@@ -15,9 +15,12 @@ type
   TXxmPageLoader=class(TThread)
   protected
     FInUse:boolean;
+    FNextJobEvent:THandle;
     procedure Execute; override;
   public
     constructor Create;
+    destructor Destroy; override;
+    procedure SignalNextJob;
     property InUse:boolean read FInUse;
   end;
 
@@ -83,6 +86,14 @@ constructor TXxmPageLoader.Create;
 begin
   inherited Create(false);
   //FInUse:=false;
+  FNextJobEvent:=CreateEventA(nil,true,false,
+    PAnsiChar('xxmLocal:PageLoader:NextJob:'+IntToHex(GetCurrentThreadId,8)));
+end;
+
+destructor TXxmPageLoader.Destroy;
+begin
+  CloseHandle(FNextJobEvent);
+  inherited;
 end;
 
 procedure TXxmPageLoader.Execute;
@@ -101,7 +112,8 @@ begin
      begin
       FInUse:=false;//used by PageLoaderPool.Queue
       SetThreadName('(xxmPageLoader)');
-      Suspend;
+      ResetEvent(FNextJobEvent);
+      WaitForSingleObject(FNextJobEvent,INFINITE);
       FInUse:=true;
      end
     else
@@ -117,6 +129,12 @@ begin
    end;
   //CoUninitialize;//? hangs thread
   if ContentBuffer<>nil then ContentBuffer.Free;
+end;
+
+procedure TXxmPageLoader.SignalNextJob;
+begin
+  //assert thread is waiting on FNextJobEvent
+  SetEvent(FNextJobEvent);
 end;
 
 { TXxmPageLoaderPool }
@@ -172,7 +190,7 @@ begin
          begin
           FLoaders[FLoaderSize].FreeOnTerminate:=true;
           FLoaders[FLoaderSize].Terminate;
-          FLoaders[FLoaderSize].Resume;
+          FLoaders[FLoaderSize].SignalNextJob;
           ThreadsClosed:=true;
           FLoaders[FLoaderSize]:=nil;
          end;
@@ -217,7 +235,7 @@ begin
     if FLoaders[i]=nil then
       FLoaders[i]:=TXxmPageLoader.Create //start thread
     else
-      FLoaders[i].Resume; //resume on waiting unqueues
+      FLoaders[i].SignalNextJob;
     //TODO: expire unused threads on low load
    end;
 end;

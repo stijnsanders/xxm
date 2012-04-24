@@ -60,6 +60,16 @@ resourcestring
   SXxmFileTypeAccessDenied='Access denied to this type of file';
   SXxmProjectAliasDepth='xxm Project "__": aliasses are limited to 8 in sequence';
 
+const
+  XxmRegFileName='xxm.xml';
+
+{
+function PathIsRelative(lpszPath:PWideChar):LongBool;
+  stdcall; external 'shlwapi.dll' name 'PathIsRelativeW';
+function PathCombine(lpszDest,lpszDir,lpszFile:PWideChar):PWideChar;
+  stdcall; external 'shlwapi.dll' name 'PathRelativePathToW';
+}
+
 { TXxmProjectCacheEntry }
 
 constructor TXxmProjectCacheEntry.Create(Name, FilePath: WideString; LoadCopy: boolean);
@@ -121,12 +131,12 @@ begin
   FRegDoc:=CoDOMDocument.Create;
   FRegSignature:='-';
 
-  SetLength(FRegFilePath,$400);
-  SetLength(FRegFilePath,GetModuleFileNameA(HInstance,PAnsiChar(FRegFilePath),$400));
+  SetLength(FRegFilePath,MAX_PATH);
+  SetLength(FRegFilePath,GetModuleFileNameA(HInstance,PAnsiChar(FRegFilePath),MAX_PATH));
   if Copy(FRegFilePath,1,4)='\\?\' then FRegFilePath:=Copy(FRegFilePath,5,Length(FRegFilePath)-4);
   i:=Length(FRegFilePath);
   while (i<>0) and (FRegFilePath[i]<>PathDelim) do dec(i);
-  FRegFilePath:=Copy(FRegFilePath,1,i)+'xxm.xml';
+  FRegFilePath:=Copy(FRegFilePath,1,i);
 
   //settings?
 end;
@@ -173,7 +183,7 @@ var
   s:AnsiString;
 begin
   //signature
-  fh:=FindFirstFileA(PAnsiChar(FRegFilePath),fd);
+  fh:=FindFirstFileA(PAnsiChar(FRegFilePath+XxmRegFileName),fd);
   if fh=INVALID_HANDLE_VALUE then s:='' else
    begin
     s:=IntToHex(fd.ftLastWriteTime.dwHighDateTime,8)+
@@ -183,9 +193,9 @@ begin
    end;
   if FRegSignature<>s then
    begin
-    if not(FRegDoc.load(FRegFilePath)) then
+    if not(FRegDoc.load(FRegFilePath+XxmRegFileName)) then
       raise EXxmProjectRegistryError.Create(StringReplace(
-        SXxmProjectRegistryError,'__',FRegFilePath,[])+#13#10+
+        SXxmProjectRegistryError,'__',FRegFilePath+XxmRegFileName,[])+#13#10+
         FRegDoc.parseError.reason);
     FRegSignature:=s;
    end;
@@ -197,7 +207,7 @@ function TXxmProjectCache.GetProject(Name: WideString): TXxmProjectCacheEntry;
 var
   i,d:integer;
   x,y:IXMLDOMNode;
-  n:WideString;
+  n,p:WideString;
   found:boolean;
 begin
   Result:=nil;//counter warning;
@@ -229,11 +239,20 @@ begin
       if y=nil then raise EXxmProjectNotFound.Create(StringReplace(
         SXxmProjectNotFound,'__',Name,[]));
 
-      //TODO: extra flags,settings?
+      p:=y.text;
+      {
+      if PathIsRelative(PWideChar(p)) then
+       begin
+        SetLength(p,MAX_PATH);
+        PathCombine(PWideChar(p),PWideChar(WideString(FRegFilePath)),PWideChar(y.text));
+        SetLength(p,Length(p));
+       end;
+      }
+      if (Length(p)>2) and not((p[2]=':') or ((p[1]='\') and (p[2]='\'))) then
+        p:=FRegFilePath+p;
 
-      Result:=TXxmProjectCacheEntry.Create(
-        Name,
-        y.text,
+      //TODO: extra flags,settings?
+      Result:=TXxmProjectCacheEntry.Create(Name,p,
         GlobalAllowLoadCopy and (VarToStr((x as IXMLDOMElement).getAttribute('LoadCopy'))<>'0'));//='1'));
 
       Result.FSignature:=VarToStr((x as IXMLDOMElement).getAttribute('Signature'));
