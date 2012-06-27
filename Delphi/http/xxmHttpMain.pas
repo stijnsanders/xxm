@@ -86,7 +86,8 @@ procedure XxmRunServer;
 
 implementation
 
-uses Windows, Variants, ComObj, AxCtrls, xxmCommonUtils, xxmReadHandler;
+uses Windows, Variants, ComObj, AxCtrls, WinSock,
+  xxmCommonUtils, xxmReadHandler;
 
 resourcestring
   SXxmMaximumHeaderLines='Maximum header lines exceeded.';
@@ -193,9 +194,14 @@ end;
 { TXxmHttpContext }
 
 constructor TXxmHttpContext.Create(Socket:TCustomIpClient);
+var
+  i,l:integer;
 begin
   inherited Create('');//URL is parsed by Execute
   FSocket:=Socket;
+  i:=1;
+  l:=4;
+  setsockopt(FSocket.Handle,IPPROTO_TCP,TCP_NODELAY,@i,l);
 end;
 
 destructor TXxmHttpContext.Destroy;

@@ -5,8 +5,8 @@ interface
 uses SysUtils, Classes, ActiveX;
 
 const
-  //$Date: 2011-11-30 22:13:37 +0100 (wo, 30 nov 2011) $
-  XxmRevision='$Rev: 180 $';
+  //$Date: 2012-06-27 23:14:11 +0200 (wo, 27 jun 2012) $
+  XxmRevision='$Rev: 220 $';
 
 type
   IXxmContext=interface;//forward
@@ -228,6 +228,15 @@ implementation
 
 uses Variants;
 
+{ Delphi cross-version declarations }
+
+{$IF not Declared(UTF8ToWideString)}
+function UTF8ToWideString(const s: UTF8String): WideString;
+begin
+  Result:=UTF8Decode(s);
+end;
+{$IFEND}
+
 { Helper Functions }
 
 function HTMLEncode(Data:OleVariant):WideString;
@@ -359,13 +368,13 @@ begin
     inc(q);
    end;
   SetLength(t,q-1);
-  Result:=UTF8Decode(t);
-  if not(q=0) and (Result='') then Result:=t;
+  Result:=UTF8ToWideString(t);
+  if (q<>0) and (Result<>'') then Result:=WideString(t);
 end;
 
 function XxmVersion: TXxmVersion;
 var
-  s:AnsiString;
+  s:string;
 begin
   s:=XxmRevision;
   Result.Major:=1;

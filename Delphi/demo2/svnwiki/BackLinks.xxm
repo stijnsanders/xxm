@@ -11,7 +11,7 @@ linkclass:array[boolean] of string=('wikiedit','wikilink');
 pn:=Context.ContextString(csLocalURL);
 fx:=WikiDataExtBackLinks;
 ft:='BackLinks';
-if not(pn='') and (pn[1]='+') then
+if (pn<>'') and (pn[1]='+') then
  begin
   fx:=WikiDataExtLinks;
   ft:='Links';

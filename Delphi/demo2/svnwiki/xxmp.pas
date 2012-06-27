@@ -33,7 +33,7 @@ begin
   if Address='svnwiki.css' then 
     Result:=nil //return nil here and default to file-search
   else
-    if not(Address='') and (Address[1] in [WideChar('~'),WideChar('+')]) then
+    if (Address<>'') and (char(Address[1]) in ['~','+']) then
 	  Result:=XxmFragmentRegistry.GetFragment(Self,'BackLinks.xxm','')
 	else
 	  if Context.ContextString(csQueryString)='' then

@@ -86,7 +86,7 @@ begin
     try
       s:=x.Complex(i,y);
       Context.SendHTML('<p><b>'+x.Name[i]+'</b>: '+s+'</p>');
-      if not(y=nil) then
+      if y<>nil then
        begin
         Context.SendHTML('<ul>');
         for j:=0 to y.Count-1 do

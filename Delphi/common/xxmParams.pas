@@ -177,8 +177,8 @@ begin
     r:=q+1;
     while (r<=l) and (pd[r]<>'&') do inc(r);
     Add(TXxmReqParGet.Create(Self,
-      UTF8Decode(Copy(pd,p,q-p)),
-      URLDecode(UTF8Decode(Copy(pd,q+1,r-q-1)))));
+      UTF8ToWideString(Copy(pd,p,q-p)),
+      URLDecode(AnsiString(UTF8ToWideString(Copy(pd,q+1,r-q-1))))));
     inc(r);
    end;
 

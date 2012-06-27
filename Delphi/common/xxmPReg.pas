@@ -204,7 +204,7 @@ begin
   //TODO: virtual directories?
   rf:=FFilePath;
   i:=Length(rf);
-  while not(i=0) and (rf[i]<>PathDelim) do dec(i);
+  while (i<>0) and (rf[i]<>PathDelim) do dec(i);
   SetLength(rf,i);
   sf:='';
   i:=1;

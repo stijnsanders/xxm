@@ -77,9 +77,9 @@ begin
   s:=lpCmdLine;
 
   i:=Length(s);
-  while not(i=0) and not(s[i]='.') do dec(i);
+  while (i<>0) and (s[i]<>'.') do dec(i);
   j:=i;
-  while not(j=0) and not(s[j]='\') do dec(j);
+  while (j<>0) and (s[j]<>'\') do dec(j);
   inc(j);
   t:=Copy(s,j,i-j);
 
@@ -133,7 +133,7 @@ var
   i:integer;
 begin
   i:=0;
-  while (i<Length(FCookies)) and not(FCookies[i].Name=Name) do inc(i);//case?
+  while (i<Length(FCookies)) and (FCookies[i].Name<>Name) do inc(i);//case?
   if (i<Length(FCookies)) then Result:=FCookies[i].Value else Result:='';
 end;
 
@@ -142,7 +142,7 @@ var
   i:integer;
 begin
   i:=0;
-  while (i<Length(FCookies)) and not(FCookies[i].Name=Name) do inc(i);//case?
+  while (i<Length(FCookies)) and (FCookies[i].Name<>Name) do inc(i);//case?
   if (i<Length(FCookies)) then FCookies[i].Value:=Value else
    begin
     SetLength(FCookies,i+1);
@@ -221,7 +221,7 @@ begin
 
     //TODO: from setting?
     i:=Length(FFilePath);
-    while not(i=0) and not(FFilePath[i]=PathDelim) do dec(i);
+    while (i<>0) and (FFilePath[i]<>PathDelim) do dec(i);
     FCookiePath:=Copy(FFilePath,1,i);
 
     if r.ValueExists('Signature') then
@@ -302,7 +302,7 @@ begin
   l:=LowerCase(Name);
   //assert cache stores ProjectName already LowerCase!
   while (Result<ProjectCacheSize) and (
-    (ProjectCache[Result]=nil) or not(ProjectCache[Result].Name=l)) do inc(Result);
+    (ProjectCache[Result]=nil) or (ProjectCache[Result].Name<>l)) do inc(Result);
   if Result=ProjectCacheSize then Result:=-1;
 end;
 
@@ -318,7 +318,7 @@ begin
       Result:=TXxmProjectCacheEntry.Create(Name);
       //add to cache
       i:=0;
-      while (i<ProjectCacheSize) and not(ProjectCache[i]=nil) do inc(i);
+      while (i<ProjectCacheSize) and (ProjectCache[i]<>nil) do inc(i);
       if (i=ProjectCacheSize) then i:=Grow;
       ProjectCache[i]:=Result;
      end
@@ -335,7 +335,7 @@ var
 begin
   i:=FindProject(Name);
   //if i=-1 then raise?
-  if not(i=-1) then FreeAndNil(ProjectCache[i]);
+  if i<>-1 then FreeAndNil(ProjectCache[i]);
 end;
 
 procedure TXxmProjectCache.ClearAll;

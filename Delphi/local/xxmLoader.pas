@@ -716,7 +716,7 @@ begin
     else
      begin
       //TODO: check path! (domain? secure? http?)
-      Result:=UTF8Decode(copy(s,1,eols[0]-2));
+      Result:=UTF8ToWideString(copy(s,1,eols[0]-2));
      end;
    end;
   if b then Result:=(ProjectEntry as TXxmProjectCacheEntry).GetSessionCookie(Name);

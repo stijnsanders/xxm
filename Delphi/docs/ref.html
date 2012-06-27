@@ -71,7 +71,12 @@
 
 <dl>
 <dt><code>[[=i]]</code></dt><dd><b>send:</b> the expression is evaluated and sent to the context.</dd>
-<dt><code>[[#x]]</code></dt><dd><b>send HTML:</b> the expression is evaluated and sent to the context, without converting the text into HTML (i.e.: replacing angled brackets and ampersands into HTML code)</dd>
+<dt><code>[[#x]]</code></dt><dd><b>send HTML:</b> the expression is evaluated and sent to the context, without converting the text into HTML (i.e.: replacing angled brackets and ampersands into HTML code)
+<br />
+<b style="color:red;">!!!:</b> to prevent script injection, it is important
+that any variable data is properly encoded. Use the <a href="#htmlencode"><code>HTMLEncode</code></a> function.
+Read more <a href="http://xxm.sourceforge.net/sec.html">here</a>.
+</dd>
 <dt><code>[[@Variants,]]</code></dt><dd><b>uses clause:</b> adds units to the uses clause. Separate unit names with comma. It's advised to follow the last unit name with a comma as well, as required by Delphi syntaxis, (but the parser detects when the trailing comma is missing and adds it <span class="newver">1.0.3</span>).</dd>
 <dt><code>[[!var i:integer;]]</code></dt><dd><b>header:</b> adds code in front of 'begin' of the fragment's Build method implementation, use this to declare local variables and constants,
 	<br /><b style="color:red;">*:</b> read below remarks for proper use</dd>

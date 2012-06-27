@@ -129,6 +129,14 @@ function GetParamValue(Data:AnsiString;
 procedure HeaderCheckName(Name: WideString);
 procedure HeaderCheckValue(Value: WideString);
 
+{$IF not Declared(UTF8ToWideString)}
+{$DEFINE NOT_DECLARED_UTF8ToWideString}
+{$IFEND}
+
+{$IFDEF NOT_DECLARED_UTF8ToWideString}
+function UTF8ToWideString(const s: UTF8String): WideString;
+{$ENDIF}
+
 implementation
 
 uses Variants;
@@ -171,7 +179,7 @@ begin
        end
       else
        begin
-        //assert not(i=0)
+        //assert i<>0
         Params[i].ValueLength:=q-Params[i].ValueStart-2;
         //TODO: kill EOF and whitespace?
        end;
@@ -258,6 +266,13 @@ begin
   for i:=1 to Length(Value) do if char(Value[i]) in [#0,#10,#13] then //more?
     raise EXxmResponseHeaderInvalidChar.Create(SXxmResponseHeaderInvalidChar);
 end;
+
+{$IFDEF NOT_DECLARED_UTF8ToWideString}
+function UTF8ToWideString(const s: UTF8String): WideString;
+begin
+  Result:=UTF8Decode(s);
+end;
+{$ENDIF}
 
 { TStreamNozzle }
 

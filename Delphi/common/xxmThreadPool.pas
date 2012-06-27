@@ -174,7 +174,7 @@ begin
     if FLoaderSize<x then
      begin
       SetLength(FLoaders,x);
-      while not(FLoaderSize=x) do
+      while FLoaderSize<>x do
        begin
         FLoaders[FLoaderSize]:=nil;
         inc(FLoaderSize);
@@ -182,11 +182,11 @@ begin
      end
     else
      begin
-      while not(FLoaderSize=X) do
+      while FLoaderSize<>X do
        begin
         dec(FLoaderSize);
         //FreeAndNil(FLoaders[FLoaderSize]);
-        if not(FLoaders[FLoaderSize]=nil) then
+        if FLoaders[FLoaderSize]<>nil then
          begin
           FLoaders[FLoaderSize].FreeOnTerminate:=true;
           FLoaders[FLoaderSize].Terminate;
@@ -215,7 +215,7 @@ begin
     if FQueue=nil then FQueue:=Context else
      begin
       c:=FQueue;
-      while not(c.Queue=nil) do c:=c.Queue;
+      while c.Queue<>nil do c:=c.Queue;
       c.Queue:=Context;
      end;
   finally
@@ -225,7 +225,7 @@ begin
   //fire thread
   //TODO: see if a rotary index matters in any way
   i:=0;
-  while (i<FLoaderSize) and not(FLoaders[i]=nil) and FLoaders[i].InUse do inc(i);
+  while (i<FLoaderSize) and (FLoaders[i]<>nil) and FLoaders[i].InUse do inc(i);
   if i=FLoaderSize then
    begin
     //pool full, leave on queue
@@ -247,7 +247,7 @@ begin
     EnterCriticalSection(FLock);
     try
       Result:=FQueue;
-      if not(Result=nil) then
+      if Result<>nil then
        begin
         FQueue:=FQueue.Queue;
         Result.Queue:=nil;

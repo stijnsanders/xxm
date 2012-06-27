@@ -6,6 +6,7 @@ v1.1.6.?
 - xxmProject: register with xxm.xml
 - xxmIsapi: override default buffering of IIS7 (remember to set Context.BufferSize!)
 - xxm.xml supports relative paths in <ModulePath>
+- Delphi XE2 support (as well as continued Delphi 7 support with the same source)
 
 v1.1.5.285
 - xxmHSYS: HTTPAPI handler

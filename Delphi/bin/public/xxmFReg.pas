@@ -11,7 +11,7 @@ uses xxm, Classes;
 This is a default fragment registry. You are free to change this one  or create a new one for your project.
 The TxxmProject (xxmp.pas) calls GetClass with the page section of the URL, or can pre-process the URL.
 
-  $Rev: 102 $ $Date: 2010-09-15 14:42:45 +0200 (wo, 15 sep 2010) $
+  $Rev: 220 $ $Date: 2012-06-27 23:14:11 +0200 (wo, 27 jun 2012) $
 
 }
 
@@ -57,10 +57,9 @@ begin
   inherited;
 end;
 
-procedure TXxmFragmentRegistry.RegisterClass(FName: AnsiString;
-  FType: TXxmFragmentClass);
+procedure TXxmFragmentRegistry.RegisterClass(FName: AnsiString; FType: TXxmFragmentClass);
 begin
-  Registry.AddObject(FName,TObject(FType));
+  Registry.AddObject(string(FName),TObject(FType));
 end;
 
 function TXxmFragmentRegistry.GetFragment(Project: TxxmProject;

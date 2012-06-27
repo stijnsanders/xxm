@@ -286,10 +286,10 @@ begin
            begin
             s:=FContext.SingleFileSent;
             Result:=S_FALSE;//default
-            if not(s='') then
+            if s<>'' then
              begin
               f:=CreateFileA(PAnsiChar(s),GENERIC_READ,7,nil,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,0);
-              if not(f=INVALID_HANDLE_VALUE) then
+              if f<>INVALID_HANDLE_VALUE then
                begin
                 if GetFileTime(f,@dt1,@dt2,@dt3) and FileTimeToSystemTime(dt3,st) then
                  begin
@@ -387,7 +387,7 @@ begin
       FURL:=pwzUrl;
       l:=Length(FURL);
       i:=1;
-      while (i<=l) and not(FURL[i]=':') do inc(i);
+      while (i<=l) and (FURL[i]<>':') do inc(i);
       //assert starts with 'xxm:'
       inc(i);
       if (i<=l) and (FURL[i]='/') then inc(i);
@@ -463,7 +463,7 @@ begin
       r.CloseKey;
       SimpleAdd('xxmpfile','xxm Project File');
       i:=Length(fn);
-      while not(i=0) and not(fn[i]=PathDelim) do dec(i);
+      while (i<>0) and (fn[i]<>PathDelim) do dec(i);
       fn1:=Copy(fn,1,i)+'xxmProject.exe';
       if FileExists(fn1) then
        begin

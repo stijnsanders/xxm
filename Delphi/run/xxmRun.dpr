@@ -33,7 +33,7 @@ begin
     for i:=0 to sl.Count-1 do
      begin
       s:=sl[i];
-      if not(s='') and not(char(s[1]) in [';','#']) then
+      if (s<>'') and not(char(s[1]) in [';','#']) then
        begin
         SetLength(Actions,j+1);
         case char(s[1]) of
@@ -47,7 +47,7 @@ begin
            begin
             Actions[j].ActionType:=atXXM;
             k:=2;
-            while (k<=Length(s)) and not(s[k]='"') do inc(k);
+            while (k<=Length(s)) and (s[k]<>'"') do inc(k);
             Actions[j].Param:=Copy(s,2,k-2);
             Actions[j].FileName:=Copy(s,k+1,Length(s)-k);
            end;

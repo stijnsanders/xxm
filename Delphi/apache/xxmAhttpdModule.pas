@@ -19,7 +19,7 @@ function xxm_handler(r:Prequest_rec): integer; cdecl;
 var
   ctx:TxxmAhttpdContext;
 begin
-  if not(AnsiString(r.handler)='xxm-handler') then Result:=DECLINED else
+  if AnsiString(r.handler)<>'xxm-handler' then Result:=DECLINED else
    begin
     CoInitialize(nil);//TODO: keep threadvar flag?
 

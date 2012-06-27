@@ -57,7 +57,7 @@ begin
   if SessionStore=nil then SessionStore:=TObjectList.Create(true);
   sid:=Context.SessionID;
   i:=0;
-  while (i<SessionStore.Count) and not(TXxmSession(SessionStore[i]).SessionID=sid) do inc(i);
+  while (i<SessionStore.Count) and (TXxmSession(SessionStore[i]).SessionID<>sid) do inc(i);
   //TODO: session expiry!!!
   if (i<SessionStore.Count) then Session:=TXxmSession(SessionStore[i]) else
    begin

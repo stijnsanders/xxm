@@ -64,6 +64,14 @@ add to the response headers.</dd>
 <u>Fragment registry</u>: xxm handlers use the fragment registry (actually <code>IxxmProject.LoadFragment</code>) to get hold of a fragment object, and doing so allows the fragment registry to handle object-pooling and object-reuse (if you'd like, in fact you're free to choose the fragment registry implementation for an xxm project).<br />
 <u>Then again</u>, if you really don't care about the above, you're totally free to call <code>TxxmFragment.Build</code> yourself.</dd>
 
+<dt>why does the Redirect method have a <code>Relative:boolean</code> parameter?<dt>
+<dd>short story: to make you think.
+Long story: though it is theoretically possible to infer from a URL if it's relative or absolute,
+in most cases, whether it is or not, is fixed by design.<br />
+For example a page posted to by a form, uses something like <code>Context.Redirect('Product.xxm?id='+IntToStr(id),true);</code> to display the result,
+or a website that forwards to sites with absolute URL's from websites should use <code>Context.Redirect(WebsiteUrlFromDB,false);</code>.
+</dd>
+
 <dt>why does my website show a build failed error message on one page when I'm browsing to another page?</dt>
 <dd>it's a side-effect of using a compiled library to run the website for you. If the auto-build fails (auto-build is triggered by any page-refresh to the site, even AJAX-calls and image-loads), the library isn't loaded and the build failed page is shown, for every request to the site. It's strongly advised to use a single instance of the website source-files to work on for each developer. If you work on the same set of files with a number of developer's, each build failed error caused by one developer will interrupt the testing of the other developers. (It's also strongly advised to use a version control system on the source-files between multiple developers. e.g. <a href="http://subversion.tigris.org/">SVN</a> or <a href="http://git-scm.com/">Git</a>)</dd>
 
