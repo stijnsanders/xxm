@@ -78,7 +78,9 @@ type
 
   TXxmHttpRunParameters=(
     rpPort,
+    rpSilent,
     rpLoadCopy,
+    rpStartURL,
     //add new here
     rp_Unknown);
 
@@ -87,7 +89,7 @@ procedure XxmRunServer;
 implementation
 
 uses Windows, Variants, ComObj, AxCtrls, WinSock,
-  xxmCommonUtils, xxmReadHandler;
+  xxmCommonUtils, xxmReadHandler, ShellApi;
 
 resourcestring
   SXxmMaximumHeaderLines='Maximum header lines exceeded.';
@@ -107,18 +109,24 @@ procedure XxmRunServer;
 const
   ParameterKey:array[TXxmHttpRunParameters] of AnsiString=(
     'port',
+    'silent',
     'loadcopy',
+    'starturl',
     //add new here (lowercase)
     '');
   WM_QUIT = $0012;//from Messages
 var
   Server:TxxmHttpServer;
   i,j,Port:integer;
-  s,t:AnsiString;
+  Silent:boolean;
+  StartURL,s,t:AnsiString;
   Msg:TMsg;
   par:TXxmHttpRunParameters;
 begin
-  Port:=80;//default
+  //defualt values
+  Port:=80;
+  Silent:=false;
+  StartURL:='';
 
   //process command line parameters
   for i:=1 to ParamCount do
@@ -132,10 +140,15 @@ begin
     case par of
       rpPort:
         Port:=StrToInt(Copy(s,j+1,Length(s)-j));
+      rpSilent:
+        Silent:=Copy(s,j+1,Length(s)-j)<>'0';
       rpLoadCopy:
         GlobalAllowLoadCopy:=Copy(s,j+1,Length(s)-j)<>'0';
+      rpStartURL:
+        StartURL:=Copy(s,j+1,Length(s)-j);
       //add new here
-      rp_Unknown: raise Exception.Create('Unknown setting: '+t);
+      rp_Unknown:
+        raise Exception.Create('Unknown setting: '+t);
     end;
    end;
 
@@ -153,8 +166,13 @@ begin
     Server.LocalPort:=IntToStr(Port);
     //TODO: listen on multiple ports
     Server.Open;
+
+    if StartURL<>'' then
+      ShellExecute(GetDesktopWindow,nil,PChar(StartURL),nil,nil,SW_NORMAL);//check result?
+
     if not Server.Listening then
-      raise Exception.Create('Failed to listen on port '+Server.LocalPort);
+      if Silent then exit else
+        raise Exception.Create('Failed to listen on port '+Server.LocalPort);
 
     repeat
       if GetMessage(Msg,0,0,0) then
@@ -617,6 +635,9 @@ begin
   FSocket.SendBuf(d[0],l);
   if FResHeaders['Content-Length']<>'' then FKeepConnection:=true;
   //TODO: transfer encoding chunked
+
+  //clear buffer just in case
+  if ContentBuffer<>nil then ContentBuffer.Position:=0;
 end;
 
 procedure TXxmHttpContext.AddResponseHeader(Name, Value: WideString);

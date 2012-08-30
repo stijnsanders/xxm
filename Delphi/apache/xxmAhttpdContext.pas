@@ -390,6 +390,9 @@ begin
     else      ;//rq.content_encoding:=apr_pstrdup(rq.pool,PAnsiChar('?
   end;
   //rq.connection.keepalive?//TODO
+
+  //clear buffer just in case
+  if FBuffer<>nil then FBuffer.Position:=0;
 end;
 
 procedure TxxmAhttpdContext.AddResponseHeader(Name: WideString; Value: WideString);

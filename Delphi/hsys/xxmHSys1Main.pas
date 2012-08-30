@@ -489,6 +489,8 @@ begin
   HttpCheck(HttpSendHttpResponse(FHSysQueue,FReq.RequestId,
     HTTP_SEND_RESPONSE_FLAG_MORE_DATA,
     @FRes,nil,l,nil,0,nil,nil));
+  //clear buffer just in case
+  if ContentBuffer<>nil then ContentBuffer.Position:=0;
 end;
 
 function TXxmHSys1Context.GetRequestHeaders: IxxmDictionaryEx;
