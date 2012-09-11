@@ -44,7 +44,9 @@ var
 const
   ParameterKey:array[TXxmHttpRunParameters] of string=(
     'Port',
+    'Silent',
     'LoadCopy',
+    'StartURL',
     //add new here
     '');
 begin

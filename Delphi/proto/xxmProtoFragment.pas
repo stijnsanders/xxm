@@ -70,7 +70,7 @@ begin
       if p.QueryInterface(IID_IXxmParameterGet,q)=S_OK then s:='GET';
       if p.QueryInterface(IID_IXxmParameterPost,q)=S_OK then s:='POST';
       if p.QueryInterface(IID_IXxmParameterPostFile,q)=S_OK then s:='FILE';
-      Context.SendHTML('<p><b>'+s+'</b>: '+ p.Name +'</p>');
+      Context.SendHTML('<p><b>'+s+'</b>: '+ p.Name +' = '+HTMLEncode(p.Value)+'</p>');
     except
       on e:Exception do
         Context.SendHTML('<p style="color: red;">'+HTMLEncode(e.Message)+'</p>');

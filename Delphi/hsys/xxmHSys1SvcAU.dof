@@ -111,7 +111,7 @@ AutoIncBuild=0
 MajorVer=1
 MinorVer=1
 Release=6
-Build=285
+Build=288
 Debug=0
 PreRelease=0
 Special=0
@@ -122,7 +122,7 @@ CodePage=1252
 [Version Info Keys]
 CompanyName=
 FileDescription=xxm HTTPAPI1 service (autoupdate)
-FileVersion=1.1.6.285
+FileVersion=1.1.6.288
 InternalName=
 LegalCopyright=
 LegalTrademarks=

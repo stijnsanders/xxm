@@ -5,8 +5,8 @@ interface
 uses SysUtils, Classes, ActiveX;
 
 const
-  //$Date: 2012-06-27 23:14:11 +0200 (wo, 27 jun 2012) $
-  XxmRevision='$Rev: 220 $';
+  //$Date: 2012-09-11 18:18:57 +0200 (di, 11 sep 2012) $
+  XxmRevision='$Rev: 223 $';
 
 type
   IXxmContext=interface;//forward
@@ -369,7 +369,8 @@ begin
    end;
   SetLength(t,q-1);
   Result:=UTF8ToWideString(t);
-  if (q<>0) and (Result<>'') then Result:=WideString(t);
+  //plain decode in case of encoding error?
+  if (q>1) and (Result='') then Result:=WideString(t);
 end;
 
 function XxmVersion: TXxmVersion;

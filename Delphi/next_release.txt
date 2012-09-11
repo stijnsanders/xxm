@@ -1,6 +1,6 @@
-v1.1.6.?
-- xxmGecko: support for FireFox 11
+v1.1.6.288
 - security: EOL's in added header fields are disallowed
+- fixed issue with URLEncoded and UTF8 encoded characters
 - fixed issue when setting BufferSize from non-zero to zero	
 - renamed xxmApache to xxmAhttpd, Apache httpd license states non-ASF projects may not use the Apache name
 - xxmProject: register with xxm.xml
