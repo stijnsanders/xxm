@@ -46,6 +46,7 @@ function nav(x)
 	if(x<snaps.length)
 	{
 		csnap=x;
+		document.location.hash="#"+x;
 		tutsnap.src="snap"+new String(100+x).substr(1,2)+".png";
 		tuttxt.innerHTML=snaps[x];
 		buildnav();
@@ -55,5 +56,6 @@ function nav(x)
 doresize();
 buildnav();
 tuttxt.innerHTML=snaps[csnap];
+if(document.location.hash)nav(new Number(document.location.hash.split("#")[1]));
 //--></script> 
 </body>

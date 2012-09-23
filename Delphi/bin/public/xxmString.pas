@@ -15,6 +15,7 @@ type
     FBuilding:IXxmFragment;
     FIncludeDepth,FIndex:integer;
     FResult:WideString;
+    FAutoEncoding:TXxmAutoEncoding;
     function GetResult:WideString;
     procedure WriteString(Value:WideString);
   protected
@@ -60,6 +61,7 @@ type
       const Objects: array of TObject); overload;
   	procedure Reset;
 
+    property AutoEncoding:TXxmAutoEncoding read GetAutoEncoding write SetAutoEncoding;
     property Result:WideString read GetResult;
     procedure SaveToFile(FileName:AnsiString);
   end;
@@ -85,6 +87,7 @@ begin
   FContext:=AContext;
   FBuilding:=ACaller;
   FIncludeDepth:=0;
+  FAutoEncoding:=AContext.AutoEncoding;
   Reset;
 end;
 
@@ -121,14 +124,34 @@ end;
 
 procedure TStringContext.SaveToFile(FileName: AnsiString);
 const
+  Utf8ByteOrderMark=#$EF#$BB#$BF;
   Utf16ByteOrderMark=#$FF#$FE;
 var
   f:TFileStream;
+  s:AnsiString;
 begin
   f:=TFileStream.Create(FileName,fmCreate);
   try
-    f.Write(Utf16ByteOrderMark,2);
-    f.Write(FResult[1],FIndex*2);
+    case FAutoEncoding of
+      aeContentDefined:
+        raise EXxmUnsupported.Create('StringContext.SaveToFile doesn''t support AutoEncoding=aeContentDefined');
+      aeUtf8:
+       begin
+        f.Write(Utf8ByteOrderMark,3);
+        s:=UTF8Encode(Copy(FResult,1,FIndex));
+        f.Write(s[1],Length(s));
+       end;
+      aeUtf16:
+       begin
+        f.Write(Utf16ByteOrderMark,2);
+        f.Write(FResult[1],FIndex*2);
+       end;
+      aeIso8859:
+       begin
+        s:=Copy(FResult,1,FIndex);
+        f.Write(s[1],Length(s));
+       end;
+    end;
   finally
     f.Free;
   end;
@@ -202,7 +225,7 @@ end;
 
 procedure TStringContext.SetAutoEncoding(const Value: TXxmAutoEncoding);
 begin
-  raise EXxmUnsupported.Create('StringContext doesn''t support AutoEncoding');
+  FAutoEncoding:=Value;
 end;
 
 procedure TStringContext.SetContentType(const Value: WideString);

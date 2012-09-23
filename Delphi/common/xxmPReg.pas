@@ -47,21 +47,23 @@ type
     property Project: IXxmProject read GetProject;
   end;
 
-  EXxmModuleNotFound=class(Exception);
+  EXxmProjectNotFound=class(Exception);
   EXxmProjectLoadFailed=class(Exception);
+  EXxmModuleNotFound=class(Exception);
 
   TXxmAutoBuildHandler=function(Entry: TXxmProjectEntry; Context: IXxmContext; ProjectName: WideString): boolean;
 
 var
   XxmAutoBuildHandler:TXxmAutoBuildHandler;
 
+const //resourcestring?
+  SXxmProjectNotFound='xxm Project "__" not defined.';
+  SXxmProjectLoadFailed='xxm Project load "__" failed.';
+  SXxmModuleNotFound='xxm Module "__" does not exist.';
+
 implementation
 
 uses Windows, Registry, xxmCommonUtils;
-
-const //resourcestring?
-  SXxmModuleNotFound='xxm Module "__" does not exist.';
-  SXxmProjectLoadFailed='xxm Project load "__" failed.';
 
 { TXxmProjectEntry }
 

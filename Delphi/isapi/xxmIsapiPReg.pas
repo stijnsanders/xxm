@@ -40,9 +40,6 @@ type
   end;
 
   EXxmProjectRegistryError=class(Exception);
-  EXxmProjectNotFound=class(Exception);
-  EXxmModuleNotFound=class(Exception);
-  EXxmProjectLoadFailed=class(Exception);
   EXxmFileTypeAccessDenied=class(Exception);
   EXxmProjectAliasDepth=class(Exception);
 
@@ -55,9 +52,6 @@ uses Registry, Variants, xxmCommonUtils;
 
 resourcestring
   SXxmProjectRegistryError='Could not open project registry "__"';
-  SXxmProjectNotFound='xxm Project "__" not defined.';
-  SXxmModuleNotFound='xxm Module "__" does not exist.';
-  SXxmProjectLoadFailed='xxm Project load "__" failed.';
   SXxmFileTypeAccessDenied='Access denied to this type of file';
   SXxmProjectAliasDepth='xxm Project "__": aliasses are limited to 8 in sequence';
 

@@ -290,48 +290,43 @@ begin
         if ((SquareB or AngleB) and (a2<l)) or (b2>l) then
          begin
           //close tag found also
-          if AngleB or (b2>l) then
-           begin
-            AddSection(a1,a2-a1-1,n1,psHTML);
-            AddSection(b1,b2-b1-1,n2,psBody);
-            a2:=b2;
-           end
-          else //SquareB
-           begin
-            bx:=b1;
-            if bx=a2 then //opener was AngleB
+          bx:=b1;
+          case char(FData[bx]) of
+            '[':begin ps:=psSquareBracketsOpen; SquareB:=b2-b1=1; end;
+            ']':begin ps:=psSquareBracketsClose; SquareB:=b2-b1=1; end;
+            '!':ps:=psHeader;
+            '@':ps:=psUses;
+            ':':ps:=psDefinitions;
+            '_':ps:=psFooter;
+            '#':ps:=psSendHTML;
+            '=':ps:=psSend;
+            '/','?':ps:=psComment;
+            '*':ps:=psParserParameter;
+            //'&$%^+|;.,
+            else
              begin
               ps:=psBody;
               dec(bx);
-             end
-            else
-              case char(FData[bx]) of
-                '[':begin ps:=psSquareBracketsOpen; SquareB:=b2-b1=1; end;
-                ']':begin ps:=psSquareBracketsClose; SquareB:=b2-b1=1; end;
-                '!':ps:=psHeader;
-                '@':ps:=psUses;
-                ':':ps:=psDefinitions;
-                '_':ps:=psFooter;
-                '#':ps:=psSendHTML;
-                '=':ps:=psSend;
-                '/','?':ps:=psComment;
-                '*':ps:=psParserParameter;
-                //'&$%^+|;.,
-                else
-                 begin
-                  ps:=psBody;
-                  dec(bx);
-                 end;
-              end;
+             end;
+          end;
+          if SquareB or AngleB or (b2>l) then
+           begin
+            AddSection(a1,a2-a1-1,n1,psHTML);
             if SquareB then
              begin
-              AddSection(a1,a2-a1-1,n1,psHTML);
               AddSection(bx+1,b2-bx-2,n2,ps);
               a2:=b2+1;
              end
             else
-              AddSection(a1,a2-a1,n1,psHTML);
-           end;
+             begin
+              //assert AngleB or (b2>l)
+              inc(bx);
+              AddSection(bx,b2-bx-1,n2,ps);
+              a2:=b2;
+             end;
+           end
+          else
+            AddSection(a1,a2-a1,n1,psHTML);
           a1:=a2;
          end
         else

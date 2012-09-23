@@ -38,9 +38,6 @@ type
   end;
 
   EXxmProjectRegistryError=class(Exception);
-  EXxmProjectNotFound=class(Exception);
-  EXxmModuleNotFound=class(Exception);
-  EXxmProjectLoadFailed=class(Exception);
   EXxmFileTypeAccessDenied=class(Exception);
   EXxmProjectAliasDepth=class(Exception);
 
@@ -54,9 +51,6 @@ uses Registry, Variants;
 
 resourcestring
   SXxmProjectRegistryError='Could not open project registry "__"';
-  SXxmProjectNotFound='xxm Project "__" not defined.';
-  SXxmModuleNotFound='xxm Module "__" does not exist.';
-  SXxmProjectLoadFailed='xxm Project load "__" failed.';
   SXxmFileTypeAccessDenied='Access denied to this type of file';
   SXxmProjectAliasDepth='xxm Project "__": aliasses are limited to 8 in sequence';
 
@@ -103,7 +97,7 @@ begin
     raise EXxmProjectNotFound.Create(StringReplace(
       SXxmProjectNotFound,'__',Name,[]));
   x.setAttribute('Signature',FSignature);
-  x.ownerDocument.save(XxmProjectCache.FRegFilePath);
+  x.ownerDocument.save(XxmProjectCache.FRegFilePath+XxmRegFileName);
 end;
 
 function TXxmProjectCacheEntry.GetAllowInclude: boolean;
@@ -215,6 +209,11 @@ begin
   try
     //assert CoInitialize called
     i:=FindProject(Name);
+    if (i<>-1) and not(ProjectCache[i].ProjectLoaded) then //and xxm.xml modified?
+     begin
+      FreeAndNil(ProjectCache[i]);//ReleaseProject(Name);
+      i:=-1;
+     end;
     if i=-1 then
      begin
       n:=Name;

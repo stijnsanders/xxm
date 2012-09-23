@@ -279,9 +279,6 @@ begin
 end;
 
 procedure TxxmAhttpdContext.SendRaw(Data: WideString);
-const
-  Utf8ByteOrderMark=#$EF#$BB#$BF;
-  Utf16ByteOrderMark=#$FF#$FE;
 var
   s:AnsiString;
   l:integer;

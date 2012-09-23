@@ -44,8 +44,6 @@ type
 
   end;
 
-  EXxmProjectNotFound=class(Exception);
-  
 var
   XxmProjectCache:TXxmProjectCache;
 
@@ -109,9 +107,6 @@ begin
    end;
 end;
 
-const //resourcestring?
-  SXxmProjectNotFound='xxm Project "__" not defined.';
-  
 { TXxmProjectCacheEntry }
 
 constructor TXxmProjectCacheEntry.Create(Name: WideString);
