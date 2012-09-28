@@ -26,7 +26,7 @@ type
     procedure ClearAll;
     function Grow:integer;
     function FindProject(Name:WideString):integer;
-    function LoadRegistry:IXMLDOMElement;
+    function LoadRegistry(IsInLock:boolean=false):IXMLDOMElement;
   public
     constructor Create;
     destructor Destroy; override;
@@ -170,7 +170,7 @@ begin
   if Result=ProjectCacheSize then Result:=-1;
 end;
 
-function TXxmProjectCache.LoadRegistry: IXMLDOMElement;
+function TXxmProjectCache.LoadRegistry(IsInLock:boolean): IXMLDOMElement;
 var
   fh:THandle;
   fd:TWin32FindDataA;
@@ -187,11 +187,19 @@ begin
    end;
   if FRegSignature<>s then
    begin
-    if not(FRegDoc.load(FRegFilePath+XxmRegFileName)) then
-      raise EXxmProjectRegistryError.Create(StringReplace(
-        SXxmProjectRegistryError,'__',FRegFilePath+XxmRegFileName,[])+#13#10+
-        FRegDoc.parseError.reason);
-    FRegSignature:=s;
+    if not IsInLock then EnterCriticalSection(FLock);
+    try
+      if IsInLock or (FRegSignature<>s) then //check again could get updated by other process
+       begin
+        if not(FRegDoc.load(FRegFilePath+XxmRegFileName)) then
+          raise EXxmProjectRegistryError.Create(StringReplace(
+            SXxmProjectRegistryError,'__',FRegFilePath+XxmRegFileName,[])+#13#10+
+            FRegDoc.parseError.reason);
+        FRegSignature:=s;
+       end;
+    finally
+      if not IsInLock then LeaveCriticalSection(FLock);
+    end;
    end;
   //assert documentElement.nodeName='ProjectRegistry'
   Result:=FRegDoc.documentElement;
@@ -220,7 +228,7 @@ begin
       d:=0;
       found:=false;
       repeat
-        x:=LoadRegistry.selectSingleNode('Project[@Name="'+n+'"]');
+        x:=LoadRegistry(true).selectSingleNode('Project[@Name="'+n+'"]');
         if x<>nil then
          begin
           y:=x.attributes.getNamedItem('Alias');
