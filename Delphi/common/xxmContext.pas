@@ -26,7 +26,7 @@ type
     FAutoEncoding: TXxmAutoEncoding;
     FPostData: TStream;
     FPostTempFile: AnsiString;
-    StatusSet: boolean;
+    StatusSet, SettingCookie: boolean;
     FBufferSize: integer;
 
     { IXxmContext }
@@ -65,9 +65,9 @@ type
     function Connected: Boolean; virtual; abstract;
     procedure Redirect(RedirectURL: WideString; Relative:boolean); virtual; abstract;
     function GetCookie(Name: WideString): WideString; virtual; abstract;
-    procedure SetCookie(Name: WideString; Value: WideString); overload; virtual; abstract;
+    procedure SetCookie(Name: WideString; Value: WideString); overload; virtual;
     procedure SetCookie(Name,Value:WideString; KeepSeconds:cardinal;
-      Comment,Domain,Path:WideString; Secure,HttpOnly:boolean); overload; virtual; abstract;
+      Comment,Domain,Path:WideString; Secure,HttpOnly:boolean); overload; virtual;
 
     function GetBufferSize: integer;
     procedure SetBufferSize(ABufferSize: integer); virtual;
@@ -168,6 +168,7 @@ begin
   FStatusCode:=200;//default
   FStatusText:='OK';//default
   StatusSet:=false;
+  SettingCookie:=false;
   FProjectName:='';//parsed from URL later
   FFragmentName:='';//parsed from URL later
   FBufferSize:=0;//TOOD: from project settings?
@@ -673,6 +674,45 @@ begin
     //raise?
     Result:=false;
   end;
+end;
+
+procedure TXxmGeneralContext.SetCookie(Name, Value: WideString);
+begin
+  CheckHeaderNotSent;
+  //check name?
+  //TODO: "quoted string"?
+  AddResponseHeader('Cache-Control','no-cache="set-cookie"');
+  SettingCookie:=true;//allow multiple?
+  AddResponseHeader('Set-Cookie',Name+'='+Value);
+end;
+
+procedure TXxmGeneralContext.SetCookie(Name, Value: WideString;
+  KeepSeconds: cardinal; Comment, Domain, Path: WideString; Secure,
+  HttpOnly: boolean);
+var
+  x:WideString;
+begin
+  CheckHeaderNotSent;
+  //check name?
+  //TODO: "quoted string"?
+  AddResponseHeader('Cache-Control','no-cache="set-cookie"');
+  x:=Name+'='+Value;
+  //'; Version=1';
+  if Comment<>'' then
+    x:=x+'; Comment='+Comment;
+  if Domain<>'' then
+    x:=x+'; Domain='+Domain;
+  if Path<>'' then
+    x:=x+'; Path='+Path;
+  x:=x+'; Max-Age='+IntToStr(KeepSeconds)+
+    '; Expires='+RFC822DateGMT(Now+KeepSeconds/86400);
+  if Secure then
+    x:=x+'; Secure';
+  if HttpOnly then
+    x:=x+'; HttpOnly';
+  SettingCookie:=true;//allow multiple?
+  AddResponseHeader('Set-Cookie',x);
+  //TODO: Set-Cookie2
 end;
 
 { TXxmCrossProjectIncludeCheck }

@@ -252,6 +252,8 @@ begin
     else
       if (x='.log') or (x='.ini') then //override default for a few known types
         Result:='text/plain'
+      else if x='.js' then Result:='text/javascript'
+      else if x='.css' then Result:='text/css'
       else
         Result:='application/octet-stream';
   finally

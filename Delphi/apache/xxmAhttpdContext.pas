@@ -23,10 +23,6 @@ type
     function Connected:boolean; override;
     procedure Redirect(RedirectURL:WideString; Relative:boolean); override;
     function GetCookie(Name:WideString):WideString; override;
-    procedure SetCookie(Name,Value:WideString); overload; override;
-    procedure SetCookie(Name,Value:WideString; KeepSeconds:cardinal;
-      Comment,Domain,Path:WideString; Secure,HttpOnly:boolean); overload; override;
-    //procedure SetCookie2();
     procedure SetBufferSize(ABufferSize: Integer); override;
     procedure Flush; override;
     procedure SendHeader; override;
@@ -197,43 +193,6 @@ begin
   Result:=GetParamValue(FCookie,FCookieIdx,Name);
 end;
 
-procedure TxxmAhttpdContext.SetCookie(Name, Value: WideString);
-begin
-  CheckHeaderNotSent;
-  //check name?
-  //TODO: "quoted string"?
-  AddResponseHeader('Cache-Control','no-cache="set-cookie"');
-  AddResponseHeader('Set-Cookie',Name+'="'+Value+'"');
-end;
-
-procedure TxxmAhttpdContext.SetCookie(Name, Value: WideString;
-  KeepSeconds: cardinal; Comment, Domain, Path: WideString; Secure,
-  HttpOnly: boolean);
-var
-  x:AnsiString;
-begin
-  CheckHeaderNotSent;
-  //check name?
-  //TODO: "quoted string"?
-  AddResponseHeader('Cache-Control','no-cache="set-cookie"');
-  x:=Name+'="'+Value+'"';
-  //'; Version=1';
-  if Comment<>'' then
-    x:=x+'; Comment="'+Comment+'"';
-  if Domain<>'' then
-    x:=x+'; Domain="'+Domain+'"';
-  if Path<>'' then
-    x:=x+'; Path="'+Path+'"';
-  x:=x+'; Max-Age='+IntToStr(KeepSeconds)+
-    '; Expires="'+RFC822DateGMT(Now+KeepSeconds/86400)+'"';
-  if Secure then
-    x:=x+'; Secure'+#13#10;
-  if HttpOnly then
-    x:=x+'; HttpOnly'+#13#10;
-  AddResponseHeader('Set-Cookie',x);
-  //TODO: Set-Cookie2
-end;
-
 function TxxmAhttpdContext.GetRequestHeaders: IxxmDictionaryEx;
 begin
   //TODO: check freed by ref counting?
@@ -396,9 +355,17 @@ procedure TxxmAhttpdContext.AddResponseHeader(Name: WideString; Value: WideStrin
 begin
   HeaderCheckName(Name);
   HeaderCheckValue(Value);
-  apr_table_set(rq.headers_out,
-    apr_pstrdup(rq.pool,PAnsiChar(AnsiString(Name))),
-    apr_pstrdup(rq.pool,PAnsiChar(AnsiString(Value))));
+  if SettingCookie then
+   begin
+    SettingCookie:=false;
+    apr_table_add(rq.headers_out,
+      apr_pstrdup(rq.pool,PAnsiChar(AnsiString(Name))),
+      apr_pstrdup(rq.pool,PAnsiChar(AnsiString(Value))));
+   end
+  else
+    apr_table_set(rq.headers_out,
+      apr_pstrdup(rq.pool,PAnsiChar(AnsiString(Name))),
+      apr_pstrdup(rq.pool,PAnsiChar(AnsiString(Value))));
 end;
 
 procedure TxxmAhttpdContext.Flush;

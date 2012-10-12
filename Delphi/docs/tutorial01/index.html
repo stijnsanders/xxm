@@ -8,7 +8,7 @@ P#tutnav{font-size:12pt;}
 IMG#tutsnap{border:2px solid #999999;}
 A{text-decoration:none;}
 //--></style> 
-<body onresize="doresize();"> 
+<body onresize="doresize();" onhashchange="nav(document.location.hash.substr(1));"> 
 <p id="tutnav"><i>loading...</i></p> 
 <p><img src="snap00.png" id="tutsnap" width="800" height="600" onclick="nav(csnap+1);" /><img src="snap01.png" id="tutpre" width="0" height="0" /></p> 
 <p id="tuttxt"></p> 
@@ -43,7 +43,7 @@ function buildnav()
 }
 function nav(x)
 {
-	if(x<snaps.length)
+	if(x<snaps.length&&csnap!=x)
 	{
 		csnap=x;
 		document.location.hash="#"+x;

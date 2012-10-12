@@ -119,7 +119,7 @@ type
 const //resourcestring
   SXxmRequestHeadersReadOnly='Request headers are read-only.';
   SXxmResponseHeaderInvalidChar='Response header add: value contains invalid character.';
-  SXxmResponseHeaderAlreadySent='Response header has already been send.';
+  SXxmResponseHeaderAlreadySent='Response header has already been sent.';
 
 procedure SplitHeader(Value:AnsiString; var Params:TParamIndexes);
 function SplitHeaderValue(Value:AnsiString;ValueStart,ValueLength:integer;
@@ -814,8 +814,7 @@ var
   i:integer;
 begin
   if FBuilt then raise EXxmResponseHeaderAlreadySent.Create(SXxmResponseHeaderAlreadySent);
-  for i:=1 to Length(Value) do if char(Value[i]) in [#0,#10,#13] then //more?
-    raise EXxmResponseHeaderInvalidChar.Create(SXxmResponseHeaderInvalidChar);
+  HeaderCheckValue(Value);
   if VarIsNumeric(Name) then i:=integer(Name) else
    begin
     i:=0;
@@ -827,7 +826,6 @@ begin
       FItems[i].Name:=Name;
      end;
    end;
-  HeaderCheckValue(Value);
   FItems[i].Value:=Value;
 end;
 

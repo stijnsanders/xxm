@@ -167,7 +167,7 @@ object EditProjectMainForm: TEditProjectMainForm
       end
     end
   end
-  object OpenDialog1: TOpenDialog
+  object odOpenProject: TOpenDialog
     DefaultExt = 'xxmp'
     FileName = 'Web.xxmp'
     Filter = 
@@ -897,14 +897,15 @@ object EditProjectMainForm: TEditProjectMainForm
       OnExecute = actIncludePasExecute
     end
   end
-  object OpenDialog2: TOpenDialog
+  object odIncludeUnit: TOpenDialog
     DefaultExt = 'pas'
     Filter = 'Pascal Unit|*.pas|All files (*.*)|*.*'
     InitialDir = '.'
+    Options = [ofHideReadOnly, ofAllowMultiSelect, ofEnableSizing]
     Left = 272
     Top = 8
   end
-  object OpenDialog3: TOpenDialog
+  object odXxmXml: TOpenDialog
     DefaultExt = 'xml'
     FileName = 'xxm.xml'
     Filter = 'xxm.xml|xxm.xml|xml file (*.xml)|*.xml|All files (*.*)|*.*'

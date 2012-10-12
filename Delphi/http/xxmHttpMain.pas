@@ -19,7 +19,7 @@ type
     FSocket:TCustomIpClient;
     FReqHeaders:TRequestHeaders;
     FResHeaders:TResponseHeaders;
-    FConnected:boolean;
+    FConnected: boolean;
     FHTTPVersion,FVerb,FURI,FRedirectPrefix,FSessionID:AnsiString;
     FCookieParsed: boolean;
     FCookie: AnsiString;
@@ -37,9 +37,6 @@ type
     function Connected: Boolean; override;
     procedure Redirect(RedirectURL: WideString; Relative:boolean); override;
     function GetCookie(Name: WideString): WideString; override;
-    procedure SetCookie(Name: WideString; Value: WideString); overload; override;
-    procedure SetCookie(Name,Value:WideString; KeepSeconds:cardinal;
-      Comment,Domain,Path:WideString; Secure,HttpOnly:boolean); overload; override;
     procedure SetBufferSize(ABufferSize: Integer); override;
     procedure Flush; override;
 
@@ -205,6 +202,7 @@ begin
       cx._Release;
     end;
   finally
+    Sleep(10);//odd, on really small content disconnect comes too fast
     ClientSocket.Disconnect;
   end;
 end;
@@ -473,43 +471,6 @@ begin
   Result:=GetParamValue(FCookie,FCookieIdx,Name);
 end;
 
-procedure TXxmHttpContext.SetCookie(Name, Value: WideString);
-begin
-  CheckHeaderNotSent;
-  //check name?
-  //TODO: "quoted string"?
-  FResHeaders['Cache-Control']:='no-cache="set-cookie"';
-  FResHeaders.Add('Set-Cookie',Name+'="'+Value+'"');
-end;
-
-procedure TXxmHttpContext.SetCookie(Name, Value: WideString;
-  KeepSeconds: cardinal; Comment, Domain, Path: WideString; Secure,
-  HttpOnly: boolean);
-var
-  x:WideString;
-begin
-  CheckHeaderNotSent;
-  //check name?
-  //TODO: "quoted string"?
-  FResHeaders['Cache-Control']:='no-cache="set-cookie"';
-  x:=Name+'="'+Value+'"';
-  //'; Version=1';
-  if Comment<>'' then
-    x:=x+'; Comment="'+Comment+'"';
-  if Domain<>'' then
-    x:=x+'; Domain="'+Domain+'"';
-  if Path<>'' then
-    x:=x+'; Path="'+Path+'"';
-  x:=x+'; Max-Age='+IntToStr(KeepSeconds)+
-    '; Expires="'+RFC822DateGMT(Now+KeepSeconds/86400)+'"';
-  if Secure then
-    x:=x+'; Secure'+#13#10;
-  if HttpOnly then
-    x:=x+'; HttpOnly'+#13#10;
-  FResHeaders.Add('Set-Cookie',x);
-  //TODO: Set-Cookie2
-end;
-
 function TXxmHttpContext.GetSessionID: WideString;
 const
   SessionCookie='xxmSessionID';
@@ -642,7 +603,13 @@ end;
 
 procedure TXxmHttpContext.AddResponseHeader(Name, Value: WideString);
 begin
-  FResHeaders[Name]:=Value;
+  if SettingCookie then
+   begin
+    SettingCookie:=false;
+    FResHeaders.Add(Name,Value);
+   end
+  else
+    FResHeaders[Name]:=Value;
 end;
 
 function TXxmHttpContext.GetRequestHeaders: IxxmDictionaryEx;

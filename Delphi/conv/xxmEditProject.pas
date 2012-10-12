@@ -14,7 +14,7 @@ type
     Save1: TMenuItem;
     N1: TMenuItem;
     Exit1: TMenuItem;
-    OpenDialog1: TOpenDialog;
+    odOpenProject: TOpenDialog;
     PageControl1: TPageControl;
     TabSheet1: TTabSheet;
     TabSheet2: TTabSheet;
@@ -44,11 +44,11 @@ type
     N4: TMenuItem;
     Refresh1: TMenuItem;
     actIncludePas: TAction;
-    OpenDialog2: TOpenDialog;
+    odIncludeUnit: TOpenDialog;
     Includeunit2: TMenuItem;
     StatusBar1: TStatusBar;
     btnRegisterFile: TButton;
-    OpenDialog3: TOpenDialog;
+    odXxmXml: TOpenDialog;
     procedure Exit1Click(Sender: TObject);
     procedure txtChange(Sender: TObject);
     procedure tvFilesCreateNodeClass(Sender: TCustomTreeView;
@@ -80,7 +80,7 @@ type
     procedure SaveProject;
     function GetNode(element:IXMLDOMElement;xpath:WideString):IXMLDOMElement;
     procedure ExpandNode(node:TTreeNode);
-    function GetFilesNode:IXMLDOMElement;
+    procedure FilesNodeAppend(node:IXMLDOMElement);
   protected
     procedure DoCreate; override;
     procedure DoClose(var Action: TCloseAction); override;
@@ -153,8 +153,12 @@ begin
 
   if Path='' then
    begin
-    Result:=CreateNew or OpenDialog1.Execute;
-    if Result then fn:=OpenDialog1.FileName;
+    Result:=CreateNew or odOpenProject.Execute;
+    if Result then
+     begin
+      fn:=odOpenProject.FileName;
+      SetForegroundWindow(Handle);
+     end;
    end
   else
    begin
@@ -540,10 +544,7 @@ begin
    begin
     (n as TFileNode).ProjectNode:=x;
     n.SelectedIndex:=n.ImageIndex;
-    y:=GetFilesNode;
-    y.appendChild(ProjectData.createTextNode(#13#10#9#9));
-    y.appendChild(x);
-    y.appendChild(ProjectData.createTextNode(#13#10#9));
+    FilesNodeAppend(x);
     Modified:=true;
    end;
   tvFilesChange(tvFiles,n);
@@ -597,66 +598,83 @@ end;
 
 procedure TEditProjectMainForm.actIncludePasExecute(Sender: TObject);
 var
-  x,y:IXMLDOMElement;
+  x:IXMLDOMElement;
   s,t:AnsiString;
-  i,j,l:integer;
+  i,j,l,fi,fl,fc:integer;
 begin
-  if OpenDialog2.Execute then
+  if odIncludeUnit.Execute then
    begin
-      s:=OpenDialog2.FileName;
-    if LowerCase(Copy(s,1,Length(ProjectFolder)))=LowerCase(ProjectFolder) then
-      raise Exception.Create('Use include on a tree node to include a file in the project folder.');//TODO
-    //build relative to ProjectFolder
-    l:=Length(ProjectFolder);
-    j:=Length(s);
-    i:=1;
-    while (i<=l) and (i<=j) and (UpCase(s[i])=UpCase(ProjectFolder[i])) do inc(i);
-    while (i>0) and (s[i]<>PathDelim) do dec(i);
-    //assert (i<=l)
-    s:=Copy(s,i+1,j-i);
-    while i<=l do
+    fc:=0;
+    fl:=odIncludeUnit.Files.Count;
+    for fi:=0 to fl-1 do
      begin
-      if ProjectFolder[i]=PathDelim then s:='..'+PathDelim+s;
+      s:=odIncludeUnit.Files[fi];
+      if LowerCase(Copy(s,1,Length(ProjectFolder)))=LowerCase(ProjectFolder) then
+        raise Exception.Create('Use include on a tree node to include a file in the project folder.');//TODO
+      //build relative to ProjectFolder
+      l:=Length(ProjectFolder);
+      j:=Length(s);
+      i:=1;
+      while (i<=l) and (i<=j) and (UpCase(s[i])=UpCase(ProjectFolder[i])) do inc(i);
+      while (i>0) and (s[i]<>PathDelim) do dec(i);
+      //assert (i<=l)
+      s:=Copy(s,i+1,j-i);
       inc(i);
+      while i<=l do
+       begin
+        if ProjectFolder[i]=PathDelim then s:='..'+PathDelim+s;
+        inc(i);
+       end;
+      //strip extension, path
+      i:=Length(s);
+      while (i<>0) and (s[i]<>'.') do dec(i);
+      j:=i;
+      while (j<>0) and (s[j]<>PathDelim) do dec(j);
+      t:='@UnitName="'+Copy(s,j+1,i-j-1)+'"';
+      if j>0 then t:=t+'&&@UnitPath="'+StringReplace(Copy(s,1,j),'\','\\',[rfReplaceAll])+'"';
+      if ProjectData.documentElement.selectSingleNode('Files/Unit['+t+']')=nil then
+       begin
+        x:=ProjectData.createElement('Unit');
+        x.setAttribute('UnitName',Copy(s,j+1,i-j-1));
+        if j>1 then x.setAttribute('UnitPath',Copy(s,1,j));
+        //(n as TFileNode).ProjectNode:=x;
+        FilesNodeAppend(x);
+        Modified:=true;
+        inc(fc);
+        if fl=1 then MessageBoxA(Handle,PAnsiChar('Unit "'+s+'" added'),
+          'xxm Project',MB_OK or MB_ICONINFORMATION);
+       end
+      else
+        if fl=1 then MessageBoxA(Handle,PAnsiChar(
+          'Unit "'+s+'" is aready added to the project'),
+          'xxm Project',MB_OK or MB_ICONERROR);
      end;
-    //strip extension, path
-    i:=Length(s);
-    while (i<>0) and (s[i]<>'.') do dec(i);
-    j:=i;
-    while (j<>0) and (s[j]<>PathDelim) do dec(j);
-    //TODO check already included
-    t:='@UnitName="'+Copy(s,j+1,i-j-1)+'"';
-    if j>0 then t:=t+'&&@UnitPath="'+StringReplace(Copy(s,1,j),'\','\\',[rfReplaceAll])+'"';
-    if ProjectData.documentElement.selectSingleNode('Files/Unit['+t+']')=nil then
-     begin
-      x:=ProjectData.createElement('Unit');
-      x.setAttribute('UnitName',Copy(s,j+1,i-j-1));
-      if j>1 then x.setAttribute('UnitPath',Copy(s,1,j));
-      //(n as TFileNode).ProjectNode:=x;
-      y:=GetFilesNode;
-      y.appendChild(ProjectData.createTextNode(#13#10#9#9));
-      y.appendChild(x);
-      y.appendChild(ProjectData.createTextNode(#13#10#9));
-      Modified:=true;
-      MessageBoxA(Handle,PAnsiChar('Unit "'+s+'" added'),
-        'xxm Project',MB_OK or MB_ICONINFORMATION);
-     end
-    else
-      MessageBoxA(Handle,PAnsiChar('Unit "'+s+'" is aready added to the project'),
-        'xxm Project',MB_OK or MB_ICONERROR);
+    if fl>1 then MessageBoxA(Handle,PAnsiChar(IntToStr(fc)+' units added'),
+      'xxm Project',MB_OK or MB_ICONINFORMATION);
    end;
 end;
 
-function TEditProjectMainForm.GetFilesNode: IXMLDOMElement;
+procedure TEditProjectMainForm.FilesNodeAppend(node:IXMLDOMElement);
+var
+  x:IXMLDOMElement;
+  y:IXMLDOMNode;
 begin
-  Result:=ProjectData.documentElement.selectSingleNode('Files') as IXMLDOMElement;
-  if Result=nil then
+  x:=ProjectData.documentElement.selectSingleNode('Files') as IXMLDOMElement;
+  if x=nil then
    begin
-    Result:=ProjectData.createElement('Files');
+    x:=ProjectData.createElement('Files');
     ProjectData.documentElement.appendChild(ProjectData.createTextNode(#13#10#9));
-    ProjectData.documentElement.appendChild(Result);
+    ProjectData.documentElement.appendChild(x);
     ProjectData.documentElement.appendChild(ProjectData.createTextNode(#13#10));
+    x.appendChild(ProjectData.createTextNode(#13#10#9));
    end;
+  y:=x.lastChild;
+  if (y=nil) or (y.nodeType<>NODE_TEXT) then
+    x.appendChild(ProjectData.createTextNode(#13#10#9#9))
+  else
+    x.appendChild(ProjectData.createTextNode(#9));
+  x.appendChild(node);
+  x.appendChild(ProjectData.createTextNode(#13#10#9));
 end;
 
 procedure TEditProjectMainForm.btnRegisterFileClick(Sender: TObject);
@@ -670,9 +688,9 @@ begin
     t:=txtProjectName.Text;
     if t='' then raise Exception.Create('Project name required');
     s:=ProjectFolder+t+'.xxl';
-    if OpenDialog3.Execute then
+    if odXxmXml.Execute then
      begin
-      fn:=OpenDialog3.FileName;
+      fn:=odXxmXml.FileName;
       doc:=CoDOMDocument.Create;
       if FileExists(fn) then
        begin
