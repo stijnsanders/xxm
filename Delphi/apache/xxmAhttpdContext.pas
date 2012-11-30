@@ -26,7 +26,7 @@ type
     procedure SetBufferSize(ABufferSize: Integer); override;
     procedure Flush; override;
     procedure SendHeader; override;
-    procedure SendRaw(Data: WideString); override;
+    procedure SendRaw(const Data: WideString); override;
     function GetProjectEntry:TXxmProjectEntry; override;
     procedure AddResponseHeader(Name: WideString; Value: WideString); override;
     procedure SetStatus(Code:integer;Text:WideString); override;
@@ -237,10 +237,11 @@ begin
   raise EXxmPageRedirected.Create(RedirectURL);
 end;
 
-procedure TxxmAhttpdContext.SendRaw(Data: WideString);
+procedure TxxmAhttpdContext.SendRaw(const Data: WideString);
 var
   s:AnsiString;
   l:integer;
+  p:pointer;
 begin
   if Data<>'' then
    begin
@@ -270,7 +271,10 @@ begin
         if FBuffer<>nil then
           FBuffer.Write(Data[1],l)
         else
-          if ap_rwrite(Data[1],l,rq)<>l then raise EXxmRWriteFailed.Create(SXxmRWriteFailed);
+         begin
+          p:=@Data[1];
+          if ap_rwrite(p^,l,rq)<>l then raise EXxmRWriteFailed.Create(SXxmRWriteFailed);
+         end;
        end;
       aeUtf8:
        begin

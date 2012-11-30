@@ -32,6 +32,11 @@ type
     Name:AnsiString;
 
     constructor Create(Context: IXxmContext);
+	
+	//CSRF protection by posting session cookie value
+	function FormProtect:WideString;
+	procedure CheckProtect;
+	
     property SessionID:WideString read FSessionID;
   end;
 
@@ -88,6 +93,25 @@ begin
   Authenticated:=false;
   Name:='';
 
+end;
+
+function TXxmSession.FormProtect:WideString;
+begin
+  Result:='<input type="hidden" name="XxmSessionID" value="'+HTMLEncode(FSessionID)+'" />';
+end;
+
+procedure TXxmSession.CheckProtect;
+var
+  p:IXxmParameter;
+begin
+  if Context.ContextString(csVerb)='POST' then
+   begin
+    p:=Context.Parameter['XxmSessionID'];
+	if not((p is IxxmParameterPost) and (p.Value=FSessionID)) then
+	  raise Exception.Create('Invalid POST source detected.');
+   end
+  else
+    raise Exception.Create('xxmSession.CheckProtect only works on POST requests.');
 end;
 
 initialization

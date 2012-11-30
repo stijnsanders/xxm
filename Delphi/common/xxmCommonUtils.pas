@@ -3,8 +3,9 @@ unit xxmCommonUtils;
 interface
 
 function RFC822DateGMT(dd: TDateTime): string;
-function GetFileModifiedDateTime(FilePath:AnsiString;var FileSize:Int64):TDateTime;
-function GetFileSignature(Path:AnsiString):AnsiString;
+function GetFileModifiedDateTime(const FilePath:AnsiString;
+  var FileSize:Int64):TDateTime;
+function GetFileSignature(const Path:AnsiString):AnsiString;
 
 implementation
 
@@ -30,7 +31,8 @@ begin
     [Days[wd],d,Months[m],y,th,tm,ts]);
 end;
 
-function GetFileModifiedDateTime(FilePath:AnsiString;var FileSize:Int64):TDateTime;
+function GetFileModifiedDateTime(const FilePath:AnsiString;
+  var FileSize:Int64):TDateTime;
 var
   fh:THandle;
   fd:TWin32FindDataA;
@@ -49,7 +51,7 @@ begin
    end;
 end;
 
-function GetFileSignature(Path:AnsiString):AnsiString;
+function GetFileSignature(const Path:AnsiString):AnsiString;
 var
   fh:THandle;
   fd:TWin32FindDataA;

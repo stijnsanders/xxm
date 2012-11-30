@@ -19,7 +19,7 @@ type
     procedure SetName(Idx: integer; Value: WideString);
     function GetCount:integer;
   public
-    constructor Create(Data:AnsiString);
+    constructor Create(const Data:AnsiString);
     destructor Destroy; override;
     property Item[Name:OleVariant]:WideString read GetItem write SetItem; default;
     property Name[Idx: integer]:WideString read GetName write SetName;
@@ -37,7 +37,7 @@ type
     procedure SetName(Idx: integer; Value: WideString);
     function GetCount:integer;
   public
-    constructor Create(Data:WideString;ValueStart,ValueLength:integer;
+    constructor Create(const Data:WideString;ValueStart,ValueLength:integer;
       var FirstValue:WideString);
     destructor Destroy; override;
     property Item[Name:OleVariant]:WideString read GetItem write SetItem; default;
@@ -67,9 +67,9 @@ type
     property Count:integer read GetCount;
     function Complex(Name:OleVariant;out Items:IxxmDictionary):WideString;
     function Build:AnsiString;
-    procedure Add(Name,Value:WideString);
-    procedure Remove(Name:WideString);
-    function SetComplex(Name,Value:WideString):TResponseSubValues;
+    procedure Add(const Name,Value:WideString);
+    procedure Remove(const Name:WideString);
+    function SetComplex(const Name,Value:WideString):TResponseSubValues;
   end;
 
   TResponseSubValues=class(TInterfacedObject, IxxmDictionary)
@@ -121,13 +121,13 @@ const //resourcestring
   SXxmResponseHeaderInvalidChar='Response header add: value contains invalid character.';
   SXxmResponseHeaderAlreadySent='Response header has already been sent.';
 
-procedure SplitHeader(Value:AnsiString; var Params:TParamIndexes);
-function SplitHeaderValue(Value:AnsiString;ValueStart,ValueLength:integer;
+procedure SplitHeader(const Value:AnsiString; var Params:TParamIndexes);
+function SplitHeaderValue(const Value:AnsiString;ValueStart,ValueLength:integer;
   var Params:TParamIndexes):AnsiString;
-function GetParamValue(Data:AnsiString;
-  Params:TParamIndexes; Name:AnsiString):AnsiString;
-procedure HeaderCheckName(Name: WideString);
-procedure HeaderCheckValue(Value: WideString);
+function GetParamValue(const Data:AnsiString;
+  Params:TParamIndexes; const Name:AnsiString):AnsiString;
+procedure HeaderCheckName(const Name: WideString);
+procedure HeaderCheckValue(const Value: WideString);
 
 {$IF not Declared(UTF8ToWideString)}
 {$DEFINE NOT_DECLARED_UTF8ToWideString}
@@ -141,7 +141,7 @@ implementation
 
 uses Variants;
 
-procedure SplitHeader(Value:AnsiString; var Params:TParamIndexes);
+procedure SplitHeader(const Value:AnsiString; var Params:TParamIndexes);
 var
   b:boolean;
   p,q,l,r,i:integer;
@@ -187,8 +187,8 @@ begin
    end;
 end;
 
-function SplitHeaderValue(Value:AnsiString;ValueStart,ValueLength:integer;
-  var Params:TParamIndexes):AnsiString;
+function SplitHeaderValue(const Value:AnsiString;
+  ValueStart,ValueLength:integer;var Params:TParamIndexes):AnsiString;
 var
   i,j,l,q:integer;
 begin
@@ -238,8 +238,8 @@ begin
    end;
 end;
 
-function GetParamValue(Data:AnsiString;
-  Params:TParamIndexes; Name:AnsiString):AnsiString;
+function GetParamValue(const Data:AnsiString;
+  Params:TParamIndexes; const Name:AnsiString):AnsiString;
 var
   l,i:integer;
 begin
@@ -249,7 +249,7 @@ begin
   if (i<l) then Result:=Copy(Data,Params[i].ValueStart,Params[i].ValueLength) else Result:='';
 end;
 
-procedure HeaderCheckName(Name: WideString);
+procedure HeaderCheckName(const Name: WideString);
 var
   i:integer;
 begin
@@ -259,7 +259,7 @@ begin
     raise EXxmResponseHeaderInvalidChar.Create(SXxmResponseHeaderInvalidChar);
 end;
 
-procedure HeaderCheckValue(Value: WideString);
+procedure HeaderCheckValue(const Value: WideString);
 var
   i:integer;
 begin
@@ -276,8 +276,8 @@ end;
 
 { TStreamNozzle }
 
-constructor TStreamNozzle.Create(Source: TStream; DataProgressAgent, FileProgressAgent: IxxmUploadProgressAgent;
-  FileProgressStep: integer);
+constructor TStreamNozzle.Create(Source: TStream; DataProgressAgent,
+  FileProgressAgent: IxxmUploadProgressAgent; FileProgressStep: integer);
 begin
   inherited Create;
   FSource:=Source;
@@ -488,7 +488,7 @@ end;
 
 { TRequestHeaders }
 
-constructor TRequestHeaders.Create(Data: AnsiString);
+constructor TRequestHeaders.Create(const Data: AnsiString);
 begin
   inherited Create;
   FData:=Data;
@@ -553,7 +553,7 @@ end;
 
 { TRequestSubValues }
 
-constructor TRequestSubValues.Create(Data: WideString; ValueStart,
+constructor TRequestSubValues.Create(const Data: WideString; ValueStart,
   ValueLength: integer; var FirstValue: WideString);
 begin
   inherited Create;
@@ -708,7 +708,7 @@ begin
   //TODO: check max line length and separate over lines?
 end;
 
-procedure TResponseHeaders.Add(Name, Value: WideString);
+procedure TResponseHeaders.Add(const Name, Value: WideString);
 var
   i:integer;
 begin
@@ -721,7 +721,7 @@ begin
   FItems[i].Value:=Value;
 end;
 
-function TResponseHeaders.SetComplex(Name,
+function TResponseHeaders.SetComplex(const Name,
   Value: WideString): TResponseSubValues;
 var
   i:integer;
@@ -743,7 +743,7 @@ begin
   Result:=FItems[i].SubValues;
 end;
 
-procedure TResponseHeaders.Remove(Name: WideString);
+procedure TResponseHeaders.Remove(const Name: WideString);
 var
   i,l:integer;
 begin

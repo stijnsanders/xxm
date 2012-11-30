@@ -21,10 +21,10 @@ type
     function GetModulePath:WideString; virtual;
     procedure SetSignature(const Value: AnsiString); virtual; abstract;
     function ProjectLoaded:boolean;
-    function GetExtensionMimeType(x:AnsiString): AnsiString; virtual;
+    function GetExtensionMimeType(const x:AnsiString): AnsiString; virtual;
     function GetAllowInclude:boolean; virtual; abstract;
   published
-    constructor Create(Name:WideString);//abstract! only here for initialization
+    constructor Create(const Name:WideString);//abstract! only here for initialization
     destructor Destroy; override;
   public
     //used by auto-build/auto-update
@@ -41,7 +41,7 @@ type
     //used by xxmContext
     procedure OpenContext;
     procedure CloseContext;
-    procedure GetFilePath(Address:WideString;var Path,MimeType:WideString);
+    procedure GetFilePath(const Address:WideString;var Path,MimeType:WideString);
     function GetProjectInterface(const IID: TGUID):IUnknown;
     property Name: WideString read FName;
     property Project: IXxmProject read GetProject;
@@ -67,7 +67,7 @@ uses Windows, Registry, xxmCommonUtils;
 
 { TXxmProjectEntry }
 
-constructor TXxmProjectEntry.Create(Name:WideString);
+constructor TXxmProjectEntry.Create(const Name:WideString);
 begin
   inherited Create;
   FName:=Name;
@@ -196,7 +196,7 @@ begin
   Result:=FFilePath;
 end;
 
-procedure TXxmProjectEntry.GetFilePath(Address: WideString; var Path,
+procedure TXxmProjectEntry.GetFilePath(const Address: WideString; var Path,
   MimeType: WideString);
 var
   rf,sf,s:WideString;
@@ -239,7 +239,7 @@ begin
   MimeType:=GetExtensionMimeType(LowerCase(copy(sf,i,Length(sf)-i+1)));
 end;
 
-function TXxmProjectEntry.GetExtensionMimeType(x: AnsiString): AnsiString;
+function TXxmProjectEntry.GetExtensionMimeType(const x: AnsiString): AnsiString;
 var
   r:TRegistry;
 begin

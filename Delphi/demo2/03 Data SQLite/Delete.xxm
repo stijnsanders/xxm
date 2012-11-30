@@ -1,0 +1,4 @@
+[[@xxmSession,]][[
+Session.DbCon.Execute('delete from Table1 where id=?',[Context['id'].AsInteger]);
+<<p>item deleted</p>
+<p><a href="Default.xxm">back</a></p>

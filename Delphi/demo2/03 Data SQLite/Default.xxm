@@ -1,9 +1,7 @@
-[[@xxmData,]][[!var
-qr:TQueryResult;
-]]
-<ul>
-[[
-qr:=TQueryResult.Create('MyQuery1',[]);
+[[@xxmSession,SQLiteData,]][[!var
+qr:TSQLiteStatement;
+<<ul>>
+qr:=TSQLiteStatement.Create(Session.DbCon,'select * from Table1',[]);
 try
   while qr.Read and Context.Connected do
    begin
@@ -15,6 +13,5 @@ try
 finally
   qr.Free;
 end;
-]]
-</ul>
+<</ul>
 <p><a href="Edit.xxm">add</a></p>

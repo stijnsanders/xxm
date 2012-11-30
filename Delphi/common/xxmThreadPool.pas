@@ -47,7 +47,7 @@ var
 threadvar
   ContentBuffer: TMemoryStream;
 
-procedure SetThreadName(ThreadDisplayName:AnsiString);
+procedure SetThreadName(const ThreadDisplayName:AnsiString);
 function IsDebuggerPresent: BOOL; stdcall;
 
 implementation
@@ -57,7 +57,7 @@ uses
 
 function IsDebuggerPresent; external 'kernel32.dll';
 
-procedure SetThreadName(ThreadDisplayName:AnsiString);
+procedure SetThreadName(const ThreadDisplayName:AnsiString);
 var
   ThreadInfo:record
     dwType:LongWord;

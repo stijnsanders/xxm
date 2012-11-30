@@ -5,8 +5,8 @@ interface
 uses SysUtils, Classes, ActiveX;
 
 const
-  //$Date: 2012-09-11 18:18:57 +0200 (di, 11 sep 2012) $
-  XxmRevision='$Rev: 223 $';
+  //$Date: 2012-11-29 22:19:34 +0100 (do, 29 nov 2012) $
+  XxmRevision='$Rev: 237 $';
 
 type
   IXxmContext=interface;//forward
@@ -219,10 +219,10 @@ type
   end;
 
 function XxmVersion:TXxmVersion;
-function HTMLEncode(Data:WideString):WideString; overload;
-function HTMLEncode(Data:OleVariant):WideString; overload;
-function URLEncode(Data:OleVariant):AnsiString;
-function URLDecode(Data:AnsiString):WideString;
+function HTMLEncode(const Data:WideString):WideString; overload;
+function HTMLEncode(const Data:OleVariant):WideString; overload;
+function URLEncode(const Data:OleVariant):AnsiString;
+function URLDecode(const Data:AnsiString):WideString;
 
 implementation
 
@@ -239,12 +239,12 @@ end;
 
 { Helper Functions }
 
-function HTMLEncode(Data:OleVariant):WideString;
+function HTMLEncode(const Data:OleVariant):WideString;
 begin
   Result:=HTMLEncode(VarToWideStr(Data));
 end;
 
-function HTMLEncode(Data:WideString):WideString;
+function HTMLEncode(const Data:WideString):WideString;
 const
   GrowStep=$1000;
 var
@@ -293,7 +293,7 @@ end;
 const
   Hex: array[0..15] of AnsiChar='0123456789ABCDEF';
 
-function URLEncode(Data:OleVariant):AnsiString;
+function URLEncode(const Data:OleVariant):AnsiString;
 var
   s,t:AnsiString;
   p,q,l:integer;
@@ -331,7 +331,7 @@ begin
    end;
 end;
 
-function URLDecode(Data:AnsiString):WideString;
+function URLDecode(const Data:AnsiString):WideString;
 var
   t:AnsiString;
   p,q,l:integer;

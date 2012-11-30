@@ -25,7 +25,7 @@ type
     procedure CheckReqHeaders;
   protected
     procedure SendHeader; override;
-    procedure SendRaw(Data: WideString); override;
+    procedure SendRaw(const Data: WideString); override;
     procedure SendStream(s: IStream); override;
     function Connected: Boolean; override;
     procedure Redirect(RedirectURL: WideString; Relative:boolean); override;
@@ -339,7 +339,7 @@ begin
   ProtSink.ReportProgress(BINDSTATUS_CONTENTDISPOSITIONFILENAME,PWideChar(FileName));
 end;
 
-procedure TXxmLocalContext.SendRaw(Data: WideString);
+procedure TXxmLocalContext.SendRaw(const Data: WideString);
 var
   s:AnsiString;
   b:boolean;

@@ -59,13 +59,13 @@ type
     //abstract methods, inheriters need to implement these
     function GetSessionID: WideString; virtual; abstract;
     procedure DispositionAttach(FileName: WideString); virtual; abstract;
-    procedure SendRaw(Data: WideString); virtual; abstract;
+    procedure SendRaw(const Data: WideString); virtual; abstract;
     procedure SendStream(s: IStream); virtual; abstract;
     function ContextString(cs: TXxmContextString): WideString; virtual; abstract;
     function Connected: Boolean; virtual; abstract;
     procedure Redirect(RedirectURL: WideString; Relative:boolean); virtual; abstract;
     function GetCookie(Name: WideString): WideString; virtual; abstract;
-    procedure SetCookie(Name: WideString; Value: WideString); overload; virtual;
+    procedure SetCookie(Name,Value: WideString); overload; virtual;
     procedure SetCookie(Name,Value:WideString; KeepSeconds:cardinal;
       Comment,Domain,Path:WideString; Secure,HttpOnly:boolean); overload; virtual;
 
@@ -88,7 +88,7 @@ type
     procedure CheckHeaderNotSent;
     function CheckSendStart:boolean;
 
-    procedure SendError(res:AnsiString;vals:array of AnsiString);
+    procedure SendError(const res:AnsiString;const vals:array of AnsiString);
     procedure ForceStatus(Code: Integer; Text: WideString);
     function HandleException(Ex: Exception): boolean;
 
@@ -99,7 +99,7 @@ type
     property ProjectEntry: TXxmProjectEntry read FProjectEntry;
   public
     //abstract! constructor only here for private variable init
-    constructor Create(URL:WideString);
+    constructor Create(const URL:WideString);
     destructor Destroy; override;
     //property URL:WideString read GetURL;
     property ContentType:WideString read FContentType;
@@ -138,7 +138,7 @@ const //resourcestring?
 
 { TXxmGeneralContext }
 
-constructor TXxmGeneralContext.Create(URL: WideString);
+constructor TXxmGeneralContext.Create(const URL: WideString);
 begin
   inherited Create;
   FURL:=URL;
@@ -333,8 +333,8 @@ begin
     raise EXxmResponseHeaderAlreadySent.Create(SXxmResponseHeaderAlreadySent);
 end;
 
-procedure TXxmGeneralContext.SendError(res: AnsiString;
-  vals: array of AnsiString);
+procedure TXxmGeneralContext.SendError(const res: AnsiString;
+  const vals: array of AnsiString);
 var
   s:AnsiString;
   i:integer;

@@ -31,7 +31,7 @@ type
 
     function GetSessionID: WideString; override;
     procedure DispositionAttach(FileName: WideString); override;
-    procedure SendRaw(Data: WideString); override;
+    procedure SendRaw(const Data: WideString); override;
     procedure SendStream(s: IStream); override;
     function ContextString(cs: TXxmContextString): WideString; override;
     function Connected: Boolean; override;
@@ -378,7 +378,7 @@ begin
         FPostTempFile:=FPostTempFile+'xxm_'+IntToHex(integer(Self),8)+'_'+IntToHex(GetTickCount,8)+'.dat';
         s:=TFileStream.Create(FPostTempFile,fmCreate);
        end;
-      s.Size:=StrToInt(x);
+      s.Size:=si;
       FPostData:=THandlerReadStreamAdapter.Create(FSocket,si,s);
      end;
 
@@ -509,13 +509,14 @@ begin
   raise EXxmPageRedirected.Create(RedirectURL);
 end;
 
-procedure TXxmHttpContext.SendRaw(Data:WideString);
+procedure TXxmHttpContext.SendRaw(const Data:WideString);
 const
   Utf8ByteOrderMark=#$EF#$BB#$BF;
   Utf16ByteOrderMark=#$FF#$FE;
 var
   s:AnsiString;
   l:cardinal;
+  p:pointer;
 begin
   if Data<>'' then
    begin
@@ -536,7 +537,8 @@ begin
       aeUtf16:
        begin
         l:=Length(Data)*2;
-        if FBufferSize=0 then FSocket.SendBuf(Data[1],l) else ContentBuffer.Write(Data[1],l);
+        p:=@Data[1];
+        if FBufferSize=0 then FSocket.SendBuf(p^,l) else ContentBuffer.Write(Data[1],l);
        end;
       aeUtf8:
        begin

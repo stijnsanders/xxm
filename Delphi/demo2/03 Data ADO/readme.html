@@ -22,7 +22,8 @@ Also note that the TxxmSession constructor checks if the QueryStore is already i
 <dd>This data-link file is used to have a fixed ADO connection string: "<code>File Name=demo.udl</code>". It depends on the process' current directory, which is set by the TxxmSession's constructor to the project's path.<br />
 It is included into Web.xxmp as a resource file, so a change to this file will force a re-start of the project.</dd>
 <dt>demo.mdb</dt>
-<dd>The demo UDL links to this file, also depending on the current directory.</dd>
+<dd>The demo UDL links to this file, also depending on the current directory.<br />
+In a real website scenario this file should be stored in a folder that is not accessible over the website.</dd>
 <dt>Default.xxm</dt>
 <dd>The website's default page. It lists the items of <code>Table1</code>, displaying an <i>edit</i> and <i>delete</i> link for each item. It also displays an <i>add</i> link. When looping over the query result, <code>Context.Connected</code> is checked, allowing the visitor to abort building the page when the list gets too long.</dd>
 <dt>Edit.xxm</dt>

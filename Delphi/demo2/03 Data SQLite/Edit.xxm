@@ -1,0 +1,31 @@
+[[@xxmSession,SQLiteData,]][[!var
+qr:TSQLiteStatement;
+id:integer;
+]][[
+
+id:=Context.Parameter['id'].AsInteger;
+if Context.Parameter['x'].AsInteger=0 then
+ begin
+  qr:=TSQLiteStatement.Create(Session.DbCon,'select * from Table1 where id=?',[id]);
+  try
+    <<form action="Edit.xxm" method="post">
+	<input type="hidden" name="x" value="1" />
+	<input type="hidden" name="id" value="[[=id]]" />
+	<input type="text" name="text" value="[[=qr['text']]]" /><br />
+	<input type="submit" value="Apply" />
+	</form>>
+  finally
+    qr.Free;
+  end;
+ end
+else
+ begin
+  if id=0 then
+    Session.DbCon.Execute('insert into Table1 ([text]) values (?)',[Context['text'].Value],id)
+  else
+    Session.DbCon.Execute('update Table1 set [text]=? where id=?',[Context['text'].Value,id]);
+  <<p>updated</p>
+  <a href="Default.xxm">back</a>>
+ end;
+
+]]

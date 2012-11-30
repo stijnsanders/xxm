@@ -8,7 +8,7 @@ type
   TXxmProjectCacheEntry=class(TXxmProjectEntry)
   protected
     procedure SetSignature(const Value: AnsiString); override;
-    function GetExtensionMimeType(x:AnsiString): AnsiString; override;
+    function GetExtensionMimeType(const x:AnsiString): AnsiString; override;
     function GetAllowInclude: boolean; override;
   published
     constructor Create(Name,FilePath:WideString;LoadCopy:boolean);
@@ -70,7 +70,7 @@ begin
   inherited;
 end;
 
-function TXxmProjectCacheEntry.GetExtensionMimeType(x: AnsiString): AnsiString;
+function TXxmProjectCacheEntry.GetExtensionMimeType(const x: AnsiString): AnsiString;
 begin
   if (x='.xxl') or (x='.xxu') or (x='.exe') or (x='.dll') or (x='.xxmp') or (x='.udl') then //more? settings?
     raise EXxmFileTypeAccessDenied.Create(SXxmFileTypeAccessDenied);

@@ -3,20 +3,17 @@ qr:TQueryResult;
 dc:TDataChanger;
 id:integer;
 ]][[
-
 id:=Context.Parameter['id'].AsInteger;
 if Context.Parameter['x'].AsInteger=0 then
  begin
   qr:=TQueryResult.Create('GetOne',[id]);
   try
-    ]]
-	<form action="Edit.xxm" method="post">
+    <<form action="Edit.xxm" method="post">
 	<input type="hidden" name="x" value="1" />
 	<input type="hidden" name="id" value="[[=id]]" />
 	<input type="text" name="text" value="[[=qr['text']]]" /><br />
 	<input type="submit" value="Apply" />
-	</form>
-	[[
+	</form>>
   finally
     qr.Free;
   end;
@@ -30,10 +27,6 @@ else
   finally
     dc.Free;
   end;
-  ]]
-  <p>updated</p>
-  <a href="Default.xxm">back</a>
-  [[
+  <<p>updated</p>
+  <a href="Default.xxm">back</a>>
  end;
-
-]]

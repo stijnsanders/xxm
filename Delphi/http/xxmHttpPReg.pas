@@ -8,10 +8,10 @@ type
   TXxmProjectCacheEntry=class(TXxmProjectEntry)
   protected
     procedure SetSignature(const Value: AnsiString); override;
-    function GetExtensionMimeType(x:AnsiString): AnsiString; override;
+    function GetExtensionMimeType(const x:AnsiString): AnsiString; override;
     function GetAllowInclude: boolean; override;
   published
-    constructor Create(Name,FilePath:WideString;LoadCopy:boolean);
+    constructor Create(const Name,FilePath:WideString;LoadCopy:boolean);
   public
     destructor Destroy; override;
   end;
@@ -25,16 +25,16 @@ type
     FRegDoc:DOMDocument;
     procedure ClearAll;
     function Grow:integer;
-    function FindProject(Name:WideString):integer;
+    function FindProject(const Name:WideString):integer;
     function LoadRegistry(IsInLock:boolean=false):IXMLDOMElement;
   public
     constructor Create;
     destructor Destroy; override;
 
-    function GetProject(Name:WideString):TXxmProjectCacheEntry;
+    function GetProject(const Name:WideString):TXxmProjectCacheEntry;
     function DefaultProject:AnsiString;
     function SingleProject:AnsiString;
-    procedure ReleaseProject(Name:WideString);
+    procedure ReleaseProject(const Name:WideString);
   end;
 
   EXxmProjectRegistryError=class(Exception);
@@ -66,7 +66,8 @@ function PathCombine(lpszDest,lpszDir,lpszFile:PWideChar):PWideChar;
 
 { TXxmProjectCacheEntry }
 
-constructor TXxmProjectCacheEntry.Create(Name, FilePath: WideString; LoadCopy: boolean);
+constructor TXxmProjectCacheEntry.Create(const Name, FilePath: WideString;
+  LoadCopy: boolean);
 begin
   inherited Create(LowerCase(Name));//lowercase here!
   FFilePath:=FilePath;
@@ -79,7 +80,7 @@ begin
   inherited;
 end;
 
-function TXxmProjectCacheEntry.GetExtensionMimeType(x: AnsiString): AnsiString;
+function TXxmProjectCacheEntry.GetExtensionMimeType(const x: AnsiString): AnsiString;
 begin
   if (x='.xxl') or (x='.xxu') or (x='.exe') or (x='.dll') or (x='.xxmp') or (x='.udl') then //more? settings?
     raise EXxmFileTypeAccessDenied.Create(SXxmFileTypeAccessDenied);
@@ -158,7 +159,7 @@ begin
    end;
 end;
 
-function TXxmProjectCache.FindProject(Name: WideString): integer;
+function TXxmProjectCache.FindProject(const Name: WideString): integer;
 var
   l:AnsiString;
 begin
@@ -205,7 +206,7 @@ begin
   Result:=FRegDoc.documentElement;
 end;
 
-function TXxmProjectCache.GetProject(Name: WideString): TXxmProjectCacheEntry;
+function TXxmProjectCache.GetProject(const Name: WideString): TXxmProjectCacheEntry;
 var
   i,d:integer;
   x,y:IXMLDOMNode;
@@ -276,7 +277,7 @@ begin
   end;
 end;
 
-procedure TXxmProjectCache.ReleaseProject(Name: WideString);
+procedure TXxmProjectCache.ReleaseProject(const Name: WideString);
 var
   i:integer;
 begin

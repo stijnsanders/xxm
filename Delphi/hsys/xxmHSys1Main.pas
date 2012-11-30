@@ -46,7 +46,7 @@ type
     function GetResponseHeaderIndex(Idx:integer):WideString;
     procedure SetResponseHeaderIndex(Idx:integer;Value:WideString);
   protected
-    procedure SendRaw(Data: WideString); override;
+    procedure SendRaw(const Data: WideString); override;
     procedure SendStream(s:IStream); override;
     procedure DispositionAttach(FileName: WideString); override;
     function ContextString(cs:TXxmContextString):WideString; override;
@@ -330,7 +330,7 @@ begin
   raise EXxmPageRedirected.Create(RedirectURL);
 end;
 
-procedure TXxmHSys1Context.SendRaw(Data:WideString);
+procedure TXxmHSys1Context.SendRaw(const Data:WideString);
 const
   Utf8ByteOrderMark=#$EF#$BB#$BF;
   Utf16ByteOrderMark=#$FF#$FE;

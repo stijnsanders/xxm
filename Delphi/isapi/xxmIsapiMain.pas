@@ -24,7 +24,7 @@ type
   protected
     function GetSessionID: WideString; override;
     procedure DispositionAttach(FileName: WideString); override;
-    procedure SendRaw(Data: WideString); override;
+    procedure SendRaw(const Data: WideString); override;
     procedure SendStream(s: IStream); override;
     function ContextString(cs: TXxmContextString): WideString; override;
     function Connected: Boolean; override;
@@ -164,7 +164,7 @@ end;
 
 { TXxmIsapiContext }
 
-function GetVar(pecb: PEXTENSION_CONTROL_BLOCK; key:AnsiString):AnsiString;
+function GetVar(pecb: PEXTENSION_CONTROL_BLOCK; const key:AnsiString):AnsiString;
 var
   l:cardinal;
 begin
@@ -176,12 +176,17 @@ begin
   SetLength(Result,l-1);
 end;
 
+const
+  httpScheme:array[boolean] of WideString=('http://','https://');
+
 constructor TXxmIsapiContext.Create(pecb: PEXTENSION_CONTROL_BLOCK);
 var
   uri:WideString;
 begin
   uri:=GetVar(pecb,'HTTP_URL');
-  inherited Create('http://'+GetVar(pecb,'HTTP_HOST')+uri);//TODO: unicode?
+  inherited Create(
+    httpScheme[UpperCase(GetVar(pecb,'HTTPS'))='ON']+
+    GetVar(pecb,'HTTP_HOST')+uri);//TODO: unicode?
   ecb:=pecb;
   FURI:=uri;
   FCookieParsed:=false;
@@ -380,7 +385,7 @@ begin
     ['filename']:=FileName;
 end;
 
-procedure TXxmIsapiContext.SendRaw(Data: WideString);
+procedure TXxmIsapiContext.SendRaw(const Data: WideString);
 const
   Utf8ByteOrderMark=#$EF#$BB#$BF;
   Utf16ByteOrderMark=#$FF#$FE;
@@ -537,13 +542,15 @@ begin
    begin
     //TODO: proper combine?
     if (RedirectURL<>'') and (RedirectURL[1]='/') then
-      s:='http://'+GetVar(ecb,'HTTP_HOST')+FRedirectPrefix+RedirectURL
+      s:=httpScheme[UpperCase(GetVar(ecb,'HTTPS'))='ON']+GetVar(ecb,'HTTP_HOST')+
+        FRedirectPrefix+RedirectURL
     else
      begin
       s:=FURI;
       i:=Length(s);
       while (i<>0) and (s[i]<>'/') do dec(i);
-      s:='http://'+GetVar(ecb,'HTTP_HOST')+Copy(s,1,i)+RedirectURL;
+      s:=httpScheme[UpperCase(GetVar(ecb,'HTTPS'))='ON']+GetVar(ecb,'HTTP_HOST')+
+        Copy(s,1,i)+RedirectURL;
      end;
    end
   else

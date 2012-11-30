@@ -36,7 +36,7 @@ type
     FQueryStringIndex:integer;
     function GetCGIValue(Name:AnsiString):AnsiString;
   protected
-    procedure SendRaw(Data: WideString); override;
+    procedure SendRaw(const Data: WideString); override;
     procedure SendStream(s:IStream); override;
     procedure DispositionAttach(FileName: WideString); override;
     function ContextString(cs:TXxmContextString):WideString; override;
@@ -351,7 +351,7 @@ begin
   raise EXxmPageRedirected.Create(RedirectURL);
 end;
 
-procedure TXxmHostedContext.SendRaw(Data:WideString);
+procedure TXxmHostedContext.SendRaw(const Data:WideString);
 const
   Utf8ByteOrderMark=#$EF#$BB#$BF;
   Utf16ByteOrderMark=#$FF#$FE;

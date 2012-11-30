@@ -16,7 +16,7 @@ type
     constructor Create;
     destructor Destroy; override;
     function Fill(Context: IXxmContext; PostData: TStream): boolean;
-    function Get(Key:WideString):IXxmParameter;
+    function Get(const Key:WideString):IXxmParameter;
     function GetNext(Par:IXxmParameter):IXxmParameter;
     function GetItem(Key:integer):IXxmParameter;
     function Count:integer;
@@ -35,7 +35,7 @@ type
     function AsInteger:integer;
     function NextBySameName:IXxmParameter;
   public
-    constructor Create(Owner:TXxmReqPars;Name,Value:WideString);
+    constructor Create(Owner:TXxmReqPars;const Name,Value:WideString);
     property Name:WideString read GetName;
     property Value:WideString read GetValue;
   end;
@@ -55,8 +55,8 @@ type
     function GetSize: Integer;
     function GetMimeType: WideString;
   public
-    constructor Create(Owner:TXxmReqPars;Name:WideString;
-      Origin,MimeType:AnsiString; Stream:TStream;Pos,Len:integer);
+    constructor Create(Owner:TXxmReqPars;const Name:WideString;
+      const Origin,MimeType:AnsiString; Stream:TStream;Pos,Len:integer);
     property Size:integer read GetSize;
     property MimeType:WideString read GetMimeType;
     procedure SaveToFile(FilePath: AnsiString);
@@ -72,7 +72,7 @@ type
     function AsInteger:integer;
     function NextBySameName:IXxmParameter;
   public
-    constructor Create(Name,Value:WideString);
+    constructor Create(const Name,Value:WideString);
     property Name:WideString read GetName;
     property Value:WideString read GetValue;
   end;
@@ -295,7 +295,7 @@ begin
   inc(FParamsCount);
 end;
 
-function TXxmReqPars.Get(Key: WideString): IXxmParameter;
+function TXxmReqPars.Get(const Key: WideString): IXxmParameter;
 var
   i:integer;
   p:TXxmReqPar;
@@ -344,7 +344,7 @@ end;
 
 { TXxmReqPar }
 
-constructor TXxmReqPar.Create(Owner: TXxmReqPars; Name, Value: WideString);
+constructor TXxmReqPar.Create(Owner: TXxmReqPars; const Name, Value: WideString);
 begin
   inherited Create;
   FOwner:=Owner;
@@ -375,8 +375,8 @@ end;
 
 { TXxmReqParPostFile }
 
-constructor TXxmReqParPostFile.Create(Owner: TXxmReqPars; Name: WideString;
-  Origin, MimeType: AnsiString; Stream: TStream; Pos, Len: integer);
+constructor TXxmReqParPostFile.Create(Owner: TXxmReqPars; const Name: WideString;
+  const Origin, MimeType: AnsiString; Stream: TStream; Pos, Len: integer);
 begin
   inherited Create(Owner,Name,Origin);
   FMimeType:=MimeType;
@@ -425,7 +425,7 @@ end;
 
 { TXxmContextStringPar }
 
-constructor TXxmContextStringPar.Create(Name, Value: WideString);
+constructor TXxmContextStringPar.Create(const Name, Value: WideString);
 begin
   inherited Create;
   FName:=Name;

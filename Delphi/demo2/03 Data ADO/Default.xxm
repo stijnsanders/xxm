@@ -1,0 +1,17 @@
+[[@xxmData,]][[!var
+qr:TQueryResult;
+<<ul>>
+qr:=TQueryResult.Create('MyQuery1',[]);
+try
+  while qr.Read and Context.Connected do
+   begin
+    <<li>[[=qr['text']]]<br />
+	<a href="Edit.xxm?id=[[=qr['id']]]">edit</a>
+	<a href="Delete.xxm?id=[[=qr['id']]]" onclick="return confirm('Are you sure to delete this item?');">delete</a>
+	</li>>
+   end;
+finally
+  qr.Free;
+end;
+<</ul>
+<p><a href="Edit.xxm">add</a></p>

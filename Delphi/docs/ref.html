@@ -117,6 +117,9 @@ Context.SendHTML('&lt;/b&gt;');</code></p>
 <p>As noted above, remember to use <code>begin</code> and <code>end</code> with larger HTML blocks or when the section has embedded code blocks.</p>
 <p><code style="background-color:#FFFFFF;">if MyBoolean then <span style="background-color:#CCFFCC">begin</span> &lt;&lt;b&gt;priority:[[=PriorityLevel]]&lt;/b&gt;&gt; <span style="background-color:#CCFFCC">end</span>;</code></p>
 
+<p>Blocks enclosed this way also support the alternate destination prefixes: <span class="newver">1.1.7</span></p>
+<p><code>&lt;&lt;p&gt;Message: &lt;b&gt;&gt;=Message&lt;&lt;/p&gt;&gt;</code></p>
+
 <p class="title"><a name="interface"></a>Interface</p>
 
 <p>An xxm project uses the xxm.pas file that declares classes, interfaces and types required for the xxm interface. Your xxm installation should provide a recent copy of the xxm.pas file in the "public" folder.</p>
