@@ -4,7 +4,7 @@ interface
 
 uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, SvcMgr, Dialogs,
-    xxmHSys1Main;
+    xxmHSysMain;
 
 type
   TxxmService = class(TService)
@@ -26,7 +26,9 @@ var
 
 implementation
 
-uses Registry, xxmHSysPReg, xxmHSysRun;
+uses Registry, xxmHSysPReg,
+  {$IFDEF HSYS1}xxmHSys1Run;{$ENDIF}
+  {$IFDEF HSYS2}xxmHSys2Run;{$ENDIF}
 
 {$R *.dfm}
 

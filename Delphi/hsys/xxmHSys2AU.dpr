@@ -1,13 +1,12 @@
-program xxmHSys1Svc;
+program xxmHSys2AU;
 
 {$R '..\common\xxmData.res' '..\common\xxmData.rc'}
-{$IFNDEF HSYS1}{$MESSAGE FATAL 'HSYS1 not defined.'}{$ENDIF}
+{$IFNDEF HSYS2}{$MESSAGE FATAL 'HSYS2 not defined.'}{$ENDIF}
 
 uses
-  SvcMgr,
-  xxmHSysSvcMain in 'xxmHSysSvcMain.pas' {TxxmService: TService},
+  SysUtils,
   xxm in '..\bin\public\xxm.pas',
-  xxmHSys1Run in 'xxmHSys1Run.pas',
+  xxmHSys2Run in 'xxmHSys2Run.pas',
   httpapi1 in 'httpapi1.pas',
   xxmHSysMain in 'xxmHSysMain.pas',
   xxmParams in '..\common\xxmParams.pas',
@@ -18,13 +17,13 @@ uses
   xxmHSysPReg in 'xxmHSysPReg.pas',
   xxmCommonUtils in '..\common\xxmCommonUtils.pas',
   xxmContext in '..\common\xxmContext.pas',
+  xxmAutoUpdate in '..\common\xxmAutoUpdate.pas',
   MSXML2_TLB in '..\common\MSXML2_TLB.pas',
   xxmHSysHeaders in 'xxmHSysHeaders.pas';
 
 {$R *.res}
 
 begin
-  Application.Initialize;
-  Application.CreateForm(TxxmService, xxmService);
-  Application.Run;
+  XxmAutoBuildHandler:=AutoUpdate;
+  XxmRunHSys(HandleWindowsMessages);
 end.

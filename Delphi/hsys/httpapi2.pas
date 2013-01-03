@@ -313,7 +313,9 @@ type
   PHTTP_VERB=^THTTP_VERB;
 
   THTTP_HEADER_ID=(
-    HttpHeaderCacheControl          = 0,   
+    HttpHeaderStart = 0,//used only for array declaration
+    
+    HttpHeaderCacheControl          = 0,
     HttpHeaderConnection            = 1,   
     HttpHeaderDate                  = 2,   
     HttpHeaderKeepAlive             = 3,   

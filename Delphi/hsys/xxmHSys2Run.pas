@@ -1,4 +1,4 @@
-unit xxmHSysRun;
+unit xxmHSys2Run;
 
 interface
 
@@ -11,8 +11,8 @@ procedure HandleWindowsMessages(var QuitApp:boolean);
 
 implementation
 
-uses Windows, SysUtils, Classes, ActiveX,
-  httpapi1, xxmHSysPReg, xxmThreadPool, xxmHSys1Main, WinSock;
+uses Windows, SysUtils, Classes, ActiveX, httpapi2,
+  xxmHSysPReg, xxmThreadPool, xxmHSysMain;
 
 type
   THSysParameters=(
@@ -36,7 +36,10 @@ var
   i,j,l,Port,SecurePort:integer;
   s,t,Host:WideString;
   hp:THSysParameters;
-  hrq:THandle;
+  hrs:THTTP_SERVER_SESSION_ID;
+  hrg:THTTP_URL_GROUP_ID;
+  hrq:THTTP_BINDING_INFO;
+  hrss:THTTP_STATE_INFO;
   QuitApp:boolean;
 
 const
@@ -51,8 +54,9 @@ begin
   XxmProjectCache:=TXxmProjectCache.Create;
   PageLoaderPool:=TXxmPageLoaderPool.Create;
 
-  HttpCheck(HttpInitialize(HTTPAPI_VERSION_1_0,HTTP_INITIALIZE_SERVER,nil));
-  HttpCheck(HttpCreateHttpHandle(hrq,0));
+  HttpCheck(HttpInitialize(HTTPAPI_VERSION_2_0,HTTP_INITIALIZE_SERVER,nil));
+  HttpCheck(HttpCreateServerSession(HTTPAPI_VERSION_2_0,hrs,0));
+  HttpCheck(HttpCreateUrlGroup(hrs,hrg,0));
 
   //defaults
   Port:=80;
@@ -90,17 +94,25 @@ begin
       if Port<>0 then
        begin
         s:='http://'+Host+':'+IntToStr(Port)+'/'+s+'/';
-        HttpCheck(HttpAddUrl(hrq,PWideChar(s),nil));
+        HttpCheck(HttpAddUrlToUrlGroup(hrg,PWideChar(s),0,0));
        end;
       if SecurePort<>0 then
        begin
         s:='https://'+Host+':'+IntToStr(SecurePort)+'/'+s+'/';
-        HttpCheck(HttpAddUrl(hrq,PWideChar(s),nil));
+        HttpCheck(HttpAddUrlToUrlGroup(hrg,PWideChar(s),0,0));
        end;
 
      end;
    end;
   //TODO: check any loaded? load from xxm.xml?
+
+  hrq.Flags:=HTTP_PROPERTY_FLAG_PRESENT;
+  HttpCheck(HttpCreateRequestQueue(HTTPAPI_VERSION_2_0,nil,nil,0,hrq.RequestQueueHandle));
+  HttpCheck(HttpSetUrlGroupProperty(hrg,HttpServerBindingProperty,@hrq,SizeOf(hrq)));
+
+  hrss.Flags:=HTTP_PROPERTY_FLAG_PRESENT;
+  hrss.State:=HttpEnabledStateActive;
+  HttpCheck(HttpSetUrlGroupProperty(hrg,HttpServerStateProperty,@hrss,SizeOf(hrss)));
 
   //TODO: try except
   //TODO: mutex?
@@ -108,11 +120,13 @@ begin
   while not QuitApp do
    begin
     //if WaitForSingleObject(hrq,0)=WAIT_OBJECT_0 then ???
-      PageLoaderPool.Queue(TXxmHSys1Context.Create(hrq));
+      PageLoaderPool.Queue(TXxmHSys1Context.Create(hrq.RequestQueueHandle));
     HandleMessagesProc(QuitApp);
    end;
 
-  //HttpCheck(HttpRemoveUrl(
+  HttpCloseRequestQueue(hrq.RequestQueueHandle);
+  HttpCloseUrlGroup(hrg);
+  HttpCloseServerSession(hrs);
   HttpTerminate(HTTP_INITIALIZE_SERVER,nil);
 end;
 

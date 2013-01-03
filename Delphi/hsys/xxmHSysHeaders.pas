@@ -3,7 +3,10 @@ unit xxmHSysHeaders;
 interface
 
 uses
-  xxmHeaders, httpapi1, xxmParUtils;
+  xxmHeaders,
+  {$IFDEF HSYS1}httpapi1,{$ENDIF}
+  {$IFDEF HSYS2}httpapi2,{$ENDIF}
+  xxmParUtils;
 
 type
   TxxmHeaderGet=function(Name: WideString): WideString of object;
