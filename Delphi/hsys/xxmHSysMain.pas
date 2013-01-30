@@ -6,7 +6,7 @@ uses
   SysUtils, ActiveX, xxm, Classes, xxmContext, xxmPReg, xxmThreadPool,
   {$IFDEF HSYS1}httpapi1,{$ENDIF}
   {$IFDEF HSYS2}httpapi2,{$ENDIF}
-  xxmHSysPReg, xxmParams, xxmParUtils, xxmHeaders;
+  xxmPRegXml, xxmParams, xxmParUtils, xxmHeaders;
 
 const
   XxmHSys1ContextDataSize=$1000;

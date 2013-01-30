@@ -26,7 +26,7 @@ var
 
 implementation
 
-uses Registry, xxmHSysPReg,
+uses Registry, xxmPRegXml,
   {$IFDEF HSYS1}xxmHSys1Run;{$ENDIF}
   {$IFDEF HSYS2}xxmHSys2Run;{$ENDIF}
 

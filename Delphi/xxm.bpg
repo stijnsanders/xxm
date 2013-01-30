@@ -15,7 +15,8 @@ PROJECTS = xxmConv.exe xxmProto.xxl xxmProject.exe xxmRun.exe xxmLocal.dll \
   xxmHttpDev.exe xxmHttpSvc.exe xxmHttpSvcAU.exe xxmCGI.exe xxmHost.exe \
   xxmHostAU.exe xxmHostDev.exe xxmHostSvc.exe xxmHostSvcAU.exe xxmAhttpd.dll \
   xxmAhttpdAU.dll xxmAhttpdDev.dll xxmHSys1.exe xxmHSys1AU.exe xxmHSys1Dev.exe \
-  xxmHSys1Svc.exe xxmHSys1SvcAU.exe xxmSyna.exe xxmSynaAU.exe xxmSynaDev.exe \
+  xxmHSys1Svc.exe xxmHSys1SvcAU.exe xxmHSys2.exe xxmHSys2AU.exe xxmHSys2Dev.exe \
+  xxmHSys2Svc.exe xxmHSys2SvcAU.exe xxmSyna.exe xxmSynaAU.exe xxmSynaDev.exe \
   xxmSynaSvc.exe xxmSynaSvcAU.exe
 #------------------------------------------------------------------------------
 default: $(PROJECTS)
@@ -133,6 +134,21 @@ xxmSynaSvc.exe: synapse\xxmSynaSvc.dpr
   $(DCC)
 
 xxmSynaSvcAU.exe: synapse\xxmSynaSvcAU.dpr
+  $(DCC)
+
+xxmHSys2.exe: hsys\xxmHSys2.dpr
+  $(DCC)
+
+xxmHSys2AU.exe: hsys\xxmHSys2AU.dpr
+  $(DCC)
+
+xxmHSys2Dev.exe: hsys\xxmHSys2Dev.dpr
+  $(DCC)
+
+xxmHSys2Svc.exe: hsys\xxmHSys2Svc.dpr
+  $(DCC)
+
+xxmHSys2SvcAU.exe: hsys\xxmHSys2SvcAU.dpr
   $(DCC)
 
 

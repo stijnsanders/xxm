@@ -32,7 +32,6 @@ type
     FLock:TRTLCriticalSection;
     ProjectCacheSize:integer;
     ProjectCache:array of TXxmProjectCacheEntry;
-    procedure ClearAll;
     function Grow:integer;
     function FindProject(Name:WideString):integer;
   public
@@ -268,8 +267,16 @@ begin
 end;
 
 destructor TXxmProjectCache.Destroy;
+var
+  i:integer;
 begin
-  ClearAll;
+  for i:=0 to ProjectCacheSize-1 do
+    try
+      FreeAndNil(ProjectCache[i]);
+    except
+      //silent
+    end;
+  SetLength(ProjectCache,0);
   DeleteCriticalSection(FLock);
   inherited;
 end;
@@ -331,20 +338,6 @@ begin
   i:=FindProject(Name);
   //if i=-1 then raise?
   if i<>-1 then FreeAndNil(ProjectCache[i]);
-end;
-
-procedure TXxmProjectCache.ClearAll;
-var
-  i:integer;
-begin
-  for i:=0 to ProjectCacheSize-1 do
-    try
-      FreeAndNil(ProjectCache[i]);
-    except
-      //silent
-    end;
-  SetLength(ProjectCache,0);
-  ProjectCacheSize:=0;
 end;
 
 initialization

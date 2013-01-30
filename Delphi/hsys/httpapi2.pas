@@ -28,7 +28,12 @@ type
     HttpServerQueueLengthProperty,
     HttpServerStateProperty,
     HttpServer503VerbosityProperty,
-    HttpServerBindingProperty
+    HttpServerBindingProperty,
+    HttpServerExtendedAuthenticationProperty,
+    HttpServerListenEndpointProperty,
+    //WIN7 or newer
+    HttpServerChannelBindProperty,
+    HttpServerProtectionLevelProperty
   );
   PHTTP_SERVER_PROPERTY=^THTTP_SERVER_PROPERTY;
 
@@ -118,6 +123,12 @@ type
   end;
   PHTTP_TIMEOUT_LIMIT_INFO=^THTTP_TIMEOUT_LIMIT_INFO;
 
+  THTTP_LISTEN_ENDPOINT_INFO = record
+    Flags: THTTP_PROPERTY_FLAGS;
+    EnableSharing: BOOLEAN;
+  end;
+  PHTTP_LISTEN_ENDPOINT_INFO=^THTTP_LISTEN_ENDPOINT_INFO;
+
   THTTP_SERVER_AUTHENTICATION_DIGEST_PARAMS = record
     DomainNameLength: USHORT;
     DomainName: PWSTR;
@@ -143,13 +154,72 @@ type
   THTTP_SERVER_AUTHENTICATION_INFO = record
     Flags: THTTP_PROPERTY_FLAGS;
     AuthSchemes: ULONG;
-    ReceiveMutualAuth: BOOL;
-    ReceiveContextHandle: BOOL;
-    DisableNTLMCredentialCaching: BOOL;
+    ReceiveMutualAuth: ByteBool;
+    ReceiveContextHandle: ByteBool;
+    DisableNTLMCredentialCaching: ByteBool;
+    ExFlags: UCHAR;
     DigestParams: THTTP_SERVER_AUTHENTICATION_DIGEST_PARAMS;
     BasicParams: THTTP_SERVER_AUTHENTICATION_BASIC_PARAMS; 
   end;
   PHTTP_SERVER_AUTHENTICATION_INFO=^THTTP_SERVER_AUTHENTICATION_INFO;
+
+  THTTP_SERVICE_BINDING_TYPE=(
+    HttpServiceBindingTypeNone = 0,
+    HttpServiceBindingTypeW,
+    HttpServiceBindingTypeA
+  );
+
+  THTTP_SERVICE_BINDING_BASE = record
+    BindingType: THTTP_SERVICE_BINDING_TYPE;
+  end;
+  PHTTP_SERVICE_BINDING_BASE=^THTTP_SERVICE_BINDING_BASE;
+
+  THTTP_SERVICE_BINDING_A = record
+    Base: THTTP_SERVICE_BINDING_BASE;
+    Buffer: PAnsiChar;
+    BufferSize: ULONG;
+  end;
+  PHTTP_SERVICE_BINDING_A=^THTTP_SERVICE_BINDING_A;
+
+  THTTP_SERVICE_BINDING_W = record
+    Base: THTTP_SERVICE_BINDING_BASE;
+    Buffer: PWCHAR;
+    BufferSize: ULONG;
+  end;
+  PHTTP_SERVICE_BINDING_W=^THTTP_SERVICE_BINDING_W;
+
+  THTTP_AUTHENTICATION_HARDENING_LEVELS=(
+    HttpAuthenticationHardeningLegacy = 0,
+    HttpAuthenticationHardeningMedium,
+    HttpAuthenticationHardeningStrict
+  );
+
+const
+  HTTP_CHANNEL_BIND_PROXY =$1;
+  HTTP_CHANNEL_BIND_PROXY_COHOSTING =$20;
+
+  HTTP_CHANNEL_BIND_NO_SERVICE_NAME_CHECK =$2;
+  HTTP_CHANNEL_BIND_DOTLESS_SERVICE =$4;
+
+  HTTP_CHANNEL_BIND_SECURE_CHANNEL_TOKEN =$8;
+  HTTP_CHANNEL_BIND_CLIENT_SERVICE =$10;
+
+type
+  THTTP_CHANNEL_BIND_INFO = record
+    Hardening: THTTP_AUTHENTICATION_HARDENING_LEVELS;
+    Flags: ULONG;
+    ServiceNames: PHTTP_SERVICE_BINDING_BASE;
+    NumberOfServiceNames: ULONG;
+  end;
+  PHTTP_CHANNEL_BIND_INFO=^THTTP_CHANNEL_BIND_INFO;
+
+  THTTP_REQUEST_CHANNEL_BIND_STATUS = record
+    ServiceName: PHTTP_SERVICE_BINDING_BASE;
+    ChannelToken: PUCHAR;
+    ChannelTokenSize: ULONG;
+    Flags: ULONG;
+  end;
+  PHTTP_REQUEST_CHANNEL_BIND_STATUS=^THTTP_REQUEST_CHANNEL_BIND_STATUS;
 
 const
   HTTP_LOG_FIELD_DATE                = $00000001;
@@ -232,6 +302,18 @@ type
   end;
   PHTTP_BINDING_INFO=^THTTP_BINDING_INFO;
 
+  THTTP_PROTECTION_LEVEL_TYPE=(
+    HttpProtectionLevelUnrestricted,
+    HttpProtectionLevelEdgeRestricted,
+    HttpProtectionLevelRestricted
+  );
+
+  THTTP_PROTECTION_LEVEL_INFO = record
+    Flags: THTTP_PROPERTY_FLAGS;
+    Level: THTTP_PROTECTION_LEVEL_TYPE;
+  end;
+  PHTTP_PROTECTION_LEVEL_INFO=^THTTP_PROTECTION_LEVEL_INFO;
+
 const
   HTTP_CREATE_REQUEST_QUEUE_FLAG_OPEN_EXISTING = 1;
   HTTP_CREATE_REQUEST_QUEUE_FLAG_CONTROLLER = 2;
@@ -245,6 +327,7 @@ const
   HTTP_SEND_RESPONSE_FLAG_MORE_DATA         = $00000002;
   HTTP_SEND_RESPONSE_FLAG_BUFFER_DATA       = $00000004;
   HTTP_SEND_RESPONSE_FLAG_ENABLE_NAGLING    = $00000008;
+  HTTP_SEND_RESPONSE_FLAG_PROCESS_RANGES    = $00000020;
 
   HTTP_FLUSH_RESPONSE_FLAG_RECURSIVE = 1;
 
@@ -372,7 +455,7 @@ type
     HttpHeaderServer                = 26,  
     HttpHeaderSetCookie             = 27,  
     HttpHeaderVary                  = 28,  
-    HttpHeaderWwwAuthenticate       = 29,  
+    HttpHeaderWwwAuthenticate       = 29,
 
     HttpHeaderResponseMaximum       = 30-1,//used only for array declaration
 
@@ -607,6 +690,7 @@ type
     pEntityChunks: PHTTP_DATA_CHUNK;
     RawConnectionId: THTTP_RAW_CONNECTION_ID;
     pSslInfo: PHTTP_SSL_INFO;
+    xPadding1: DWORD;
     RequestInfoCount: USHORT;
     pRequestInfo: PHTTP_REQUEST_INFO;  
   end;

@@ -100,7 +100,7 @@ Conditionals=HSYS2
 DebugSourceDirs=
 UsePackages=0
 [Parameters]
-RunParams=demo proto
+RunParams=secureport= demo proto
 HostApplication=
 Launcher=
 UseLauncher=0

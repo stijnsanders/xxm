@@ -14,7 +14,7 @@ uses
   xxmHeaders in '..\bin\public\xxmHeaders.pas',
   xxmThreadPool in '..\common\xxmThreadPool.pas',
   xxmPReg in '..\common\xxmPReg.pas',
-  xxmHSysPReg in 'xxmHSysPReg.pas',
+  xxmPRegXml in '..\common\xxmPRegXml.pas',
   xxmCommonUtils in '..\common\xxmCommonUtils.pas',
   xxmContext in '..\common\xxmContext.pas',
   xxmAutoUpdate in '..\common\xxmAutoUpdate.pas',

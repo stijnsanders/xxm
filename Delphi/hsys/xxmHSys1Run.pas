@@ -12,7 +12,7 @@ procedure HandleWindowsMessages(var QuitApp:boolean);
 implementation
 
 uses Windows, SysUtils, Classes, ActiveX, httpapi1,
-  xxmHSysPReg, xxmThreadPool, xxmHSysMain;
+  xxmPRegXml, xxmThreadPool, xxmHSysMain;
 
 type
   THSysParameters=(
