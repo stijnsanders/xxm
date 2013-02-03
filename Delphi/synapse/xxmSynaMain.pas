@@ -4,7 +4,7 @@ interface
 
 uses
   SysUtils, blcksock, xxm, Classes, ActiveX, xxmContext, xxmThreadPool,
-  xxmPReg, xxmHttpPReg, xxmParams, xxmParUtils, xxmHeaders;
+  xxmPReg, xxmPRegXml, xxmParams, xxmParUtils, xxmHeaders;
 
 type
   TXxmSynaServer = class(TThread)
@@ -294,6 +294,26 @@ begin
     FKeepConnection:=false;
     BeginRequest;
     try
+      //TODO if secure then
+      {
+  Sock.SSL.CertCAFile := ExtractFilePath(ParamStr(0)) + 's_cabundle.pem';
+  Sock.SSL.CertificateFile := ExtractFilePath(ParamStr(0)) + 's_cacert.pem';
+  Sock.SSL.PrivateKeyFile := ExtractFilePath(ParamStr(0)) + 's_cakey.pem';
+  Sock.SSL.KeyPassword := 's_cakey';
+  Sock.SSL.verifyCert := True;
+
+  try
+    if (not Sock.SSLAcceptConnection) or
+       (Sock.SSL.LastError <> 0) then
+    begin
+      MessageDlg('Error while accepting SSL connection: ' + Sock.SSL.LastErrorDesc, mtError, [mbAbort], 0);
+      Exit;
+    end;
+  except
+    MessageDlg('Exception while accepting SSL connection', mtError, [mbAbort], 0);
+    Exit;
+  end;
+        }
       HandleRequest;
     finally
       EndRequest;

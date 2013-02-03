@@ -21,7 +21,7 @@ var
 
 implementation
 
-uses Registry, xxmHttpPReg;
+uses Registry, xxmPRegXml;
 
 {$R *.dfm}
 

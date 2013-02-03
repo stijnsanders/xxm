@@ -130,23 +130,3 @@ OriginalFilename=
 ProductName=xxm
 ProductVersion=1.0.0.0
 Comments=http://xxm.sf.net/
-[HistoryLists\hlUnitAliases]
-Count=1
-Item0=WinTypes=Windows;WinProcs=Windows;DbiTypes=BDE;DbiProcs=BDE;DbiErrs=BDE;
-[HistoryLists\hlSearchPath]
-Count=4
-Item0=synapse\source\lib
-Item1=sdk;..\public
-Item2=C:\Program Files\Indy9
-Item3=..\..\public
-[HistoryLists\hlUnitOutputDirectory]
-Count=2
-Item0=..\dcu
-Item1=dcu
-[HistoryLists\hlOutputDirectorry]
-Count=5
-Item0=..\bin
-Item1=setup\xxmGeckoDev\platform\WINNT\components
-Item2=C:\Program Files\Mozilla Firefox\components
-Item3=C:\Inetpub\xxm
-Item4=..\

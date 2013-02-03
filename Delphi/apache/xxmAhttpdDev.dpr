@@ -13,7 +13,7 @@ uses
   xxmAhttpdContext in 'xxmAhttpdContext.pas',
   xxmCommonUtils in '..\common\xxmCommonUtils.pas',
   xxmPReg in '..\common\xxmPReg.pas',
-  xxmHttpPReg in '..\http\xxmHttpPReg.pas',
+  xxmPRegXml in '..\common\xxmPRegXml.pas',
   xxmAhttpdClientStream in 'xxmAhttpdClientStream.pas',
   xxmAhttpdPars in 'xxmAhttpdPars.pas',
   xxmContext in '..\common\xxmContext.pas',

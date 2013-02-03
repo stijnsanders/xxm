@@ -3,7 +3,7 @@ unit xxmIsapiMain;
 interface
 
 uses Windows, SysUtils, Classes, ActiveX, isapi4, xxm, xxmContext,
-  xxmPReg, xxmIsapiPReg, xxmParams, xxmParUtils, xxmHeaders;
+  xxmPReg, xxmPRegXml, xxmParams, xxmParUtils, xxmHeaders;
 
 function GetExtensionVersion(var Ver: THSE_VERSION_INFO): BOOL; stdcall;
 function HttpExtensionProc(PECB: PEXTENSION_CONTROL_BLOCK): DWORD; stdcall;
@@ -234,7 +234,6 @@ begin
      end;
 
     FResHeaders['X-Powered-By']:=SelfVersion;
-    XxmProjectCache.Refresh;
 
     //project name
     i:=1;
@@ -802,6 +801,7 @@ begin
 end;
 
 initialization
+  XxmProjectCache:=TXxmProjectCache.Create;
   IsapiHandlerPool:=TXxmIsapiHandlerPool.Create;
 finalization
   //assert IsapiHandlerPool=nil by TerminateExtension

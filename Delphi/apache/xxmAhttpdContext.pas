@@ -3,7 +3,7 @@ unit xxmAhttpdContext;
 interface
 
 uses SysUtils, Classes, ActiveX, HTTPD2, xxm, xxmContext,
-  xxmHeaders, xxmParams, xxmPReg, xxmHttpPReg, xxmParUtils;
+  xxmHeaders, xxmParams, xxmPReg, xxmPRegXml, xxmParUtils;
 
 type
   TxxmAhttpdContext=class(TXxmGeneralContext, IxxmHttpHeaders)
