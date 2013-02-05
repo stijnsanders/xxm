@@ -234,6 +234,7 @@ begin
      end;
 
     FResHeaders['X-Powered-By']:=SelfVersion;
+    if XxmProjectCache=nil then XxmProjectCache:=TXxmProjectCache.Create;
 
     //project name
     i:=1;
@@ -801,7 +802,7 @@ begin
 end;
 
 initialization
-  XxmProjectCache:=TXxmProjectCache.Create;
+  XxmProjectCache:=nil;//TXxmProjectCache.Create;//see Execute above
   IsapiHandlerPool:=TXxmIsapiHandlerPool.Create;
 finalization
   //assert IsapiHandlerPool=nil by TerminateExtension
