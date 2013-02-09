@@ -110,7 +110,7 @@ end;
 
 constructor TXxmProjectCacheEntry.Create(Name: WideString);
 begin
-  inherited Create(LowerCase(Name));//lowercase here and in FindProject
+  inherited Create(Name);
   FFilePath:='';
   FUserName:='';
 end;
@@ -301,10 +301,10 @@ var
   l:AnsiString;
 begin
   Result:=0;
-  l:=LowerCase(Name);
+  l:=Name;
   //assert cache stores ProjectName already LowerCase!
-  while (Result<ProjectCacheSize) and (
-    (ProjectCache[Result]=nil) or (ProjectCache[Result].Name<>l)) do inc(Result);
+  while (Result<ProjectCacheSize) and ((ProjectCache[Result]=nil) or
+    (CompareText(ProjectCache[Result].Name,l)<>0)) do inc(Result);
   if Result=ProjectCacheSize then Result:=-1;
 end;
 

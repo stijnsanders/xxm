@@ -164,7 +164,7 @@ type
     //IxxmContext
     function GetSessionID: WideString; override;
     procedure DispositionAttach(FileName: WideString); override;
-    procedure SendRaw(Data: WideString); override;
+    procedure SendRaw(const Data: WideString); override;
     procedure SendStream(s: IStream); override;
     function ContextString(cs: TXxmContextString): WideString; override;
     function Connected: Boolean; override;
@@ -1043,7 +1043,7 @@ const
   Utf8ByteOrderMark=#$EF#$BB#$BF;
   Utf16ByteOrderMark=#$FF#$FE;
 
-procedure TxxmChannel.SendRaw(Data: WideString);
+procedure TxxmChannel.SendRaw(const Data: WideString);
 var
   s:AnsiString;
   startdata:boolean;

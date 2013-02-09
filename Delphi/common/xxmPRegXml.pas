@@ -25,7 +25,7 @@ type
     FProjects:array of record
       Name,Alias:AnsiString;
       Entry:TXxmProjectCacheEntry;
-      LoadCopy,LoadCheck:boolean;
+      LoadCheck:boolean;
     end;
     FRegFilePath,FRegSignature,FDefaultProject,FSingleProject:AnsiString;
     FRegLastCheckTC:cardinal;
@@ -78,7 +78,7 @@ function PathCombine(lpszDest,lpszDir,lpszFile:PWideChar):PWideChar;
 constructor TXxmProjectCacheEntry.Create(const Name, FilePath: WideString;
   LoadCopy, AllowInclude: boolean);
 begin
-  inherited Create(LowerCase(Name));//lowercase here!
+  inherited Create(Name);
   FFilePath:=FilePath;
   FAllowInclude:=AllowInclude;
   if LoadCopy then FLoadPath:=FFilePath+'_'+IntToHex(GetCurrentProcessId,4);
@@ -147,13 +147,14 @@ end;
 
 function TXxmProjectCache.FindProject(const Name: WideString): integer;
 var
-  l:AnsiString;
+  n:AnsiString;
 begin
-  l:=LowerCase(Name);
+  n:=Name;
   //assert cache stores ProjectName already LowerCase!
   //TODO: sorted?
   Result:=0;
-  while (Result<FProjectsCount) and (FProjects[Result].Name<>l) do inc(Result);
+  while (Result<FProjectsCount) and
+    (CompareText(FProjects[Result].Name,n)<>0) do inc(Result);
   if Result=FProjectsCount then Result:=-1;
 end;
 
@@ -232,7 +233,7 @@ begin
                end;
               i:=FProjectsCount;
               inc(FProjectsCount);
-              FProjects[i].Name:=s;
+              FProjects[i].Name:=LowerCase(s);
               FProjects[i].Entry:=nil;//create see below
              end;
             FProjects[i].LoadCheck:=true;
@@ -311,10 +312,10 @@ begin
   CheckRegistry;//?
   EnterCriticalSection(FLock);
   try
-    s:=LowerCase(Name);
+    s:=Name;
     xl:=GetRegistryXML.selectNodes('Project');
     x:=xl.nextNode as IXMLDOMElement;
-    while (x<>nil) and (LowerCase(VarToStr(x.getAttribute('Name')))<>s) do
+    while (x<>nil) and (CompareText(VarToStr(x.getAttribute('Name')),s)<>0) do
       x:=xl.nextNode as IXMLDOMElement;
     if x=nil then
       raise EXxmProjectNotFound.Create(StringReplace(
