@@ -207,8 +207,11 @@ begin
 end;
 
 procedure TXxmPageParser.Parse(Data: AnsiString);
+type
+  TDelim=(dNone,dSquareB,dAngleB);
 var
-  SquareB,AngleB,InString:boolean;
+  Delim:TDelim;
+  InString:boolean;
   a1,a2,b1,b2,bx,l,n1,n2,nx,sqd,InComment:integer;
   ps:TXxmPageSection;
 begin
@@ -227,49 +230,61 @@ begin
     //search for an open tag
     n1:=nx;
     a1:=a2;
-    SquareB:=false;
-    AngleB:=false;
-    while (a2<=l) and not(SquareB and (FData[a2]='[')) and not(AngleB and (FData[a2]='>')) do
+    Delim:=dNone;
+    while (a2<=l)
+      and not((Delim=dSquareB) and (FData[a2]='['))
+      and not((Delim=dAngleB) and (FData[a2]='>')) do
      begin
-      SquareB:=FData[a2]='[';
-      AngleB:=FData[a2]='>';
-      if char(FData[a2]) in [#13,#10] then
-       begin
-        inc(nx);
-        if (FData[a2]=#13) and (a2<l) and (FData[a2+1]=#10) then inc(a2);
-       end;
+      case char(FData[a2]) of
+        '[':Delim:=dSquareB;
+        '>':Delim:=dAngleB;
+        #13,#10:
+         begin
+          inc(nx);
+          if (FData[a2]=#13) and (a2<l) and (FData[a2+1]=#10) then inc(a2);
+          Delim:=dNone;
+         end;
+        else Delim:=dNone;
+      end;
       inc(a2);
      end;
     b1:=a2+1;
     b2:=b1;
-    if AngleB then a2:=b1;//inc(a2);
-    if SquareB or AngleB then
+    if Delim=dAngleB then a2:=b1;//inc(a2);
+    if Delim<>dNone then
      begin
       //open tag found, look for close tag (carefully: check strings and opening/closing braces and things)
-      SquareB:=false;
-      AngleB:=false;
+      Delim:=dNone;
       sqd:=0;//square bracket depth
       InString:=false;
       InComment:=0;
       n2:=nx;
-      while (b2<=l) and not(SquareB and (FData[b2]=']')) and not(AngleB and (FData[b2]='<')) do
+      while (b2<=l)
+        and not((Delim=dSquareB) and (FData[b2]=']'))
+        and not((Delim=dAngleB) and (FData[b2]='<')) do
        begin
-        SquareB:=false;
-        AngleB:=false;
+        Delim:=dNone;
         if InString then
          begin
           if char(FData[b2]) in ['''',#13,#10] then InString:=false;
          end
         else
-          case char(FData[b2]) of
-            '''':if InComment=0 then InString:=true;
-            '[':if InComment=0 then inc(sqd);
-            ']':if InComment=0 then if sqd=0 then SquareB:=true else dec(sqd);
-            '{':if InComment=0 then InComment:=1;
-            '}':if InComment=1 then InComment:=0;
-            '(':if (InComment=0) and (b2<l) and (FData[b2+1]='*') then InComment:=2;
-            ')':if (InComment=2) and (b2>1) and (FData[b2-1]='*') then InComment:=0;
-            '<':if InComment=0 then AngleB:=true;
+          case InComment of
+            0:
+              case char(FData[b2]) of
+                '''':InString:=true;
+                '[':inc(sqd);
+                ']':if sqd=0 then Delim:=dSquareB else dec(sqd);
+                '{':InComment:=1;
+                //'}'
+                '(':if (b2<l) and (FData[b2+1]='*') then InComment:=2;
+                //')'
+                '<':Delim:=dAngleB;
+              end;
+            1:if char(FData[b2])='}' then InComment:=0;
+            2:
+              if (char(FData[b2])=')')
+                and (b2>1) and (FData[b2-1]='*') then InComment:=0;
           end;
         if char(FData[b2]) in [#13,#10] then
          begin
@@ -287,13 +302,21 @@ begin
         a2:=b2;
        end
       else
-        if ((SquareB or AngleB) and (a2<l)) or (b2>l) then
+        if ((Delim<>dNone) and (a2<l)) or (b2>l) then
          begin
           //close tag found also
           bx:=b1;
           case char(FData[bx]) of
-            '[':begin ps:=psSquareBracketsOpen; SquareB:=b2-b1=1; end;
-            ']':begin ps:=psSquareBracketsClose; SquareB:=b2-b1=1; end;
+            '[':
+             begin
+              ps:=psSquareBracketsOpen;
+              if b2-b1=1 then Delim:=dSquareB else Delim:=dNone;
+             end;
+            ']':
+             begin
+              ps:=psSquareBracketsClose;
+              if b2-b1=1 then Delim:=dSquareB else Delim:=dNone;
+             end;
             '!':ps:=psHeader;
             '@':ps:=psUses;
             ':':ps:=psDefinitions;
@@ -309,21 +332,22 @@ begin
               dec(bx);
              end;
           end;
-          if SquareB or AngleB or (b2>l) then
+          if (Delim<>dNone) or (b2>l) then
            begin
             AddSection(a1,a2-a1-1,n1,psHTML);
-            if SquareB then
-             begin
-              AddSection(bx+1,b2-bx-2,n2,ps);
-              a2:=b2+1;
-             end
-            else
-             begin
-              //assert AngleB or (b2>l)
-              inc(bx);
-              AddSection(bx,b2-bx-1,n2,ps);
-              a2:=b2;
-             end;
+            case Delim of
+              dSquareB:
+               begin
+                AddSection(bx+1,b2-bx-2,n2,ps);
+                a2:=b2+1;
+               end;
+              dAngleB:
+               begin
+                inc(bx);
+                AddSection(bx,b2-bx-1,n2,ps);
+                a2:=b2;
+               end;
+            end;
            end
           else
             AddSection(a1,a2-a1,n1,psHTML);

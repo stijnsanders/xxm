@@ -19,8 +19,8 @@
 <li><a href="#intro">Introduction</a></li>
 <li><a href="#project">Project</a></li>
 <li><a href="#syntax">Syntax</a></li>
-<li><a href="#proto">Proto</a></li>
 <li><a href="#embedhtml">Embed HTML</a>  <span class="newver">1.1.1</span></li>
+<li><a href="#proto">Proto</a></li>
 <li><a href="#interface">Interface</a></li>
 <li><a href="#xxmproject">TxxmProject</a></li>
 <li><a href="#xxmfragment">TxxmFragment, TxxmPage, TxxmInclude</a></li>
@@ -29,6 +29,8 @@
 <li><a href="#xxmversion">XxmVersion</a></li>
 <li><a href="#htmlencode">HTMLEncode</a></li>
 <li><a href="#headers">Headers</a> <span class="newver">1.1.0</span></li>
+<li><a href="#parservalues">Override parser values</a> <span class="newver">1.1.3</span></li>
+<li><a href="#projectintf">Optional project interfaces</a></li>
 <li><a href="#uploadprogress">Upload progress</a> <span class="newver">1.1.4</span></li>
 </ul>
 
@@ -85,6 +87,7 @@ Read more <a href="http://xxm.sourceforge.net/sec.html">here</a>.
 	<br /><b style="color:red;">*:</b> read below remarks for proper use</dd>
 <dt><code>[[_ ]]</code></dt><dd><b>footer:</b> adds code right after the fragment's Build method implementation,
 	<br /><b style="color:red;">*:</b> read below remarks for proper use</dd>
+<dt><code>[[* ]]</code></dt><dd><b><a href="#parservalues">override parser value</a></b> <span class="newver">1.1.3</span></dd>
 <dt><code>[[[]]</code></dt><dd><b>opening square brackets:</b> is replaced by opening square brackets</dd>
 <dt><code>[[]]]</code></dt><dd><b>closing square brackets:</b> is replaced by closing square brackets</dd>
 </dl>
@@ -105,7 +108,7 @@ It is advised to use include fragments with <code>Context.Include</code> instead
 Context.SendHTML('&lt;b&gt;priority:');<br />
 Context.Send(PriorityLevel);<br />
 Context.SendHTML('&lt;/b&gt;');</code></p>
-<p>so be sure to use <code>begin</code> and <code>end</code>:</p>
+<p>note that the two last lines are not part of the <code>if</code>-statement. So be sure to use <code>begin</code> and <code>end</code>:</p>
 <p><code style="background-color:#FFFFFF;">if MyBoolean then <span style="background-color:#CCFFCC">begin</span>]]&lt;b&gt;priority:[[=PriorityLevel]]&lt;/b&gt;[[<span style="background-color:#CCFFCC">end</span>;</code></p>
 
 <p class="title"><a name="embedhtml"></a>Embed HTML <span class="newver">1.1.1</span></p>
@@ -119,6 +122,12 @@ Context.SendHTML('&lt;/b&gt;');</code></p>
 
 <p>Blocks enclosed this way also support the alternate destination prefixes: <span class="newver">1.1.7</span></p>
 <p><code>&lt;&lt;p&gt;Message: &lt;b&gt;&gt;=Message&lt;&lt;/p&gt;&gt;</code></p>
+
+<p class="title"><a name="proto"></a>Proto</p>
+
+<p>To convert .xxm and .xxmi files into .pas files, the converter uses prototype files from the "proto" folder.
+By default the files are used from the "proto" folder of the xxm installation, but an xxm project may provide its own "proto" folder with alternative prototype files.
+This allows to add used units or declarations ready for use in all pages and includes of an xxm project.</p>
 
 <p class="title"><a name="interface"></a>Interface</p>
 
@@ -139,7 +148,10 @@ Context.SendHTML('&lt;/b&gt;');</code></p>
 
 <dt><code>procedure UnloadFragment(Fragment: IXxmFragment);</code></dt>
 <dd>Pages and include fragments are passed to the UnloadFragment procedure to allow the xxm project to perform clean-up or re-use of object instances.</dd>
+</dl>
+<p>The TXxmProject object can also implement extra interfaces to add functionality, see <a href="#projectintf">optional project interfaces</a></p>
 
+<dl>
 <dt class="title"><a name="xxmfragment"></a><a name="xxmpage"></a><a name="xxminclude"></a><code>
   TXxmFragment = class(TInterfacedObject, IXxmFragment)<br />
   TXxmPage = class(TXxmFragment, IXxmPage)<br />
@@ -154,19 +166,6 @@ Context.SendHTML('&lt;/b&gt;');</code></p>
 <li>Caller: set to the fragment that calls Context.Include, nil otherwise</li>
 <li>Values, Objects: values and objects as passed onto Context.Include by the calling fragment</li>
 </ul>
-</dd>
-
-<dt class="title"><code>IXxmProjectEvents = interface</code> <span class="newver">1.1.4</span></dt>
-<dd>The project object can optionally expose this interface. If it does, the xxm handler will call its methods in certain events:</dd>
-
-<dt><code>function HandleException(Context:IxxmContext;PageClass:WideString;Ex:Exception):boolean;</code> <span class="newver">1.1.4</span></dt>
-<dd>An exception occurred while building a page
-<ul>
-<li>Context: the IXxmContext the page was being built with</li>
-<li>PageClass: an informational display of which fragment the exception occurred in, may contain a path of fragments that included eachother</li>
-<li>Ex: the exception object that was raised</li>
-</ul>
-Return whether the exception was handled. Return false to have the xxm handler send the default exception message.
 </dd>
 
 <dt class="title"><code><a name="xxmcontext"></a>IXxmContext = interface</code></dt>
@@ -363,6 +362,67 @@ function URLDecode(Data:string):WideString;
 <dd>an interface provided by the context object that enables adding extra parameters, e.g. from the project's LoadPage method.</dd>
 <dt><code>procedure AddParameter(Param: IXxmParameter);</code></dt>
 <dd>adds an object to the parameter collection that implements the IXxmParameter interface.</dd>
+</dl>
+
+<p class="title"><a name="parservalues"></a>Override parser values <span class="newver">1.1.3</span></p>
+
+<p>The script parser uses an internal set of values to use with converting certain sections into Delphi source code.</p>
+
+<dl>
+<dt>Send open (start of <code>[[=</code> sections)</dt><dd>default value: <code>Context.Send(</code><br />use <code>[[*=(<span style="background-color:#FFCCCC;">&nbsp;&nbsp;&nbsp;</span>]]</code> to override</dd>
+<dt>Send close (end of <code>[[=</code> sections)</dt><dd>default value: <code>);</code><br />use <code>[[*=)<span style="background-color:#FFCCCC;">&nbsp;&nbsp;&nbsp;</span>]]</code> to override</dd>
+<dt>Send HTML open (start of <code>[[#</code> sections)</dt><dd>default value: <code>Context.SendHTML(</code><br />use <code>[[*#(<span style="background-color:#FFCCCC;">&nbsp;&nbsp;&nbsp;</span>]]</code> to override</dd>
+<dt>Send HTML close (end of <code>[[#</code> sections)</dt><dd>default value: <code>);</code><br />use <code>[[*#)<span style="background-color:#FFCCCC;">&nbsp;&nbsp;&nbsp;</span>]]</code> to override</dd>
+</dl>
+
+<p>It is possible to override several parser values in one <code>[[* ]]</code> section by defining each one on a line by itself, e.g.:</p>
+
+<p><code>[[*<br />
+&nbsp; =(Context.Send(qr['<br />
+&nbsp; =)']);<br />
+&nbsp; #(Context.SendHTML(qr['<br />
+&nbsp; #)']);<br />
+]]</code></p>
+
+<p>Use an empty value, e.g. <code>[[*=(]]</code>, to reset a parser value to its default value.
+Use <code>[[*]]</code> to reset all parser values to the default values.</p>
+
+<p class="title"><a name="projectintf"></a>Optional project interfaces</p>
+
+<dl>
+<dt class="title"><code>IXxmProjectEvents = interface</code> <span class="newver">1.1.4</span></dt>
+<dd>The project object can optionally expose this interface. If it does, the xxm handler will call its methods in certain events:</dd>
+
+<dt><code>function HandleException(Context:IxxmContext;PageClass:WideString;Ex:Exception):boolean;</code> <span class="newver">1.1.4</span></dt>
+<dd>An exception occurred while building a page
+<ul>
+<li>Context: the IXxmContext the page was being built with</li>
+<li>PageClass: an informational display of which fragment the exception occurred in, may contain a path of fragments that included eachother</li>
+<li>Ex: the exception object that was raised</li>
+</ul>
+Return whether the exception was handled. Return false to have the xxm handler send the default exception message.
+</dd>
+
+<dt class="title"><code>IXxmProjectEvents1 = interface</code> <span class="newver">1.1.8</span></dt>
+<dd>The project object can optionally export this interface. If it does, the xxm handler will call its methods in certain events:</dd>
+
+<dt><code>function HandleException(Context:IXxmContext;PageClass,ExceptionClass,ExceptionMessage:WideString):boolean;</code></dt>
+<dd>An exception occured while building a page (and the project doesn't implement IXxmProjectEvents)<br />
+Use this interface if a Delphi version conflict occurs using <code>IXxmProjectEvents.HandleException</code></dd>
+<ul>
+<li>Context: the IXxmContext the page was being built with</li>
+<li>PageClass: an informational display of which fragment the exception occurred in, may contain a path of fragments that included eachother</li>
+<li>ExceptionClass: the class name of the Exception object</li>
+<li>ExceptionMessage: the message text of the Exception object</li>
+</ul>
+Return whether the exception was handled. Return false to have the xxm handler send the default exception message.
+</dd>
+<dt><code>procedure ReleasingContexts;</code></dt>
+<dd>When the xxm handler is about to unload the project (due to a shutdown or an auto-update or auto-build event),
+it calls <code>ReleasingContexts</code> before it waits for all current page requests to complete.</dd>
+<dt><code>procedure ReleasingProject;</code></dt>
+<dd>When the xxm handler is about to unload the project,
+it calls <code>ReleasingProject</code> after it waited for all current page requests to complete.</dd>
 </dl>
 
 <p class="title"><a name="uploadprogress"></a>Upload progress <span class="newver">1.1.4</span></p>

@@ -5,8 +5,8 @@ interface
 uses SysUtils, Classes, ActiveX;
 
 const
-  //$Date: 2012-11-29 22:19:34 +0100 (do, 29 nov 2012) $
-  XxmRevision='$Rev: 237 $';
+  //$Date: 2013-02-12 20:16:55 +0100 (di, 12 feb 2013) $
+  XxmRevision='$Rev: 262 $';
 
 type
   IXxmContext=interface;//forward
@@ -144,7 +144,15 @@ type
 
   IXxmProjectEvents=interface
     ['{78786D00-0000-0013-C000-000000000013}']
-    function HandleException(Context:IxxmContext;PageClass:WideString;Ex:Exception):boolean;
+    function HandleException(Context:IXxmContext;PageClass:WideString;Ex:Exception):boolean;
+  end;
+
+  IXxmProjectEvents1=interface
+    ['{78786D00-0000-0014-C000-000000000014}']
+    function HandleException(Context:IXxmContext;PageClass,
+      ExceptionClass,ExceptionMessage:WideString):boolean;
+    procedure ReleasingContexts;
+    procedure ReleasingProject;
   end;
 
 const
@@ -158,6 +166,7 @@ const
   IID_IXxmParameterPost: TGUID = '{78786D00-0000-0009-C000-000000000009}';
   IID_IXxmParameterPostFile: TGUID = '{78786D00-0000-000A-C000-00000000000A}';
   IID_IXxmProjectEvents: TGUID ='{78786D00-0000-0013-C000-000000000013}';
+  IID_IXxmProjectEvents1: TGUID ='{78786D00-0000-0014-C000-000000000014}';
 
 const
   //TXxmContextString enumeration values

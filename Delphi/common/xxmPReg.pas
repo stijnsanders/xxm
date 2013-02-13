@@ -124,11 +124,34 @@ begin
 end;
 
 procedure TXxmProjectEntry.Release;
+var
+  pe:IXxmProjectEvents1;
 begin
   //attention: deadlock danger, use OpenContext,CloseContext
   //XxmAutoBuildHandler should lock new requests
+
+  if (FProject<>nil) and (FProject.QueryInterface(IXxmProjectEvents1,pe)=S_OK) then
+   begin
+    try
+      pe.ReleasingContexts;
+    except
+      //silent
+    end;
+    pe:=nil;
+   end;
+
   while (FContextCount>0) do Sleep(1);
-  
+
+  if (FProject<>nil) and (FProject.QueryInterface(IXxmProjectEvents1,pe)=S_OK) then
+   begin
+    try
+      pe.ReleasingProject;
+    except
+      //silent
+    end;
+    pe:=nil;
+   end;
+
   //finalization gets called on last loaded libraries first,
   //so FProject release may fail on finalization
   try

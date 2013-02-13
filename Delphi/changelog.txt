@@ -1,3 +1,6 @@
+v1.1.8.?
+- optional project interface: IXxmProjectEvents1
+
 v1.1.7.292
 - xxmString: TStringContext.SaveToFile respects AutoEncoding parameter
 - xxm.xml project registry revised, MSXML now only used for parsing.
