@@ -49,6 +49,11 @@ type
     StatusBar1: TStatusBar;
     btnRegisterFile: TButton;
     odXxmXml: TOpenDialog;
+    TabSheet3: TTabSheet;
+    cbParserValue: TComboBox;
+    txtParserValue: TMemo;
+    Label3: TLabel;
+    Label4: TLabel;
     procedure Exit1Click(Sender: TObject);
     procedure txtChange(Sender: TObject);
     procedure tvFilesCreateNodeClass(Sender: TCustomTreeView;
@@ -71,16 +76,21 @@ type
     procedure actRefreshExecute(Sender: TObject);
     procedure actIncludePasExecute(Sender: TObject);
     procedure btnRegisterFileClick(Sender: TObject);
+    procedure cbParserValueChange(Sender: TObject);
+    procedure txtParserValueChange(Sender: TObject);
   private
     Modified:boolean;
     ProjectPath,ProjectFolder:AnsiString;
     ProjectData:DOMDocument;
+    LastParserValue:integer;
     function CheckModified:boolean;
     function LoadProject(Path:AnsiString;CreateNew:boolean):boolean;
     procedure SaveProject;
     function GetNode(element:IXMLDOMElement;xpath:WideString):IXMLDOMElement;
     procedure ExpandNode(node:TTreeNode);
-    procedure FilesNodeAppend(node:IXMLDOMElement);
+    function RootNodeAppend(const nodeName:WideString;
+      node:IXMLDOMElement):IXMLDOMElement;
+    procedure SaveParserValue;
   protected
     procedure DoCreate; override;
     procedure DoClose(var Action: TCloseAction); override;
@@ -195,6 +205,8 @@ begin
 
     txtProjectName.Text:=GetNode(ProjectData.documentElement,'ProjectName').text;
     txtCompileCommand.Text:=GetNode(ProjectData.documentElement,'CompileCommand').text;
+    LastParserValue:=-1;
+    cbParserValue.ItemIndex:=-1;
 
     i:=Length(ProjectPath);
     while (i<>0) and (ProjectPath[i]<>PathDelim) do dec(i);
@@ -210,8 +222,11 @@ end;
 procedure TEditProjectMainForm.SaveProject;
 begin
   if txtProjectName.Text='' then raise Exception.Create('Project name required');
+  SaveParserValue;
   GetNode(ProjectData.documentElement,'ProjectName').text:=txtProjectName.Text;
   GetNode(ProjectData.documentElement,'CompileCommand').text:=txtCompileCommand.Text;
+  RootNodeAppend('LastModified',nil).text:=
+    FormatDateTime('yyyy-mm-dd"T"hh:nn:ss',Now);//timezone?
   //TODO: files?
   ProjectData.save(ProjectPath);
   Modified:=false;
@@ -544,7 +559,7 @@ begin
    begin
     (n as TFileNode).ProjectNode:=x;
     n.SelectedIndex:=n.ImageIndex;
-    FilesNodeAppend(x);
+    RootNodeAppend('Files',x);
     Modified:=true;
    end;
   tvFilesChange(tvFiles,n);
@@ -638,7 +653,7 @@ begin
         x.setAttribute('UnitName',Copy(s,j+1,i-j-1));
         if j>1 then x.setAttribute('UnitPath',Copy(s,1,j));
         //(n as TFileNode).ProjectNode:=x;
-        FilesNodeAppend(x);
+        RootNodeAppend('Files',x);
         Modified:=true;
         inc(fc);
         if fl=1 then MessageBoxA(Handle,PAnsiChar('Unit "'+s+'" added'),
@@ -654,27 +669,32 @@ begin
    end;
 end;
 
-procedure TEditProjectMainForm.FilesNodeAppend(node:IXMLDOMElement);
+function TEditProjectMainForm.RootNodeAppend(const nodeName:WideString;
+  node:IXMLDOMElement):IXMLDOMElement;
 var
   x:IXMLDOMElement;
   y:IXMLDOMNode;
 begin
-  x:=ProjectData.documentElement.selectSingleNode('Files') as IXMLDOMElement;
+  x:=ProjectData.documentElement.selectSingleNode(nodeName) as IXMLDOMElement;
   if x=nil then
    begin
-    x:=ProjectData.createElement('Files');
+    x:=ProjectData.createElement(nodeName);
     ProjectData.documentElement.appendChild(ProjectData.createTextNode(#13#10#9));
     ProjectData.documentElement.appendChild(x);
     ProjectData.documentElement.appendChild(ProjectData.createTextNode(#13#10));
+    if node<>nil then x.appendChild(ProjectData.createTextNode(#13#10#9));
+   end;
+  if node<>nil then
+   begin
+    y:=x.lastChild;
+    if (y=nil) or (y.nodeType<>NODE_TEXT) then
+      x.appendChild(ProjectData.createTextNode(#13#10#9#9))
+    else
+      x.appendChild(ProjectData.createTextNode(#9));
+    x.appendChild(node);
     x.appendChild(ProjectData.createTextNode(#13#10#9));
    end;
-  y:=x.lastChild;
-  if (y=nil) or (y.nodeType<>NODE_TEXT) then
-    x.appendChild(ProjectData.createTextNode(#13#10#9#9))
-  else
-    x.appendChild(ProjectData.createTextNode(#9));
-  x.appendChild(node);
-  x.appendChild(ProjectData.createTextNode(#13#10#9));
+  Result:=x;
 end;
 
 procedure TEditProjectMainForm.btnRegisterFileClick(Sender: TObject);
@@ -733,6 +753,63 @@ begin
         MessageBoxA(GetDesktopWindow,PAnsiChar('Project "'+t+'" registered with "'+fn+'".'),
           'xxm Project',MB_OK or MB_ICONINFORMATION);
        end;
+     end;
+   end;
+end;
+
+const
+  ParserValueElement:array[0..3] of string=(
+    'SendOpen',
+    'SendClose',
+    'SendHTMLOpen',
+    'SendHTMLClose'
+  );
+
+procedure TEditProjectMainForm.cbParserValueChange(Sender: TObject);
+var
+  x:IXMLDOMNode;
+begin
+  if cbParserValue.ItemIndex=-1 then
+    txtParserValue.Text:=''
+  else
+   begin
+    SaveParserValue;
+    x:=GetNode(ProjectData.documentElement,'ParserValues/'+
+      ParserValueElement[cbParserValue.ItemIndex]);
+    if x=nil then
+      txtParserValue.Text:=''
+    else
+      txtParserValue.Text:=x.text;
+   end;
+  //txtParserValue.Modified:=false;
+  LastParserValue:=cbParserValue.ItemIndex;
+end;
+
+procedure TEditProjectMainForm.txtParserValueChange(Sender: TObject);
+begin
+  Modified:=true;
+end;
+
+procedure TEditProjectMainForm.SaveParserValue;
+var
+  x:IXMLDOMElement;
+begin
+  if LastParserValue<>-1 then
+   begin
+    x:=GetNode(ProjectData.documentElement,'ParserValues/'+
+      ParserValueElement[LastParserValue]);
+    if txtParserValue.Text='' then
+     begin
+      if x<>nil then x.parentNode.removeChild(x);
+     end
+    else
+     begin
+      if x=nil then
+       begin
+        x:=ProjectData.createElement(ParserValueElement[LastParserValue]);
+        RootNodeAppend('ParserValues',x);
+       end;
+      x.text:=txtParserValue.Text;
      end;
    end;
 end;

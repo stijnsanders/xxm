@@ -1,5 +1,8 @@
 v1.1.8.?
 - optional project interface: IXxmProjectEvents1
+- parser values: $l replaced by source line number
+- set project default parser values from Web.xxmp
+- xxmHttp: replaced first request parsing ReceiveLn with ReceiveBuf
 
 v1.1.7.292
 - xxmString: TStringContext.SaveToFile respects AutoEncoding parameter

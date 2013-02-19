@@ -387,6 +387,13 @@ function URLDecode(Data:string):WideString;
 <p>Use an empty value, e.g. <code>[[*=(]]</code>, to reset a parser value to its default value.
 Use <code>[[*]]</code> to reset all parser values to the default values.</p>
 
+<p><span class="newver">1.1.8</span> Parser values for opening sections may optionally contain:</p>
+<ul>
+<li><code>$l</code> gets replaced by the line number in the xxm source file where the section starts</li>
+<li><code>$v</code> gets replaced by the current parser value, this allows to add to the parser value</li>
+<li><code>$d</code> gets replaced by the default value, this allows to revert to the default value and add to it in one operation</li>
+</ul>
+
 <p class="title"><a name="projectintf"></a>Optional project interfaces</p>
 
 <dl>

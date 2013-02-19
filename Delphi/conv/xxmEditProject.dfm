@@ -45,7 +45,7 @@ object EditProjectMainForm: TEditProjectMainForm
       object txtProjectName: TEdit
         Left = 0
         Top = 16
-        Width = 401
+        Width = 377
         Height = 21
         Anchors = [akLeft, akTop, akRight]
         TabOrder = 0
@@ -55,7 +55,7 @@ object EditProjectMainForm: TEditProjectMainForm
       object txtCompileCommand: TEdit
         Left = 0
         Top = 56
-        Width = 401
+        Width = 377
         Height = 21
         Anchors = [akLeft, akTop, akRight]
         TabOrder = 1
@@ -103,6 +103,74 @@ object EditProjectMainForm: TEditProjectMainForm
         OnExpanding = tvFilesExpanding
       end
     end
+    object TabSheet3: TTabSheet
+      BorderWidth = 4
+      Caption = 'Parser Values'
+      ImageIndex = 2
+      DesignSize = (
+        401
+        387)
+      object Label3: TLabel
+        Left = 0
+        Top = 0
+        Width = 291
+        Height = 13
+        Caption = 'Project parser value defaults: (leave blank for default value)'
+      end
+      object Label4: TLabel
+        Left = 0
+        Top = 372
+        Width = 401
+        Height = 15
+        Anchors = [akLeft, akRight, akBottom]
+        AutoSize = False
+        Caption = 
+          ' Warning: delete files in the src folder for changes to take eff' +
+          'ect.'
+        Color = 52479
+        Font.Charset = DEFAULT_CHARSET
+        Font.Color = clWindowText
+        Font.Height = -11
+        Font.Name = 'Tahoma'
+        Font.Style = [fsBold]
+        ParentColor = False
+        ParentFont = False
+      end
+      object cbParserValue: TComboBox
+        Left = 0
+        Top = 16
+        Width = 401
+        Height = 21
+        Style = csDropDownList
+        Anchors = [akLeft, akTop, akRight]
+        ItemHeight = 13
+        TabOrder = 0
+        OnChange = cbParserValueChange
+        Items.Strings = (
+          '=( Send open'
+          '=) Send close'
+          '#( Send HTML open'
+          '#) Send HTML close')
+      end
+      object txtParserValue: TMemo
+        Left = 0
+        Top = 40
+        Width = 401
+        Height = 329
+        Anchors = [akLeft, akTop, akRight, akBottom]
+        Font.Charset = DEFAULT_CHARSET
+        Font.Color = clWindowText
+        Font.Height = -11
+        Font.Name = 'Lucida Console'
+        Font.Style = []
+        ParentFont = False
+        ScrollBars = ssBoth
+        TabOrder = 1
+        WantTabs = True
+        WordWrap = False
+        OnChange = txtParserValueChange
+      end
+    end
   end
   object StatusBar1: TStatusBar
     Left = 0
@@ -115,8 +183,8 @@ object EditProjectMainForm: TEditProjectMainForm
       end>
   end
   object MainMenu1: TMainMenu
-    Left = 144
-    Top = 8
+    Left = 64
+    Top = 96
     object File1: TMenuItem
       Caption = '&File'
       object New1: TMenuItem
@@ -174,12 +242,12 @@ object EditProjectMainForm: TEditProjectMainForm
       'xxm Project (Web.xxmp)|web.xxmp|xxm Project (*.xxmp)|*.xxmp|All ' +
       'files (*.*)|*.*'
     Title = 'Open/Create xxm Project'
-    Left = 176
-    Top = 8
+    Left = 96
+    Top = 96
   end
   object ImageList1: TImageList
-    Left = 208
-    Top = 8
+    Left = 128
+    Top = 96
     Bitmap = {
       494C01010E001300040010001000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
       0000000000003600000028000000400000005000000001002000000000000050
@@ -849,8 +917,8 @@ object EditProjectMainForm: TEditProjectMainForm
       000000000000}
   end
   object PopupMenu1: TPopupMenu
-    Left = 240
-    Top = 8
+    Left = 160
+    Top = 96
     object Include1: TMenuItem
       Action = actInclude
     end
@@ -865,8 +933,8 @@ object EditProjectMainForm: TEditProjectMainForm
     end
   end
   object ActionList1: TActionList
-    Left = 112
-    Top = 8
+    Left = 32
+    Top = 96
     object actRefresh: TAction
       Category = 'Files'
       Caption = 'Refresh'
@@ -902,15 +970,15 @@ object EditProjectMainForm: TEditProjectMainForm
     Filter = 'Pascal Unit|*.pas|All files (*.*)|*.*'
     InitialDir = '.'
     Options = [ofHideReadOnly, ofAllowMultiSelect, ofEnableSizing]
-    Left = 272
-    Top = 8
+    Left = 192
+    Top = 96
   end
   object odXxmXml: TOpenDialog
     DefaultExt = 'xml'
     FileName = 'xxm.xml'
     Filter = 'xxm.xml|xxm.xml|xml file (*.xml)|*.xml|All files (*.*)|*.*'
     Title = 'Select xxm.xml to register with'
-    Left = 304
-    Top = 8
+    Left = 224
+    Top = 96
   end
 end

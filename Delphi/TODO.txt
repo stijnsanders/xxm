@@ -43,6 +43,7 @@ ISAPI
 
 http
 - logging
+- max time to parse header and start pagebuild
 
 local
 - CritSection in loader, not context (saves on resources)

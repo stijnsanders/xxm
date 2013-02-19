@@ -1,0 +1,50 @@
+[[@Windows]][[!var
+LineNr:integer;
+
+function ConvertText(x:string):string;
+var
+  i,l:integer;
+begin
+  //just some text processing here as a demonstration
+  l:=Length(x);
+  SetLength(Result,l*2+1);
+  Result[1]:='-';
+  for i:=1 to l do
+   begin
+    Result[i*2]:=x[i];
+	Result[i*2+1]:='-';
+   end;
+end;
+
+<<h1>Demo Override Parser Values</h1>
+
+<p>Processed text following:</p>
+
+<pre>
+[[*=(Context.SendHTML(ConvertText(']][[*=)'));]]
+[[=Hello world]]
+[[=Just some text]]
+[[=Writing it like this avoids a lot of duplicate code]]
+[[=(Be sure to have a look at the Default.xxm source)]]
+[[*]]
+</pre>
+
+[[*
+=(LineNr:=$l;$v
+#(LineNr:=$l;$v
+]][[
+LineNr:=0;
+try
+
+	<<p>Now let's throw an exception, notice the two added line number indicators, one from the modified parser values here,
+	one from the project global default parser values defined in Web.xxmp and the extra handler in the <i>proto</i> files</p>>
+
+	raise Exception.Create('test');
+
+except
+  on e:Exception do
+   begin
+    e.Message:=e.Message+#13#10'xxm:LineNr:'+IntToStr(LineNr);
+	raise;
+   end;   
+end;

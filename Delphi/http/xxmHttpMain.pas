@@ -272,40 +272,74 @@ end;
 
 procedure TXxmHttpContext.HandleRequest;
 var
-  i,j,l:integer;
+  i,j,k,l,m:integer;
   x,y:AnsiString;
   s:TStream;
   si:int64;
 begin
   try
     //command line
-    x:=FSocket.Receiveln;
-    l:=Length(x);
-    j:=l;
-    while (j>0) and (x[j]<>' ') do dec(j);
-    FHTTPVersion:=Copy(x,j+1,l-j);
-    dec(j);
-    i:=0;
-    while (i<l) and (x[i]<>' ') do inc(i);
+    k:=$10000;
+    SetLength(x,k);
+    l:=FSocket.ReceiveBuf(x[1],k);
+    if l=-1 then RaiseLastOSError;
+    while l=0 do
+     begin
+      //TODO: keep all 'keep-alive' connections on a single listener thread
+      Sleep(25);
+      l:=FSocket.ReceiveBuf(x[1],k);
+      if l=-1 then RaiseLastOSError;
+     end;
+    i:=1;
+    while (i<=l) and (x[i]>' ') do inc(i);
     FVerb:=UpperCase(Copy(x,1,i-1));
     inc(i);
+    j:=i;
+    while (j<=l) and (x[j]>' ') do inc(j);
+    FURI:=Copy(x,i,j-i);
+    inc(j);
+    i:=j;
+    while (j<=l) and (x[j]<>#13) and (x[j]<>#10) do inc(j);
+    FHTTPVersion:=Copy(x,i,j-i);
+    inc(j);
+    if (j<=l) and (x[j]=#10) then inc(j);
 
-    FURI:=Copy(x,i,j-i+1);
-    
     //headers
-    i:=0;
-    x:='';
+    y:='';
+    m:=0;
     repeat
-     y:=FSocket.Receiveln;
-     if y<>'' then
-      begin
-       inc(i);
-       if i=HTTPMaxHeaderLines then
-         raise EXxmMaximumHeaderLines.Create(SXxmMaximumHeaderLines);
-       x:=x+y+#13#10;
-      end;
-    until y='';
-    FReqHeaders:=TRequestHeaders.Create(x);
+      i:=j;
+      while (j<=l) and (x[j]<>#13) and (x[j]<>#10) do
+       begin
+        if j=l then
+         begin
+          if l=k then
+           begin
+            inc(k,$10000);
+            SetLength(x,k);
+           end;
+          l:=l+FSocket.ReceiveBuf(x[l+1],k-l);
+          if l=j-1 then RaiseLastOSError;
+          if (l=j) then
+           begin
+            Sleep(25);//odd, data takes some time to get in
+            dec(j);
+           end;
+         end;
+        inc(j);
+       end;
+      y:=y+Copy(x,i,j-i)+#13#10;
+      if i=j then m:=0 else
+       begin
+        inc(m);
+        if m=HTTPMaxHeaderLines then
+          raise EXxmMaximumHeaderLines.Create(SXxmMaximumHeaderLines);
+       end;
+      inc(j);
+      if (j<=l) and (x[j]=#10) then inc(j);
+    until m=0;
+    x:=Copy(x,j,l-j+1);
+    FReqHeaders:=TRequestHeaders.Create(y);
     (FReqHeaders as IUnknown)._AddRef;
 
     ProcessRequestHeaders;
@@ -365,10 +399,10 @@ begin
     PreProcessRequest;
 
     //if Verb<>'GET' then?
-    x:=FReqHeaders['Content-Length'];
-    if x<>'' then
+    y:=FReqHeaders['Content-Length'];
+    if y<>'' then
      begin
-      si:=StrToInt(x);
+      si:=StrToInt(y);
       if si<PostDataThreshold then
         s:=TMemoryStream.Create
       else
@@ -379,14 +413,14 @@ begin
         s:=TFileStream.Create(FPostTempFile,fmCreate);
        end;
       s.Size:=si;
-      FPostData:=THandlerReadStreamAdapter.Create(FSocket,si,s);
+      FPostData:=THandlerReadStreamAdapter.Create(FSocket,si,s,x);
      end;
 
     BuildPage;
 
   except
-    on e:EXxmPageRedirected do
-      Flush;//assert output done
+    on EXxmPageRedirected do
+      Flush;
     on EXxmAutoBuildFailed do
       ;//assert output done
     on e:Exception do

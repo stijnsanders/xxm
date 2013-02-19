@@ -274,7 +274,8 @@ begin
     BuildPage;
 
   except
-    on EXxmPageRedirected do ;//silent
+    on EXxmPageRedirected do
+      Flush;
     on EXxmAutoBuildFailed do ;
      //assert AutoBuild handler already displays message
     on e:Exception do

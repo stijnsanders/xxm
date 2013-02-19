@@ -179,8 +179,8 @@ begin
     BuildPage;
 
   except
-    on e:EXxmPageRedirected do
-      ;//assert output done
+    on EXxmPageRedirected do
+      Flush;
     on EXxmAutoBuildFailed do
       ;//assert output done
     on e:Exception do

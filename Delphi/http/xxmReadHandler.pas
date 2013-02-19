@@ -16,7 +16,8 @@ type
     procedure SetSize(NewSize: Longint); overload; override;
     procedure SetSize(const NewSize: Int64); overload; override;
   public
-    constructor Create(Socket:TCustomIpClient;Size:Int64;StoreStream:TStream);
+    constructor Create(Socket:TCustomIpClient;Size:Int64;StoreStream:TStream;
+      const StartData: AnsiString);
     destructor Destroy; override;
     function Read(var Buffer; Count: Longint): Longint; override;
     function Write(const Buffer; Count: Longint): Longint; override;
@@ -30,7 +31,9 @@ uses SysUtils;
 { THandlerReadStreamAdapter }
 
 constructor THandlerReadStreamAdapter.Create(Socket: TCustomIpClient;
-  Size: Int64; StoreStream: TStream);
+  Size: Int64; StoreStream: TStream; const StartData: AnsiString);
+var
+  l:integer;  
 begin
   inherited Create;
   FSize:=Size;
@@ -38,7 +41,9 @@ begin
   FStore:=StoreStream;
   //FStore.Size:=FSize;//done by caller? (don't care really)
   //assert FStore.Position:=0;
-  FStorePosition:=0;
+  l:=Length(StartData);
+  if l<>0 then FStore.Write(StartData[1],l);
+  FStorePosition:=l;
   FPosition:=0;
 end;
 
@@ -76,6 +81,7 @@ begin
     if Result<>0 then
      begin
       Result:=FSocket.ReceiveBuf(Buffer,Result);
+      if Result=-1 then RaiseLastOSError;
       FStore.Write(Buffer,Result);
       inc(FPosition,Result);
       inc(FStorePosition,Result);
