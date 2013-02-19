@@ -10,5 +10,4 @@
 		<File ID="delete_xxm" UnitName="delete_xxm1" UnitPath=""><Path>Delete.xxm</Path></File>
 		<File ID="edit_xxm" UnitName="edit_xxm1" UnitPath=""><Path>Edit.xxm</Path></File>
 	</Files>
-	<LastModified>2012-10-19T20:09:08</LastModified>
 </XxmWebProject>

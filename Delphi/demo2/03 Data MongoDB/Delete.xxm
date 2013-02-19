@@ -1,0 +1,4 @@
+[[@xxmSession,bsonDoc,]][[
+Session.DbCon.Delete(xxmDemoCollection,BSON(['id',Context['id'].Value]));
+<<p>item deleted</p>
+<p><a href="Default.xxm">back</a></p>

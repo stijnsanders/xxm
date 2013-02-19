@@ -1,7 +1,7 @@
-<h3>xxm Demo Projects - 03 Data SQLite</h3>
-<p>This is a demo project showing how to set up a database connection in an xxm project, using SQLite3.dll.</p>
-<p>Download SQLite3.dll from <a href="http://www.sqlite.org/download.html">www.sqlite.org</a>.</p>
-<p>Download SQLite.pas and SQLiteData.pas from <a href="https://github.com/stijnsanders/TSQLite">github.com/stijnsanders/TSQLite</a>.</p>
+<h3>xxm Demo Projects - 03 Data MongoDB</h3>
+<p>This is a demo project showing how to set up a database connection in an xxm project, using TMongoWire.</p>
+<p>Download MongoDB from <a href="http://www.mongodb.org/downloads">www.mongodb.org</a>.</p>
+<p>Download bsonDoc.pas and mongoWire.pas from <a href="https://github.com/stijnsanders/TMongoWire">github.com/stijnsanders/TMongoWire</a>.</p>
 <dl>
 <dt>Web.xxmp</dt>
 <dd>The project file, contains an internal list of the files of the project, and other data about the project.<br />
@@ -9,16 +9,14 @@ Use xxmProject.exe to edit and manage project settings.</dd>
 <dt>xxmp.pas</dt>
 <dd>The project's main unit. When this file is missing form the project, xxm creates one for you.<br />
 This one has been modified to include the <code>SetSession(Context);</code> call on LoadPage, linking each request to a new or existing session.</dd>
-<dt>SQLite.pas</dt>
-<dd>The Pascal version of the sqlite.h file with the declarations for sqlite3.dll.</dd>
-<dt>SQLiteData.pas</dt>
-<dd>This unit defines the TSQLiteConnection and TSQLiteStatement classes.</dd>
+<dt>bsonDoc.pas</dt>
+<dd>This unit defines IBSONDocument, used by TMongoWire</dd>
+<dt>mongoWire.pas</dt>
+<dd>This unit defines the TMongoWire and TMongoWireQuery classes used to connect to MongoDB.</dd>
 <dt>xxmSession.pas</dt>
 <dd>This unit defines the TxxmSession class. This website uses a single database connection for each worker thread.</dd>
-<dt>demo.db</dt>
-<dd>This is the SQLite database file. In a real website scenario this file should be stored in a folder that is not accessible over the website.</dd>
 <dt>Default.xxm</dt>
-<dd>The website's default page. It lists the items of <code>Table1</code>, displaying an <i>edit</i> and <i>delete</i> link for each item. It also displays an <i>add</i> link.
+<dd>The website's default page. It lists the items of collection <code>xxmdemo1</code>, displaying an <i>edit</i> and <i>delete</i> link for each item. It also displays an <i>add</i> link.
 When looping over the query result, <code>Context.Connected</code> is checked, allowing the visitor to abort building the page when the list gets too long.</dd>
 <dt>Edit.xxm</dt>
 <dd>This page edits or adds an item in <code>Table1</code>.</dd>
