@@ -1,5 +1,7 @@
 [[@Windows]][[!var
 LineNr:integer;
+Section1:string;
+i:integer;
 
 function ConvertText(x:string):string;
 var
@@ -12,14 +14,31 @@ begin
   for i:=1 to l do
    begin
     Result[i*2]:=x[i];
-	Result[i*2+1]:='-';
+	if (i and 1)=0 then Result[i*2+1]:='-' else Result[i*2+1]:='=';
    end;
 end;
 
-<<h1>Demo Override Parser Values</h1>
+<<html>
+<body>
+<h1>Demo Override Parser Values</h1>>
+
+
+//this performs better using a TStringStream instead, but using plain concatenation as an example here:
+Section1:='';
+]][[*
+=(Section1:=Section1+HTMLEncode(
+=));
+#(Section1:=Section1+
+#);
+]]
+<p style="border:2px dotted red;">
+This text was prepared before the processed text example,
+[[for i:=0 to 10 do if (i and 1)=0 then begin]] dum[[end else begin]] dee[[end;]].
+</p>
+[[*]]
+
 
 <p>Processed text following:</p>
-
 <pre>
 [[*=(Context.SendHTML(ConvertText(']][[*=)'));]]
 [[=Hello world]]
@@ -29,22 +48,29 @@ end;
 [[*]]
 </pre>
 
+
 [[*
-=(LineNr:=$l;$v
-#(LineNr:=$l;$v
-]][[
+=)$vLineNr:=$l;
+#)$vLineNr:=$l;
+]]
+
+[[#Section1]]
+
+[[
 LineNr:=0;
 try
 
 	<<p>Now let's throw an exception, notice the two added line number indicators, one from the modified parser values here,
 	one from the project global default parser values defined in Web.xxmp and the extra handler in the <i>proto</i> files</p>>
 
-	raise Exception.Create('test');
+	raise Exception.Create('Throwing an exception...');
 
 except
   on e:Exception do
    begin
     e.Message:=e.Message+#13#10'xxm:LineNr:'+IntToStr(LineNr);
 	raise;
-   end;   
+   end; 
 end;
+
+<</body></html>

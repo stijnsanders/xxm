@@ -257,8 +257,7 @@ begin
             InString:=not(char(FData[b2]) in ['''',#13,#10])
           else
             case InComment of
-              0:
-                case char(FData[b2]) of
+              0:case char(FData[b2]) of
                   '''':InString:=true;
                   '[':inc(sqd);
                   ']':if sqd=0 then Delim:=dSquareB else dec(sqd);
@@ -269,8 +268,7 @@ begin
                   '<':Delim:=dAngleB;
                 end;
               1:if char(FData[b2])='}' then InComment:=0;
-              2:
-                if (char(FData[b2])=')')
+              2:if (char(FData[b2])=')')
                   and (b2>1) and (FData[b2-1]='*') then InComment:=0;
             end
         else
@@ -435,12 +433,13 @@ var
      end;
   end;
 
-  procedure CloseSend;
+  procedure CloseSend(LineNr:integer);
   begin
     if InSend then
      begin
       CloseString;
-      ss.WriteString(SendCloseCode+#13#10);
+      ss.WriteString(StringReplace(SendCloseCode,
+        '$l',IntToStr(LineNr+SendCloseEOLs),[rfReplaceAll])+#13#10);
       map.MapLine(1+SendCloseEOLs,0);
       InSend:=false;
      end;
@@ -507,8 +506,9 @@ var
   end;
 
 var
-  Section,p,q:integer;
+  Section,p,q,r:integer;
   b:byte;
+  pv:TXxmPageParserValues;
 begin
   ss:=TStringStream.Create('');
   try
@@ -518,25 +518,22 @@ begin
     for Section:=0 to SectionsCount-1 do
       try
         case Sections[Section].SectionType of
-          psSquareBracketsOpen:
+          psSquareBracketsOpen,psSquareBracketsClose:
            begin
-            CloseSend;
+            CloseSend(Sections[Section].LineNr);
+            r:=FParserValues[pvSendHTML].EOLs;
             ss.WriteString('  '+StringReplace(FParserValues[pvSendHTML].Code,
-              '$l',IntToStr(Sections[Section].LineNr),[rfReplaceAll])+'''[['''+
-              FParserValues[pvSendHTMLClose].Code+#13#10);
-            map.MapLine(1+FParserValues[pvSendHTML].EOLs+
-              FParserValues[pvSendHTMLClose].EOLs,
-              Sections[Section].LineNr);//assert EOLs(Section)=0
-           end;
-          psSquareBracketsClose:
-           begin
-            CloseSend;
-            ss.WriteString('  '+StringReplace(FParserValues[pvSendHTML].Code,
-              '$l',IntToStr(Sections[Section].LineNr),[rfReplaceAll])+''']]'''+
-              FParserValues[pvSendHTMLClose].Code+#13#10);
-            map.MapLine(1+FParserValues[pvSendHTML].EOLs+
-              FParserValues[pvSendHTMLClose].EOLs,
-              Sections[Section].LineNr);//assert EOLs(Section)=0
+              '$l',IntToStr(r+Sections[Section].LineNr),[rfReplaceAll]));
+            if Sections[Section].SectionType=psSquareBracketsOpen then
+              ss.WriteString('''[[''')
+            else
+              ss.WriteString(''']]''');
+            inc(r,FParserValues[pvSendHTMLClose].EOLs);
+            ss.WriteString(
+              StringReplace(FParserValues[pvSendHTMLClose].Code,
+              '$l',IntToStr(r+Sections[Section].LineNr),[rfReplaceAll])+#13#10);
+            inc(r);
+            map.MapLine(r,Sections[Section].LineNr);//assert EOLs(Section)=0
            end;
           psHTML:
            begin
@@ -597,31 +594,27 @@ begin
               inc(p);
              end;
            end;
-          psSend:
+          psSend,psSendHTML:
            begin
-            CloseSend;
-            ss.WriteString('  '+StringReplace(FParserValues[pvSend].Code,
-              '$l',IntToStr(Sections[Section].LineNr),[rfReplaceAll]));
+            CloseSend(Sections[Section].LineNr);
+            if Sections[Section].SectionType=psSend then
+              pv:=pvSend else pv:=pvSendHTML;
+            r:=FParserValues[pv].EOLs;
+            ss.WriteString('  '+StringReplace(FParserValues[pv].Code,
+              '$l',IntToStr(r+Sections[Section].LineNr),[rfReplaceAll]));
+            inc(r,EOLs(Section));
             ss.Write(FData[Sections[Section].Index],Sections[Section].Length);
-            ss.WriteString(FParserValues[pvSendClose].Code+#13#10);
-            map.MapLine(1+FParserValues[pvSend].EOLs+
-              FParserValues[pvSendClose].EOLs+EOLs(Section),
-              Sections[Section].LineNr);
-           end;
-          psSendHTML:
-           begin
-            CloseSend;
-            ss.WriteString('  '+StringReplace(FParserValues[pvSendHTML].Code,
-              '$l',IntToStr(Sections[Section].LineNr),[rfReplaceAll]));
-            ss.Write(FData[Sections[Section].Index],Sections[Section].Length);
-            ss.WriteString(FParserValues[pvSendHTMLClose].Code+#13#10);
-            map.MapLine(1+FParserValues[pvSendHTML].EOLs+
-              FParserValues[pvSendHTMLClose].EOLs+EOLs(Section),
-              Sections[Section].LineNr);
+            if Sections[Section].SectionType=psSend then
+              pv:=pvSendClose else pv:=pvSendHTMLClose;
+            inc(r,FParserValues[pv].EOLs);
+            ss.WriteString(StringReplace(FParserValues[pv].Code,
+              '$l',IntToStr(r+Sections[Section].LineNr),[rfReplaceAll])+#13#10);
+            inc(r);
+            map.MapLine(r,Sections[Section].LineNr);
            end;
           psBody:
            begin
-            CloseSend;
+            CloseSend(Sections[Section].LineNr);
             ss.Write(FData[Sections[Section].Index],Sections[Section].Length);
             if (Sections[Section].Length<2) or not(
               (FData[Sections[Section].Index+Sections[Section].Length-2]=#13) and
@@ -635,7 +628,7 @@ begin
            end;
           psParserParameter:
            begin
-            CloseSend;
+            CloseSend(Sections[Section].LineNr);
             if (Sections[Section].Length>2) and (char(FData[Sections[Section].Index]) in [#13,' ']) then
               ParseParserValuesMultiLine(Section)
             else
@@ -651,7 +644,7 @@ begin
           raise;
          end;
       end;
-    CloseSend;
+    CloseSend(TotalLines);
     Result:=ss.DataString;
   finally
     ss.Free;

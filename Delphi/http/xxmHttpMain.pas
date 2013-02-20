@@ -479,7 +479,7 @@ begin
     csReferer:Result:=FReqHeaders['Referer'];//TODO:
     csLanguage:Result:=FReqHeaders['Language'];//TODO:
     csRemoteAddress:Result:=FSocket.RemoteHost;//TODO: name to address?
-    csRemoteHost:Result:=FSocket.RemoteHost;
+    csRemoteHost:Result:=FSocket.LookupHostName(FSocket.RemoteHost);
     csAuthUser:Result:='';//TODO:
     csAuthPassword:Result:='';//TODO:
     else
@@ -678,7 +678,7 @@ end;
 
 procedure TXxmHttpContext.PreProcessRequest;
 begin
-  //inheritants can perform post-page logging here
+  //inheritants can perform pre-page-build logging or checking here
 end;
 
 procedure TXxmHttpContext.PreProcessRequestPage;
@@ -688,7 +688,7 @@ end;
 
 procedure TXxmHttpContext.PostProcessRequest;
 begin
-  //inheritants can perform pre-page-build logging or checking here
+  //inheritants can perform post-page logging here
 end;
 
 procedure TXxmHttpContext.Flush;
