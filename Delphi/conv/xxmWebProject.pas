@@ -14,7 +14,7 @@ type
     DataFileName,FProjectName,FRootFolder,FSrcFolder,
     FHandlerPath,FProtoPathDef,FProtoPath:AnsiString;
     RootNode,DataFiles:IXMLDOMElement;
-    Modified:boolean;
+    Modified,DoLineMaps:boolean;
     Signatures:TStringList;
     FOnOutput:TXxmWebProjectOutput;
     FParserValues:TXxmPageParserValueList;
@@ -46,6 +46,7 @@ type
 
     property SrcFolder:AnsiString read FSrcFolder write FSrcFolder;
     property ProtoFolder:AnsiString read FProtoPath write FProtoPath;
+    property LineMaps:boolean read DoLineMaps write DoLineMaps;
   end;
 
   EXxmWebProjectNotFound=class(Exception);
@@ -95,6 +96,7 @@ var
 begin
   inherited Create;
   Modified:=false;
+  DoLineMaps:=true;
   FOnOutput:=OnOutput;
   FProjectName:='';
 
@@ -154,13 +156,6 @@ begin
   FHandlerPath:=GetSelfPath;
   FProtoPathDef:=FHandlerPath+ProtoDirectory+PathDelim;
   FSrcFolder:=FRootFolder+SourceDirectory+PathDelim;
-
-  Signatures:=TStringList.Create;
-  try
-    Signatures.LoadFromFile(FSrcFolder+SignaturesFileName);
-  except
-    //silent
-  end;
 
   Data:=CoDOMDocument.Create;
   Data.async:=false;
@@ -281,6 +276,13 @@ begin
   //TODO: setting autoaddfiles
   //TODO: autoremove files?
 
+  Signatures:=TStringList.Create;
+  try
+    Signatures.LoadFromFile(FSrcFolder+SignaturesFileName);
+  except
+    //silent
+  end;
+
   p:=TXxmProtoParser.Create;
   q:=TXxmPageParser.Create(FParserValues);
   m:=TXxmLineNumbersMap.Create;
@@ -364,6 +366,7 @@ begin
               m.MapLine(p.NextEOLs,0);
               case p.GetNext of
                 ptProjectName:p.Output(FProjectName);
+                ptProjectPath:p.Output(FRootFolder);
                 ptProtoFile:p.Output(FProtoPath+uext+DelphiExtension);
                 ptFragmentID:p.Output(cid);
                 ptFragmentUnit:p.Output(uname);
@@ -381,7 +384,8 @@ begin
             //m.MapLine(0,q.TotalLines);//map EOF?
             ForceDirectories(FSrcFolder+upath);
             p.Save(FSrcFolder+upath+uname+DelphiExtension);
-            m.Save(FSrcFolder+upath+uname+LinesMapExtension);
+            if DoLineMaps then
+              m.Save(FSrcFolder+upath+uname+LinesMapExtension);
             Result:=true;
           except
             on e:Exception do
@@ -508,6 +512,7 @@ begin
       repeat
         case p.GetNext of
           ptProjectName:p.Output(FProjectName);
+          ptProjectPath:p.Output(FRootFolder);
           ptProtoFile:p.Output(FProtoPath+ProtoProjectDpr);
           ptIterateFragment:
            begin
@@ -552,6 +557,7 @@ begin
         repeat
           case p.GetNext of
             ptProjectName:p.Output(FProjectName);
+            ptProjectPath:p.Output(FRootFolder);
             ptProtoFile:p.Output(FProtoPath+ProtoProjectPas);
             pt_Unknown:
               if not p.Done then p.Output(ExtraFields.Values[p.GetTagLabel]);

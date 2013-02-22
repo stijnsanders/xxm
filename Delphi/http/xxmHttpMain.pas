@@ -28,7 +28,6 @@ type
     FKeepConnection:boolean;
     procedure HandleRequest;
   protected
-
     function GetSessionID: WideString; override;
     procedure DispositionAttach(FileName: WideString); override;
     procedure SendRaw(const Data: WideString); override;
@@ -63,7 +62,6 @@ type
   public
     constructor Create(Socket:TCustomIpClient);
     destructor Destroy; override;
-
     procedure Execute;
   end;
 

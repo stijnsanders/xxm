@@ -90,7 +90,7 @@ MaxStackSize=1048576
 ImageBase=4194304
 ExeDescription=
 [Directories]
-OutputDir=setup\xxmGeckoDev\platform\WINNT\components
+OutputDir=..\bin
 UnitOutputDir=..\dcu
 PackageDLLOutputDir=
 PackageDCPOutputDir=
@@ -130,22 +130,3 @@ OriginalFilename=
 ProductName=xxm
 ProductVersion=1.0.0.0
 Comments=http://xxm.sf.net/
-[HistoryLists\hlUnitAliases]
-Count=1
-Item0=WinTypes=Windows;WinProcs=Windows;DbiTypes=BDE;DbiProcs=BDE;DbiErrs=BDE;
-[HistoryLists\hlSearchPath]
-Count=3
-Item0=sdk;..\public
-Item1=C:\Program Files\Indy9
-Item2=..\..\public
-[HistoryLists\hlUnitOutputDirectory]
-Count=2
-Item0=..\dcu
-Item1=dcu
-[HistoryLists\hlOutputDirectorry]
-Count=5
-Item0=setup\xxmGeckoDev\platform\WINNT\components
-Item1=..\bin
-Item2=C:\Program Files\Mozilla Firefox\components
-Item3=C:\Inetpub\xxm
-Item4=..\

@@ -15,16 +15,16 @@ type
     end;
     procedure GetRegisteredPath;
   protected
-    procedure LoadProject; override;
+    function LoadProject: IXxmProject; override;
     function GetModulePath:WideString; override;
     procedure SetSignature(const Value: AnsiString); override;
     function GetAllowInclude: Boolean; override;
   published
     constructor Create(Name:WideString);
   public
-    function GetSessionCookie(Name: WideString): WideString; virtual;
-    procedure SetSessionCookie(Name: WideString; Value: WideString);
-    function CookieFile(Name:AnsiString):AnsiString;
+    function GetSessionCookie(const Name: WideString): WideString; virtual;
+    procedure SetSessionCookie(const Name, Value: WideString);
+    function CookieFile(const Name:AnsiString):AnsiString;
   end;
 
   TXxmProjectCache=class(TObject)
@@ -33,13 +33,13 @@ type
     ProjectCacheSize:integer;
     ProjectCache:array of TXxmProjectCacheEntry;
     function Grow:integer;
-    function FindProject(Name:WideString):integer;
+    function FindProject(const Name:WideString):integer;
   public
     constructor Create;
     destructor Destroy; override;
 
-    function GetProject(Name:WideString):TXxmProjectCacheEntry;
-    procedure ReleaseProject(Name:WideString);
+    function GetProject(const Name:WideString):TXxmProjectCacheEntry;
+    procedure ReleaseProject(const Name:WideString);
 
   end;
 
@@ -119,7 +119,7 @@ procedure TXxmProjectCacheEntry.LoadProject;
 begin
   if not ProjectLoaded and ((FFilePath='') or not(FileExists(FFilePath))) then
     GetRegisteredPath;//refresh
-  inherited;
+  Result:=inherited LoadProject;
   if not ProjectLoaded then
    begin
     //force refresh next time
@@ -128,7 +128,7 @@ begin
    end;
 end;
 
-function TXxmProjectCacheEntry.GetSessionCookie(Name: WideString): WideString;
+function TXxmProjectCacheEntry.GetSessionCookie(const Name: WideString): WideString;
 var
   i:integer;
 begin
@@ -137,7 +137,7 @@ begin
   if (i<Length(FCookies)) then Result:=FCookies[i].Value else Result:='';
 end;
 
-procedure TXxmProjectCacheEntry.SetSessionCookie(Name, Value: WideString);
+procedure TXxmProjectCacheEntry.SetSessionCookie(const Name, Value: WideString);
 var
   i:integer;
 begin
@@ -151,7 +151,7 @@ begin
    end;
 end;
 
-function TXxmProjectCacheEntry.CookieFile(Name: AnsiString): AnsiString;
+function TXxmProjectCacheEntry.CookieFile(const Name: AnsiString): AnsiString;
 var
   l:cardinal;
 begin
@@ -316,7 +316,7 @@ begin
    end;
 end;
 
-function TXxmProjectCache.FindProject(Name: WideString): integer;
+function TXxmProjectCache.FindProject(const Name: WideString): integer;
 var
   l:AnsiString;
 begin
@@ -328,7 +328,7 @@ begin
   if Result=ProjectCacheSize then Result:=-1;
 end;
 
-function TXxmProjectCache.GetProject(Name: WideString): TXxmProjectCacheEntry;
+function TXxmProjectCache.GetProject(const Name: WideString): TXxmProjectCacheEntry;
 var
   i:integer;
 begin
@@ -351,7 +351,7 @@ begin
   end;
 end;
 
-procedure TXxmProjectCache.ReleaseProject(Name: WideString);
+procedure TXxmProjectCache.ReleaseProject(const Name: WideString);
 var
   i:integer;
 begin

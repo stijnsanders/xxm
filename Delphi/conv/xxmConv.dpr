@@ -19,7 +19,7 @@ uses
 var
   i:integer;
   s,protodir,srcdir:string;
-  wait,rebuild,docompile:boolean;
+  wait,rebuild,docompile,dolinemaps:boolean;
   extra:TStringList;
 begin
   CoInitialize(nil);
@@ -27,6 +27,7 @@ begin
   wait:=false;
   rebuild:=false;
   docompile:=true;
+  dolinemaps:=true;
   protodir:='';
   srcdir:='';
   extra:=TStringList.Create;
@@ -42,6 +43,7 @@ begin
     Writeln('    /proto      use an alternative unit templates folder');
     Writeln('    /src        use an alternative source output folder');
     Writeln('    /x:XXX      define template value XXX');
+    Writeln('    /nolinemaps don''t generate line map files');
     Writeln('  xxmConv /install');
     Writeln('    registers a context-menu compile option on xxmp file type');
    end;
@@ -52,38 +54,43 @@ begin
     s:=ParamStr(i);
     if (s<>'') and (s[1]='/') then
      begin
-      if LowerCase(s)='/install' then RegisterCompileOption else
-      if LowerCase(s)='/wait' then wait:=true else
-      if LowerCase(s)='/rebuild' then rebuild:=true else
-      if LowerCase(s)='/nocompile' then docompile:=false else
-      if LowerCase(s)='/proto' then
-       begin
-        inc(i);
-        protodir:=IncludeTrailingPathDelimiter(ParamStr(i));
-       end
-      else
-      if LowerCase(s)='/src' then
-       begin
-        inc(i);
-        srcdir:=IncludeTrailingPathDelimiter(ParamStr(i));
-       end
-      else
       if LowerCase(Copy(s,1,3))='/x:' then
        begin
         inc(i);
         extra.Add(Copy(s,4,Length(s)-3)+'='+ParamStr(i));
        end
       else
-        Writeln('Unknown option "'+s+'"');
+       begin
+        s:=LowerCase(s);
+        if s='/install' then RegisterCompileOption else
+        if s='/wait' then wait:=true else
+        if s='/rebuild' then rebuild:=true else
+        if s='/nocompile' then docompile:=false else
+        if s='/nolinemaps' then dolinemaps:=false else
+        if s='/proto' then
+         begin
+          inc(i);
+          protodir:=IncludeTrailingPathDelimiter(ParamStr(i));
+         end
+        else
+        if s='/src' then
+         begin
+          inc(i);
+          srcdir:=IncludeTrailingPathDelimiter(ParamStr(i));
+         end
+        else
+          Writeln('Unknown option "'+s+'"');
+       end;
      end
     else
       try
         s:=ExpandFileName(s);
         Writeln('--- '+s);
-          with TXxmWebProject.Create(s,DoWrite,true) do
+        with TXxmWebProject.Create(s,DoWrite,true) do
           try
             if protodir<>'' then ProtoFolder:=protodir;
             if srcdir<>'' then SrcFolder:=srcdir;
+            LineMaps:=dolinemaps;
             CheckFiles(rebuild,extra);
             if docompile then
              begin

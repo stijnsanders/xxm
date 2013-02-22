@@ -17,7 +17,7 @@ type
     FSignature:AnsiString;
     FFilePath,FLoadPath:WideString;
     function GetProject: IXxmProject;
-    procedure LoadProject; virtual;
+    function LoadProject: IXxmProject; virtual;
     function GetModulePath:WideString; virtual;
     procedure SetSignature(const Value: AnsiString); virtual; abstract;
     function ProjectLoaded:boolean;
@@ -176,7 +176,7 @@ function TXxmProjectEntry.GetProject: IXxmProject;
 begin
   if FProject=nil then
    begin
-    LoadProject;
+    FProject:=LoadProject;
     if FProject=nil then
       raise EXxmProjectLoadFailed.Create(StringReplace(
         SXxmProjectLoadFailed,'__',FFilePath,[]));
@@ -184,7 +184,7 @@ begin
   Result:=FProject;
 end;
 
-procedure TXxmProjectEntry.LoadProject;
+function TXxmProjectEntry.LoadProject: IXxmProject;
 var
   lp:TXxmProjectLoadProc;
 begin
@@ -206,7 +206,7 @@ begin
   @lp:=GetProcAddress(FHandle,'XxmProjectLoad');
   if @lp=nil then
     raise EXxmProjectLoadFailed.Create('LoadProject: GetProcAddress failed: '+SysErrorMessage(GetLastError));
-  FProject:=lp(FName);//try?
+  Result:=lp(FName);//try?
 end;
 
 function TXxmProjectEntry.ProjectLoaded: boolean;
