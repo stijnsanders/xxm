@@ -17,7 +17,7 @@ const
   DelphiProjectExtension='.dpr';
   DelphiExtension='.pas';
   ProjectLogExtension='.log';
-  SignaturesExtension='.~db';
+  SignaturesFileName='xxmp.~db';
   LinesMapExtension='.~ln';
 
   ProtoProjectDpr='Web.dpr';

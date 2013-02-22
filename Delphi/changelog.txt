@@ -5,6 +5,7 @@ v1.1.8.?
 - xxmHttp: replaced first request parsing ReceiveLn with ReceiveBuf
 - added mongodb demo
 - xxmConv: extra proto template fields (used by 'skip the handler' builds)
+- signatures file "Web.xxmp.~db" changed to "src\xxmp.~db"
 
 v1.1.7.292
 - xxmString: TStringContext.SaveToFile respects AutoEncoding parameter

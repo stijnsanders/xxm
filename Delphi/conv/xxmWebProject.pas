@@ -157,7 +157,7 @@ begin
 
   Signatures:=TStringList.Create;
   try
-    Signatures.LoadFromFile(FRootFolder+DataFileName+SignaturesExtension);
+    Signatures.LoadFromFile(FSrcFolder+SignaturesFileName);
   except
     //silent
   end;
@@ -253,10 +253,10 @@ begin
 
     //save signatures
     try
-      fn:=FRootFolder+DataFileName+SignaturesExtension;
+      fn:=FSrcFolder+SignaturesFileName;
       SetFileAttributesA(PAnsiChar(fn),0);
       Signatures.SaveToFile(fn);
-      SetFileAttributesA(PAnsiChar(fn),FILE_ATTRIBUTE_HIDDEN or FILE_ATTRIBUTE_SYSTEM);
+      //SetFileAttributesA(PAnsiChar(fn),FILE_ATTRIBUTE_HIDDEN or FILE_ATTRIBUTE_SYSTEM);
     except
       //silent?
     end;
