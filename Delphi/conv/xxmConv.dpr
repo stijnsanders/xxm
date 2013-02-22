@@ -5,6 +5,7 @@ program xxmConv;
 uses
   SysUtils,
   ActiveX,
+  Classes,
   xxmConvert1 in 'xxmConvert1.pas',
   xxmUtilities in 'xxmUtilities.pas',
   xxmWebProject in 'xxmWebProject.pas',
@@ -19,6 +20,7 @@ var
   i:integer;
   s,protodir,srcdir:string;
   wait,rebuild,docompile:boolean;
+  extra:TStringList;
 begin
   CoInitialize(nil);
   WelcomeMessage;
@@ -27,6 +29,7 @@ begin
   docompile:=true;
   protodir:='';
   srcdir:='';
+  extra:=TStringList.Create;
 
   if (ParamCount=0) or ((ParamCount=1) and (ParamStr(1)='/?')) then
    begin
@@ -38,6 +41,7 @@ begin
     Writeln('    /nocompile  process files only, don''t compile');
     Writeln('    /proto      use an alternative unit templates folder');
     Writeln('    /src        use an alternative source output folder');
+    Writeln('    /x:XXX      define template value XXX');
     Writeln('  xxmConv /install');
     Writeln('    registers a context-menu compile option on xxmp file type');
    end;
@@ -46,34 +50,45 @@ begin
   while i<=ParamCount do
    begin
     s:=ParamStr(i);
-    if LowerCase(s)='/install' then RegisterCompileOption else
-    if LowerCase(s)='/wait' then wait:=true else
-    if LowerCase(s)='/rebuild' then rebuild:=true else
-    if LowerCase(s)='/nocompile' then docompile:=false else
-    if LowerCase(s)='/proto' then
+    if (s<>'') and (s[1]='/') then
      begin
-      inc(i);
-      protodir:=ParamStr(i);
-     end
-    else
-    if LowerCase(s)='/src' then
-     begin
-      inc(i);
-      srcdir:=ParamStr(i);
+      if LowerCase(s)='/install' then RegisterCompileOption else
+      if LowerCase(s)='/wait' then wait:=true else
+      if LowerCase(s)='/rebuild' then rebuild:=true else
+      if LowerCase(s)='/nocompile' then docompile:=false else
+      if LowerCase(s)='/proto' then
+       begin
+        inc(i);
+        protodir:=IncludeTrailingPathDelimiter(ParamStr(i));
+       end
+      else
+      if LowerCase(s)='/src' then
+       begin
+        inc(i);
+        srcdir:=IncludeTrailingPathDelimiter(ParamStr(i));
+       end
+      else
+      if LowerCase(Copy(s,1,3))='/x:' then
+       begin
+        inc(i);
+        extra.Add(Copy(s,4,Length(s)-3)+'='+ParamStr(i));
+       end
+      else
+        Writeln('Unknown option "'+s+'"');
      end
     else
       try
         s:=ExpandFileName(s);
         Writeln('--- '+s);
-        with TXxmWebProject.Create(s,DoWrite,true) do
+          with TXxmWebProject.Create(s,DoWrite,true) do
           try
             if protodir<>'' then ProtoFolder:=protodir;
             if srcdir<>'' then SrcFolder:=srcdir;
-            CheckFiles(rebuild);
+            CheckFiles(rebuild,extra);
             if docompile then
              begin
               Compile;
-              Update;
+              if not rebuild then Update;
              end;
           finally
             Free;

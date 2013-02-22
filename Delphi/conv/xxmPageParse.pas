@@ -33,9 +33,9 @@ type
     constructor Create;
     destructor Destroy; override;
     procedure MapLine(AdvancePasLines, XxmLineNr:integer);
-    procedure Save(FilePath:AnsiString);
+    procedure Save(const FilePath:AnsiString);
     procedure Clear;
-    procedure Load(FilePath:AnsiString);
+    procedure Load(const FilePath:AnsiString);
     function GetXxmLines(PasLineNr:integer):AnsiString;
   end;
 
@@ -120,7 +120,7 @@ begin
   inc(PasLineNr,AdvancePasLines);
 end;
 
-procedure TXxmLineNumbersMap.Save(FilePath: AnsiString);
+procedure TXxmLineNumbersMap.Save(const FilePath: AnsiString);
 var
   f:TFileStream;
 begin
@@ -134,7 +134,7 @@ begin
   SetFileAttributesA(PAnsiChar(FilePath),FILE_ATTRIBUTE_HIDDEN);// or FILE_ATTRIBUTE_SYSTEM);//?
 end;
 
-procedure TXxmLineNumbersMap.Load(FilePath: AnsiString);
+procedure TXxmLineNumbersMap.Load(const FilePath: AnsiString);
 var
   f:TFileStream;
   s:Int64;

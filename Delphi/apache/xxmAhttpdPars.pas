@@ -95,6 +95,7 @@ end;
 procedure TxxmAhttpdTable.SetName(Idx: integer; Value: WideString);
 begin
   //TODO: check this!
+  //TODO: make Complex not return TRequestSubValues but something that sets value as well
   HeaderCheckName(Value);
   Ptable_entries(FTable.a.elts)[Idx].key:=apr_pstrdup(FPool,PAnsiChar(AnsiString(Value)));
 end;

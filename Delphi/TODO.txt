@@ -30,15 +30,12 @@ Conv
 - CreateProcessWithLogin for compile?
 - web.xxmp signature in TWebProject (not TProjectCacheEntry)
 - dynamic list of supported exceptions, default pas,xxm,xxmi (act; proto, unit, res?)
-- support a resources file (zlib?) and auto update (using extension list?)
 
 ISAPI
 - authentication?
 - custom errors?
-- reg: <ModulePath> relative to something? (combinepath?)
 - compile-time user (runas)
 - IP(range) to show compile log to
-- check project cache cleanup code
 - separate set of proto's to render pure ISAPI extension dpr
 
 http
@@ -47,15 +44,13 @@ http
 
 local
 - CritSection in loader, not context (saves on resources)
-- fix directory traversal to fire on //page.xxm//
 - error/builderror response codes from registry (default 500?)
 - if xxl in same dir, reg and run
-- projects: smarter indexing?
 - store to cache file
 - history by xxm project
-- register project: worn overwriting registration
 
 grand rework
+- absorb SingleProject/DefaultProject into xxmPReg
 - transfer-encoding chunked? keep-connection?
 - Accept-Ranges: bytes on files ('Range' request header?)
 

@@ -4,6 +4,7 @@ v1.1.8.?
 - set project default parser values from Web.xxmp
 - xxmHttp: replaced first request parsing ReceiveLn with ReceiveBuf
 - added mongodb demo
+- xxmConv: extra proto template fields (used by 'skip the handler' builds)
 
 v1.1.7.292
 - xxmString: TStringContext.SaveToFile respects AutoEncoding parameter
@@ -98,7 +99,7 @@ v1.0.2.262
 - fixed issue mapping line number on last code-section
 - fixed file download issue
 - keep cleaner whitespace when changing Web.xxmp XML
-- a more performance HTMLEncode
+- a more performant HTMLEncode
 - fixed issue with xxmStream.pas' TxxmOutputStream
 - xxmHttp provides virtual methods for new project that inherit from it
 

@@ -50,14 +50,15 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-    procedure Parse(Data:AnsiString);
+    procedure Parse(const Data:AnsiString;ExtraFields:TStrings);
     function NextEOLs:integer;
     function GetNext:TXxmProtoParseTag;
-    procedure Output(Data:AnsiString);
+    function GetTagLabel:AnsiString;
+    procedure Output(const Data:AnsiString);
     procedure IterateBegin(Condition:boolean);
     procedure IterateNext(Condition:boolean);
     function Done:boolean;
-    procedure Save(FilePath:AnsiString);
+    procedure Save(const FilePath:AnsiString);
   end;
 
   EXxmParseUnknownTag=class(Exception);
@@ -121,7 +122,7 @@ begin
   inherited;
 end;
 
-procedure TXxmProtoParser.Parse(Data: AnsiString);
+procedure TXxmProtoParser.Parse(const Data:AnsiString;ExtraFields:TStrings);
 var
   a,i,j,l,nx:integer;
   b:boolean;
@@ -173,7 +174,8 @@ begin
         s:=Copy(FData,i+1,j-i-2);
         pt:=TXxmProtoParseTag(0);
         while (pt<>pt_Unknown) and (ProtoParseTag[pt]<>s) do inc(pt);
-        if pt=pt_Unknown then
+        if (pt=pt_Unknown)
+          and ((ExtraFields=nil) or (ExtraFields.IndexOfName(s)=-1)) then
           raise EXxmParseUnknownTag.Create(
             StringReplace(SXxmParseUnknownTag,'__',s,[]));
         AddPoint(a,i-a-1,nx,pt);
@@ -191,6 +193,18 @@ begin
   Output(Copy(FData,Points[FIndex].Index,Points[FIndex].Length));
   Result:=Points[FIndex].Tag;
   inc(FIndex);
+end;
+
+function TXxmProtoParser.GetTagLabel: AnsiString;
+var
+  i:integer;
+begin
+  //assert FIndex>0
+  if FIndex=PointsCount then Result:='' else
+   begin
+    if FIndex=0 then i:=2 else i:=Points[FIndex-1].Index+Points[FIndex-1].Length+2;
+    Result:=Copy(FData,i,Points[FIndex].Index-i-2);
+   end;
 end;
 
 procedure TXxmProtoParser.IterateBegin(Condition:boolean);
@@ -248,12 +262,12 @@ begin
   inc(PointsCount);
 end;
 
-procedure TXxmProtoParser.Output(Data: AnsiString);
+procedure TXxmProtoParser.Output(const Data: AnsiString);
 begin
-  FOutput.Write(Data[1],Length(Data));
+  if Data<>'' then FOutput.Write(Data[1],Length(Data));
 end;
 
-procedure TXxmProtoParser.Save(FilePath: AnsiString);
+procedure TXxmProtoParser.Save(const FilePath: AnsiString);
 begin
   FOutput.Position:=0;
   FOutput.SaveToFile(FilePath);

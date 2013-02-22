@@ -1,5 +1,10 @@
 <h3>xxm Demo Projects - 03 Data</h3>
 <p>This is a demo project showing how to set up a database connection in an xxm project.</p>
+<p style="background-color:gold;"><b>Important:</b> Some website-platforms use multiple processes to host a website.
+Since this demonstration project uses a single TObjectList object to store session data,
+the processes won't be able to access eachother's session data in this case, which results in unexpected behavior.<br />
+For advanced projects it is strongly advised to use a central session object store (e.g.: a database, COM or COM+ server),
+or to disable multiple processes (IIS: limit to 1 worker processes, Apache: single-process mode "-X")</p>
 <dl>
 <dt>Web.xxmp</dt>
 <dd>The project file, contains an internal list of the files of the project, and other data about the project.<br />
@@ -19,7 +24,7 @@ Please note <code>xxmData.pas</code> doesn't check for changes to <code>queries.
 <dd>This unit defines the TxxmSession class. This website uses a single database connection object for each session. This works good for a small number of visitors, but websites that expect a larger number of visitors should implement a connection pool.<br />
 Also note that the TxxmSession constructor checks if the QueryStore is already initialized.
 This can not be done when the project's DLL is started because this may happen in a different thread than the xxm project will run in.
-Within calls over the xxm project object, you're sure CoInitialize is called ans that you're on a thread that the website will run on.</dd>
+Within calls over the xxm project object, you're sure CoInitialize is called and that you're on a thread that the website will run on.</dd>
 <dt>demo.udl</dt>
 <dd>This data-link file is used to have a fixed ADO connection string: "<code>File Name=demo.udl</code>". It depends on the process' current directory,
 which is set by the TxxmSession's constructor to the project's path.<br />

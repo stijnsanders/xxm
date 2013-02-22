@@ -2,6 +2,11 @@
 <p>This is a demo project showing how to set up a database connection in an xxm project, using TMongoWire.</p>
 <p>Download MongoDB from <a href="http://www.mongodb.org/downloads">www.mongodb.org</a>.</p>
 <p>Download bsonDoc.pas and mongoWire.pas from <a href="https://github.com/stijnsanders/TMongoWire">github.com/stijnsanders/TMongoWire</a>.</p>
+<p style="background-color:gold;"><b>Important:</b> Some website-platforms use multiple processes to host a website.
+Since this demonstration project uses a single TObjectList object to store session data,
+the processes won't be able to access eachother's session data in this case, which results in unexpected behavior.<br />
+For advanced projects it is strongly advised to use a central session object store (e.g.: a database, COM or COM+ server),
+or to disable multiple processes (IIS: limit to 1 worker processes, Apache: single-process mode "-X")</p>
 <dl>
 <dt>Web.xxmp</dt>
 <dd>The project file, contains an internal list of the files of the project, and other data about the project.<br />

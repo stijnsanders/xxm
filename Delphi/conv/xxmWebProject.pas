@@ -33,8 +33,8 @@ type
       OnOutput:TXxmWebProjectOutput; CanCreate:boolean);
     destructor Destroy; override;
 
-    function CheckFiles(Rebuild:boolean):boolean;
-    function GenerateProjectFiles(Rebuild: boolean):boolean;
+    function CheckFiles(Rebuild:boolean;ExtraFields:TStrings):boolean;
+    function GenerateProjectFiles(Rebuild:boolean;ExtraFields:TStrings):boolean;
     function ResolveErrorLines(const BuildOutput:AnsiString):AnsiString;
 
     function Compile:boolean;
@@ -222,7 +222,7 @@ begin
    end;
 
   //TODO:
-
+  //ExtraProtoFields (and no ExtraFields param CheckFiles,GenerateProjectFiles
   //Settings/@AutoAddFiles
   //Settings/@AutoRemoveFiles
 
@@ -264,7 +264,7 @@ begin
    end;
 end;
 
-function TXxmWebProject.CheckFiles(Rebuild:boolean): boolean;
+function TXxmWebProject.CheckFiles(Rebuild:boolean;ExtraFields:TStrings): boolean;
 var
   p:TXxmProtoParser;
   q:TXxmPageParser;
@@ -357,7 +357,7 @@ begin
             s:=FRootFolder+fn+XxmProtoExtension;
             if not(FileExists(s)) then s:=FProtoPath+uext+DelphiExtension;
             if not(FileExists(s)) then s:=FProtoPathDef+uext+DelphiExtension;
-            p.Parse(ReadString(s));
+            p.Parse(ReadString(s),ExtraFields);
             q.Parse(ReadString(FRootFolder+fn));
             m.Clear;
             repeat
@@ -373,6 +373,8 @@ begin
                 ptFragmentHeader:p.Output(q.AllSections(psHeader,m));
                 ptFragmentBody:p.Output(q.BuildBody(m));
                 ptFragmentFooter:p.Output(q.AllSections(psFooter,m));
+                pt_Unknown:
+                  if not p.Done then p.Output(ExtraFields.Values[p.GetTagLabel]);
                 //else raise?
               end;
             until p.Done;
@@ -466,8 +468,7 @@ begin
       xl:=nil;
     end;
 
-    //
-    GenerateProjectFiles(Rebuild);
+    GenerateProjectFiles(Rebuild,ExtraFields);
 
   finally
     p.Free;
@@ -477,7 +478,8 @@ begin
 
 end;
 
-function TXxmWebProject.GenerateProjectFiles(Rebuild:boolean):boolean;
+function TXxmWebProject.GenerateProjectFiles(Rebuild:boolean;
+  ExtraFields:TStrings):boolean;
 var
   p:TXxmProtoParser;
   x:IXMLDOMElement;
@@ -502,7 +504,7 @@ begin
       BuildOutput(FProjectName+DelphiProjectExtension+#13#10);
       s:=FProtoPath+ProtoProjectDpr;
       if not(FileExists(s)) then s:=FProtoPathDef+ProtoProjectDpr;
-      p.Parse(ReadString(s));
+      p.Parse(ReadString(s),ExtraFields);
       repeat
         case p.GetNext of
           ptProjectName:p.Output(FProjectName);
@@ -533,7 +535,8 @@ begin
           ptProjectHeader:  p.Output(NodesText(RootNode,'Header'));
           ptProjectBody:    p.Output(NodesText(RootNode,'Body'));
           ptProjectSwitches:p.Output(NodesText(RootNode,'Switches'));
-          //else raise?
+          pt_Unknown:
+            if not p.Done then p.Output(ExtraFields.Values[p.GetTagLabel]);
         end;
       until p.Done;
       ForceDirectories(FSrcFolder+'dcu');//TODO: setting "create dcu folder"?
@@ -545,11 +548,14 @@ begin
         BuildOutput(ProtoProjectPas+#13#10);
         s:=FProtoPath+ProtoProjectPas;
         if not(FileExists(s)) then s:=FProtoPathDef+ProtoProjectPas;
-        p.Parse(ReadString(s));
+        p.Parse(ReadString(s),ExtraFields);
         repeat
           case p.GetNext of
             ptProjectName:p.Output(FProjectName);
             ptProtoFile:p.Output(FProtoPath+ProtoProjectPas);
+            pt_Unknown:
+              if not p.Done then p.Output(ExtraFields.Values[p.GetTagLabel]);
+            //else raise?
           end;
         until p.Done;
         p.Save(fn2);

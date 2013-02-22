@@ -63,10 +63,10 @@ begin
           //CanCreate would disturb standalone xxl
           WebProject:=TXxmWebProject.Create(fn,DoBuildOutput,false);
           try
-            b:=WebProject.CheckFiles(false);
+            b:=WebProject.CheckFiles(false,nil);
             wsig:=GetFileSignature(WebProject.RootFolder+WebProject.ProjectFile);
             if not(b) and (Entry.Signature<>wsig) then
-              b:=WebProject.GenerateProjectFiles(false);
+              b:=WebProject.GenerateProjectFiles(false,nil);
             if b or not(FileExists(fn)) then
              begin
               Entry.Release;

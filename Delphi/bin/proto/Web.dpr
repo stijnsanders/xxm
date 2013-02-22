@@ -10,7 +10,7 @@ library [[ProjectName]];
 
   Prototype-file used:
   "[[ProtoFile]]"
-  $Rev: 125 $ $Date: 2011-04-30 01:14:06 +0200 (za, 30 apr 2011) $
+  $Rev: 273 $ $Date: 2013-02-22 22:34:20 +0100 (vr, 22 feb 2013) $
 }
 
 [[ProjectSwitches]]
@@ -24,5 +24,6 @@ uses
 [[ProjectHeader]]
 exports
 	XxmProjectLoad;
+begin
 [[ProjectBody]]
 end.
