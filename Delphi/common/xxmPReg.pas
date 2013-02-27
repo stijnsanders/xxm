@@ -176,10 +176,19 @@ function TXxmProjectEntry.GetProject: IXxmProject;
 begin
   if FProject=nil then
    begin
-    FProject:=LoadProject;
-    if FProject=nil then
-      raise EXxmProjectLoadFailed.Create(StringReplace(
-        SXxmProjectLoadFailed,'__',FFilePath,[]));
+    Lock;
+    try
+      //check again in case other thread was locking also
+      if FProject=nil then
+       begin
+        FProject:=LoadProject;
+        if FProject=nil then
+          raise EXxmProjectLoadFailed.Create(StringReplace(
+            SXxmProjectLoadFailed,'__',FFilePath,[]));
+       end;
+    finally
+      Unlock;
+    end;
    end;
   Result:=FProject;
 end;

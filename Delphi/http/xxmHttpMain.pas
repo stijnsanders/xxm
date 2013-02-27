@@ -76,6 +76,7 @@ type
     rpSilent,
     rpLoadCopy,
     rpStartURL,
+    rpThreads,
     //add new here
     rp_Unknown);
 
@@ -107,21 +108,23 @@ const
     'silent',
     'loadcopy',
     'starturl',
+    'threads',
     //add new here (lowercase)
     '');
   WM_QUIT = $0012;//from Messages
 var
   Server:TxxmHttpServer;
-  i,j,Port:integer;
+  i,j,Port,Threads:integer;
   Silent:boolean;
   StartURL,s,t:AnsiString;
   Msg:TMsg;
   par:TXxmHttpRunParameters;
 begin
-  //defualt values
+  //default values
   Port:=80;
   Silent:=false;
   StartURL:='';
+  Threads:=64;
 
   //process command line parameters
   for i:=1 to ParamCount do
@@ -141,6 +144,8 @@ begin
         GlobalAllowLoadCopy:=Copy(s,j+1,Length(s)-j)<>'0';
       rpStartURL:
         StartURL:=Copy(s,j+1,Length(s)-j);
+      rpThreads:
+        Threads:=StrToInt(Copy(s,j+1,Length(s)-j));
       //add new here
       rp_Unknown:
         raise Exception.Create('Unknown setting: '+t);
@@ -159,6 +164,7 @@ begin
   Server:=TxxmHttpServer.Create(nil);
   try
     Server.LocalPort:=IntToStr(Port);
+    Server.ServerSocketThread.ThreadCacheSize:=Threads;
     //TODO: listen on multiple ports
     Server.Open;
 
@@ -281,12 +287,15 @@ begin
     SetLength(x,k);
     l:=FSocket.ReceiveBuf(x[1],k);
     if l=-1 then RaiseLastOSError;
+    i:=GetTickCount;
     while l=0 do
      begin
       //TODO: keep all 'keep-alive' connections on a single listener thread
       Sleep(25);
       l:=FSocket.ReceiveBuf(x[1],k);
       if l=-1 then RaiseLastOSError;
+      if (l=0) and (cardinal(GetTickCount-cardinal(i))>300000) then
+        raise EXxmAutoBuildFailed.Create('Keep-Alive timeout elapsed');
      end;
     i:=1;
     while (i<=l) and (x[i]>' ') do inc(i);

@@ -3,10 +3,12 @@ v1.1.8.?
 - parser values: $l replaced by source line number
 - set project default parser values from Web.xxmp
 - xxmHttp: replaced first request parsing ReceiveLn with ReceiveBuf
+- xxmHttp: 'threads' option to set thread pool size
 - added mongodb demo
 - xxmConv: extra proto template fields (used by 'skip the handler' builds)
 - xxmConv: /nolinemaps option
 - signatures file "Web.xxmp.~db" changed to "src\xxmp.~db"
+- fixed issue with access denied on loadcopy under load
 
 v1.1.7.292
 - xxmString: TStringContext.SaveToFile respects AutoEncoding parameter
