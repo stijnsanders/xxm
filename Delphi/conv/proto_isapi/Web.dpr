@@ -1,8 +1,8 @@
-program [[ProjectName]];
+library [[ProjectName]];
 
 {
   xxm 'skip the handler'
-  HTTP dedicated exe from xxm project
+  Dedicated ISAPI extension dll from xxm project
   
   Usage:
     xxmConv /proto <path to these files> /x:XxmSourcePath <path to xxm source> /src <path to new folder for generated code> <path to xxm project>
@@ -17,16 +17,19 @@ program [[ProjectName]];
 [[ProjectSwitches]]
 uses
   SysUtils,
-  xxmHttpMain in '[[XxmSourcePath]]\http\xxmHttpMain.pas',
+  Classes,
+  isapi4 in '[[XxmSourcePath]]\isapi\isapi4.pas',
   xxm in '[[XxmSourcePath]]\bin\public\xxm.pas',
+  xxmIsapiMain in '[[XxmSourcePath]]\isapi\xxmIsapiMain.pas',
+  xxmPReg in '[[XxmSourcePath]]\common\xxmPReg.pas',
+  xxmPRegXml in '[[XxmSourcePath]]\conv\xxmPRegXml.pas', //ATTENTION: rigged for single project
   xxmParams in '[[XxmSourcePath]]\common\xxmParams.pas',
   xxmParUtils in '[[XxmSourcePath]]\common\xxmParUtils.pas',
   xxmHeaders in '[[XxmSourcePath]]\bin\public\xxmHeaders.pas',
-  xxmPReg in '[[XxmSourcePath]]\common\xxmPReg.pas',
-  xxmPRegXml in '[[XxmSourcePath]]\conv\xxmPRegXml.pas', //ATTENTION: rigged for single project
+  MSXML2_TLB in '[[XxmSourcePath]]\common\MSXML2_TLB.pas',
   xxmCommonUtils in '[[XxmSourcePath]]\common\xxmCommonUtils.pas',
   xxmContext in '[[XxmSourcePath]]\common\xxmContext.pas',
-  xxmReadHandler in '[[XxmSourcePath]]\http\xxmReadHandler.pas',
+  xxmIsapiStream in '[[XxmSourcePath]]\isapi\xxmIsapiStream.pas',
   [[@Include]][[IncludeUnit]] in '[[ProjectPath]][[IncludePath]][[IncludeUnit]].pas',
   [[@]][[@Fragment]][[FragmentUnit]] in '[[FragmentPath]][[FragmentUnit]].pas', {[[FragmentAddress]]}
   [[@]][[UsesClause]]
@@ -34,8 +37,12 @@ uses
 
 {$R *.RES}
 
+exports
+  GetExtensionVersion,
+  HttpExtensionProc,
+  TerminateExtension;
+
 [[ProjectHeader]]
 begin
-  XxmRunServer;
   [[ProjectBody]]
 end.

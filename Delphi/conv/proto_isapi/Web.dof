@@ -1,0 +1,11 @@
+[Directories]
+OutputDir=..\
+SearchPath=..\..\bin\public
+UnitOutputDir=dcu
+[Parameters]
+RunParams=/Processid:{658F8418-31B2-4572-88AE-A3535BADD0A8}
+HostApplication=C:\WINDOWS\system32\dllhost.exe
+[Version Info]
+IncludeVerInfo=1
+AutoIncBuild=0
+MajorVer=1

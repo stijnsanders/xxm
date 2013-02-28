@@ -1,5 +1,11 @@
 unit xxmPRegXml;
 
+{
+
+ATTENTION: this is an alternative xxmPRegXml unit to serve only a single xxm project.
+
+}
+
 interface
 
 uses Windows, SysUtils, xxm, xxmPReg;
@@ -19,21 +25,21 @@ type
     destructor Destroy; override;
   end;
 
-  TXxmProjectCache=class(TObject)
+  TXxmProjectCacheXml=class(TXxmProjectCache)
   private
     FProject:TXxmProjectCacheEntry;
   public
     constructor Create;
     destructor Destroy; override;
+    function ProjectFromURI(Context:IXxmContext;const URI:AnsiString;
+      var i:integer; var ProjectName,FragmentName:WideString):boolean;
     function GetProject(const Name:WideString):TXxmProjectCacheEntry;
-    function SingleProject: AnsiString;
-    function DefaultProject: AnsiString;
   end;
 
   EXxmFileTypeAccessDenied=class(Exception);
 
 var
-  XxmProjectCache:TXxmProjectCache;
+  XxmProjectCache:TXxmProjectCacheXml;
   GlobalAllowLoadCopy:boolean;
 
 implementation
@@ -84,9 +90,9 @@ begin
   raise Exception.Create('SetSignature: not implemented');
 end;
 
-{ TXxmProjectCache }
+{ TXxmProjectCacheXml }
 
-constructor TXxmProjectCache.Create;
+constructor TXxmProjectCacheXml.Create;
 var
   i,j:integer;
   s:string;
@@ -101,26 +107,30 @@ begin
   //TODO: GlobalAllowLoadCopy?
 end;
 
-destructor TXxmProjectCache.Destroy;
+destructor TXxmProjectCacheXml.Destroy;
 begin
   FProject.Free;
   inherited;
 end;
 
-function TXxmProjectCache.GetProject(
+function TXxmProjectCacheXml.GetProject(
   const Name: WideString): TXxmProjectCacheEntry;
 begin
   Result:=FProject;
 end;
 
-function TXxmProjectCache.SingleProject: AnsiString;
+function TXxmProjectCacheXml.ProjectFromURI(Context: IXxmContext;
+  const URI: AnsiString; var i: integer; var ProjectName,
+  FragmentName: WideString): boolean;
+var
+  j,l:integer;
 begin
-  Result:=FProject.Name;
-end;
-
-function TXxmProjectCache.DefaultProject: AnsiString;
-begin
-  Result:=FProject.Name;
+  l:=Length(URI);
+  Result:=false;
+  j:=i;
+  while (i<=l) and not(char(URI[i]) in ['?','&','$','#']) do inc(i);
+  FragmentName:=Copy(URI,j,i-j);
+  if (i<=l) then inc(i);
 end;
 
 initialization
