@@ -38,7 +38,7 @@ end;
 procedure TxxmService.ServiceStart(Sender: TService;
   var Started: Boolean);
 var
-  p:integer;
+  p,t:integer;
   r:TRegistry;
   s:string;
 const
@@ -47,10 +47,12 @@ const
     'Silent',
     'LoadCopy',
     'StartURL',
+    'Threads',
     //add new here
     '');
 begin
   p:=80;//default
+  t:=$100;//default;
   GlobalAllowLoadCopy:=true;//default
   r:=TRegistry.Create;
   try
@@ -60,10 +62,13 @@ begin
     if r.ValueExists(s) then p:=r.ReadInteger(s) else r.WriteInteger(s,p);
     s:=ParameterKey[rpLoadCopy];
     if r.ValueExists(s) then GlobalAllowLoadCopy:=r.ReadBool(s) else r.WriteBool(s,GlobalAllowLoadCopy);
+    s:=ParameterKey[rpThreads];
+    if r.ValueExists(s) then t:=r.ReadInteger(s) else r.WriteInteger(s,t);
   finally
     r.Free;
   end;
   FServer:=TXxmHTTPServer.Create(nil);
+  FServer.ServerSocketThread.ThreadCacheSize:=t;
   FServer.LocalPort:=IntToStr(p);
   FServer.Open;
 end;

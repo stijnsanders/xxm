@@ -101,6 +101,9 @@ var
 threadvar
   ContentBuffer:TMemoryStream;
 
+type
+  EXxmConnectionLost=class(Exception);
+
 procedure XxmRunServer;
 const
   ParameterKey:array[TXxmHttpRunParameters] of AnsiString=(
@@ -282,38 +285,14 @@ var
   si:int64;
 begin
   try
-    //command line
+    //command line and headers
+    y:='';
     k:=$10000;
     SetLength(x,k);
     l:=FSocket.ReceiveBuf(x[1],k);
-    if l=-1 then RaiseLastOSError;
-    i:=GetTickCount;
-    while l=0 do
-     begin
-      //TODO: keep all 'keep-alive' connections on a single listener thread
-      Sleep(25);
-      l:=FSocket.ReceiveBuf(x[1],k);
-      if l=-1 then RaiseLastOSError;
-      if (l=0) and (cardinal(GetTickCount-cardinal(i))>300000) then
-        raise EXxmAutoBuildFailed.Create('Keep-Alive timeout elapsed');
-     end;
-    i:=1;
-    while (i<=l) and (x[i]>' ') do inc(i);
-    FVerb:=UpperCase(Copy(x,1,i-1));
-    inc(i);
-    j:=i;
-    while (j<=l) and (x[j]>' ') do inc(j);
-    FURI:=Copy(x,i,j-i);
-    inc(j);
-    i:=j;
-    while (j<=l) and (x[j]<>#13) and (x[j]<>#10) do inc(j);
-    FHTTPVersion:=Copy(x,i,j-i);
-    inc(j);
-    if (j<=l) and (x[j]=#10) then inc(j);
-
-    //headers
-    y:='';
+    if l<=0 then raise EXxmConnectionLost.Create('Connection Lost');
     m:=0;
+    j:=1;
     repeat
       i:=j;
       while (j<=l) and (x[j]<>#13) and (x[j]<>#10) do
@@ -325,26 +304,39 @@ begin
             inc(k,$10000);
             SetLength(x,k);
            end;
-          l:=l+FSocket.ReceiveBuf(x[l+1],k-l);
-          if l=j-1 then RaiseLastOSError;
-          if (l=j) then
-           begin
-            Sleep(25);//odd, data takes some time to get in
-            dec(j);
-           end;
+          l:=l+FSocket.ReceiveBuf(x[l+1],k-l);//TODO: timeout
+          if l<=j then raise EXxmConnectionLost.Create('Connection Lost');
          end;
         inc(j);
        end;
-      y:=y+Copy(x,i,j-i)+#13#10;
-      if i=j then m:=0 else
+      if m=0 then
        begin
+        //i:=1;
+        while (i<=l) and (x[i]>' ') do inc(i);
+        FVerb:=UpperCase(Copy(x,1,i-1));
+        inc(i);
+        j:=i;
+        while (j<=l) and (x[j]>' ') do inc(j);
+        FURI:=Copy(x,i,j-i);
+        inc(j);
+        i:=j;
+        while (j<=l) and (x[j]<>#13) and (x[j]<>#10) do inc(j);
+        FHTTPVersion:=Copy(x,i,j-i);
         inc(m);
-        if m=HTTPMaxHeaderLines then
-          raise EXxmMaximumHeaderLines.Create(SXxmMaximumHeaderLines);
+       end
+      else
+       begin
+        y:=y+Copy(x,i,j-i)+#13#10;
+        if i=j then m:=-1 else
+         begin
+          inc(m);
+          if m=HTTPMaxHeaderLines then
+            raise EXxmMaximumHeaderLines.Create(SXxmMaximumHeaderLines);
+         end;
        end;
       inc(j);
       if (j<=l) and (x[j]=#10) then inc(j);
-    until m=0;
+    until m=-1;
     x:=Copy(x,j,l-j+1);
     FReqHeaders:=TRequestHeaders.Create(y);
     (FReqHeaders as IUnknown)._AddRef;
@@ -426,16 +418,18 @@ begin
     BuildPage;
 
   except
-    on EXxmPageRedirected do
-      Flush;
-    on EXxmAutoBuildFailed do
-      ;//assert output done
+    on EXxmPageRedirected do Flush;
+    on EXxmAutoBuildFailed do ;//assert output done
+    on EXxmConnectionLost do ;
     on e:Exception do
       if not HandleException(e) then
        begin
         ForceStatus(500,'Internal Server Error');
         try
-          if FPostData=nil then x:='none' else x:=IntToStr(FPostData.Size)+' bytes';
+          if FPostData=nil then
+            x:='none'
+          else
+            x:=IntToStr(FPostData.Size)+' bytes';
         except
           x:='unknown';
         end;
@@ -671,7 +665,6 @@ begin
   //'Authorization' ?
   //'If-Modified-Since' ? 304
   //'Connection: Keep-alive' ? with sent Content-Length
-
   FResHeaders['Server']:=HttpSelfVersion; //X-Powered-By?
   FURL:=FReqHeaders['Host'];
   if FURL='' then

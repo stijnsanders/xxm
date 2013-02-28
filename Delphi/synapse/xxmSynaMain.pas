@@ -329,58 +329,54 @@ var
   si:int64;
 begin
   try
-    //command line
-    xx:=FSocket.RecvPacket(DefaultRecvTimeout);
-    //assert first block contains first request line
-    l:=Length(xx);
-    xi:=1;
-    while (xi<=l) and (xx[xi]<>#13) and (xx[xi]<>#10) do inc(xi);
-    j:=xi-1;
-    while (j>0) and (xx[j]<>' ') do dec(j);
-    FHTTPVersion:=Copy(xx,j+1,xi-j-1);
-    dec(j);
-    i:=0;
-    while (i<xi-1) and (xx[i]<>' ') do inc(i);
-    FVerb:=UpperCase(Copy(xx,1,i-1));
-    inc(i);
-
-    FURI:=Copy(xx,i,j-i+1);
-    if (xi<l) and (xx[xi]=#13) and (xx[xi+1]=#10) then inc(xi);
-    inc(xi);
-
-    //headers
-    x:='';
+    //command line and headers
+    //command line and headers
+    x:=FSocket.RecvPacket(DefaultRecvTimeout);
+    y:='';
+    l:=Length(x);
     j:=0;
+    xi:=1;
     repeat
-    
-     i:=xi;
-     while (xi<=l) and (xx[xi]<>#13) and (xx[xi]<>#10) do
-      begin
-       if xi=l then
-        begin
-         xx:=xx+FSocket.RecvPacket(DefaultRecvTimeout);
-         l:=Length(x);
-        end;
-       inc(xi);
-      end;
-     y:=Copy(xx,i,xi-i);
-     if (xi<l) and (xx[xi]=#13) and (xx[xi+1]=#10) then inc(xi);
-     if (y<>'') and (xi=l) then
-      begin
-       xx:=xx+FSocket.RecvPacket(DefaultRecvTimeout);
-       l:=Length(x);
-      end;
-     inc(xi);
-
-     if y<>'' then
-      begin
-       inc(j);
-       if j=HTTPMaxHeaderLines then
-         raise EXxmMaximumHeaderLines.Create(SXxmMaximumHeaderLines);
-       x:=x+y+#13#10;
-      end;
-    until y='';
-    FReqHeaders:=TRequestHeaders.Create(x);
+      i:=xi;
+      while (xi<=l) and (x[xi]<>#13) and (x[xi]<>#10) do
+       begin
+        if xi=l then
+         begin
+          x:=x+FSocket.RecvPacket(DefaultRecvTimeout);
+          l:=Length(x);
+         end;
+        inc(xi);
+       end;
+      if j=0 then
+       begin
+        //i:=1;
+        while (i<=l) and (x[i]>' ') do inc(i);
+        FVerb:=UpperCase(Copy(x,1,i-1));
+        inc(i);
+        xi:=i;
+        while (xi<=l) and (x[xi]>' ') do inc(xi);
+        FURI:=Copy(x,i,xi-i);
+        inc(xi);
+        i:=xi;
+        while (xi<=l) and (x[xi]<>#13) and (x[xi]<>#10) do inc(xi);
+        FHTTPVersion:=Copy(x,i,xi-i);
+        inc(j);
+       end
+      else
+       begin
+        y:=y+Copy(x,i,xi-i)+#13#10;
+        if i=xi then j:=-1 else
+         begin
+          inc(j);
+          if j=HTTPMaxHeaderLines then
+            raise EXxmMaximumHeaderLines.Create(SXxmMaximumHeaderLines);
+         end;
+       end;
+      inc(xi);
+      if (xi<=l) and (x[xi]=#10) then inc(xi);
+    until j=-1;
+    x:=Copy(x,xi,l-xi+1);
+    FReqHeaders:=TRequestHeaders.Create(y);
     (FReqHeaders as IUnknown)._AddRef;
 
     ProcessRequestHeaders;

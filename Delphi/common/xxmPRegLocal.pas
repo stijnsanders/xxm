@@ -115,7 +115,7 @@ begin
   FUserName:='';
 end;
 
-procedure TXxmProjectCacheEntry.LoadProject;
+function TXxmProjectCacheEntry.LoadProject: IXxmProject;
 begin
   if not ProjectLoaded and ((FFilePath='') or not(FileExists(FFilePath))) then
     GetRegisteredPath;//refresh

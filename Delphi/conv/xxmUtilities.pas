@@ -4,9 +4,10 @@ interface
 
 uses Windows, SysUtils, Classes;
 
-procedure ListFilesInPath(FileList:TStringList;Path:AnsiString);
-function GetInternalIdentifier(FileName:AnsiString;var cPathIndex,fExtIndex,fPathIndex:integer):AnsiString;
-function GetFileSize(Path:AnsiString):integer;
+procedure ListFilesInPath(FileList:TStringList;const Path:AnsiString);
+function GetInternalIdentifier(const FileName:AnsiString;
+  var cPathIndex,fExtIndex,fPathIndex:integer):AnsiString;
+function GetFileSize(const Path:AnsiString):integer;
 function GetSelfPath:AnsiString;
 
 const
@@ -48,7 +49,7 @@ implementation
 
 uses Registry;
 
-procedure ListFilesInPath(FileList:TStringList;Path:AnsiString);
+procedure ListFilesInPath(FileList:TStringList;const Path:AnsiString);
 var
   Dirs:TStringList;
   fh:THandle;
@@ -171,7 +172,7 @@ begin
    end;
 end;
 
-function GetFileSize(Path:AnsiString):integer;
+function GetFileSize(const Path:AnsiString):integer;
 var
   fh:THandle;
   fd:TWin32FindDataA;
@@ -197,7 +198,8 @@ begin
   if Copy(Result,1,4)='\\?\' then Result:=Copy(Result,5,Length(Result)-4);
 end;
 
-function GetInternalIdentifier(FileName:AnsiString;var cPathIndex,fExtIndex,fPathIndex:integer):AnsiString;
+function GetInternalIdentifier(const FileName:AnsiString;
+  var cPathIndex,fExtIndex,fPathIndex:integer):AnsiString;
 var
   i:integer;
 begin
