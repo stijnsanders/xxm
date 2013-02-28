@@ -113,7 +113,7 @@ function TXxmLocalHandler.Start(szUrl: PWideChar;
 begin
   FContext:=TXxmLocalContext.Create(szUrl,OIProtSink,OIBindInfo);
   FContextI:=FContext;//use refcount to clean with later
-  if PageLoaderPool=nil then PageLoaderPool:=TXxmPageLoaderPool.Create;
+  if PageLoaderPool=nil then PageLoaderPool:=TXxmPageLoaderPool.Create($10);
   SetThreadName('xxmLocalHandler:'+szUrl);
   PageLoaderPool.Queue(FContext);
   Result:=HResult(E_PENDING);

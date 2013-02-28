@@ -3,7 +3,7 @@ v1.1.8.?
 - parser values: $l replaced by source line number, $v by current value, $d by default value
 - set project default parser values from Web.xxmp
 - xxmHttp: replaced first request parsing ReceiveLn with ReceiveBuf
-- xxmHttp: 'threads' option to set thread pool size
+- xxmHttp,xxmHost,xxmHSys: 'threads' option to set thread pool size
 - added mongodb demo
 - xxmConv: extra proto template fields (used by 'skip the handler' builds)
 - xxmConv: /nolinemaps option

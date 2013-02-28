@@ -234,7 +234,7 @@ begin
      end;
 
     FResHeaders['X-Powered-By']:=SelfVersion;
-    if XxmProjectCache=nil then XxmProjectCache:=TXxmProjectCache.Create;
+    if XxmProjectCache=nil then XxmProjectCache:=TXxmProjectCacheXml.Create;
 
     //project name
     i:=1;
@@ -242,29 +242,9 @@ begin
       if x[i]<>'/' then Redirect('/'+Copy(x,i,Length(x)-i+1),true);
     //redirect raises EXxmPageRedirected
     inc(i);
-    if XxmProjectCache.SingleProject='' then
-     begin
-      while (i<=Length(x)) and not(char(x[i]) in ['/','?','&','$','#']) do inc(i);
-      FProjectName:=Copy(x,2,i-2);
-      if FProjectName='' then
-       begin
-        //FProjectName:=XxmProjectCache.DefaultProject;
-        if (i<=Length(x)) and (x[i]='/') then y:='' else y:='/';
-        Redirect('/'+XxmProjectCache.DefaultProject+y+Copy(x,i,Length(x)-i+1),true)
-        //redirect raises EXxmPageRedirected
-       end;
-      FPageClass:='['+FProjectName+']';
+    if XxmProjectCache.ProjectFromURI(Self,x,i,FProjectName,FFragmentName) then
       FRedirectPrefix:=FRedirectPrefix+'/'+FProjectName;
-      if i>Length(x) then Redirect('/',true) else
-        if x[i]<>'/' then Redirect('/'+Copy(x,i,Length(x)-i+1),true);
-      //redirect raises EXxmPageRedirected
-      inc(i);
-     end
-    else
-     begin
-      FProjectName:=XxmProjectCache.SingleProject;
-      FPageClass:='[SingleProject]';
-     end;
+    FPageClass:='['+FProjectName+']';
 
     //fragment name
     j:=i;
@@ -274,10 +254,8 @@ begin
     BuildPage;
 
   except
-    on EXxmPageRedirected do
-      Flush;
-    on EXxmAutoBuildFailed do ;
-     //assert AutoBuild handler already displays message
+    on EXxmPageRedirected do Flush;
+    on EXxmAutoBuildFailed do ; //assert AutoBuild handler did output
     on e:Exception do
       if not HandleException(e) then
        begin

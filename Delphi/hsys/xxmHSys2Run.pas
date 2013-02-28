@@ -19,6 +19,7 @@ type
     hpPort,
     hpHostMask,
     hpSecurePort,
+    hpThreads,
     //add new here above
     hp_Unknown);
 
@@ -27,13 +28,14 @@ const
     'port',
     'host',
     'secureport',
+    'threads',
     //add new here above
     ''
   );
 
 procedure XxmRunHSys(HandleMessagesProc:TXxmHandleMessagesProc);
 var
-  i,j,l,Port,SecurePort:integer;
+  i,j,l,Port,SecurePort,Threads:integer;
   s,t,Host:WideString;
   hp:THSysParameters;
   hrs:THTTP_SERVER_SESSION_ID;
@@ -48,11 +50,8 @@ const
   $ab ,$a6 ,$87 ,$40 ,$1b ,$d8 ,$9c ,$1d ,$f6 ,$d2 );
 
 begin
-  QuitApp:=false;
-
   CoInitialize(nil);
-  XxmProjectCache:=TXxmProjectCache.Create;
-  PageLoaderPool:=TXxmPageLoaderPool.Create;
+  QuitApp:=false;
 
   HttpCheck(HttpInitialize(HTTPAPI_VERSION_2_0,HTTP_INITIALIZE_SERVER,nil));
   HttpCheck(HttpCreateServerSession(HTTPAPI_VERSION_2_0,hrs,0));
@@ -62,6 +61,7 @@ begin
   Port:=80;
   SecurePort:=0;//443;
   Host:='+';
+  Threads:=$100;
 
   for i:=1 to ParamCount do
    begin
@@ -83,6 +83,8 @@ begin
           Host:=s;
         hpSecurePort: //see also http://msdn.microsoft.com/en-us/library/ms733791.aspx
           if s='' then SecurePort:=443 else SecurePort:=StrToInt(s);
+        hpThreads:
+          Threads:=StrToInt(s);
 
         //add new here above
         else raise Exception.Create('Unknown parameter "'+t+'"');
@@ -105,6 +107,9 @@ begin
      end;
    end;
   //TODO: check any loaded? load from xxm.xml?
+
+  XxmProjectCache:=TXxmProjectCacheXml.Create;
+  PageLoaderPool:=TXxmPageLoaderPool.Create(Threads);
 
   hrq.Flags:=HTTP_PROPERTY_FLAG_PRESENT;
   HttpCheck(HttpCreateRequestQueue(HTTPAPI_VERSION_2_0,nil,nil,0,hrq.RequestQueueHandle));

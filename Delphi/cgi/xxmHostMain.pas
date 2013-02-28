@@ -29,7 +29,7 @@ type
     FReqHeaders:TRequestHeaders;
     FResHeaders:TResponseHeaders;
     FConnected:boolean;
-    FURI,FURLPrefix,FRedirectPrefix,FSessionID:AnsiString;
+    FURI,FRedirectPrefix,FSessionID:AnsiString;
     FCookieParsed: boolean;
     FCookie: AnsiString;
     FCookieIdx: TParamIndexes;
@@ -171,7 +171,7 @@ begin
     while (i<=l) and (x[i]<>'/') do inc(i);
     y:=FReqHeaders['Host'];
     if y='' then y:='localhost';//if not port=80 then +':'+?
-    FURLPrefix:=LowerCase(Copy(x,1,i-1))+'://'+y;
+    FRedirectPrefix:=LowerCase(Copy(x,1,i-1))+'://'+y;
 
     x:=GetCGIValue('SCRIPT_NAME');
     y:=GetCGIValue('REQUEST_URI');
@@ -179,7 +179,7 @@ begin
     if x=Copy(y,1,l) then
      begin
       FURI:=Copy(y,l+1,Length(y)-l);
-      FURLPrefix:=FURLPrefix+x;
+      FRedirectPrefix:=FRedirectPrefix+x;
      end
     else
      begin
@@ -187,42 +187,20 @@ begin
       //FURLPrefix:= should be ok
      end;
 
-    FURL:=FURLPrefix+FURI;
+    FURL:=FRedirectPrefix+FURI;
      
     //'Authorization' ?
     //'If-Modified-Since' ? 304
     //'Connection: Keep-alive' ? with sent Content-Length
 
     FResHeaders['X-Powered-By']:=SelfVersion;
-    if XxmProjectCache=nil then XxmProjectCache:=TXxmProjectCache.Create;
+    //if XxmProjectCache=nil then XxmProjectCache:=TXxmProjectCacheXml.Create;
 
-    //TODO: RequestHeaders['Host']?
-    l:=Length(FURI);
-    i:=2;
-    if XxmProjectCache.SingleProject='' then
-     begin
-      while (i<=l) and not(char(FURI[i]) in ['/','?','&','$','#']) do inc(i);
-      FProjectName:=Copy(FURI,2,i-2);
-      if FProjectName='' then
-       begin
-        if (i<=l) and (FURI[i]='/') then x:='' else x:='/';
-        Redirect(FURLPrefix+'/'+XxmProjectCache.DefaultProject+x+Copy(FURI,i,l-i+1),false);
-       end;
-      FPageClass:='['+FProjectName+']';
-      if (i>l) and (l>1) then Redirect(FURLPrefix+FURI+'/',false) else
-        if (FURI[i]='/') then inc(i);
-      FRedirectPrefix:=FURLPrefix+'/'+FProjectName;
-     end
-    else
-     begin
-      FProjectName:=XxmProjectCache.SingleProject;
-      FPageClass:='[SingleProject]';
-     end;
-    j:=i;
-    while (i<=l) and not(char(FURI[i]) in ['?','&','$','#']) do inc(i);
-    FFragmentName:=Copy(FURI,j,i-j);
-    if (i<=l) then inc(i);
-    FQueryStringIndex:=i;
+    FQueryStringIndex:=2;
+    if XxmProjectCache.ProjectFromURI(Self,
+      FURI,FQueryStringIndex,FProjectName,FFragmentName) then
+      FRedirectPrefix:=FRedirectPrefix+'/'+FProjectName;
+    FPageClass:='['+FProjectName+']';
 
     //assert headers read and parsed
     //TODO: HTTP/1.1 100 Continue?

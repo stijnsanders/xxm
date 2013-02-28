@@ -84,6 +84,7 @@ type
     rpSilent,
     rpLoadCopy,
     rpStartURL,
+    rpThreads,
     //add new here
     rp_Unknown);
 
@@ -116,12 +117,13 @@ const
     'silent',
     'loadcopy',
     'starturl',
+    'threads',
     //add new here (lowercase)
     '');
   WM_QUIT = $0012;//from Messages
 var
   Server:TxxmSynaServer;
-  i,j,Port:integer;
+  i,j,Port,Threads:integer;
   Silent:boolean;
   StartURL,s,t:AnsiString;
   Msg:TMsg;
@@ -129,6 +131,7 @@ var
 begin
   //defualt values
   Port:=80;
+  Threads:=$100;
   Silent:=false;
   StartURL:='';
 
@@ -150,6 +153,8 @@ begin
         GlobalAllowLoadCopy:=Copy(s,j+1,Length(s)-j)<>'0';
       rpStartURL:
         StartURL:=Copy(s,j+1,Length(s)-j);
+      rpThreads:
+        Threads:=StrToInt(Copy(s,j+1,Length(s)-j));
       //add new here
       rp_Unknown:
         raise Exception.Create('Unknown setting: '+t);
@@ -164,8 +169,8 @@ begin
 
   //
   CoInitialize(nil);
-  XxmProjectCache:=TXxmProjectCache.Create;
-  PageLoaderPool:=TXxmPageLoaderPool.Create;
+  XxmProjectCache:=TXxmProjectCacheXml.Create;
+  PageLoaderPool:=TXxmPageLoaderPool.Create(Threads);
   Server:=TxxmSynaServer.Create(Port);
   try
     //TODO: listen on multiple ports
@@ -380,37 +385,14 @@ begin
     (FReqHeaders as IUnknown)._AddRef;
 
     ProcessRequestHeaders;
+    //if XxmProjectCache=nil then XxmProjectCache:=TXxmProjectCacheXml.Create;
 
-    if XxmProjectCache=nil then XxmProjectCache:=TXxmProjectCache.Create;
-
-    //TODO: RequestHeaders['Host']?
-    l:=Length(FURI);
     if (FURI<>'') and (FURI[1]='/') then
      begin
       i:=2;
-      if XxmProjectCache.SingleProject='' then
-       begin
-        while (i<=l) and not(char(FURI[i]) in ['/','?','&','$','#']) do inc(i);
-        FProjectName:=Copy(FURI,2,i-2);
-        if FProjectName='' then
-         begin
-          if (i<=l) and (FURI[i]='/') then x:='' else x:='/';
-          Redirect('/'+XxmProjectCache.DefaultProject+x+Copy(FURI,i,l-i+1),true);
-         end;
-        FPageClass:='['+FProjectName+']';
-        if (i>l) and (l>1) then Redirect(FURI+'/',true) else
-          if (FURI[i]='/') then inc(i);
+      if XxmProjectCache.ProjectFromURI(Self,FURI,i,FProjectName,FFragmentName) then
         FRedirectPrefix:='/'+FProjectName;
-       end
-      else
-       begin
-        FProjectName:=XxmProjectCache.SingleProject;
-        FPageClass:='[SingleProject]';
-       end;
-      j:=i;
-      while (i<=l) and not(char(FURI[i]) in ['?','&','$','#']) do inc(i);
-      FFragmentName:=Copy(FURI,j,i-j);
-      if (i<=l) then inc(i);
+      FPageClass:='['+FProjectName+']';
       FQueryStringIndex:=i;
      end
     else
@@ -457,10 +439,8 @@ begin
     BuildPage;
 
   except
-    on EXxmPageRedirected do
-      Flush;
-    on EXxmAutoBuildFailed do
-      ;//assert output done
+    on EXxmPageRedirected do Flush;
+    on EXxmAutoBuildFailed do ;//assert output done
     on e:Exception do
       if not HandleException(e) then
        begin

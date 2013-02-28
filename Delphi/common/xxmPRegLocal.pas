@@ -20,16 +20,15 @@ type
     procedure SetSignature(const Value: AnsiString); override;
     function GetAllowInclude: Boolean; override;
   published
-    constructor Create(Name:WideString);
+    constructor Create(const Name:WideString);
   public
     function GetSessionCookie(const Name: WideString): WideString; virtual;
     procedure SetSessionCookie(const Name, Value: WideString);
     function CookieFile(const Name:AnsiString):AnsiString;
   end;
 
-  TXxmProjectCache=class(TObject)
+  TXxmProjectCacheLocal=class(TXxmProjectCache)
   private
-    FLock:TRTLCriticalSection;
     ProjectCacheSize:integer;
     ProjectCache:array of TXxmProjectCacheEntry;
     function Grow:integer;
@@ -44,8 +43,7 @@ type
   end;
 
 var
-  XxmProjectCache:TXxmProjectCache;
-  GlobalAllowLoadCopy:boolean;
+  XxmProjectCache:TXxmProjectCacheLocal;
 
 procedure XxmProjectRegister(
   hwnd:HWND;        // handle to owner window
@@ -109,7 +107,7 @@ end;
 
 { TXxmProjectCacheEntry }
 
-constructor TXxmProjectCacheEntry.Create(Name: WideString);
+constructor TXxmProjectCacheEntry.Create(const Name: WideString);
 begin
   inherited Create(Name);
   FUserName:='';
@@ -277,16 +275,15 @@ begin
   end;
 end;
 
-{ TXxmProjectCache }
+{ TXxmProjectCacheLocal }
 
-constructor TXxmProjectCache.Create;
+constructor TXxmProjectCacheLocal.Create;
 begin
   inherited;
   ProjectCacheSize:=0;
-  InitializeCriticalSection(FLock);
 end;
 
-destructor TXxmProjectCache.Destroy;
+destructor TXxmProjectCacheLocal.Destroy;
 var
   i:integer;
 begin
@@ -297,11 +294,10 @@ begin
       //silent
     end;
   SetLength(ProjectCache,0);
-  DeleteCriticalSection(FLock);
   inherited;
 end;
 
-function TXxmProjectCache.Grow: integer;
+function TXxmProjectCacheLocal.Grow: integer;
 var
   i:integer;
 begin
@@ -316,7 +312,7 @@ begin
    end;
 end;
 
-function TXxmProjectCache.FindProject(const Name: WideString): integer;
+function TXxmProjectCacheLocal.FindProject(const Name: WideString): integer;
 var
   l:AnsiString;
 begin
@@ -328,7 +324,7 @@ begin
   if Result=ProjectCacheSize then Result:=-1;
 end;
 
-function TXxmProjectCache.GetProject(const Name: WideString): TXxmProjectCacheEntry;
+function TXxmProjectCacheLocal.GetProject(const Name: WideString): TXxmProjectCacheEntry;
 var
   i:integer;
 begin
@@ -351,7 +347,7 @@ begin
   end;
 end;
 
-procedure TXxmProjectCache.ReleaseProject(const Name: WideString);
+procedure TXxmProjectCacheLocal.ReleaseProject(const Name: WideString);
 var
   i:integer;
 begin
@@ -361,8 +357,8 @@ begin
 end;
 
 initialization
-  GlobalAllowLoadCopy:=false;//:=true;
-  XxmProjectCache:=nil;//TXxmProjectCache.Create;//see Handler.Start
+  GlobalAllowLoadCopy:=false;//
+  XxmProjectCache:=nil;//TXxmProjectCacheLocal.Create;//see Handler.Start
 finalization
   FreeAndNil(XxmProjectCache);
 end.

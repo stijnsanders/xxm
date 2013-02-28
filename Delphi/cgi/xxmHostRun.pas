@@ -15,17 +15,20 @@ uses Windows, SysUtils, ActiveX, xxmPRegXml, xxmThreadPool, xxmHostMain, xxmCGIH
 
 procedure XxmRunHoster(HandleMessagesProc:TXxmHandleMessagesProc);
 type
-  TParameters=(cpPipePath,
+  TParameters=(
+    cpPipePath,
+    cpThreads,
     //add new here
     cp_Unknown);
 const
   ParameterKey:array[TParameters] of AnsiString=(
     'pipe',
+    'threads',
     //add new here (lowercase)
     '');
   FILE_FLAG_FIRST_PIPE_INSTANCE=$00080000;
 var
-  i,j:integer;
+  i,j,Threads:integer;
   s,t,PipePath:AnsiString;
   h,h1,h2:THandle;
   par:TParameters;
@@ -35,6 +38,7 @@ var
   l:cardinal;
 begin
   PipePath:='xxm';//default
+  Threads:=$100;//default
   QuitApp:=false;
 
   for i:=1 to ParamCount do
@@ -47,14 +51,15 @@ begin
     while not(par=cp_Unknown) and not(t=ParameterKey[par]) do inc(par);
     case par of
       cpPipePath:PipePath:=Copy(s,j+1,Length(s)-j);
+      cpThreads:Threads:=StrToInt(Copy(s,j+1,Length(s)-j));
       //add new here
       cp_Unknown: raise Exception.Create('Unknown setting: '+t);
     end;
    end;
 
   CoInitialize(nil);
-  XxmProjectCache:=TXxmProjectCache.Create;
-  PageLoaderPool:=TXxmPageLoaderPool.Create;
+  XxmProjectCache:=TXxmProjectCacheXml.Create;
+  PageLoaderPool:=TXxmPageLoaderPool.Create(Threads);
 
   h:=INVALID_HANDLE_VALUE;
   ch.Size:=SizeOf(TxxmCGIHeader);

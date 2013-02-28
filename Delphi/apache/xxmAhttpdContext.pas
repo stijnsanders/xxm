@@ -73,39 +73,20 @@ end;
 procedure TxxmAhttpdContext.Execute;
 var
   x,y:AnsiString;
-  i,l:integer;
+  i:integer;
 begin
   try
     AddResponseHeader('X-Powered-By',SelfVersion);
-    if XxmProjectCache=nil then XxmProjectCache:=TXxmProjectCache.Create;
+    if XxmProjectCache=nil then XxmProjectCache:=TXxmProjectCacheXml.Create;
 
     //parse url
     x:=rq.uri;
     y:=rq.path_info;
     FRedirectPrefix:=copy(x,1,Length(x)-Length(y));
 
-    l:=Length(x);
     i:=2;
-    if XxmProjectCache.SingleProject='' then
-     begin
-      while (i<=l) and not(char(x[i]) in ['/','?','&','$','#']) do inc(i);
-      FProjectName:=Copy(x,2,i-2);
-      if FProjectName='' then
-       begin
-        if (i<=l) and (x[i]<>'/') then x:='/'+x;
-        Redirect('/'+XxmProjectCache.DefaultProject+x,false);
-       end;
-      FPageClass:='['+FProjectName+']';
-      if (i>l) and (l>1) then Redirect(x+'/',false) else
-        if (x[i]='/') then inc(i);
+    if XxmProjectCache.ProjectFromURI(Self,x,i,FProjectName,FFragmentName) then
       FRedirectPrefix:=FRedirectPrefix+'/'+FProjectName;
-     end
-    else
-     begin
-      FProjectName:=XxmProjectCache.SingleProject;
-      FPageClass:='[SingleProject]';
-     end;
-    FFragmentName:=Copy(x,i,l-i+1);
 
     x:=apr_table_get(rq.headers_in,'Content-Length');
     if x<>'' then FPostData:=TxxmAhttpdClientStream.Create(rq);
@@ -113,10 +94,8 @@ begin
     BuildPage;
 
   except
-    on EXxmPageRedirected do
-      Flush;
-    on EXxmAutoBuildFailed do
-      ;//assert output done
+    on EXxmPageRedirected do Flush;
+    on EXxmAutoBuildFailed do ;//assert output done
     on e:Exception do
       if not HandleException(e) then
        begin

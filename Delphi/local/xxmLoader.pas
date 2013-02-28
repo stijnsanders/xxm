@@ -128,7 +128,7 @@ end;
 function TXxmLocalContext.GetProjectEntry: TXxmProjectEntry;
 begin
   OleCheck(ProtSink.ReportProgress(BINDSTATUS_CONNECTING, PWideChar(FProjectName)));
-  if XxmProjectCache=nil then XxmProjectCache:=TXxmProjectCache.Create;
+  if XxmProjectCache=nil then XxmProjectCache:=TXxmProjectCacheLocal.Create;
   Result:=XxmProjectCache.GetProject(FProjectName);
   OleCheck(ProtSink.ReportProgress(BINDSTATUS_ENCODING, PWideChar(FProjectName)));//?
 end;

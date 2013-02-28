@@ -21,7 +21,7 @@ var
 
 implementation
 
-uses Registry, xxmPRegXml;
+uses Registry, xxmPReg, xxmPRegXml, ActiveX, xxmThreadPool;
 
 {$R *.dfm}
 
@@ -38,7 +38,7 @@ end;
 procedure TxxmService.ServiceStart(Sender: TService;
   var Started: Boolean);
 var
-  p:integer;
+  p,t:integer;
   r:TRegistry;
   s:string;
 const
@@ -47,11 +47,14 @@ const
     'Silent',
     'LoadCopy',
     'StartURL',
+    'Threads',
     //add new here
     '');
 begin
-  p:=80;//default
-  GlobalAllowLoadCopy:=true;//default
+  //defaults
+  p:=80;
+  t:=$100;
+  GlobalAllowLoadCopy:=true;
   r:=TRegistry.Create;
   try
     r.RootKey:=HKEY_LOCAL_MACHINE;
@@ -60,9 +63,14 @@ begin
     if r.ValueExists(s) then p:=r.ReadInteger(s) else r.WriteInteger(s,p);
     s:=ParameterKey[rpLoadCopy];
     if r.ValueExists(s) then GlobalAllowLoadCopy:=r.ReadBool(s) else r.WriteBool(s,GlobalAllowLoadCopy);
+    s:=ParameterKey[rpThreads];
+    if r.ValueExists(s) then t:=r.ReadInteger(s) else r.WriteInteger(s,t);
   finally
     r.Free;
   end;
+  CoInitialize(nil);
+  XxmProjectCache:=TXxmProjectCacheXml.Create;
+  PageLoaderPool:=TXxmPageLoaderPool.Create(t);
   FServer:=TXxmSynaServer.Create(p);
   //if not FServer.Listening then raise?
 end;

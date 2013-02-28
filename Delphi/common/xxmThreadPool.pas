@@ -32,14 +32,11 @@ type
     FQueue:TXxmQueueContext;
     procedure SetSize(x:integer);
   public
-    constructor Create;
+    constructor Create(PoolMaxThreads:integer);
     destructor Destroy; override;
     procedure Queue(Context:TXxmQueueContext);//called from handler
     function Unqueue:TXxmQueueContext;//called from threads
   end;
-
-const
-  PoolMaxThreads=64;//TODO: from setting?
 
 var
   PageLoaderPool:TXxmPageLoaderPool;
@@ -139,7 +136,7 @@ end;
 
 { TXxmPageLoaderPool }
 
-constructor TXxmPageLoaderPool.Create;
+constructor TXxmPageLoaderPool.Create(PoolMaxThreads:integer);
 begin
   inherited Create;
   FLoaderSize:=0;

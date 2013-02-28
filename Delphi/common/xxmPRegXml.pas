@@ -18,9 +18,8 @@ type
     destructor Destroy; override;
   end;
 
-  TXxmProjectCache=class(TObject)
+  TXxmProjectCacheXml=class(TXxmProjectCache)
   private
-    FLock:TRTLCriticalSection;
     FProjectsLength,FProjectsCount:integer;
     FProjects:array of record
       Name,Alias:AnsiString;
@@ -39,9 +38,9 @@ type
     destructor Destroy; override;
     procedure CheckRegistry;
 
+    function ProjectFromURI(Context:IXxmContext;const URI:AnsiString;
+      var i:integer; var ProjectName,FragmentName:WideString):boolean;
     function GetProject(const Name:WideString):TXxmProjectCacheEntry;
-    function DefaultProject:AnsiString;
-    function SingleProject:AnsiString;
     procedure ReleaseProject(const Name:WideString);
   end;
 
@@ -50,8 +49,7 @@ type
   EXxmProjectAliasDepth=class(Exception);
 
 var
-  XxmProjectCache:TXxmProjectCache;
-  GlobalAllowLoadCopy:boolean;
+  XxmProjectCache:TXxmProjectCacheXml;
 
 implementation
 
@@ -99,7 +97,7 @@ end;
 
 procedure TXxmProjectCacheEntry.SetSignature(const Value: AnsiString);
 begin
-  FSignature := Value;
+  FSignature:=Value;
   XxmProjectCache.SetSignature(Name,Value);
 end;
 
@@ -109,14 +107,13 @@ begin
   Result:=FAllowInclude;
 end;
 
-{ TXxmProjectCache }
+{ TXxmProjectCacheXml }
 
-constructor TXxmProjectCache.Create;
+constructor TXxmProjectCacheXml.Create;
 var
   i:integer;
 begin
   inherited;
-  InitializeCriticalSection(FLock);
   //assert coinitialize called?
   FProjectsLength:=0;
   FProjectsCount:=0;
@@ -135,17 +132,16 @@ begin
   CheckRegistry;
 end;
 
-destructor TXxmProjectCache.Destroy;
+destructor TXxmProjectCacheXml.Destroy;
 var
   i:integer;
 begin
   for i:=0 to FProjectsCount-1 do FreeAndNil(FProjects[i].Entry);
   SetLength(FProjects,0);
-  DeleteCriticalSection(FLock);
   inherited;
 end;
 
-function TXxmProjectCache.FindProject(const Name: WideString): integer;
+function TXxmProjectCacheXml.FindProject(const Name: WideString): integer;
 var
   n:AnsiString;
 begin
@@ -158,7 +154,7 @@ begin
   if Result=FProjectsCount then Result:=-1;
 end;
 
-function TXxmProjectCache.GetRegistrySignature:AnsiString;
+function TXxmProjectCacheXml.GetRegistrySignature:AnsiString;
 var
   fh:THandle;
   fd:TWin32FindDataA;
@@ -175,7 +171,7 @@ begin
    end;
 end;
 
-function TXxmProjectCache.GetRegistryXML:IXMLDOMElement;
+function TXxmProjectCacheXml.GetRegistryXML:IXMLDOMElement;
 var
   doc:DOMDocument;
 begin
@@ -191,7 +187,7 @@ begin
   Result:=doc.documentElement;
 end;
 
-procedure TXxmProjectCache.CheckRegistry;
+procedure TXxmProjectCacheXml.CheckRegistry;
 var
   s:AnsiString;
   p:WideString;
@@ -303,7 +299,7 @@ begin
    end;
 end;
 
-procedure TXxmProjectCache.SetSignature(const Name:WideString; const Value:AnsiString);
+procedure TXxmProjectCacheXml.SetSignature(const Name:WideString; const Value:AnsiString);
 var
   xl:IXMLDOMNodeList;
   x:IXMLDOMElement;
@@ -328,7 +324,7 @@ begin
   end;
 end;
 
-function TXxmProjectCache.GetProject(const Name: WideString): TXxmProjectCacheEntry;
+function TXxmProjectCacheXml.GetProject(const Name: WideString): TXxmProjectCacheEntry;
 var
   i,d:integer;
   found:boolean;
@@ -356,7 +352,7 @@ begin
   end;
 end;
 
-procedure TXxmProjectCache.ReleaseProject(const Name: WideString);
+procedure TXxmProjectCacheXml.ReleaseProject(const Name: WideString);
 var
   i:integer;
 begin
@@ -376,21 +372,41 @@ begin
   end;
 end;
 
-function TXxmProjectCache.DefaultProject: AnsiString;
+function TXxmProjectCacheXml.ProjectFromURI(Context:IXxmContext;
+  const URI:AnsiString;var i:integer;
+  var ProjectName,FragmentName:WideString):boolean;
+var
+  j,l:integer;
+  x:AnsiString;
 begin
   CheckRegistry;
-  Result:=FDefaultProject;
-end;
-
-function TXxmProjectCache.SingleProject: AnsiString;
-begin
-  CheckRegistry;
-  Result:=FSingleProject;
+  l:=Length(URI);
+  if FSingleProject='' then
+   begin
+    while (i<=l) and not(char(URI[i]) in ['/','?','&','$','#']) do inc(i);
+    ProjectName:=Copy(URI,2,i-2);
+    if ProjectName='' then
+     begin
+      if (i<=l) and (URI[i]='/') then x:='' else x:='/';
+      Context.Redirect('/'+FDefaultProject+x+Copy(URI,i,l-i+1),true);
+     end;
+    if (i>l) and (l>1) then Context.Redirect(URI+'/',true) else
+      if (URI[i]='/') then inc(i);
+    Result:=true;
+   end
+  else
+   begin
+    ProjectName:=FSingleProject;
+    Result:=false;
+   end;
+  j:=i;
+  while (i<=l) and not(char(URI[i]) in ['?','&','$','#']) do inc(i);
+  FragmentName:=Copy(URI,j,i-j);
+  if (i<=l) then inc(i);
 end;
 
 initialization
-  GlobalAllowLoadCopy:=true;//default
-  //XxmProjectCache:=TXxmProjectCache.Create;//moved to project source
+  //XxmProjectCache:=TXxmProjectCacheXml.Create;//moved to project source
 finalization
   XxmProjectCache.Free;
 

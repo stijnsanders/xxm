@@ -163,7 +163,7 @@ begin
 
   //
   CoInitialize(nil);
-  XxmProjectCache:=TXxmProjectCache.Create;
+  XxmProjectCache:=TXxmProjectCacheXml.Create;
   Server:=TxxmHttpServer.Create(nil);
   try
     Server.LocalPort:=IntToStr(Port);
@@ -342,38 +342,14 @@ begin
     (FReqHeaders as IUnknown)._AddRef;
 
     ProcessRequestHeaders;
+    //if XxmProjectCache=nil then XxmProjectCache:=TXxmProjectCacheXml.Create;
 
-    if XxmProjectCache=nil then XxmProjectCache:=TXxmProjectCache.Create;
-
-    //TODO: RequestHeaders['Host']?
-    l:=Length(FURI);
     if (FURI<>'') and (FURI[1]='/') then
      begin
-      i:=2;
-      if XxmProjectCache.SingleProject='' then
-       begin
-        while (i<=l) and not(char(FURI[i]) in ['/','?','&','$','#']) do inc(i);
-        FProjectName:=Copy(FURI,2,i-2);
-        if FProjectName='' then
-         begin
-          if (i<=l) and (FURI[i]='/') then x:='' else x:='/';
-          Redirect('/'+XxmProjectCache.DefaultProject+x+Copy(FURI,i,l-i+1),true);
-         end;
-        FPageClass:='['+FProjectName+']';
-        if (i>l) and (l>1) then Redirect(FURI+'/',true) else
-          if (FURI[i]='/') then inc(i);
+      FQueryStringIndex:=2;
+      if XxmProjectCache.ProjectFromURI(Self,FURI,FQueryStringIndex,FProjectName,FFragmentName) then
         FRedirectPrefix:='/'+FProjectName;
-       end
-      else
-       begin
-        FProjectName:=XxmProjectCache.SingleProject;
-        FPageClass:='[SingleProject]';
-       end;
-      j:=i;
-      while (i<=l) and not(char(FURI[i]) in ['?','&','$','#']) do inc(i);
-      FFragmentName:=Copy(FURI,j,i-j);
-      if (i<=l) then inc(i);
-      FQueryStringIndex:=i;
+      FPageClass:='['+FProjectName+']';
      end
     else
      begin

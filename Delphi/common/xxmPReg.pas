@@ -2,7 +2,7 @@ unit xxmPReg;
 
 interface
 
-uses xxm, SysUtils;
+uses xxm, SysUtils, Windows;
 
 type
   TXxmProjectEntry=class(TObject)
@@ -47,6 +47,14 @@ type
     property Project: IXxmProject read GetProject;
   end;
 
+  TXxmProjectCache=class(TObject)
+  protected
+    FLock:TRTLCriticalSection;
+  public
+    constructor Create;
+    destructor Destroy; override;
+  end;
+
   EXxmProjectNotFound=class(Exception);
   EXxmProjectLoadFailed=class(Exception);
   EXxmModuleNotFound=class(Exception);
@@ -55,6 +63,8 @@ type
 
 var
   XxmAutoBuildHandler:TXxmAutoBuildHandler;
+  //XxmProjectCache:TXxmProjectCache;
+  GlobalAllowLoadCopy:boolean;
 
 const //resourcestring?
   SXxmProjectNotFound='xxm Project "__" not defined.';
@@ -63,7 +73,7 @@ const //resourcestring?
 
 implementation
 
-uses Windows, Registry, xxmCommonUtils;
+uses Registry, xxmCommonUtils;
 
 { TXxmProjectEntry }
 
@@ -312,4 +322,20 @@ begin
   if (Self=nil) or (FProject=nil) or (FProject.QueryInterface(IID,Result)<>S_OK) then Result:=nil;
 end;
 
+{ TXxmProjectCache }
+
+constructor TXxmProjectCache.Create;
+begin
+  inherited Create;
+  InitializeCriticalSection(FLock);
+end;
+
+destructor TXxmProjectCache.Destroy;
+begin
+  DeleteCriticalSection(FLock);
+  inherited;
+end;
+
+initialization
+  GlobalAllowLoadCopy:=true;//default
 end.

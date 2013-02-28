@@ -50,7 +50,6 @@ local
 - history by xxm project
 
 grand rework
-- absorb SingleProject/DefaultProject into xxmPReg
 - transfer-encoding chunked? keep-connection?
 - Accept-Ranges: bytes on files ('Range' request header?)
 

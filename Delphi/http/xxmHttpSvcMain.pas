@@ -21,7 +21,7 @@ var
 
 implementation
 
-uses Registry, xxmPRegXml;
+uses Registry, xxmPReg, xxmPRegXml, ActiveX;
 
 {$R *.dfm}
 
@@ -67,6 +67,8 @@ begin
   finally
     r.Free;
   end;
+  CoInitialize(nil);
+  XxmProjectCache:=TXxmProjectCacheXml.Create;
   FServer:=TXxmHTTPServer.Create(nil);
   FServer.ServerSocketThread.ThreadCacheSize:=t;
   FServer.LocalPort:=IntToStr(p);
@@ -76,6 +78,7 @@ end;
 procedure TxxmService.ServiceStop(Sender: TService; var Stopped: Boolean);
 begin
   FServer.Free;
+  FreeAndNil(XxmProjectCache);
 end;
 
 end.
