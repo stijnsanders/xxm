@@ -44,5 +44,6 @@ exports
 
 [[ProjectHeader]]
 begin
+  XxmProjectName:='[[ProjectName]]';
   [[ProjectBody]]
 end.

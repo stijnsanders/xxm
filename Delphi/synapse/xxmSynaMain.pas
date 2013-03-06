@@ -329,7 +329,7 @@ end;
 procedure TXxmSynaContext.HandleRequest;
 var
   i,j,l,xi:integer;
-  x,y,xx:AnsiString;
+  x,y:AnsiString;
   s:TStream;
   si:int64;
 begin
@@ -418,10 +418,10 @@ begin
     PreProcessRequest;
 
     //if Verb<>'GET' then?
-    x:=FReqHeaders['Content-Length'];
-    if x<>'' then
+    y:=FReqHeaders['Content-Length'];
+    if y<>'' then
      begin
-      si:=StrToInt(x);
+      si:=StrToInt(y);
       if si<PostDataThreshold then
         s:=TMemoryStream.Create
       else
@@ -432,8 +432,7 @@ begin
         s:=TFileStream.Create(FPostTempFile,fmCreate);
        end;
       s.Size:=si;
-      FPostData:=THandlerReadStreamAdapter.Create(FSocket,si,s,
-        Copy(xx,xi,Length(xx)-xi+1));
+      FPostData:=THandlerReadStreamAdapter.Create(FSocket,si,s,x);
      end;
 
     BuildPage;
@@ -692,6 +691,7 @@ begin
     if p<>80 then FURL:=FURL+':'+IntToStr(p);
    end;
   FURL:='http://'+FURL+FURI;//TODO: 'https' if SSL?
+  SetThreadName('xxm:'+FURL);
 end;
 
 procedure TXxmSynaContext.PreProcessRequest;

@@ -77,11 +77,10 @@ type
 
 var
   XxmLocalHandlerFactory:TXxmLocalHandlerFactory;
+  URLSchema,URLSchemaDescription:string;
 
 const
   Class_xxmLocalHandler:TGUID='{78786D00-0000-0001-C000-000000000001}';
-  URLSchema='xxm';
-  URLSchemaDescription='xxm Local Handler';
 
 implementation
 
@@ -553,6 +552,8 @@ begin
 end;
 
 initialization
+  URLSchema:='xxm';//not consts for the 'skip the handler' builds
+  URLSchemaDescription:='xxm Local Handler';
   XxmLocalHandlerFactory:=TXxmLocalHandlerFactory.Create(ComServer,
     TXxmLocalHandler, Class_xxmLocalHandler,
     'XxmLocalHandler', URLSchemaDescription,

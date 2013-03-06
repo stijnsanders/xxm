@@ -108,7 +108,7 @@ begin
     if Context=nil then
      begin
       FInUse:=false;//used by PageLoaderPool.Queue
-      SetThreadName('(xxmPageLoader)');
+      SetThreadName('(xxm)');
       ResetEvent(FNextJobEvent);
       WaitForSingleObject(FNextJobEvent,INFINITE);
       FInUse:=true;
@@ -117,7 +117,7 @@ begin
      begin
       ContextI:=Context;//keep refcount up for premature terminate
       try
-        SetThreadName('xxmPageLoader:'+Context.FURL);
+        SetThreadName('xxm:'+Context.FURL);
         Context.Execute;//assert all exceptions handled!
       finally
         ContextI:=nil;

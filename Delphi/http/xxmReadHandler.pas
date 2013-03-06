@@ -69,8 +69,7 @@ begin
   FPosition:=Result;
 end;
 
-function THandlerReadStreamAdapter.Read(var Buffer;
-  Count: Integer): Longint;
+function THandlerReadStreamAdapter.Read(var Buffer; Count: Integer): Longint;
 begin
   if FPosition=FStorePosition then
    begin

@@ -214,7 +214,7 @@ end;
 procedure TXxmIsapiContext.Execute;
 var
   x,y:AnsiString;
-  i,j:integer;
+  i:integer;
 begin
   //ServerFunction(HSE_REQ_IO_COMPLETION,@ContextIOCompletion,nil,PDWORD(Self));
   try
@@ -245,11 +245,6 @@ begin
     if XxmProjectCache.ProjectFromURI(Self,x,i,FProjectName,FFragmentName) then
       FRedirectPrefix:=FRedirectPrefix+'/'+FProjectName;
     FPageClass:='['+FProjectName+']';
-
-    //fragment name
-    j:=i;
-    while (j<=Length(x)) and not(char(x[j]) in ['?','&','$','#']) do inc(j);
-    FFragmentName:=Copy(x,i,j-i);
 
     BuildPage;
 

@@ -36,6 +36,7 @@ uses
 
 [[ProjectHeader]]
 begin
+  XxmProjectName:='[[ProjectName]]';
   XxmRunServer;
   [[ProjectBody]]
 end.

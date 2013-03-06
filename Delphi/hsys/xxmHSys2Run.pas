@@ -35,7 +35,7 @@ const
 
 procedure XxmRunHSys(HandleMessagesProc:TXxmHandleMessagesProc);
 var
-  i,j,l,Port,SecurePort,Threads:integer;
+  i,j,l,c,Port,SecurePort,Threads:integer;
   s,t,Host:WideString;
   hp:THSysParameters;
   hrs:THTTP_SERVER_SESSION_ID;
@@ -43,11 +43,6 @@ var
   hrq:THTTP_BINDING_INFO;
   hrss:THTTP_STATE_INFO;
   QuitApp:boolean;
-
-const
-  certhash:array[0..19] of byte=(
-  $45, $91 ,$88 ,$3d ,$be ,$81 ,$0a ,$0e ,$91 ,$7b ,
-  $ab ,$a6 ,$87 ,$40 ,$1b ,$d8 ,$9c ,$1d ,$f6 ,$d2 );
 
 begin
   CoInitialize(nil);
@@ -63,6 +58,7 @@ begin
   Host:='+';
   Threads:=$100;
 
+  c:=0;
   for i:=1 to ParamCount do
    begin
     s:=ParamStr(i);
@@ -97,16 +93,19 @@ begin
        begin
         s:='http://'+Host+':'+IntToStr(Port)+'/'+s+'/';
         HttpCheck(HttpAddUrlToUrlGroup(hrg,PWideChar(s),0,0));
+        inc(c);
        end;
       if SecurePort<>0 then
        begin
         s:='https://'+Host+':'+IntToStr(SecurePort)+'/'+s+'/';
         HttpCheck(HttpAddUrlToUrlGroup(hrg,PWideChar(s),0,0));
+        inc(c);
        end;
 
      end;
    end;
-  //TODO: check any loaded? load from xxm.xml?
+  //TODO: load from xxm.xml?
+  if c=0 then raise Exception.Create('No projects loaded');
 
   XxmProjectCache:=TXxmProjectCacheXml.Create;
   PageLoaderPool:=TXxmPageLoaderPool.Create(Threads);

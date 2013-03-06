@@ -69,8 +69,9 @@ begin
   FPosition:=Result;
 end;
 
-function THandlerReadStreamAdapter.Read(var Buffer;
-  Count: Integer): Longint;
+function THandlerReadStreamAdapter.Read(var Buffer; Count: Integer): Longint;
+var
+  x:AnsiString;
 begin
   if FPosition=FStorePosition then
    begin
@@ -80,8 +81,11 @@ begin
       Result:=Count;
     if Result<>0 then
      begin
-      Result:=FSocket.RecvBuffer(@Buffer,Result);
-      FStore.Write(Buffer,Result);
+      //Result:=FSocket.RecvBuffer(@Buffer,Result);
+      //FStore.Write(Buffer,Result);
+      x:=FSocket.RecvPacket(1000);
+      Result:=Length(x);
+      FStore.Write(x[1],Result);
       inc(FPosition,Result);
       inc(FStorePosition,Result);
      end;

@@ -305,16 +305,16 @@ end;
 
 procedure TXxmProjectEntry.Lock;
 begin
-  //assert FCheckMutex<>0
-  if WaitForSingleObject(FCheckMutex,INFINITE)<>WAIT_OBJECT_0 then
-    raise Exception.Create('ProjectEntry acquire UpdateLock failed: '+SysErrorMessage(GetLastError));
+  if FCheckMutex<>0 then
+    if WaitForSingleObject(FCheckMutex,INFINITE)<>WAIT_OBJECT_0 then
+      raise Exception.Create('ProjectEntry acquire UpdateLock failed: '+SysErrorMessage(GetLastError));
 end;
 
 procedure TXxmProjectEntry.Unlock;
 begin
-  //assert FCheckMutex<>0
-  if not ReleaseMutex(FCheckMutex) then
-    raise Exception.Create('ProjectEntry release UpdateLock failed: '+SysErrorMessage(GetLastError));
+  if FCheckMutex<>0 then
+    if not ReleaseMutex(FCheckMutex) then
+      raise Exception.Create('ProjectEntry release UpdateLock failed: '+SysErrorMessage(GetLastError));
 end;
 
 function TXxmProjectEntry.GetProjectInterface(const IID: TGUID): IUnknown;

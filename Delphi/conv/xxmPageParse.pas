@@ -454,7 +454,7 @@ var
     for i:=1 to l-1 do if (s[i]=#13) and (s[i+1]=#10) then inc(Result);
   end;
 
-  procedure ParseParserValue(Code: string);
+  procedure ParseParserValue(const Code: string);
   var
     pv:TXxmPageParserValues;
   begin

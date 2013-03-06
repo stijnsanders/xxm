@@ -71,15 +71,24 @@ begin
          begin
           inc(i);
           protodir:=IncludeTrailingPathDelimiter(ParamStr(i));
+          if not DirectoryExists(protodir) then
+           begin
+            Writeln('Proto dir not found "'+protodir+'"');
+            Exit;
+           end;
          end
         else
         if s='/src' then
          begin
           inc(i);
           srcdir:=IncludeTrailingPathDelimiter(ParamStr(i));
+          //DirectoryExists? CheckFiles calls ForceDirectories
          end
         else
+         begin
           Writeln('Unknown option "'+s+'"');
+          Exit;
+         end;
        end;
      end
     else

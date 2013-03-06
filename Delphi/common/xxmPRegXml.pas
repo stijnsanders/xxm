@@ -145,12 +145,12 @@ function TXxmProjectCacheXml.FindProject(const Name: WideString): integer;
 var
   n:AnsiString;
 begin
-  n:=Name;
+  n:=LowerCase(Name);
   //assert cache stores ProjectName already LowerCase!
   //TODO: sorted?
   Result:=0;
-  while (Result<FProjectsCount) and
-    (CompareText(FProjects[Result].Name,n)<>0) do inc(Result);
+  while (Result<FProjectsCount) and (FProjects[Result].Name<>n) do
+    inc(Result);
   if Result=FProjectsCount then Result:=-1;
 end;
 

@@ -2,7 +2,10 @@ unit xxmPRegXml;
 
 {
 
-ATTENTION: this is an alternative xxmPRegXml unit to serve only a single xxm project.
+ATTENTION:
+  this is an alternative xxmPRegXml unit
+  to serve only a single xxm project
+  (the real xxmPRegXml is in the folder "common")
 
 }
 
@@ -12,16 +15,13 @@ uses Windows, SysUtils, xxm, xxmPReg;
 
 type
   TXxmProjectCacheEntry=class(TXxmProjectEntry)
-  private
-    FAllowInclude:boolean;
   protected
     procedure SetSignature(const Value: AnsiString); override;
     function GetExtensionMimeType(const x: AnsiString): AnsiString; override;
     function GetAllowInclude: boolean; override;
     function LoadProject: IXxmProject; override;
   published
-    constructor Create(const Name, FilePath: WideString;
-      LoadCopy, AllowInclude: boolean);
+    constructor Create(const Name: WideString);
     destructor Destroy; override;
   end;
 
@@ -39,6 +39,7 @@ type
   EXxmFileTypeAccessDenied=class(Exception);
 
 var
+  XxmProjectName:string;
   XxmProjectCache:TXxmProjectCacheXml;
   GlobalAllowLoadCopy:boolean;
 
@@ -51,11 +52,9 @@ resourcestring
 
 { TXxmProjectCacheEntry }
 
-constructor TXxmProjectCacheEntry.Create(const Name, FilePath: WideString;
-  LoadCopy, AllowInclude: boolean);
+constructor TXxmProjectCacheEntry.Create(const Name: WideString);
 begin
   inherited Create(Name);
-  FAllowInclude:=AllowInclude;
   //
 end;
 
@@ -67,7 +66,7 @@ end;
 
 function TXxmProjectCacheEntry.GetAllowInclude: boolean;
 begin
-  Result:=FAllowInclude;
+  Result:=false;
 end;
 
 function TXxmProjectCacheEntry.GetExtensionMimeType(
@@ -93,18 +92,9 @@ end;
 { TXxmProjectCacheXml }
 
 constructor TXxmProjectCacheXml.Create;
-var
-  i,j:integer;
-  s:string;
 begin
   inherited Create;
-  s:=ParamStr(0);
-  j:=Length(s);
-  while (j<>0) and (s[j]<>'.') do dec(j);
-  i:=j;
-  while (i<>0) and (s[i]<>'\') do dec(i);
-  FProject:=TXxmProjectCacheEntry.Create(Copy(s,i+1,j-i-1),s,false,true);
-  //TODO: GlobalAllowLoadCopy?
+  FProject:=TXxmProjectCacheEntry.Create(XxmProjectName);
 end;
 
 destructor TXxmProjectCacheXml.Destroy;
@@ -119,14 +109,39 @@ begin
   Result:=FProject;
 end;
 
+{$IFDEF HSYS1}{$DEFINE IgnoreProjectNameInURL}{$ENDIF}
+{$IFDEF HSYS2}{$DEFINE IgnoreProjectNameInURL}{$ENDIF}
+
 function TXxmProjectCacheXml.ProjectFromURI(Context: IXxmContext;
   const URI: AnsiString; var i: integer; var ProjectName,
   FragmentName: WideString): boolean;
 var
   j,l:integer;
+  {$IFDEF IgnoreProjectNameInURL}
+  x:AnsiString;
+  {$ENDIF}
 begin
   l:=Length(URI);
-  Result:=false;
+  {$IFDEF IgnoreProjectNameInURL}
+  if true then //hsys loads 'http://+:80/Something/'
+   begin
+    while (i<=l) and not(char(URI[i]) in ['/','?','&','$','#']) do inc(i);
+    ProjectName:=Copy(URI,2,i-2);
+    if ProjectName='' then
+     begin
+      if (i<=l) and (URI[i]='/') then x:='' else x:='/';
+      Context.Redirect('/'+XxmProjectName+x+Copy(URI,i,l-i+1),true);
+     end;
+    if (i>l) and (l>1) then Context.Redirect(URI+'/',true) else
+      if (URI[i]='/') then inc(i);
+    Result:=true;
+   end
+  else
+  {$ENDIF}
+   begin
+    ProjectName:=XxmProjectName;
+    Result:=false;
+   end;
   j:=i;
   while (i<=l) and not(char(URI[i]) in ['?','&','$','#']) do inc(i);
   FragmentName:=Copy(URI,j,i-j);
@@ -134,7 +149,8 @@ begin
 end;
 
 initialization
-  GlobalAllowLoadCopy:=true;//default
+  XxmProjectName:='xxm';//default, set by dpr
+  GlobalAllowLoadCopy:=false;
 finalization
   XxmProjectCache.Free;
 

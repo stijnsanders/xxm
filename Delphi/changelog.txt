@@ -1,10 +1,10 @@
-v1.1.8.?
+v1.1.8.295
 - optional project interface: IXxmProjectEvents1
-- parser values: $l replaced by source line number, $v by current value, $d by default value
+- parser values: $l replaced by source line number, $v by current, $d by default
 - set project default parser values from Web.xxmp
 - xxmHttp: replaced first request parsing ReceiveLn with ReceiveBuf
 - xxmHttp,xxmHost,xxmHSys: 'threads' option to set thread pool size
-- added mongodb demo
+- added mongodb demo: "03 Data MongoDB"
 - xxmConv: extra proto template fields (used by 'skip the handler' builds)
 - xxmConv: /nolinemaps option
 - signatures file "Web.xxmp.~db" changed to "src\xxmp.~db"

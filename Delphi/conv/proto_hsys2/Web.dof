@@ -1,0 +1,13 @@
+[Compiler]
+UnsafeType=0
+UnsafeCode=0
+UnsafeCast=0
+[Directories]
+OutputDir=..\
+SearchPath=..\..\bin\public
+UnitOutputDir=dcu
+Conditionals=HSYS2
+[Version Info]
+IncludeVerInfo=1
+AutoIncBuild=0
+MajorVer=1
