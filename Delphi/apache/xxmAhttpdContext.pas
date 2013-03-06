@@ -82,11 +82,12 @@ begin
     //parse url
     x:=rq.uri;
     y:=rq.path_info;
-    FRedirectPrefix:=copy(x,1,Length(x)-Length(y));
 
     i:=2;
     if XxmProjectCache.ProjectFromURI(Self,x,i,FProjectName,FFragmentName) then
-      FRedirectPrefix:=FRedirectPrefix+'/'+FProjectName;
+      FRedirectPrefix:=FRedirectPrefix+'/'+FProjectName
+    else
+      FRedirectPrefix:=copy(x,1,Length(x)-Length(y));//?
 
     x:=apr_table_get(rq.headers_in,'Content-Length');
     if x<>'' then FPostData:=TxxmAhttpdClientStream.Create(rq);
