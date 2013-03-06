@@ -53,18 +53,20 @@ type
       Name,Value:WideString;
       SubValues:TResponseSubValues;
     end;
+    FItemsSize,FItemsCount:integer;
     FBuilt:boolean;
+    procedure Grow;
+    function GetCount:integer;
     function GetItem(Name: OleVariant): WideString;
     procedure SetItem(Name: OleVariant; const Value: WideString);
     function GetName(Idx: integer): WideString;
     procedure SetName(Idx: integer; Value: WideString);
-    function GetCount:integer;
   public
     constructor Create;
     destructor Destroy; override;
     property Item[Name:OleVariant]:WideString read GetItem write SetItem; default;
     property Name[Idx: integer]:WideString read GetName write SetName;
-    property Count:integer read GetCount;
+    property Count:integer read FItemsCount;//read GetCount;
     function Complex(Name:OleVariant;out Items:IxxmDictionary):WideString;
     function Build:AnsiString;
     procedure Add(const Name,Value:WideString);
@@ -77,17 +79,19 @@ type
     FItems:array of record
       Name,Value:WideString;
     end;
+    FItemsSize,FItemsCount:integer;
     FBuilt:boolean;
+    procedure Grow;
+    function GetCount:integer;
     function GetItem(Name: OleVariant): WideString;
     procedure SetItem(Name: OleVariant; const Value: WideString);
     function GetName(Idx: integer): WideString;
     procedure SetName(Idx: integer; Value: WideString);
-    function GetCount:integer;
   public
     constructor Create;
     destructor Destroy; override;
     property Item[Name:OleVariant]:WideString read GetItem write SetItem; default;
-    property Count:integer read GetCount;
+    property Count:integer read FItemsCount;//read GetCount;
     procedure Build(ss:TStringStream);
   end;
 
@@ -535,8 +539,7 @@ begin
   if @Items=nil then sv.Free else Items:=sv;
 end;
 
-procedure TRequestHeaders.SetItem(Name: OleVariant;
-  const Value: WideString);
+procedure TRequestHeaders.SetItem(Name: OleVariant; const Value: WideString);
 begin
   raise EXxmRequestHeadersReadOnly.Create(SxxmRequestHeadersReadOnly);
 end;
@@ -587,8 +590,7 @@ begin
   Result:=Copy(FData,FIdx[Idx].NameStart,FIdx[Idx].NameLength);
 end;
 
-procedure TRequestSubValues.SetItem(Name: OleVariant;
-  const Value: WideString);
+procedure TRequestSubValues.SetItem(Name: OleVariant; const Value: WideString);
 begin
   raise EXxmRequestHeadersReadOnly.Create(SxxmRequestHeadersReadOnly);
 end;
@@ -604,6 +606,8 @@ constructor TResponseHeaders.Create;
 begin
   inherited;
   FBuilt:=false;
+  FItemsCount:=0;
+  FItemsSize:=0;
   //SetLength(FItems,0);
 end;
 
@@ -611,16 +615,26 @@ destructor TResponseHeaders.Destroy;
 var
   i:integer;
 begin
-  for i:=0 to Length(FItems)-1 do
+  for i:=0 to FItemsCount-1 do
     if FItems[i].SubValues<>nil then
       (FItems[i].SubValues as IUnknown)._Release;
   SetLength(FItems,0);
   inherited;
 end;
 
+procedure TResponseHeaders.Grow;
+begin
+  if FItemsCount=FItemsSize then
+   begin
+    inc(FItemsSize,64);
+    SetLength(FItems,FItemsSize);
+   end;
+  inc(FItemsCount);
+end;
+
 function TResponseHeaders.GetCount: integer;
 begin
-  Result:=Length(FItems);
+  Result:=FItemsCount;
 end;
 
 function TResponseHeaders.GetItem(Name: OleVariant): WideString;
@@ -630,13 +644,12 @@ begin
   if VarIsNumeric(Name) then i:=integer(Name) else
    begin
     i:=0;
-    while (i<Length(FItems)) and (CompareText(FItems[i].Name,Name)<>0) do inc(i);
+    while (i<FItemsCount) and (CompareText(FItems[i].Name,Name)<>0) do inc(i);
    end;
-  if (i<Length(FItems)) then Result:=FItems[i].Value else Result:='';
+  if (i<FItemsCount) then Result:=FItems[i].Value else Result:='';
 end;
 
-procedure TResponseHeaders.SetItem(Name: OleVariant;
-  const Value: WideString);
+procedure TResponseHeaders.SetItem(Name: OleVariant; const Value: WideString);
 var
   i:integer;
 begin
@@ -646,11 +659,11 @@ begin
   if VarIsNumeric(Name) then i:=integer(Name) else
    begin
     i:=0;
-    while (i<Length(FItems)) and (CompareText(FItems[i].Name,Name)<>0) do inc(i);
-    if i=Length(FItems) then
+    while (i<FItemsCount) and (CompareText(FItems[i].Name,Name)<>0) do inc(i);
+    if i=FItemsCount then
      begin
       HeaderCheckName(Name);
-      SetLength(FItems,i+1);
+      Grow;
       FItems[i].Name:=Name;
       FItems[i].SubValues:=nil;
      end;
@@ -667,11 +680,11 @@ begin
   if VarIsNumeric(Name) then i:=integer(Name) else
    begin
     i:=0;
-    while (i<Length(FItems)) and (CompareText(FItems[i].Name,Name)<>0) do inc(i);
-    if i=Length(FItems) then
+    while (i<FItemsCount) and (CompareText(FItems[i].Name,Name)<>0) do inc(i);
+    if i=FItemsCount then
      begin
       HeaderCheckName(Name);
-      SetLength(FItems,i+1);
+      Grow;
       FItems[i].Name:=Name;
       FItems[i].Value:='';
       FItems[i].SubValues:=nil;
@@ -691,7 +704,7 @@ var
 begin
   ss:=TStringStream.Create('');
   try
-    for i:=0 to Length(FItems)-1 do
+    for i:=0 to FItemsCount-1 do
      begin
       ss.WriteString(FItems[i].Name);
       ss.WriteString(': ');
@@ -714,8 +727,8 @@ var
 begin
   HeaderCheckName(Name);
   HeaderCheckValue(Value);
-  i:=Length(FItems);
-  SetLength(FItems,i+1);
+  i:=FItemsCount;
+  Grow;
   FItems[i].Name:=Name;
   FItems[i].SubValues:=nil;
   FItems[i].Value:=Value;
@@ -727,11 +740,11 @@ var
   i:integer;
 begin
   i:=0;
-  while (i<Length(FItems)) and (CompareText(FItems[i].Name,Name)<>0) do inc(i);
-  if i=Length(FItems) then
+  while (i<FItemsCount) and (CompareText(FItems[i].Name,Name)<>0) do inc(i);
+  if i=FItemsCount then
    begin
     HeaderCheckName(Name);
-    SetLength(FItems,i+1);
+    Grow;
     FItems[i].Name:=Name;
     FItems[i].SubValues:=nil;
    end;
@@ -748,7 +761,7 @@ var
   i,l:integer;
 begin
   i:=0;
-  l:=Length(FItems);
+  l:=FItemsCount;
   while (i<l) and (CompareText(FItems[i].Name,Name)<>0) do inc(i);
   if i<l then
    begin
@@ -760,7 +773,7 @@ begin
       inc(i);
      end;
     if FItems[i].SubValues<>nil then FItems[i].SubValues.Free;
-    SetLength(FItems,l);
+    dec(FItemsCount);
    end;
 end;
 
@@ -782,6 +795,8 @@ constructor TResponseSubValues.Create;
 begin
   inherited;
   FBuilt:=false;
+  FItemsCount:=0;
+  FItemsSize:=0;
   //SetLength(FItems,0);
 end;
 
@@ -791,9 +806,19 @@ begin
   inherited;
 end;
 
+procedure TResponseSubValues.Grow;
+begin
+  if FItemsCount=FItemsSize then
+   begin
+    inc(FItemsSize,32);
+    SetLength(FItems,FItemsSize);
+   end;
+  inc(FItemsCount);
+end;
+
 function TResponseSubValues.GetCount: integer;
 begin
-  Result:=Length(FItems);
+  Result:=FItemsCount;
 end;
 
 function TResponseSubValues.GetItem(Name: OleVariant): WideString;
@@ -803,13 +828,12 @@ begin
   if VarIsNumeric(Name) then i:=integer(Name) else
    begin
     i:=0;
-    while (i<Length(FItems)) and (CompareText(FItems[i].Name,Name)<>0) do inc(i);
+    while (i<FItemsCount) and (CompareText(FItems[i].Name,Name)<>0) do inc(i);
    end;
-  if (i<Length(FItems)) then Result:=FItems[i].Value else Result:='';
+  if (i<FItemsCount) then Result:=FItems[i].Value else Result:='';
 end;
 
-procedure TResponseSubValues.SetItem(Name: OleVariant;
-  const Value: WideString);
+procedure TResponseSubValues.SetItem(Name: OleVariant; const Value: WideString);
 var
   i:integer;
 begin
@@ -818,11 +842,11 @@ begin
   if VarIsNumeric(Name) then i:=integer(Name) else
    begin
     i:=0;
-    while (i<Length(FItems)) and (CompareText(FItems[i].Name,Name)<>0) do inc(i);
-    if i=Length(FItems) then
+    while (i<FItemsCount) and (CompareText(FItems[i].Name,Name)<>0) do inc(i);
+    if i=FItemsCount then
      begin
       HeaderCheckName(Name);
-      SetLength(FItems,i+1);
+      Grow;
       FItems[i].Name:=Name;
      end;
    end;
@@ -833,7 +857,7 @@ procedure TResponseSubValues.Build(ss: TStringStream);
 var
   i:integer;
 begin
-  for i:=0 to Length(FItems)-1 do
+  for i:=0 to FItemsCount-1 do
    begin
     ss.WriteString('; ');
     ss.WriteString(FItems[i].Name);
