@@ -472,7 +472,6 @@ begin
   if st<>0 then
    begin
     r:=BindInfo.GetBindString(st,@d,256,c);
-    //TODO: not enough mem?
     if r=INET_E_USE_DEFAULT_SETTING then Result:=def else
      begin
       OleCheck(r);
@@ -507,7 +506,6 @@ begin
   px:=FResHeaders.Build+#13#10;
   py:=nil;
   OleCheck(FHttpNegotiate.OnResponse(StatusCode,PWideChar(px),nil,py));
-  //TODO: add py to FResHeaders?
 
   //BINDSTATUS_ENCODING
   OleCheck(ProtSink.ReportProgress(BINDSTATUS_VERIFIEDMIMETYPEAVAILABLE,PWideChar(FContentType)));
@@ -690,12 +688,27 @@ begin
     try
       SetLength(s,3);
       f.Read(s[1],3);
-      //TODO: other encodings?
-      if s<>Utf8ByteOrderMark then
-        raise Exception.Create('File "'+fn+'" is not UTF8');
-      l:=f.Size-3;
-      SetLength(s,l);
-      f.Read(s[1],l);
+      if s=Utf8ByteOrderMark then
+       begin
+        l:=f.Size-3;
+        SetLength(s,l);
+        f.Read(s[1],l);
+       end
+      else if Copy(s,1,2)=Utf16ByteOrderMark then
+       begin
+        f.Position:=2;
+        l:=(f.Size div 2)-1;
+        SetLength(Result,l);
+        f.Read(Result[1],l*2);
+        s:=UTF8Decode(Result);
+        l:=Length(s);
+       end
+      else
+       begin
+        l:=f.Size;
+        SetLength(s,l);
+        f.Read(s[4],l-3);
+       end;
       j:=1;
       for i:=0 to 4 do
        begin
@@ -820,7 +833,6 @@ end;
 procedure TXxmLocalContext.Flush;
 begin
   ReportData;
-  //TODO: stall until read?
 end;
 
 end.

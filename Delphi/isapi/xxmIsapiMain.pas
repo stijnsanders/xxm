@@ -130,11 +130,7 @@ begin
     IsapiHandlerPool.Queue(TXxmIsapiContext.Create(PECB));
     Result:=HSE_STATUS_PENDING; //HSE_STATUS_SUCCESS
   except
-    on e:Exception do
-     begin
-      //TODO output error?
-      Result:=HSE_STATUS_ERROR;
-     end;
+    Result:=HSE_STATUS_ERROR;
   end;
 end;
 
@@ -280,7 +276,6 @@ begin
         //TODO:ServerFunction(HSE_REQ_ABORTIVE_CLOSE,nil,nil,nil);?
        end;
   end;
-  //TODO: support keep connection?
   ecb.dwHttpStatusCode:=StatusCode;
   //ServerFunction(HSE_REQ_CLOSE_CONNECTION,nil,nil,nil);
   ServerFunction(HSE_REQ_DONE_WITH_SESSION,nil,nil,nil);

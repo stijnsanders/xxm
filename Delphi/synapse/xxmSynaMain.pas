@@ -25,7 +25,6 @@ type
     FSocket:TTCPBlockSocket;
     FReqHeaders:TRequestHeaders;
     FResHeaders:TResponseHeaders;
-    FConnected: boolean;
     FHTTPVersion,FVerb,FURI,FRedirectPrefix,FSessionID:AnsiString;
     FCookieParsed: boolean;
     FCookie: AnsiString;
@@ -268,7 +267,6 @@ begin
   FReqHeaders:=nil;
   FResHeaders:=TResponseHeaders.Create;
   (FResHeaders as IUnknown)._AddRef;
-  FConnected:=true;
   FCookieParsed:=false;
   FQueryStringIndex:=1;
   FSessionID:='';//see GetSessionID
@@ -427,8 +425,9 @@ begin
       else
        begin
         SetLength(FPostTempFile,$400);
-        SetLength(FPostTempFile,GetTempPathA($400,PAnsiChar(FPostTempFile)));//TODO: setting
-        FPostTempFile:=FPostTempFile+'xxm_'+IntToHex(integer(Self),8)+'_'+IntToHex(GetTickCount,8)+'.dat';
+        SetLength(FPostTempFile,GetTempPathA($400,PAnsiChar(FPostTempFile)));
+        FPostTempFile:=FPostTempFile+'xxm_'+
+          IntToHex(integer(Self),8)+'_'+IntToHex(GetTickCount,8)+'.dat';
         s:=TFileStream.Create(FPostTempFile,fmCreate);
        end;
       s.Size:=si;
@@ -476,8 +475,7 @@ end;
 
 function TXxmSynaContext.Connected: boolean;
 begin
-  Result:=FConnected;
-  //TODO: set to false when client disconnect
+  Result:=FSocket.CanWrite(0);
 end;
 
 function TXxmSynaContext.ContextString(cs: TXxmContextString): WideString;
@@ -493,9 +491,9 @@ begin
     csURL:Result:=GetURL;
     csProjectName:Result:=FProjectName;
     csLocalURL:Result:=FFragmentName;
-    csReferer:Result:=FReqHeaders['Referer'];//TODO:
-    csLanguage:Result:=FReqHeaders['Language'];//TODO:
-    csRemoteAddress:Result:=FSocket.GetRemoteSinIP;//TODO to name?
+    csReferer:Result:=FReqHeaders['Referer'];
+    csLanguage:Result:=FReqHeaders['Accept-Language'];
+    csRemoteAddress:Result:=FSocket.GetRemoteSinIP;
     csRemoteHost:Result:=FSocket.ResolveIPToName(FSocket.GetRemoteSinIP);
     csAuthUser:Result:='';//TODO:
     csAuthPassword:Result:='';//TODO:
@@ -545,7 +543,6 @@ var
 begin
   inherited;
   SetStatus(302,'Object moved');//SetStatus(301,'Moved Permanently');
-  //TODO: move this to execute's except?
   NewURL:=RedirectURL;
   if Relative and (NewURL<>'') and (NewURL[1]='/') then NewURL:=FRedirectPrefix+NewURL;
   RedirBody:='<h1>Object moved</h1><p><a href="'+HTMLEncode(NewURL)+'">'+HTMLEncode(NewURL)+'</a></p>'#13#10;
@@ -686,7 +683,7 @@ begin
   FURL:=FReqHeaders['Host'];
   if FURL='' then
    begin
-    FURL:='localhost';//TODO: from binding? setting;
+    FURL:='localhost';//TODO: from binding? setting?
     p:=FSocket.GetLocalSinPort;
     if p<>80 then FURL:=FURL+':'+IntToStr(p);
    end;

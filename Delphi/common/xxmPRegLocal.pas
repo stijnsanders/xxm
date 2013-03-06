@@ -84,7 +84,6 @@ begin
    begin
     r:=TRegistry.Create;
     try
-      //r.RootKey:=HKEY_LOCAL_MACHINE;//setting?
       r.RootKey:=HKEY_CURRENT_USER;
       r.OpenKey('\Software\xxm\local\'+t,true);
       u:=r.ReadString('');
@@ -95,7 +94,6 @@ begin
        begin
         r.WriteString('',s);
         r.DeleteValue('Signature');
-        //TODO: default settings?
         MessageBoxA(GetDesktopWindow,PAnsiChar('Project "'+t+'" registered.'),
           'xxm Local Handler',MB_OK or MB_ICONINFORMATION or MB_SYSTEMMODAL);
        end;
@@ -152,6 +150,7 @@ end;
 function TXxmProjectCacheEntry.CookieFile(const Name: AnsiString): AnsiString;
 var
   l:cardinal;
+  i:integer;
 begin
   if FUserName='' then
    begin
@@ -162,8 +161,9 @@ begin
     else
       FUserName:=GetEnvironmentVariable('USERNAME');
    end;
-  //TODO: filenamesafe?
   Result:=FCookiePath+FUserName+'_'+Name+'.txt';
+  for i:=1 to Length(Result) do
+    if Result[i] in ['\','/',':','*','?','"','<','>','|'] then Result[i]:='_';
 end;
 
 procedure TXxmProjectCacheEntry.SetSignature(const Value: AnsiString);

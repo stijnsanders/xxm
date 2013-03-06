@@ -244,8 +244,6 @@ var
   rf,sf,s:WideString;
   i,j,l:integer;
 begin
-  //TODO: widestring all the way?
-  //TODO: virtual directories?
   rf:=FFilePath;
   i:=Length(rf);
   while (i<>0) and (rf[i]<>PathDelim) do dec(i);
@@ -274,7 +272,6 @@ begin
     i:=j+1;
    end;
   Path:=rf+sf;
-
   //find a MIME-type from registry
   i:=Length(sf)-1;
   while (i>0) and (sf[i]<>'.') do dec(i);
@@ -285,7 +282,6 @@ function TXxmProjectEntry.GetExtensionMimeType(const x: AnsiString): AnsiString;
 var
   r:TRegistry;
 begin
-  //TODO: get from settings or list? or project?
   r:=TRegistry.Create;
   try
     r.RootKey:=HKEY_CLASSES_ROOT;

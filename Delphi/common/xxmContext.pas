@@ -38,7 +38,6 @@ type
     procedure SetAutoEncoding(const Value: TXxmAutoEncoding);
     function GetParameter(Key: OleVariant): IXxmParameter;
     function GetParameterCount: Integer;
-    //TODO: progress
     procedure Send(Data: OleVariant); overload;
     procedure Send(Value: integer); overload;
     procedure Send(Value: int64); overload;
@@ -232,7 +231,6 @@ begin
     d:=GetFileModifiedDateTime(FSingleFileSent,fs);
     if d<>0 then //FileExists(FSingleFileSent)
      begin
-      //TODO: if directory file-list?
       FContentType:=x;
       f:=TFileStream.Create(FSingleFileSent,fmOpenRead or fmShareDenyNone);
       try
@@ -276,10 +274,7 @@ begin
     try
       FPageClass:=FPage.ClassNameEx;
       //mime type moved to CheckSendStart;
-      //OleCheck(ProtSink.ReportProgress(BINDSTATUS_CACHEFILENAMEAVAILABLE,));
-      //TODO: cache output?
 
-      //TODO: setting?
       if FPage.QueryInterface(IID_IXxmPage,p)<>S_OK then
         raise EXxmDirectInclude.Create(SXxmDirectInclude);
       p:=nil;
@@ -685,8 +680,6 @@ end;
 procedure TXxmGeneralContext.SetCookie(Name, Value: WideString);
 begin
   CheckHeaderNotSent;
-  //check name?
-  //TODO: "quoted string"?
   AddResponseHeader('Cache-Control','no-cache="set-cookie"');
   SettingCookie:=true;//allow multiple?
   AddResponseHeader('Set-Cookie',Name+'='+Value);
@@ -699,8 +692,6 @@ var
   x:WideString;
 begin
   CheckHeaderNotSent;
-  //check name?
-  //TODO: "quoted string"?
   AddResponseHeader('Cache-Control','no-cache="set-cookie"');
   x:=Name+'='+Value;
   //'; Version=1';

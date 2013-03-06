@@ -50,7 +50,6 @@ begin
       StatusBuildError:=200;//ReadInt('StatusBuildError',503);
       StatusFileNotFound:=200;//ReadInt('StatusFileNotFound',404);
       DefaultProjectName:=ReadString('DefaultProject','xxm');
-      //TODO: more settings?
      end;
   finally
     r.Free;

@@ -718,7 +718,6 @@ begin
     ss.Free;
   end;
   FBuilt:=true;
-  //TODO: check max line length and separate over lines?
 end;
 
 procedure TResponseHeaders.Add(const Name, Value: WideString);

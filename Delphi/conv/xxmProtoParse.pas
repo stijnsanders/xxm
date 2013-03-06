@@ -113,7 +113,6 @@ begin
   StackPosition:=0;
   PointsSize:=0;
   PointsCount:=0;
-  //TODO: flag enable/disable keep line-numbers?
 end;
 
 destructor TXxmProtoParser.Destroy;

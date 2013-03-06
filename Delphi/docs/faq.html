@@ -98,6 +98,11 @@ Internet Explorer was not able to open this Internet site.  The requested site i
 <dt>how do I know if auto-update has updated my xxl?</dt>
 <dd>you know because the <code>.xxu</code> file has been renamed to <code>.xxl</code> to replace the previous file. It is also recommended to have an internal version number display generated from code, somewhere in the project e.g. on an about page or on the page footer.</dd>
 
+<dt>do I always need an xxm handler to run an xxm project?</dt>
+<dd>while it is strongly advised to use the development handlers for development, and the auto-update handlers for the live environment, once you have an xxm project that is stable, you can make a 'skip the handler' build
+using <code>xxmConv.exe</code> and one of the alternative templates from the <code>conv\proto_*</code> folders.
+These combine xxm source with the generated source of the xxm project into a dedicated dll or exe.</dd>
+
 <dt>why did you make another website development platform? think you could do better than the tried and tested ones out there?</dt>
 <dd><i>*sigh*</i> please read this: <a href="why.html">why</a></dd>
 

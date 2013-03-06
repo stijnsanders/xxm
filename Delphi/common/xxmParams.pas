@@ -305,12 +305,9 @@ begin
   while (i<FParamsCount) and (FParams[i].Name<>Key) do inc(i);
   if (i<FParamsCount) then Result:=FParams[i] else
    begin
-    //TODO: setting: nil or create empty?
-    //Result:=nil;
     p:=TXxmReqPar.Create(Self,Key,'');
     p.FDummy:=true;
     Result:=p;
-    //default value from setting?
    end;
 end;
 

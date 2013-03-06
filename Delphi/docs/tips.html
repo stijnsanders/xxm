@@ -28,6 +28,10 @@
 <p>When you're using xxmIsapiEx (or xxmIsapiDev) on your local IIS, switch IIS into stand-alone mode and use inetinfo.exe as host application, or create a virtual directory with high isolation (IIS 7: in an application pool of it's own), and use <code>%SystemRoot%\system32\dllhost.exe /ProcessID:<i>{AppID}</i></code> with the AppID you can pick up from the properties of the COM+ application in the 'Component Services' administrative tool</p>
 </dd>
 
+<dt>skip the handler</dt>
+<dd>while it is strongly advised to use the development handlers for development, and the auto-update handlers for the live environment, once you have an xxm project that is stable, you can make a 'skip the handler' build
+using <code>xxmConv.exe</code> and one of the alternative templates from the <code>conv\proto_*</code> folders.
+These combine xxm source with the generated source of the xxm project into a dedicated dll or exe.</dd>
 
 </dl>
 

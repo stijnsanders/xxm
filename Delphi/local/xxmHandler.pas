@@ -368,7 +368,6 @@ begin
   Result:=INET_E_DEFAULT_ACTION;//default value, counter warning
   wr:=false;//return w?
   case ParseAction of
-    //PARSE_SECURITY_URL://TODO: strip context/param data from URL
     PARSE_SCHEMA:
      begin
       w:=URLSchema;
@@ -379,10 +378,9 @@ begin
       w:='localhost';
       wr:=true;
      end;
-    PARSE_DOMAIN, PARSE_SITE, PARSE_SECURITY_DOMAIN:
+    PARSE_DOMAIN, PARSE_SITE, PARSE_SECURITY_DOMAIN, PARSE_SECURITY_URL:
      begin
       //see also loader!!
-      //TODO: cache extracted value? (and what does setting document.domain?)
       FURL:=pwzUrl;
       l:=Length(FURL);
       i:=1;
@@ -391,9 +389,14 @@ begin
       inc(i);
       if (i<=l) and (FURL[i]='/') then inc(i);
       if (i<=l) and (FURL[i]='/') then inc(i);
-      j:=i;
-      while (i<=Length(FURL)) and not(char(FURL[i]) in ['/','?','&','$','#']) do inc(i);
-      w:=Copy(FURL,j,i-j);
+      if ParseAction=PARSE_SECURITY_URL then
+        w:='http://'+Copy(FURL,i,l-i+1)
+      else
+       begin
+        j:=i;
+        while (i<=Length(FURL)) and not(char(FURL[i]) in ['/','?','&','$','#']) do inc(i);
+        w:=Copy(FURL,j,i-j);
+       end;
       wr:=true;
      end;
     //TODO: other PARSE_*

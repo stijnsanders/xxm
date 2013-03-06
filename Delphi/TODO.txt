@@ -14,7 +14,7 @@ general
 
 - some good solution for common xxm.pas and xxmFReg.pas units
 
-- logging?
+- logging
 
 - XMLHTTP starts new session: test with authentication! (take-over other SessionID?)
 
@@ -32,6 +32,7 @@ Conv
 - dynamic list of supported exceptions, default pas,xxm,xxmi (act; proto, unit, res?)
 
 ISAPI
+- keep-connection?
 - authentication?
 - custom errors?
 - compile-time user (runas)
@@ -60,7 +61,7 @@ idea's
 - 401 auth & windows auth (IHttpAuthenticate on local?)
 - translatepath refactor into context
 - Context.Include resolve to delphi-name to have compile-time error?
-- virtual directories (getlocalfilepath?)
+- TXxmProjectEntry.GetFilePath virtual directories
 
 minor issues
 - xxm.pas: version from resource?

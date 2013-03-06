@@ -187,14 +187,10 @@ begin
 
   DataFiles:=ForceNode(RootNode,'Files','',1);
 
-  //TODO: setting protopath?
-
   if DirectoryExists(FRootFolder+ProtoDirectory) then
     FProtoPath:=FRootFolder+ProtoDirectory+PathDelim
   else
     FProtoPath:=FProtoPathDef;
-
-  //TODO: setting sourcepath?
 
   FParserValues:=DefaultParserValues;
   pv:=TXxmPageParserValues(0);
@@ -215,13 +211,6 @@ begin
      end;
     inc(pv);
    end;
-
-  //TODO:
-  //ExtraProtoFields (and no ExtraFields param CheckFiles,GenerateProjectFiles
-  //Settings/@AutoAddFiles
-  //Settings/@AutoRemoveFiles
-
-  //TODO:delphi source in separate buildfolder?
 end;
 
 destructor TXxmWebProject.Destroy;

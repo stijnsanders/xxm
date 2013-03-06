@@ -34,7 +34,6 @@ type
     FUnknownHeaders: array of THTTP_UNKNOWN_HEADER;
     FStringCache:array of AnsiString;
     FStringCacheSize,FStringCacheIndex:integer;
-    FConnected:boolean;
     FURI,FRedirectPrefix,FSessionID:AnsiString;
     FCookieParsed: boolean;
     FCookie: AnsiString;
@@ -114,14 +113,10 @@ begin
   FStringCacheSize:=0;
   FStringCacheIndex:=0;
 
-  FConnected:=true;
   FCookieParsed:=false;
   FQueryStringIndex:=1;
   FSessionID:='';//see GetSessionID
   FRedirectPrefix:='';
-
-  //TODO: logging
-
 end;
 
 destructor TXxmHSys1Context.Destroy;
@@ -193,8 +188,7 @@ end;
 
 function TXxmHSys1Context.Connected: boolean;
 begin
-  Result:=FConnected;
-  //TODO: set to false when client disconnect
+  Result:=true;//HttpSend* fails on disconnect
 end;
 
 function TXxmHSys1Context.ContextString(cs: TXxmContextString): WideString;
@@ -242,7 +236,7 @@ begin
     csProjectName:Result:=FProjectName;
     csLocalURL:Result:=FFragmentName;
     csReferer:x:=HttpHeaderReferer;
-    csLanguage:x:=HttpHeaderContentLanguage;
+    csLanguage:x:=HttpHeaderAcceptLanguage;//HttpHeaderContentLanguage?
     csRemoteAddress:Result:=inet_ntoa(FReq.Address.pRemoteAddress.sin_addr);
     csRemoteHost:Result:=inet_ntoa(FReq.Address.pRemoteAddress.sin_addr);//TODO: resolve name
     csAuthUser:;//TODO:Result:=GetCGIValue('AUTH_USER');

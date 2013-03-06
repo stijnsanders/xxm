@@ -62,7 +62,7 @@ resourcestring
 
 const
   XxmRegFileName='xxm.xml';
-  XxmRegCheckIntervalMS=1000;//TODO: setting
+  XxmRegCheckIntervalMS=1000;
 
 {
 function PathIsRelative(lpszPath:PWideChar):LongBool;
@@ -147,7 +147,6 @@ var
 begin
   n:=LowerCase(Name);
   //assert cache stores ProjectName already LowerCase!
-  //TODO: sorted?
   Result:=0;
   while (Result<FProjectsCount) and (FProjects[Result].Name<>n) do
     inc(Result);
@@ -261,7 +260,6 @@ begin
                begin
                 if p<>FProjects[i].Entry.FFilePath then
                  begin
-                  //TODO: move this into method of TXxmProjectCacheEntry?
                   FProjects[i].Entry.Release;
                   FProjects[i].Entry.FFilePath:=p;
                   if GlobalAllowLoadCopy and (VarToStr(x.getAttribute('LoadCopy'))<>'0') then
@@ -274,8 +272,6 @@ begin
                  end;
                end;
               FProjects[i].Entry.FSignature:=VarToStr(x.getAttribute('Signature'));
-              //TODO: extra flags,settings?
-
              end
             else
               FreeAndNil(FProjects[i].Entry);
@@ -286,7 +282,6 @@ begin
           for i:=0 to FProjectsCount-1 do
             if not FProjects[i].LoadCheck then
              begin
-              //TODO: collapse?
               FProjects[i].Name:='';
               FProjects[i].Alias:='';
               FreeAndNil(FProjects[i].Entry);

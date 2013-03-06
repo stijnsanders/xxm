@@ -262,8 +262,8 @@ begin
     csURL:Result:=GetURL;
     csProjectName:Result:=FProjectName;
     csLocalURL:Result:=FFragmentName;
-    csReferer:Result:=FReqHeaders['Referer'];//TODO:
-    csLanguage:Result:=FReqHeaders['Language'];//TODO:
+    csReferer:Result:=FReqHeaders['Referer'];
+    csLanguage:Result:=FReqHeaders['Accept-Language'];
     csRemoteAddress:Result:=GetCGIValue('REMOTE_ADDR');
     csRemoteHost:Result:=GetCGIValue('REMOTE_HOST');
     csAuthUser:Result:=GetCGIValue('AUTH_USER');
