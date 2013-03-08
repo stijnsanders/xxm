@@ -28,7 +28,7 @@ type
     procedure SendHeader; override;
     procedure SendRaw(const Data: WideString); override;
     function GetProjectEntry:TXxmProjectEntry; override;
-    procedure AddResponseHeader(Name: WideString; Value: WideString); override;
+    procedure AddResponseHeader(const Name, Value: WideString); override;
     procedure SetStatus(Code:integer;Text:WideString); override;
     //IxxmHttpHeaders
     function GetRequestHeaders:IxxmDictionaryEx;
@@ -335,7 +335,7 @@ begin
   if FBuffer<>nil then FBuffer.Position:=0;
 end;
 
-procedure TxxmAhttpdContext.AddResponseHeader(Name: WideString; Value: WideString);
+procedure TxxmAhttpdContext.AddResponseHeader(const Name, Value: WideString);
 begin
   HeaderCheckName(Name);
   HeaderCheckValue(Value);

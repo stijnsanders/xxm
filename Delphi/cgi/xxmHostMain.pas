@@ -49,7 +49,7 @@ type
     procedure Flush; override;
 
     function GetProjectEntry:TXxmProjectEntry; override;
-    procedure AddResponseHeader(Name, Value: WideString); override;
+    procedure AddResponseHeader(const Name, Value: WideString); override;
 
     function GetRequestHeaders:IxxmDictionaryEx;
     function GetResponseHeaders:IxxmDictionaryEx;
@@ -447,7 +447,7 @@ begin
   if i=FCGIValuesCount then Result:='' else Result:=FCGIValues[i].Value;
 end;
 
-procedure TXxmHostedContext.AddResponseHeader(Name, Value: WideString);
+procedure TXxmHostedContext.AddResponseHeader(const Name, Value: WideString);
 begin
   //inherited;?
   if SettingCookie then

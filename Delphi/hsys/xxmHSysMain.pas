@@ -39,13 +39,13 @@ type
     FCookie: AnsiString;
     FCookieIdx: TParamIndexes;
     FQueryStringIndex:integer;
-    procedure SetResponseHeader(id:THTTP_HEADER_ID;Value:AnsiString);
-    procedure CacheString(x: AnsiString; var xLen: USHORT; var xPtr: PCSTR);
-    function GetResponseHeader(Name:WideString):WideString;
+    procedure SetResponseHeader(id:THTTP_HEADER_ID;const Value:AnsiString);
+    procedure CacheString(const x: AnsiString; var xLen: USHORT; var xPtr: PCSTR);
+    function GetResponseHeader(const Name:WideString):WideString;
     function GetResponseHeaderCount:integer;
     function GetResponseHeaderName(Idx:integer):WideString;
     function GetResponseHeaderIndex(Idx:integer):WideString;
-    procedure SetResponseHeaderIndex(Idx:integer;Value:WideString);
+    procedure SetResponseHeaderIndex(Idx:integer;const Value:WideString);
   protected
     procedure SendRaw(const Data: WideString); override;
     procedure SendStream(s:IStream); override;
@@ -60,7 +60,7 @@ type
     procedure Flush; override;
 
     function GetProjectEntry:TXxmProjectEntry; override;
-    procedure AddResponseHeader(Name, Value: WideString); override;
+    procedure AddResponseHeader(const Name, Value: WideString); override;
 
     function GetRequestHeaders:IxxmDictionaryEx;
     function GetResponseHeaders:IxxmDictionaryEx;
@@ -452,7 +452,7 @@ begin
     GetResponseHeaderIndex,SetResponseHeaderIndex);
 end;
 
-function TXxmHSys1Context.GetResponseHeader(Name: WideString): WideString;
+function TXxmHSys1Context.GetResponseHeader(const Name: WideString): WideString;
 var
   i:integer;
   x:THTTP_HEADER_ID;
@@ -471,7 +471,7 @@ begin
     Result:=FRes.Headers.KnownHeaders[x].pRawValue;
 end;
 
-procedure TXxmHSys1Context.AddResponseHeader(Name, Value: WideString);
+procedure TXxmHSys1Context.AddResponseHeader(const Name, Value: WideString);
 var
   i:integer;
   x:THTTP_HEADER_ID;
@@ -531,7 +531,7 @@ begin
 end;
 
 procedure TXxmHSys1Context.SetResponseHeader(id: THTTP_HEADER_ID;
-  Value: AnsiString);
+  const Value: AnsiString);
 begin
   //TODO: SettingCookie allow multiples
   CacheString(Value,
@@ -539,7 +539,7 @@ begin
     FRes.Headers.KnownHeaders[id].pRawValue);
 end;
 
-procedure TXxmHSys1Context.CacheString(x: AnsiString; var xLen: USHORT;
+procedure TXxmHSys1Context.CacheString(const x: AnsiString; var xLen: USHORT;
   var xPtr: PCSTR);
 begin
   //TODO: check duplicate?
@@ -562,31 +562,40 @@ end;
 
 function TXxmHSys1Context.GetResponseHeaderName(Idx: integer): WideString;
 begin
-  if Idx<=integer(HttpHeaderResponseMaximum) then
+  if (Idx>=0) and (Idx<=integer(HttpHeaderResponseMaximum)) then
     Result:=HttpResponseHeaderName[THTTP_HEADER_ID(Idx)]
   else
-    Result:=FUnknownHeaders[Idx-integer(HttpHeaderResponseMaximum)-1].pName;
+    if (Idx>=0) and (Idx<Length(FUnknownHeaders)) then
+      Result:=FUnknownHeaders[Idx-integer(HttpHeaderResponseMaximum)-1].pName
+    else
+      raise ERangeError.Create('GetResponseHeaderName: Out of range');
 end;
 
 function TXxmHSys1Context.GetResponseHeaderIndex(Idx: integer): WideString;
 begin
-  if Idx<=integer(HttpHeaderResponseMaximum) then
+  if (Idx>=0) and (Idx<=integer(HttpHeaderResponseMaximum)) then
     Result:=FRes.Headers.KnownHeaders[THTTP_HEADER_ID(Idx)].pRawValue
   else
-    Result:=FUnknownHeaders[Idx-integer(HttpHeaderResponseMaximum)-1].pRawValue;
+    if (Idx>=0) and (Idx<Length(FUnknownHeaders)) then
+      Result:=FUnknownHeaders[Idx-integer(HttpHeaderResponseMaximum)-1].pRawValue
+    else
+      raise ERangeError.Create('GetResponseHeaderIndex: Out of range');
 end;
 
 procedure TXxmHSys1Context.SetResponseHeaderIndex(Idx: integer;
-  Value: WideString);
+  const Value: WideString);
 begin
-  if Idx<=integer(HttpHeaderResponseMaximum) then
+  if (Idx>=0) and (Idx<=integer(HttpHeaderResponseMaximum)) then
     CacheString(Value,
       FRes.Headers.KnownHeaders[THTTP_HEADER_ID(Idx)].RawValueLength,
       FRes.Headers.KnownHeaders[THTTP_HEADER_ID(Idx)].pRawValue)
   else
-    CacheString(Value,
-      FUnknownHeaders[Idx-integer(HttpHeaderResponseMaximum)-1].RawValueLength,
-      FUnknownHeaders[Idx-integer(HttpHeaderResponseMaximum)-1].pRawValue);
+    if (Idx>=0) and (Idx<=Length(FUnknownHeaders)) then
+      CacheString(Value,
+        FUnknownHeaders[Idx-integer(HttpHeaderResponseMaximum)-1].RawValueLength,
+        FUnknownHeaders[Idx-integer(HttpHeaderResponseMaximum)-1].pRawValue)
+    else
+      raise ERangeError.Create('SetResponseHeaderIndex: Out of range');
 end;
 
 { TXxmPostDataStream }

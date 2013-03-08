@@ -40,7 +40,7 @@ type
 
     function GetProjectEntry:TXxmProjectEntry; override;
     procedure SendHeader; override;
-    procedure AddResponseHeader(Name, Value: WideString); override;
+    procedure AddResponseHeader(const Name, Value: WideString); override;
 
     procedure BeginRequest; override;
     procedure EndRequest; override;
@@ -611,7 +611,7 @@ begin
   if ContentBuffer<>nil then ContentBuffer.Position:=0;
 end;
 
-procedure TXxmHttpContext.AddResponseHeader(Name, Value: WideString);
+procedure TXxmHttpContext.AddResponseHeader(const Name, Value: WideString);
 begin
   if SettingCookie then
    begin

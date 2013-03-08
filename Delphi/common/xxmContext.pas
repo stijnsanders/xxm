@@ -81,7 +81,7 @@ type
     {  }
     function GetProjectEntry:TXxmProjectEntry; virtual; abstract;
     procedure SendHeader; virtual; abstract;
-    procedure AddResponseHeader(Name, Value: WideString); virtual; abstract;
+    procedure AddResponseHeader(const Name, Value: WideString); virtual; abstract;
 
     function GetProjectPage(FragmentName: WideString):IXxmFragment; virtual;
     procedure CheckHeaderNotSent;

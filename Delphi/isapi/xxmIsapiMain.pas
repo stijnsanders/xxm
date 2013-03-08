@@ -37,7 +37,7 @@ type
     function GetProjectPage(FragmentName: WideString):IXxmFragment; override;
     procedure SendHeader; override;
     procedure SetStatus(Code: Integer; Text: WideString); override;
-    procedure AddResponseHeader(Name, Value: WideString); override;
+    procedure AddResponseHeader(const Name, Value: WideString); override;
 
     function GetRequestHeaders:IxxmDictionaryEx;
     function GetResponseHeaders:IxxmDictionaryEx;
@@ -571,7 +571,7 @@ begin
   Result:=FResHeaders;
 end;
 
-procedure TXxmIsapiContext.AddResponseHeader(Name, Value: WideString);
+procedure TXxmIsapiContext.AddResponseHeader(const Name, Value: WideString);
 begin
   if SettingCookie then
    begin

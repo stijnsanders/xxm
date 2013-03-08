@@ -25,10 +25,10 @@ Depending on what you require some library or executable may be better than the 
 <li><a href="#local">xxmLocal</a>: Internet Explorer</li>
 <li><a href="#firefox">xxmGecko</a>: Firefox</li>
 <li><a href="#isapi">xxmIsapi</a>: IIS</li>
-<li><a href="#apache">xxmAhttpd</a>: mod_xxm, Apache 2.2 module</li>
+<li><a href="#ahttpd">xxmAhttpd</a>: mod_xxm, Apache httpd 2.2 module</li>
 <li><a href="#httpapi">xxmHSys1</a>: HTTPAPI v1 <span class="newver">1.1.5</span></li>
 <li><a href="#httpapi">xxmHSys2</a>: HTTPAPI v2 <span class="newver">1.1.7</span></li>
-<li><a href="#cgi">xxmCGI</a>: CGI with Apache, IIS, ...</li>
+<li><a href="#cgi">xxmCGI</a>: CGI with Apache httpd, IIS, ...</li>
 <li><a href="#http">xxmHttp</a>: stand-alone</li>
 </ul>
 <p><b>tools:</b></p>
@@ -115,12 +115,12 @@ IIS configuration allows to route files of a certain file-extension to an ISAPI 
 <p>To disable creating a copy of the <code>.xxl</code> file to load, add attribute <code>LoadCopy="0"</code> to the project entry.</p>
 <p>If you want to host only one single xxm project, add a <code>SingleProject</code> attribute to the ProjectRegistry document element, to refer to a project definition.</p>
 
-<p class="title"><a name="apache"></a>xxmAhttpd (mod_xxm, Apache 2.2 module)</p>
-<p>Use an Apache handler to run xxm projects with <a href="http://projects.apache.org/projects/http_server.html">Apache HTTP server</a>.</p>
+<p class="title"><a name="ahttpd"></a>xxmAhttpd (mod_xxm, Apache httpd 2.2 module)</p>
+<p>Use an xxm Apache httpd module to run xxm projects with <a href="http://projects.apache.org/projects/http_server.html">Apache HTTP server</a>.</p>
 
 <dl>
 <dt>xxmAhttpd.dll</dt>
-<dd>The default Apache module to load xxm projects</dd>
+<dd>The default Apache httpd module to load xxm projects</dd>
 <dt>xxmAhttpdDev.dll</dt>
 <dd>xxmAhttpdDev checks the project's xxmp file if any files have changed. If so, it unloads the project, generates source code where needed, compiles the project and reloads it. If files were added or removed, they are added to the xxmp file.<br />
 <b>Attention:</b> to compile a project, the current user may require access to common libraries and source files. Check which credentials are used to run Apache.<br />
@@ -129,7 +129,7 @@ IIS configuration allows to route files of a certain file-extension to an ISAPI 
 <dd>xxmAhttpdAU checks if there is a .xxu file in the directory of the .xxl file, and if so, unloads the project, replaces the xxl file and reloads the project (auto-update).</dd>
 </dl>
 
-<p>To configure Apache to use the xxm Apache handler, add a section similar to the example below to the <code>httpd.conf</code> file.<br />
+<p>To configure Apache httpd to use the xxm Apache httpd handler, add a section similar to the example below to the <code>httpd.conf</code> file.<br />
 <b>Attention:</b> use forward slash as path delimiter.</p>
 
 <pre>
@@ -139,7 +139,17 @@ SetHandler xxm-handler
 &lt;/Location&gt;
 </pre>
 
-<p><i>//TODO: document xxmAhttpd's project registry</i></p>
+<p>xxm Apache httpd module resolves projects by name using the projects definition file <code>xxm.xml</code>, in the same directory as the xxm Apache httpd module library. An example <code>xxm.xml</code> with a single project definition may look like this:<br />
+</p><pre>&lt;ProjectRegistry&gt;
+  &lt;Project Name=&quot;demo&quot;&gt;
+    &lt;ModulePath&gt;C:\xxm\demo\demo.xxl&lt;/ModulePath&gt;
+  &lt;/Project&gt;
+&lt;/ProjectRegistry&gt;
+</pre>
+<p>A project entry may have an <code>Alias</code> attribute to have a project name map to the same library as another project:</p>
+<pre>  &lt;Project Name=&quot;otherdemo&quot; Alias=&quot;demo&quot;&gt;&lt;/Project&gt;</pre>
+<p>To disable creating a copy of the <code>.xxl</code> file to load, add attribute <code>LoadCopy="0"</code> to the project entry.</p>
+<p>If you want to host only one single xxm project, add a <code>SingleProject</code> attribute to the ProjectRegistry document element, to refer to a project definition.</p>
 
 <p class="title"><a name="httpapi"></a>
 xxmHSys1 (HTTPAPI v1) <span class="newver">1.1.5</span>
@@ -161,9 +171,21 @@ xxmHSys2 (HTTPAPI v2) <span class="newver">1.1.7</span>
 <dd>similar to xxmHSys?AU.exe, but runs as an NT-service. call "<code>xxmHSys1SvcAU /install</code>" to install the service ("</code>/uninstall</code>" to uninstall)</dd>
 </dl>
 
-<p><i>//TODO: Pending: this will change in a future version:</i> Start xxmHSys with one or more project names in the command line parameters. xxmHSys uses an <code>xxm.xml</code> file like xxmHttp and xxmHost to load the project.</p>
+<p>xxmHSys uses a projects definition file <code>xxm.xml</code>, in the same directory as the xxmHSys executable. An example <code>xxm.xml</code> with a single project definition may look like this:<br />
+</p><pre>&lt;ProjectRegistry&gt;
+  &lt;Project Name=&quot;demo&quot;&gt;
+    &lt;ModulePath&gt;C:\xxm\demo\demo.xxl&lt;/ModulePath&gt;
+  &lt;/Project&gt;
+&lt;/ProjectRegistry&gt;
+</pre>
+<p>A project entry may have an <code>Alias</code> attribute to have a project name map to the same library as another project:</p>
+<pre>  &lt;Project Name=&quot;otherdemo&quot; Alias=&quot;demo&quot;&gt;&lt;/Project&gt;</pre>
+<p>To disable creating a copy of the <code>.xxl</code> file to load, add attribute <code>LoadCopy="0"</code> to the project entry.</p>
+<!--<p>If you want to host only one single xxm project, add a <code>SingleProject</code> attribute to the ProjectRegistry document element, to refer to a project definition.</p>
+-->
+<p>Start xxmHSys with one or more project names in the command line parameters to load.</p>
 
-<p class="title"><a name="cgi"></a>xxmCGI/xxmHost (CGI with Apache,IIS,...)</p>
+<p class="title"><a name="cgi"></a>xxmCGI/xxmHost (CGI with Apache httpd,IIS,...)</p>
 <p>Using the library built for a specific web-server is preferred over using CGI. CGI creates a new process for each request, which has a negative effect on performance. Because these 'short' processes only exist for the time it takes to respond to a request, <code>xxmCGI.exe</code> patches request/response-data to/from a separate xxmHost process, so that projects and their session data can stay loaded.</p>
 <dl>
 <dt>xxmCGI.exe</dt>
@@ -194,8 +216,8 @@ xxmHSys2 (HTTPAPI v2) <span class="newver">1.1.7</span>
 <p>If you want to host only one single xxm project, add a <code>SingleProject</code> attribute to the ProjectRegistry document element, to refer to a project definition.</p>
 
 <p><b>follow these instructions to install <code>xxmCGI.exe</code>:</b></p>
-<p class="title2">Apache 2.2 <a href="http://httpd.apache.org/docs/2.2/howto/cgi.html">...</a></p>
-<p class="warning">these are instructions to install xxmCGI/xxmHost with Apache, for the xxm Apache module see <a href="#apache">xxmAhttpd</a></p>
+<p class="title2">Apache httpd 2.2 <a href="http://httpd.apache.org/docs/2.2/howto/cgi.html">...</a></p>
+<p class="warning">these are instructions to install xxmCGI/xxmHost with Apache httpd, for the xxm Apache httpd module see <a href="#ahttpd">xxmAhttpd</a></p>
 <p>The default httpd.conf contains a <code>ScriptAlias /cgi-bin/</code> directive to a directory. Copy <code>xxmCGI.exe</code> to this directory and use URLs of this form:</p>
 <pre>http://myserver/cgi-bin/xxmCGI.exe/someproject/</pre>
 <p>to have shorter URLs, add this to httpd.conf: <a href="http://httpd.apache.org/docs/2.2/mod/mod_actions.html#action">...</a></p>

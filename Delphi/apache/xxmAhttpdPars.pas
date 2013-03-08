@@ -2,7 +2,7 @@ unit xxmAhttpdPars;
 
 interface
 
-uses xxmHeaders, HTTPD2;
+uses xxmHeaders, xxmParUtils, HTTPD2;
 
 type
   TxxmAhttpdTable=class(TInterfacedObject, IxxmDictionary, IxxmDictionaryEx)
@@ -20,9 +20,27 @@ type
     constructor Create(Pool:Papr_pool_t;Table:Papr_table_t);
   end;
 
+  TxxmAhttpdSubValues=class(TInterfacedObject, IxxmDictionary)
+  private
+    FTable:TxxmAhttpdTable;
+    FIndex:integer;
+    FData:WideString;
+    FIdx:TParamIndexes;
+    function ParseValue:WideString;
+    function GetItem(Name: OleVariant): WideString;
+    procedure SetItem(Name: OleVariant; const Value: WideString);
+    function GetName(Idx: integer): WideString;
+    procedure SetName(Idx: integer; Value: WideString);
+    function GetCount:integer;
+  public
+    constructor Create(Table: TxxmAhttpdTable; Index: integer;
+      var FirstValue:WideString);
+    destructor Destroy; override;
+  end;
+
 implementation
 
-uses Classes, Variants, xxmParUtils, SysUtils;
+uses Classes, Variants, SysUtils;
 
 type
   table_entries=array[0..0] of apr_table_entry_t;
@@ -46,8 +64,7 @@ function TxxmAhttpdTable.Complex(Name: OleVariant;
   out Items: IxxmDictionary): WideString;
 var
   l,i:integer;
-  sv:TRequestSubValues;
-  x:WideString;
+  sv:TxxmAhttpdSubValues;
 begin
   l:=FTable.a.nelts;
   if VarIsNumeric(Name) then i:=integer(Name) else
@@ -55,36 +72,48 @@ begin
     i:=0;
     while (i<l) and not(CompareText(Ptable_entries(FTable.a.elts)[i].key,Name)=0) do inc(i);//lower?
    end;
-  if (i<l) then
-   begin
-    x:=Ptable_entries(FTable.a.elts)[i].val;
-    sv:=TRequestSubValues.Create(x,1,Length(x),Result);
-   end
-  else
-    sv:=TRequestSubValues.Create('',1,0,Result);//raise?
+  if (i>=l) then i:=-1;
+  sv:=TxxmAhttpdSubValues.Create(Self,i,Result);
   if @Items=nil then sv.Free else Items:=sv;
 end;
 
 function TxxmAhttpdTable.GetItem(Name: OleVariant): WideString;
+var
+  i:integer;
 begin
   if VarIsNumeric(Name) then
-    Result:=Ptable_entries(FTable.a.elts)[integer(Name)].val
+   begin
+    i:=integer(Name);
+    if (i>=0) and (i<FTable.a.nelts) then
+      Result:=Ptable_entries(FTable.a.elts)[i].val
+    else
+      raise ERangeError.Create('TxxmAhttpdTable.GetItem: Out of range');
+   end
   else
     Result:=apr_table_get(FTable,PAnsiChar(VarToStr(Name)));
 end;
 
 function TxxmAhttpdTable.GetName(Idx: integer): WideString;
 begin
-  Result:=Ptable_entries(FTable.a.elts)[Idx].key;
+  if (Idx>=0) and (Idx<FTable.a.nelts) then
+    Result:=Ptable_entries(FTable.a.elts)[Idx].key
+  else
+    raise ERangeError.Create('TxxmAhttpdTable.GetName: Out of range');
 end;
 
-procedure TxxmAhttpdTable.SetItem(Name: OleVariant;
-  const Value: WideString);
+procedure TxxmAhttpdTable.SetItem(Name: OleVariant; const Value: WideString);
+var
+  i:integer;
 begin
   HeaderCheckValue(Value);
   if VarIsNumeric(Name) then
-    //TODO: check this!
-    Ptable_entries(FTable.a.elts)[integer(Name)].val:=apr_pstrdup(FPool,PAnsiChar(AnsiString(Value)))
+   begin
+    i:=integer(Name);
+    if (i>=0) and (i<FTable.a.nelts) then
+      Ptable_entries(FTable.a.elts)[i].val:=apr_pstrdup(FPool,PAnsiChar(AnsiString(Value)))
+    else
+      raise ERangeError.Create('TxxmAhttpdTable.SetItem: Out of range');
+   end
   else
    begin
     HeaderCheckName(VarToWideStr(Name));
@@ -94,10 +123,121 @@ end;
 
 procedure TxxmAhttpdTable.SetName(Idx: integer; Value: WideString);
 begin
-  //TODO: check this!
-  //TODO: make Complex not return TRequestSubValues but something that sets value as well
   HeaderCheckName(Value);
-  Ptable_entries(FTable.a.elts)[Idx].key:=apr_pstrdup(FPool,PAnsiChar(AnsiString(Value)));
+  if (Idx>=0) and (Idx<FTable.a.nelts) then
+    Ptable_entries(FTable.a.elts)[Idx].key:=
+      apr_pstrdup(FPool,PAnsiChar(AnsiString(Value)))
+  else
+    raise ERangeError.Create('TxxmAhttpdTable.SetName: Out of range');
+end;
+
+{ TxxmAhttpdSubValues }
+
+constructor TxxmAhttpdSubValues.Create(Table: TxxmAhttpdTable;
+  Index: integer; var FirstValue: WideString);
+begin
+  inherited Create;
+  FTable:=Table;
+  FIndex:=Index;
+  FirstValue:=ParseValue;
+end;
+
+destructor TxxmAhttpdSubValues.Destroy;
+begin
+  FTable:=nil;
+  inherited;
+end;
+
+function TxxmAhttpdSubValues.ParseValue: WideString;
+begin
+  if FIndex=-1 then FData:='' else FData:=FTable.GetItem(FIndex);
+  Result:=SplitHeaderValue(FData,1,Length(FData),FIdx);
+end;
+
+function TxxmAhttpdSubValues.GetCount: integer;
+begin
+  ParseValue;
+  Result:=Length(FIdx);
+end;
+
+function TxxmAhttpdSubValues.GetItem(Name: OleVariant): WideString;
+var
+  l,i:integer;
+  n:string;
+begin
+  ParseValue;
+  l:=Length(FIdx);
+  if VarIsNumeric(Name) then i:=integer(Name) else
+   begin
+    n:=VarToStr(Name);
+    i:=0;
+    while (i<l) and (CompareText(Copy(FData,FIdx[i].NameStart,FIdx[i].NameLength),n)<>0) do inc(i);
+   end;
+  if (i>=0) and (i<l) then
+    Result:=Copy(FData,FIdx[i].ValueStart,FIdx[i].ValueLength)
+  else
+    Result:='';
+end;
+
+procedure TxxmAhttpdSubValues.SetItem(Name: OleVariant; const Value: WideString);
+var
+  l,i:integer;
+  n:string;
+begin
+  HeaderCheckValue(Value);
+  ParseValue;
+  l:=Length(FIdx);
+  if VarIsNumeric(Name) then i:=integer(Name) else
+   begin
+    n:=VarToStr(Name);
+    i:=0;
+    while (i<l) and (CompareText(Copy(FData,FIdx[i].NameStart,FIdx[i].NameLength),n)<>0) do inc(i);
+   end;
+  if (i>=0) and (i<l) then
+   begin
+    if Value='' then
+     begin
+      if i+1=l then l:=Length(FData)+1 else l:=FIdx[i+1].NameStart;
+      FTable.SetItem(FIndex,Copy(FData,1,FIdx[i].NameStart-1)+
+        Copy(FData,l,Length(FData)-l+1));
+     end
+    else
+     begin
+      l:=FIdx[i].ValueStart+FIdx[i].ValueLength;
+      FTable.SetItem(FIndex,Copy(FData,1,FIdx[i].ValueStart-1)+Value+
+        Copy(FData,l,Length(FData)-l+1));
+     end;
+   end
+  else
+   begin
+    HeaderCheckName(VarToWideStr(Name));
+    FTable.SetItem(FIndex,FData+'; '+VarToStr(Name)+'='+Value);
+   end;
+end;
+
+function TxxmAhttpdSubValues.GetName(Idx: integer): WideString;
+begin
+  ParseValue;
+  if (Idx>=0) and (Idx<Length(FIdx)) then
+    Result:=Copy(FData,FIdx[Idx].NameStart,FIdx[Idx].NameLength)
+  else
+    raise ERangeError.Create('TxxmAhttpdSubValues.GetName: Out of range');
+end;
+
+procedure TxxmAhttpdSubValues.SetName(Idx: integer; Value: WideString);
+var
+  l:integer;
+begin
+  HeaderCheckName(Value);
+  ParseValue;
+  if (Idx>=0) and (Idx<Length(FIdx)) then
+   begin
+    l:=FIdx[Idx].NameStart+FIdx[Idx].NameLength;
+    FTable.SetItem(FIndex,Copy(FData,1,FIdx[Idx].NameStart-1)+Value+
+      Copy(FData,l,Length(FData)-l+1));
+   end
+  else
+    raise ERangeError.Create('TxxmAhttpdSubValues.SetName: Out of range');
 end;
 
 end.

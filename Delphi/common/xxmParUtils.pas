@@ -512,10 +512,17 @@ begin
 end;
 
 function TRequestHeaders.GetItem(Name: OleVariant): WideString;
+var
+  i:integer;
 begin
   if VarIsNumeric(Name) then
-    with FIdx[integer(Name)] do
-      Result:=Copy(FData,ValueStart,ValueLength)
+   begin
+    i:=integer(Name);
+    if (i>=0) and (i<Length(FIdx)) then
+      Result:=Copy(FData,FIdx[i].ValueStart,FIdx[i].ValueLength)
+    else
+      raise ERangeError.Create('TRequestHeaders.GetItem: Out of range');
+   end
   else
     Result:=GetParamValue(FData,FIdx,Name);
 end;
@@ -532,7 +539,7 @@ begin
     i:=0;
     while (i<l) and (CompareText(Copy(FData,FIdx[i].NameStart,FIdx[i].NameLength),Name)<>0) do inc(i);//lower?
    end;
-  if (i<l) then
+  if (i>=0) and (i<l) then
     sv:=TRequestSubValues.Create(FData,FIdx[i].ValueStart,FIdx[i].ValueLength,Result)
   else
     sv:=TRequestSubValues.Create('',1,0,Result);//raise?
@@ -546,7 +553,10 @@ end;
 
 function TRequestHeaders.GetName(Idx: integer): WideString;
 begin
-  Result:=Copy(FData,FIdx[Idx].NameStart,FIdx[Idx].NameLength);
+  if (Idx>=0) and (Idx<Length(FIdx)) then
+    Result:=Copy(FData,FIdx[Idx].NameStart,FIdx[Idx].NameLength)
+  else
+    raise ERangeError.Create('TRequestHeaders.GetName: Out of range');
 end;
 
 procedure TRequestHeaders.SetName(Idx: integer; Value: WideString);
@@ -577,17 +587,27 @@ begin
 end;
 
 function TRequestSubValues.GetItem(Name: OleVariant): WideString;
+var
+  i:integer;
 begin
   if VarIsNumeric(Name) then
-    with FIdx[integer(Name)] do
-     Result:=Copy(FData,ValueStart,ValueLength)
+   begin
+    i:=integer(Name);
+    if (i>=0) and (i<Length(FIdx)) then
+      Result:=Copy(FData,FIdx[i].ValueStart,FIdx[i].ValueLength)
+    else
+      raise ERangeError.Create('TRequestSubValues.GetItem: Out of range');
+   end
   else
     Result:=GetParamValue(FData,FIdx,Name);
 end;
 
 function TRequestSubValues.GetName(Idx: integer): WideString;
 begin
-  Result:=Copy(FData,FIdx[Idx].NameStart,FIdx[Idx].NameLength);
+  if (Idx>=0) and (Idx<Length(FIdx)) then
+    Result:=Copy(FData,FIdx[Idx].NameStart,FIdx[Idx].NameLength)
+  else
+    raise ERangeError.Create('TRequestSubValues.GetName: Out of range');
 end;
 
 procedure TRequestSubValues.SetItem(Name: OleVariant; const Value: WideString);
@@ -646,7 +666,7 @@ begin
     i:=0;
     while (i<FItemsCount) and (CompareText(FItems[i].Name,Name)<>0) do inc(i);
    end;
-  if (i<FItemsCount) then Result:=FItems[i].Value else Result:='';
+  if (i>=0) and (i<FItemsCount) then Result:=FItems[i].Value else Result:='';
 end;
 
 procedure TResponseHeaders.SetItem(Name: OleVariant; const Value: WideString);
@@ -662,14 +682,17 @@ begin
     while (i<FItemsCount) and (CompareText(FItems[i].Name,Name)<>0) do inc(i);
     if i=FItemsCount then
      begin
-      HeaderCheckName(Name);
+      HeaderCheckName(VarToWideStr(Name));
       Grow;
       FItems[i].Name:=Name;
       FItems[i].SubValues:=nil;
      end;
    end;
   HeaderCheckValue(Value);
-  FItems[i].Value:=Value;
+  if (i>=0) and (i<FItemsCount) then
+    FItems[i].Value:=Value
+  else
+    raise ERangeError.Create('TResponseHeaders.SetItem: Out of range');
 end;
 
 function TResponseHeaders.Complex(Name: OleVariant;
@@ -683,7 +706,7 @@ begin
     while (i<FItemsCount) and (CompareText(FItems[i].Name,Name)<>0) do inc(i);
     if i=FItemsCount then
      begin
-      HeaderCheckName(Name);
+      HeaderCheckName(VarToWideStr(Name));
       Grow;
       FItems[i].Name:=Name;
       FItems[i].Value:='';
@@ -692,9 +715,14 @@ begin
    end;
   if FItems[i].SubValues=nil then
     FItems[i].SubValues:=TResponseSubValues.Create;
-  Result:=FItems[i].Value;
-  (FItems[i].SubValues as IUnknown)._AddRef;
-  Items:=FItems[i].SubValues;
+  if (i>=0) and (i<FItemsCount) then
+   begin
+    Result:=FItems[i].Value;
+    (FItems[i].SubValues as IUnknown)._AddRef;
+    Items:=FItems[i].SubValues;
+   end
+  else
+    raise ERangeError.Create('TResponseHeaders.Complex: Out of range');
 end;
 
 function TResponseHeaders.Build: AnsiString;
@@ -748,11 +776,16 @@ begin
     FItems[i].SubValues:=nil;
    end;
   HeaderCheckValue(Value);
-  FItems[i].Value:=Value;
-  if FItems[i].SubValues=nil then
-    FItems[i].SubValues:=TResponseSubValues.Create;
-  (FItems[i].SubValues as IUnknown)._AddRef;
-  Result:=FItems[i].SubValues;
+  if (i>=0) and (i<FItemsCount) then
+   begin
+    FItems[i].Value:=Value;
+    if FItems[i].SubValues=nil then
+      FItems[i].SubValues:=TResponseSubValues.Create;
+    (FItems[i].SubValues as IUnknown)._AddRef;
+    Result:=FItems[i].SubValues;
+   end
+  else
+    raise ERangeError.Create('TResponseHeaders.SetComplex: Out of range');
 end;
 
 procedure TResponseHeaders.Remove(const Name: WideString);
@@ -778,14 +811,20 @@ end;
 
 function TResponseHeaders.GetName(Idx: integer): WideString;
 begin
-  Result:=FItems[Idx].Name;
+  if (Idx>=0) and (Idx<Length(FItems)) then
+    Result:=FItems[Idx].Name
+  else
+    raise ERangeError.Create('TResponseHeaders.GetName: Out of range');
 end;
 
 procedure TResponseHeaders.SetName(Idx: integer; Value: WideString);
 begin
   if FBuilt then raise EXxmResponseHeaderAlreadySent.Create(SXxmResponseHeaderAlreadySent);
   HeaderCheckName(Value);
-  FItems[Idx].Name:=Value;
+  if (Idx>=0) and (Idx<Length(FItems)) then
+    FItems[Idx].Name:=Value
+  else
+    raise ERangeError.Create('TResponseHeaders.SetName: Out of range');
 end;
 
 { TResponseSubValues }
@@ -829,7 +868,7 @@ begin
     i:=0;
     while (i<FItemsCount) and (CompareText(FItems[i].Name,Name)<>0) do inc(i);
    end;
-  if (i<FItemsCount) then Result:=FItems[i].Value else Result:='';
+  if (i>=0) and (i<FItemsCount) then Result:=FItems[i].Value else Result:='';
 end;
 
 procedure TResponseSubValues.SetItem(Name: OleVariant; const Value: WideString);
@@ -844,12 +883,15 @@ begin
     while (i<FItemsCount) and (CompareText(FItems[i].Name,Name)<>0) do inc(i);
     if i=FItemsCount then
      begin
-      HeaderCheckName(Name);
+      HeaderCheckName(VarToWideStr(Name));
       Grow;
       FItems[i].Name:=Name;
      end;
    end;
-  FItems[i].Value:=Value;
+  if (i>=0) and (i<FItemsCount) then
+    FItems[i].Value:=Value
+  else
+    raise ERangeError.Create('TResponseSubValues.SetItem: Out of range');
 end;
 
 procedure TResponseSubValues.Build(ss: TStringStream);
@@ -869,14 +911,20 @@ end;
 
 function TResponseSubValues.GetName(Idx: integer): WideString;
 begin
-  Result:=FItems[Idx].Name;
+  if (Idx>=0) and (Idx<Length(FItems)) then
+    Result:=FItems[Idx].Name
+  else
+    raise ERangeError.Create('TResponseSubValues.GetName: Out of range');
 end;
 
 procedure TResponseSubValues.SetName(Idx: integer; Value: WideString);
 begin
   if FBuilt then raise EXxmResponseHeaderAlreadySent.Create(SXxmResponseHeaderAlreadySent);
   HeaderCheckName(Value);
-  FItems[Idx].Name:=Value;
+  if (Idx>=0) and (Idx<Length(FItems)) then
+    FItems[Idx].Name:=Value
+  else
+    raise ERangeError.Create('TResponseSubValues.SetName: Out of range');
 end;
 
 end.

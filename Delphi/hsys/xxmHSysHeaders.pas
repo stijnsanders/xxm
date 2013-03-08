@@ -9,11 +9,11 @@ uses
   xxmParUtils;
 
 type
-  TxxmHeaderGet=function(Name: WideString): WideString of object;
-  TxxmHeaderSet=procedure(Name, Value: WideString) of object;
+  TxxmHeaderGet=function(const Name: WideString): WideString of object;
+  TxxmHeaderSet=procedure(const Name, Value: WideString) of object;
   TxxmHeaderGetCount=function:integer of object;
   TxxmHeaderGetIndex=function(Idx: integer): WideString of object;
-  TxxmHeaderSetIndex=procedure(Idx: integer; Value: WideString) of object;
+  TxxmHeaderSetIndex=procedure(Idx: integer; const Value: WideString) of object;
 
   TxxmHSysResponseHeaders=class(TInterfacedObject, IxxmDictionary, IxxmDictionaryEx)
   private
@@ -180,7 +180,8 @@ end;
 function TxxmHSysResponseHeaders.Complex(Name: OleVariant;
   out Items: IxxmDictionary): WideString;
 begin
-  Items:=TxxmHSysResponseSubHeader.Create(Name,FGet,FSet,FGetName,FGetIndex,FSetIndex,Result);
+  Items:=TxxmHSysResponseSubHeader.Create(Name,
+   FGet,FSet,FGetName,FGetIndex,FSetIndex,Result);
 end;
 
 procedure TxxmHSysResponseHeaders.SetItem(Name: OleVariant;
@@ -241,11 +242,13 @@ end;
 function TxxmHSysResponseSubHeader.GetName(Idx: integer): WideString;
 begin
   ParseValue;
-  Result:=Copy(FValue,FPars[Idx].NameStart,FPars[Idx].NameLength);
+  if (Idx>=0) and (Idx<Length(FPars)) then
+    Result:=Copy(FValue,FPars[Idx].NameStart,FPars[Idx].NameLength)
+  else
+    raise ERangeError.Create('TxxmHSysResponseSubHeader.GetName: Out of range');
 end;
 
-procedure TxxmHSysResponseSubHeader.SetItem(Name: OleVariant;
-  const Value: WideString);
+procedure TxxmHSysResponseSubHeader.SetItem(Name: OleVariant; const Value: WideString);
 var
   i,j:integer;
   x:WideString;
@@ -258,21 +261,30 @@ begin
     i:=0;
     while (i<Length(FPars)) and (CompareText(Name,Copy(FValue,FPars[i].NameStart,FPars[i].NameLength))<>0) do inc(i);
    end;
-  j:=FPars[i].ValueStart+FPars[i].ValueLength;
-  x:=Copy(FValue,1,FPars[i].ValueStart-1)+Value+Copy(FValue,j,Length(FValue)-j+1);
+  if (i>=0) and (i<Length(FPars)) then
+   begin
+    j:=FPars[i].ValueStart+FPars[i].ValueLength;
+    x:=Copy(FValue,1,FPars[i].ValueStart-1)+Value+Copy(FValue,j,Length(FValue)-j+1);
+   end
+  else
+    x:=FValue+'; '+VarToWideStr(Name)+'='+Value;
   if VarIsNumeric(FPar) then FSetIndex(FPar,x) else FSet(FPar,x);
 end;
 
-procedure TxxmHSysResponseSubHeader.SetName(Idx: integer;
-  Value: WideString);
+procedure TxxmHSysResponseSubHeader.SetName(Idx: integer; Value: WideString);
 var
   j:integer;
   x:WideString;
 begin
   ParseValue;
-  j:=FPars[Idx].NameStart+FPars[Idx].NameLength;
-  x:=Copy(FValue,1,FPars[Idx].NameStart-1)+Value+Copy(FValue,j,Length(FValue)-j+1);
-  if VarIsNumeric(FPar) then FSetIndex(FPar,x) else FSet(FPar,x);
+  if (Idx>=0) and (Idx<Length(FPars)) then
+   begin
+    j:=FPars[Idx].NameStart+FPars[Idx].NameLength;
+    x:=Copy(FValue,1,FPars[Idx].NameStart-1)+Value+Copy(FValue,j,Length(FValue)-j+1);
+    if VarIsNumeric(FPar) then FSetIndex(FPar,x) else FSet(FPar,x);
+   end
+  else
+    raise ERangeError.Create('TxxmHSysResponseSubHeader.SetName: Out of range');
 end;
 
 end.
