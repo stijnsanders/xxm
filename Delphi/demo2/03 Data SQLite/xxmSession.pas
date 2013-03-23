@@ -74,7 +74,8 @@ begin
   Session:=nil;
 end;
 
-threadvar
+//threadvar
+var //see SQLITE_CONFIG_SERIALIZED: one connection may be used over several threads! (otherwise will throw "database is locked" under load)
   ThreadDbCon:TSQLiteConnection;
 
 { TxxmSession }
