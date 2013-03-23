@@ -24,9 +24,9 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-    procedure RegisterClass(FName: AnsiString; FType: TXxmFragmentClass);
+    procedure RegisterClass(const FName: AnsiString; FType: TXxmFragmentClass);
     function GetFragment(Project: TxxmProject;
-      FName, RelativeTo: AnsiString): IxxmFragment;
+	  const FName, RelativeTo: AnsiString): IxxmFragment;
   end;
 
 var
@@ -57,13 +57,14 @@ begin
   inherited;
 end;
 
-procedure TXxmFragmentRegistry.RegisterClass(FName: AnsiString; FType: TXxmFragmentClass);
+procedure TXxmFragmentRegistry.RegisterClass(const FName: AnsiString;
+  FType: TXxmFragmentClass);
 begin
   Registry.AddObject(string(FName),TObject(FType));
 end;
 
 function TXxmFragmentRegistry.GetFragment(Project: TxxmProject;
-  FName, RelativeTo: AnsiString): IxxmFragment;
+  const FName, RelativeTo: AnsiString): IxxmFragment;
 var
   i,j,l:integer;
   a,b:AnsiString;
