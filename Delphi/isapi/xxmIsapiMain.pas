@@ -37,6 +37,7 @@ type
     function GetProjectPage(FragmentName: WideString):IXxmFragment; override;
     procedure SendHeader; override;
     procedure SetStatus(Code: Integer; Text: WideString); override;
+    function GetRequestHeader(const Name: WideString): WideString; override;
     procedure AddResponseHeader(const Name, Value: WideString); override;
 
     function GetRequestHeaders:IxxmDictionaryEx;
@@ -569,6 +570,11 @@ end;
 function TXxmIsapiContext.GetResponseHeaders: IxxmDictionaryEx;
 begin
   Result:=FResHeaders;
+end;
+
+function TXxmIsapiContext.GetRequestHeader(const Name: WideString): WideString;
+begin
+  Result:=FReqHeaders.Item[Name];
 end;
 
 procedure TXxmIsapiContext.AddResponseHeader(const Name, Value: WideString);

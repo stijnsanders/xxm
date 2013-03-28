@@ -81,6 +81,7 @@ type
     {  }
     function GetProjectEntry:TXxmProjectEntry; virtual; abstract;
     procedure SendHeader; virtual; abstract;
+    function GetRequestHeader(const Name: WideString): WideString; virtual; abstract;
     procedure AddResponseHeader(const Name, Value: WideString); virtual; abstract;
 
     function GetProjectPage(FragmentName: WideString):IXxmFragment; virtual;
@@ -93,6 +94,7 @@ type
 
     procedure BeginRequest; virtual;
     procedure BuildPage;
+    procedure SingleFile;
     procedure EndRequest; virtual;
 
     property ProjectEntry: TXxmProjectEntry read FProjectEntry;
@@ -207,11 +209,7 @@ end;
 
 procedure TXxmGeneralContext.BuildPage;
 var
-  x:WideString;
   p:IXxmPage;
-  f:TFileStream;
-  fs:Int64;
-  d:TDateTime;
 begin
   FProjectEntry:=GetProjectEntry;//(FProjectName);
   if @XxmAutoBuildHandler<>nil then
@@ -223,53 +221,7 @@ begin
   FProjectEntry.OpenContext;
   FPage:=GetProjectPage(FFragmentName);
   if FPage=nil then
-   begin
-    //find a file
-    //ask project to translate? project should have given a fragment!
-    FPageClass:='['+FProjectName+']GetFilePath';
-    FProjectEntry.GetFilePath(FFragmentName,FSingleFileSent,x);
-    d:=GetFileModifiedDateTime(FSingleFileSent,fs);
-    if d<>0 then //FileExists(FSingleFileSent)
-     begin
-      FContentType:=x;
-      f:=TFileStream.Create(FSingleFileSent,fmOpenRead or fmShareDenyNone);
-      try
-        AddResponseHeader('Last-Modified',RFC822DateGMT(d));
-        AddResponseHeader('Content-Length',IntToStr(fs));
-        SendStream(TStreamAdapter.Create(f,soReference));
-      finally
-        f.Free;
-      end;
-     end
-    else
-     begin
-      FPageClass:='['+FProjectName+']404:'+FFragmentName;
-      FPage:=FProjectEntry.Project.LoadPage(Self,'404.xxm');
-      if FPage=nil then
-       begin
-        ForceStatus(StatusFileNotFound,'File not found');
-        SendError('fnf',[
-          'URL',HTMLEncode(FURL),
-          'PROJECT',FProjectName,
-          'ADDRESS',FFragmentName,
-          'PATH',HTMLEncode(FSingleFileSent),
-          'VERSION',ContextString(csVersion)
-        ]);
-       end
-      else
-        try
-          FPageClass:=FPage.ClassNameEx;
-          FBuilding:=FPage;
-          FPage.Build(Self,nil,[FFragmentName,FSingleFileSent,x],[]);//any parameters?
-        finally
-          FBuilding:=nil;
-          //let project free, cache or recycle
-          FProjectEntry.Project.UnloadFragment(FPage);
-          FPage:=nil;
-        end;
-     end;
-    if FBufferSize<>0 then Flush;
-   end
+    SingleFile
   else
     try
       FPageClass:=FPage.ClassNameEx;
@@ -292,13 +244,92 @@ begin
        end
       else
         if FBufferSize<>0 then Flush;
-        
+
     finally
       FBuilding:=nil;
       //let project decide to free or not
       FProjectEntry.Project.UnloadFragment(FPage);
       FPage:=nil;
     end;
+end;
+
+procedure TXxmGeneralContext.SingleFile;
+var
+  x,y:WideString;
+  fh:THandle;
+  fd:TByHandleFileInformation;
+  fs:int64;
+  st:TSystemTime;
+begin
+  //find a file
+  //ask project to translate? project should have given a fragment!
+  FPageClass:='['+FProjectName+']GetFilePath';
+  FProjectEntry.GetFilePath(FFragmentName,FSingleFileSent,x);
+  fh:=CreateFileW(PWideChar(FSingleFileSent),
+    GENERIC_READ,FILE_SHARE_READ,nil,OPEN_EXISTING,
+    FILE_ATTRIBUTE_NORMAL or FILE_FLAG_SEQUENTIAL_SCAN,0);
+  if (fh<>INVALID_HANDLE_VALUE) then
+   begin
+    //TODO: 'Range'
+    try
+      if GetFileInformationByHandle(fh,fd) then
+       begin
+        FileTimeToSystemTime(fd.ftLastWriteTime,st);
+        y:=RFC822DateGMT(SystemTimeToDateTime(st));
+        fs:=fd.nFileSizeHigh shl 32 or fd.nFileSizeLow;
+       end
+      else
+       begin
+        y:='';
+        fs:=0;
+       end;
+      FAutoEncoding:=aeContentDefined;
+      FContentType:=x;
+      //TODO: Cache-Control max-age (and others?), other 'If-'s?
+      if (y<>'') and (GetRequestHeader('If-Modified-Since')=y) then
+       begin
+        ForceStatus(304,'Not Modified');
+        AddResponseHeader('Content-Length','0');
+        SendHeader;
+       end
+      else
+       begin
+        if y<>'' then AddResponseHeader('Last-Modified',y);
+        if fs<>0 then AddResponseHeader('Content-Length',IntToStr(fs));
+        SendStream(TStreamAdapter.Create(THandleStream.Create(fh),soOwned));
+       end;
+    finally
+      CloseHandle(fh);
+    end;
+   end
+  else
+   begin
+    FPageClass:='['+FProjectName+']404:'+FFragmentName;
+    FPage:=FProjectEntry.Project.LoadPage(Self,'404.xxm');
+    if FPage=nil then
+     begin
+      ForceStatus(StatusFileNotFound,'File not found');
+      SendError('fnf',[
+        'URL',HTMLEncode(FURL),
+        'PROJECT',FProjectName,
+        'ADDRESS',FFragmentName,
+        'PATH',HTMLEncode(FSingleFileSent),
+        'VERSION',ContextString(csVersion)
+      ]);
+     end
+    else
+      try
+        FPageClass:=FPage.ClassNameEx;
+        FBuilding:=FPage;
+        FPage.Build(Self,nil,[FFragmentName,FSingleFileSent,x],[]);//any parameters?
+      finally
+        FBuilding:=nil;
+        //let project free, cache or recycle
+        FProjectEntry.Project.UnloadFragment(FPage);
+        FPage:=nil;
+      end;
+   end;
+  if FBufferSize<>0 then Flush;
 end;
 
 function TXxmGeneralContext.GetPage: IXxmFragment;

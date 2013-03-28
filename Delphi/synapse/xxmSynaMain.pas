@@ -47,6 +47,7 @@ type
 
     function GetProjectEntry:TXxmProjectEntry; override;
     procedure SendHeader; override;
+    function GetRequestHeader(const Name: WideString): WideString; override;
     procedure AddResponseHeader(const Name, Value: WideString); override;
 
     procedure BeginRequest; override;
@@ -647,6 +648,11 @@ begin
 
   //clear buffer just in case
   if ContentBuffer<>nil then ContentBuffer.Position:=0;
+end;
+
+function TXxmSynaContext.GetRequestHeader(const Name: WideString): WideString;
+begin
+  Result:=FReqHeaders.Item[Name];
 end;
 
 procedure TXxmSynaContext.AddResponseHeader(const Name, Value: WideString);

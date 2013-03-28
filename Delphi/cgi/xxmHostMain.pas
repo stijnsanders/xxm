@@ -49,6 +49,7 @@ type
     procedure Flush; override;
 
     function GetProjectEntry:TXxmProjectEntry; override;
+    function GetRequestHeader(const Name: WideString): WideString; override;
     procedure AddResponseHeader(const Name, Value: WideString); override;
 
     function GetRequestHeaders:IxxmDictionaryEx;
@@ -445,6 +446,11 @@ begin
   i:=0;
   while (i<FCGIValuesCount) and (Name<>FCGIValues[i].Name) do inc(i); //TODO: case-insensitive?
   if i=FCGIValuesCount then Result:='' else Result:=FCGIValues[i].Value;
+end;
+
+function TXxmHostedContext.GetRequestHeader(const Name: WideString): WideString;
+begin
+  Result:=FReqHeaders.Item[Name];
 end;
 
 procedure TXxmHostedContext.AddResponseHeader(const Name, Value: WideString);

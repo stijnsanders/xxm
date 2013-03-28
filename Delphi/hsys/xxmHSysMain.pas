@@ -60,6 +60,7 @@ type
     procedure Flush; override;
 
     function GetProjectEntry:TXxmProjectEntry; override;
+    function GetRequestHeader(const Name: WideString): WideString; override;
     procedure AddResponseHeader(const Name, Value: WideString); override;
 
     function GetRequestHeaders:IxxmDictionaryEx;
@@ -469,6 +470,16 @@ begin
    end
   else
     Result:=FRes.Headers.KnownHeaders[x].pRawValue;
+end;
+
+function TXxmHSys1Context.GetRequestHeader(const Name: WideString): WideString;
+begin
+  //TODO: more?
+  if Name='If-Modified-Since' then
+    Result:=WideString(FReq.Headers.KnownHeaders
+      [HttpHeaderIfModifiedSince].pRawValue)
+  else
+    Result:='';
 end;
 
 procedure TXxmHSys1Context.AddResponseHeader(const Name, Value: WideString);

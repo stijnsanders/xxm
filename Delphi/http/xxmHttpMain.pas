@@ -40,6 +40,7 @@ type
 
     function GetProjectEntry:TXxmProjectEntry; override;
     procedure SendHeader; override;
+    function GetRequestHeader(const Name: WideString): WideString; override;
     procedure AddResponseHeader(const Name, Value: WideString); override;
 
     procedure BeginRequest; override;
@@ -586,8 +587,6 @@ end;
 procedure TXxmHttpContext.SendHeader;
 var
   x:AnsiString;
-  l:cardinal;
-  d:array of byte;
 const
   AutoEncodingCharset:array[TXxmAutoEncoding] of string=(
     '',//aeContentDefined
@@ -600,15 +599,17 @@ begin
   FResHeaders['Content-Type']:=FContentType+AutoEncodingCharset[FAutoEncoding];
   x:=FHTTPVersion+' '+IntToStr(StatusCode)+' '+StatusText+#13#10+
     FResHeaders.Build+#13#10;
-  l:=Length(x);
-  SetLength(d,l);
-  Move(x[1],d[0],l);
-  FSocket.SendBuf(d[0],l);
+  FSocket.SendBuf(x[1],Length(x));
   if FResHeaders['Content-Length']<>'' then FKeepConnection:=true;
   //TODO: transfer encoding chunked
 
   //clear buffer just in case
   if ContentBuffer<>nil then ContentBuffer.Position:=0;
+end;
+
+function TXxmHttpContext.GetRequestHeader(const Name: WideString): WideString;
+begin
+  Result:=FReqHeaders.Item[Name];
 end;
 
 procedure TXxmHttpContext.AddResponseHeader(const Name, Value: WideString);
