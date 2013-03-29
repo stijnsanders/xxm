@@ -72,6 +72,9 @@ For example a page posted to by a form, uses something like <code>Context.Redire
 or a website that forwards to sites with absolute URL's from websites should use <code>Context.Redirect(WebsiteUrlFromDB,false);</code>.
 </dd>
 
+<dt>why is there no <code>IXxmParameter.AsBool</code> or <code>IXxmParameter.AsDate</code>?</dt>
+<dd>I couldn't decide on a default encoding for dates and booleans. For booleans I generally use <code>b:=Context['b'].AsInteger<>0;</code> and dates I pass either as an integer or double cast to and from a TDateTime</dd>
+
 <dt>why does my website show a build failed error message on one page when I'm browsing to another page?</dt>
 <dd>it's a side-effect of using a compiled library to run the website for you. If the auto-build fails (auto-build is triggered by any page-refresh to the site, even AJAX-calls and image-loads), the library isn't loaded and the build failed page is shown, for every request to the site. It's strongly advised to use a single instance of the website source-files to work on for each developer. If you work on the same set of files with a number of developer's, each build failed error caused by one developer will interrupt the testing of the other developers. (It's also strongly advised to use a version control system on the source-files between multiple developers. e.g. <a href="http://subversion.tigris.org/">SVN</a> or <a href="http://git-scm.com/">Git</a>)</dd>
 
