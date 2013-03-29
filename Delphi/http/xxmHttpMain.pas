@@ -26,6 +26,7 @@ type
     FQueryStringIndex:integer;
     FKeepConnection:boolean;
     procedure HandleRequest;
+    procedure SocketError(Sender: TObject; SocketError: Integer);
   protected
     function GetSessionID: WideString; override;
     procedure DispositionAttach(FileName: WideString); override;
@@ -222,6 +223,7 @@ var
 begin
   inherited Create('');//URL is parsed by Execute
   FSocket:=Socket;
+  FSocket.OnError:=SocketError;
   i:=1;
   l:=4;
   setsockopt(FSocket.Handle,IPPROTO_TCP,TCP_NODELAY,@i,l);
@@ -689,6 +691,12 @@ begin
     if ContentBuffer.Position>ABufferSize then Flush;
     if ContentBuffer.Size<ABufferSize then ContentBuffer.Size:=ABufferSize;
    end;
+end;
+
+procedure TXxmHttpContext.SocketError(Sender: TObject;
+  SocketError: Integer);
+begin
+  FSocket.Disconnect;
 end;
 
 end.

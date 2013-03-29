@@ -1,6 +1,7 @@
 v1.1.9.???
 - support for If-Modified-Since, If-Unmodified-Since headers
 - serving content-files uses FILE_FLAG_SEQUENTIAL_SCAN
+- xxmHttp: detection of broken connections (Context.Connected=false)
 
 v1.1.8.295
 - optional project interface: IXxmProjectEvents1

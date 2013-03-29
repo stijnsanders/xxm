@@ -38,6 +38,7 @@ begin
   inherited Create;
   FSize:=Size;
   FSocket:=Socket;
+  //FSocket.OnError:=//see caller
   FStore:=StoreStream;
   //FStore.Size:=FSize;//done by caller? (don't care really)
   //assert FStore.Position:=0;
