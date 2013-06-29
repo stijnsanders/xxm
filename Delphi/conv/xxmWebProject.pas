@@ -375,6 +375,8 @@ begin
             p.Save(FSrcFolder+upath+uname+DelphiExtension);
             if DoLineMaps then
               m.Save(FSrcFolder+upath+uname+LinesMapExtension);
+            if not Result then
+              Signatures.Values[SignaturesUpdateReasonKey]:=uname;
             Result:=true;
           except
             on e:Exception do
@@ -398,10 +400,13 @@ begin
         DeleteFile(FSrcFolder+upath+uname+LinesMapExtension);
         //remove whitespace
         xn:=xFile.previousSibling;
-        if xn.nodeType=NODE_TEXT then xFile.parentNode.removeChild(xn);
+        if (xn<>nil) and (xn.nodeType=NODE_TEXT) then
+          xFile.parentNode.removeChild(xn);
         //remove file tag
         xFile.parentNode.removeChild(xFile);
         Modified:=true;
+        if not Result then
+          Signatures.Values[SignaturesUpdateReasonKey]:='<'+uname;
         Result:=true;
        end;
 
@@ -427,6 +432,8 @@ begin
          begin
           Signatures.Values[uname]:=s;
           Modified:=true;
+          if not Result then
+            Signatures.Values[SignaturesUpdateReasonKey]:=uname;
           Result:=true;
          end;
 
@@ -451,6 +458,8 @@ begin
          begin
           Signatures.Values[uname]:=s;
           Modified:=true;
+          if not Result then
+            Signatures.Values[SignaturesUpdateReasonKey]:=uname;
           Result:=true;
          end;
 
@@ -577,6 +586,7 @@ begin
         Windows.FindClose(fh);
        end;
 
+      //proto\Web.*
       fh:=FindFirstFileA(PAnsiChar(FProtoPathDef+ProtoProjectMask),fd);
       if fh<>INVALID_HANDLE_VALUE then
        begin

@@ -1,7 +1,8 @@
-v1.1.9.???
+v1.1.9.300
 - support for If-Modified-Since, If-Unmodified-Since headers
 - serving content-files uses FILE_FLAG_SEQUENTIAL_SCAN
-- xxmHttp: detection of broken connections (Context.Connected=false)
+- xxmHttp: switched to custom winsock wrapper
+- xxmLocal: fixed issue with first request for a static file after reload
 
 v1.1.8.295
 - optional project interface: IXxmProjectEvents1

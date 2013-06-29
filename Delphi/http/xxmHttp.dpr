@@ -14,7 +14,9 @@ uses
   xxmCommonUtils in '..\common\xxmCommonUtils.pas',
   xxmContext in '..\common\xxmContext.pas',
   xxmReadHandler in 'xxmReadHandler.pas',
-  MSXML2_TLB in '..\common\MSXML2_TLB.pas';
+  MSXML2_TLB in '..\common\MSXML2_TLB.pas',
+  xxmSock in 'xxmSock.pas',
+  xxmThreadPool in '..\common\xxmThreadPool.pas';
 
 {$R *.res}
 

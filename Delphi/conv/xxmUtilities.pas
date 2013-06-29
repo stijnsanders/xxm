@@ -19,6 +19,7 @@ const
   DelphiExtension='.pas';
   ProjectLogExtension='.log';
   SignaturesFileName='xxmp.~db';
+  SignaturesUpdateReasonKey='::';
   LinesMapExtension='.~ln';
 
   ProtoProjectDpr='Web.dpr';

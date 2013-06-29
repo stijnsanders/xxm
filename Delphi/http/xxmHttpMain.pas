@@ -3,20 +3,23 @@ unit xxmHttpMain;
 interface
 
 uses
-  SysUtils, Sockets, xxm, Classes, ActiveX, xxmContext,
+  SysUtils, xxmSock, xxmThreadPool, xxm, Classes, ActiveX, xxmContext,
   xxmPReg, xxmPRegXml, xxmParams, xxmParUtils, xxmHeaders;
 
 type
-  TXxmHttpServer = class(TCustomTcpServer)
+  TXxmHttpServerListener=class(TThread)
+  private
+    FServer:TTcpServer;
   protected
-    procedure DoAccept(ClientSocket: TCustomIpClient); override;
-    //procedure DoHandleError; override;//?
+    procedure Execute; override;
+  public
+    constructor Create(Server:TTcpServer);
+    destructor Destroy; override;
   end;
 
-type
-  TXxmHttpContext=class(TXxmGeneralContext, IxxmHttpHeaders)
+  TXxmHttpContext=class(TXxmQueueContext, IxxmHttpHeaders)
   private
-    FSocket:TCustomIpClient;
+    FSocket:TTcpSocket;
     FReqHeaders:TRequestHeaders;
     FResHeaders:TResponseHeaders;
     FHTTPVersion,FVerb,FURI,FRedirectPrefix,FSessionID:AnsiString;
@@ -26,7 +29,6 @@ type
     FQueryStringIndex:integer;
     FKeepConnection:boolean;
     procedure HandleRequest;
-    procedure SocketError(Sender: TObject; SocketError: Integer);
   protected
     function GetSessionID: WideString; override;
     procedure DispositionAttach(FileName: WideString); override;
@@ -61,9 +63,9 @@ type
     property ReqHeaders:TRequestHeaders read FReqHeaders;
     property ResHeaders:TResponseHeaders read FResHeaders;
   public
-    constructor Create(Socket:TCustomIpClient);
+    constructor Create(Socket:TTcpSocket);
     destructor Destroy; override;
-    procedure Execute;
+    procedure Execute; override;
   end;
 
   EXxmMaximumHeaderLines=class(Exception);
@@ -74,7 +76,6 @@ type
 
   TXxmHttpRunParameters=(
     rpPort,
-    rpSilent,
     rpLoadCopy,
     rpStartURL,
     rpThreads,
@@ -85,8 +86,7 @@ procedure XxmRunServer;
 
 implementation
 
-uses Windows, Variants, ComObj, AxCtrls, WinSock,
-  xxmCommonUtils, xxmReadHandler, ShellApi;
+uses Windows, Variants, ComObj, xxmCommonUtils, xxmReadHandler, ShellApi;
 
 resourcestring
   SXxmMaximumHeaderLines='Maximum header lines exceeded.';
@@ -109,7 +109,6 @@ procedure XxmRunServer;
 const
   ParameterKey:array[TXxmHttpRunParameters] of AnsiString=(
     'port',
-    'silent',
     'loadcopy',
     'starturl',
     'threads',
@@ -117,16 +116,15 @@ const
     '');
   WM_QUIT = $0012;//from Messages
 var
-  Server:TxxmHttpServer;
+  Server:TTcpServer;
+  Listener:TXxmHttpServerListener;
   i,j,Port,Threads:integer;
-  Silent:boolean;
   StartURL,s,t:AnsiString;
   Msg:TMsg;
   par:TXxmHttpRunParameters;
 begin
   //default values
   Port:=80;
-  Silent:=false;
   StartURL:='';
   Threads:=64;
 
@@ -142,8 +140,6 @@ begin
     case par of
       rpPort:
         Port:=StrToInt(Copy(s,j+1,Length(s)-j));
-      rpSilent:
-        Silent:=Copy(s,j+1,Length(s)-j)<>'0';
       rpLoadCopy:
         GlobalAllowLoadCopy:=Copy(s,j+1,Length(s)-j)<>'0';
       rpStartURL:
@@ -165,65 +161,43 @@ begin
   //
   CoInitialize(nil);
   XxmProjectCache:=TXxmProjectCacheXml.Create;
-  Server:=TxxmHttpServer.Create(nil);
+  PageLoaderPool:=TXxmPageLoaderPool.Create(Threads);  
+  Server:=TTcpServer.Create;
   try
-    Server.LocalPort:=IntToStr(Port);
-    Server.ServerSocketThread.ThreadCacheSize:=Threads;
-    //TODO: listen on multiple ports
-    Server.Open;
+    Server.Bind('',Port);
+    //TODO: bind to multiple ports
+    Server.Listen;
 
     if StartURL<>'' then
       ShellExecute(GetDesktopWindow,nil,PChar(StartURL),nil,nil,SW_NORMAL);//check result?
 
-    if not Server.Listening then
-      if Silent then exit else
-        raise Exception.Create('Failed to listen on port '+Server.LocalPort);
-
-    repeat
-      if GetMessage(Msg,0,0,0) then
-        if Msg.message<>WM_QUIT then
-         begin
-          TranslateMessage(Msg);
-          DispatchMessage(Msg);
-         end;
-    until Msg.message=WM_QUIT;
+    Listener:=TXxmHttpServerListener.Create(Server);
+    try
+      repeat
+        if GetMessage(Msg,0,0,0) then
+          if Msg.message<>WM_QUIT then
+           begin
+            TranslateMessage(Msg);
+            DispatchMessage(Msg);
+           end;
+      until Msg.message=WM_QUIT;
+    finally
+      Listener.Free;
+    end;
 
   finally
     Server.Free;
   end;
 end;
 
-{ TxxmHttpServer }
-
-procedure TXxmHttpServer.DoAccept(ClientSocket: TCustomIpClient);
-var
-  cx:TXxmHttpContext;
-begin
-  inherited;
-  CoInitialize(nil);
-  try
-    cx:=TXxmHttpContext.Create(ClientSocket);
-    cx._AddRef;//strange, param fill calls release
-    try
-      cx.Execute;
-    finally
-      cx._Release;
-    end;
-  finally
-    Sleep(10);//odd, on really small content disconnect comes too fast
-    ClientSocket.Disconnect;
-  end;
-end;
-
 { TXxmHttpContext }
 
-constructor TXxmHttpContext.Create(Socket:TCustomIpClient);
+constructor TXxmHttpContext.Create(Socket:TTcpSocket);
 var
   i,l:integer;
 begin
   inherited Create('');//URL is parsed by Execute
   FSocket:=Socket;
-  FSocket.OnError:=SocketError;
   i:=1;
   l:=4;
   setsockopt(FSocket.Handle,IPPROTO_TCP,TCP_NODELAY,@i,l);
@@ -231,7 +205,7 @@ end;
 
 destructor TXxmHttpContext.Destroy;
 begin
-  //nothing here, see EndRequest
+  FSocket.Free;
   inherited;
 end;
 
@@ -276,6 +250,7 @@ begin
       EndRequest;
     end;
    end;
+  FSocket.Disconnect;
 end;
 
 procedure TXxmHttpContext.HandleRequest;
@@ -456,8 +431,8 @@ begin
     csLocalURL:Result:=FFragmentName;
     csReferer:Result:=FReqHeaders['Referer'];
     csLanguage:Result:=FReqHeaders['Accept-Language'];
-    csRemoteAddress:Result:=FSocket.RemoteHost;//TODO: name to address?
-    csRemoteHost:Result:=FSocket.LookupHostName(FSocket.RemoteHost);
+    csRemoteAddress:Result:=FSocket.Address;
+    csRemoteHost:Result:=FSocket.HostName;
     csAuthUser:Result:='';//TODO:
     csAuthPassword:Result:='';//TODO:
     else
@@ -569,21 +544,19 @@ begin
 end;
 
 procedure TXxmHttpContext.SendStream(s: IStream);
+const
+  dSize=$10000;
 var
-  os:TOleStream;
+  d:array[0..dSize-1] of byte;
+  l:integer;
 begin
-  //if s.Size<>0 then
-   begin
-    CheckSendStart;
-    if FBufferSize<>0 then Flush;
-    //no autoencoding here
-    os:=TOleStream.Create(s);
-    try
-      FSocket.SendStream(os);
-    finally
-      os.Free;
-    end;
-   end;
+  CheckSendStart;
+  if FBufferSize<>0 then Flush;
+  repeat
+    l:=dSize;
+    OleCheck(s.Read(@d[0],dSize,@l));
+    if l<>0 then FSocket.SendBuf(d[0],l);
+  until l=0;
 end;
 
 procedure TXxmHttpContext.SendHeader;
@@ -646,8 +619,8 @@ begin
   if FURL='' then
    begin
     FURL:='localhost';//TODO: from binding? setting?
-    if (FSocket.LocalPort<>'') and (FSocket.LocalPort<>'80') then
-      FURL:=FURL+':'+FSocket.LocalPort;
+    if (FSocket.Port<>0) and (FSocket.Port<>80) then
+      FURL:=FURL+':'+IntToStr(FSocket.Port);
    end;
   FURL:='http://'+FURL+FURI;//TODO: 'https' if SSL?
 end;
@@ -693,10 +666,32 @@ begin
    end;
 end;
 
-procedure TXxmHttpContext.SocketError(Sender: TObject;
-  SocketError: Integer);
+{ TXxmHttpServerListener }
+
+constructor TXxmHttpServerListener.Create(Server: TTcpServer);
 begin
-  FSocket.Disconnect;
+  inherited Create(false);
+  FServer:=Server;
+end;
+
+destructor TXxmHttpServerListener.Destroy;
+begin
+  closesocket(FServer.Handle);//forces WaitForConnection to return
+  inherited;
+end;
+
+procedure TXxmHttpServerListener.Execute;
+begin
+  //inherited;
+  //assert FServer.Bind called
+  while not Terminated do
+    try
+      FServer.WaitForConnection;
+      if not Terminated then
+        PageLoaderPool.Queue(TXxmHttpContext.Create(FServer.Accept));
+    except
+      //TODO: log? display?
+    end;
 end;
 
 end.

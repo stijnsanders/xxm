@@ -4,14 +4,15 @@ interface
 
 uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, SvcMgr, Dialogs,
-    xxmHttpMain;
+    xxmHttpMain, xxmSock;
 
 type
   TxxmService = class(TService)
     procedure ServiceStart(Sender: TService; var Started: Boolean);
     procedure ServiceStop(Sender: TService; var Stopped: Boolean);
   private
-    FServer:TXxmHTTPServer;
+    FServer:TTcpServer;
+    FListener:TXxmHttpServerListener;
   public
     function GetServiceController: TServiceController; override;
   end;
@@ -21,7 +22,7 @@ var
 
 implementation
 
-uses Registry, xxmPReg, xxmPRegXml, ActiveX;
+uses Registry, xxmPReg, xxmPRegXml, ActiveX, xxmThreadPool;
 
 {$R *.dfm}
 
@@ -44,7 +45,6 @@ var
 const
   ParameterKey:array[TXxmHttpRunParameters] of string=(
     'Port',
-    'Silent',
     'LoadCopy',
     'StartURL',
     'Threads',
@@ -69,14 +69,16 @@ begin
   end;
   CoInitialize(nil);
   XxmProjectCache:=TXxmProjectCacheXml.Create;
-  FServer:=TXxmHTTPServer.Create(nil);
-  FServer.ServerSocketThread.ThreadCacheSize:=t;
-  FServer.LocalPort:=IntToStr(p);
-  FServer.Open;
+  PageLoaderPool:=TXxmPageLoaderPool.Create(t);
+  FServer:=TTcpServer.Create;
+  FServer.Bind('',p);
+  FServer.Listen;
+  FListener:=TXxmHttpServerListener.Create(FServer);
 end;
 
 procedure TxxmService.ServiceStop(Sender: TService; var Stopped: Boolean);
 begin
+  FListener.Free;
   FServer.Free;
   FreeAndNil(XxmProjectCache);
 end;

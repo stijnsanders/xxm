@@ -244,7 +244,7 @@ var
   rf,sf,s:WideString;
   i,j,l:integer;
 begin
-  rf:=FFilePath;
+  rf:=GetModulePath;
   i:=Length(rf);
   while (i<>0) and (rf[i]<>PathDelim) do dec(i);
   SetLength(rf,i);

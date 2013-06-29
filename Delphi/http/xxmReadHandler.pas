@@ -2,13 +2,13 @@ unit xxmReadHandler;
 
 interface
 
-uses Classes, Sockets;
+uses Classes, xxmSock;
 
 type
   THandlerReadStreamAdapter=class(TStream)
   private
     FSize:Int64;
-    FSocket:TCustomIpClient;
+    FSocket:TTcpSocket;
     FStore:TStream;
     FStorePosition,FPosition:int64;
   protected
@@ -16,7 +16,7 @@ type
     procedure SetSize(NewSize: Longint); overload; override;
     procedure SetSize(const NewSize: Int64); overload; override;
   public
-    constructor Create(Socket:TCustomIpClient;Size:Int64;StoreStream:TStream;
+    constructor Create(Socket: TTcpSocket; Size: Int64; StoreStream: TStream;
       const StartData: AnsiString);
     destructor Destroy; override;
     function Read(var Buffer; Count: Longint): Longint; override;
@@ -30,7 +30,7 @@ uses SysUtils;
 
 { THandlerReadStreamAdapter }
 
-constructor THandlerReadStreamAdapter.Create(Socket: TCustomIpClient;
+constructor THandlerReadStreamAdapter.Create(Socket: TTcpSocket;
   Size: Int64; StoreStream: TStream; const StartData: AnsiString);
 var
   l:integer;  
