@@ -7,8 +7,9 @@ uses
 
 type
   TXxmQueueContext=class(TXxmGeneralContext)
+  protected
+    QueueIn,QueueOut:TXxmQueueContext;
   public
-    Queue:TXxmQueueContext;
     procedure Execute; virtual; abstract;
   end;
 
@@ -29,7 +30,7 @@ type
     FLoaders:array of TXxmPageLoader;
     FLoaderSize:integer;
     FLock:TRTLCriticalSection;
-    FQueue:TXxmQueueContext;
+    FQueueIn,FQueueOut:TXxmQueueContext;
     procedure SetSize(x:integer);
   public
     constructor Create(PoolMaxThreads:integer);
@@ -140,7 +141,8 @@ constructor TXxmPageLoaderPool.Create(PoolMaxThreads:integer);
 begin
   inherited Create;
   FLoaderSize:=0;
-  FQueue:=nil;
+  FQueueIn:=nil;
+  FQueueOut:=nil;
   InitializeCriticalSection(FLock);
   SetSize(PoolMaxThreads);//TODO: setting
   //TODO: setting no pool
@@ -203,17 +205,22 @@ end;
 
 procedure TXxmPageLoaderPool.Queue(Context:TXxmQueueContext);
 var
-  c:TXxmQueueContext;
   i:integer;
 begin
   EnterCriticalSection(FLock);
   try
     //add to queue
-    if FQueue=nil then FQueue:=Context else
+    Context.QueueIn:=FQueueIn;
+    Context.QueueOut:=nil;
+    if FQueueIn=nil then
      begin
-      c:=FQueue;
-      while c.Queue<>nil do c:=c.Queue;
-      c.Queue:=Context;
+      FQueueIn:=Context;
+      FQueueOut:=Context;
+     end
+    else
+     begin
+      FQueueIn.QueueOut:=Context;
+      FQueueIn:=Context;
      end;
   finally
     LeaveCriticalSection(FLock);
@@ -239,15 +246,15 @@ end;
 
 function TXxmPageLoaderPool.Unqueue:TXxmQueueContext;
 begin
-  if FQueue=nil then Result:=nil else
+  if FQueueOut=nil then Result:=nil else
    begin
     EnterCriticalSection(FLock);
     try
-      Result:=FQueue;
+      Result:=FQueueOut;
       if Result<>nil then
        begin
-        FQueue:=FQueue.Queue;
-        Result.Queue:=nil;
+        FQueueOut:=Result.QueueOut;
+        if FQueueOut=nil then FQueueIn:=nil;
        end;
     finally
       LeaveCriticalSection(FLock);

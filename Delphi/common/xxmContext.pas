@@ -369,32 +369,35 @@ var
 const
   RT_HTML = MakeIntResource(23);
 begin
-  if FHeaderSent and (FContentType='text/plain') then
+  if Connected then
    begin
-    s:=#13#10'----------------------------------------'#13#10'### '+res+' ###';
-    for i:=0 to (Length(vals) div 2)-1 do
-      s:=s+#13#10+vals[i*2]+' = '+vals[i*2+1];
-   end
-  else
-   begin
-    r:=TResourceStream.Create(HInstance,res,RT_HTML);
-    try
-      l:=r.Size;
-      SetLength(s,l);
-      r.Read(s[1],l);
-    finally
-      r.Free;
-    end;
-    for i:=0 to (Length(vals) div 2)-1 do
-      s:=StringReplace(s,'[['+vals[i*2]+']]',vals[i*2+1],[rfReplaceAll]);
-    if not(FHeaderSent) then
+    if FHeaderSent and (FContentType='text/plain') then
      begin
-      FContentType:='text/html';
-      FAutoEncoding:=aeContentDefined;//?
+      s:=#13#10'----------------------------------------'#13#10'### '+res+' ###';
+      for i:=0 to (Length(vals) div 2)-1 do
+        s:=s+#13#10+vals[i*2]+' = '+vals[i*2+1];
+     end
+    else
+     begin
+      r:=TResourceStream.Create(HInstance,res,RT_HTML);
+      try
+        l:=r.Size;
+        SetLength(s,l);
+        r.Read(s[1],l);
+      finally
+        r.Free;
+      end;
+      for i:=0 to (Length(vals) div 2)-1 do
+        s:=StringReplace(s,'[['+vals[i*2]+']]',vals[i*2+1],[rfReplaceAll]);
+      if not(FHeaderSent) then
+       begin
+        FContentType:='text/html';
+        FAutoEncoding:=aeContentDefined;//?
+       end;
      end;
+    SendRaw(s);
+    if FBufferSize<>0 then Flush;
    end;
-  SendRaw(s);
-  if FBufferSize<>0 then Flush;
 end;
 
 function TXxmGeneralContext.GetContentType: WideString;
