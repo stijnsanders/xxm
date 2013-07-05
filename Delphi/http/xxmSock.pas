@@ -4,6 +4,8 @@ interface
 
 uses SysUtils, Classes;
 
+{$D-}
+
 type
   TSocketAddress=record
     family:word;
@@ -96,18 +98,21 @@ function select(nfds: integer; readfds, writefds, exceptfds: PFDSet;
 function send(s: THandle; var Buf; len, flags: integer): integer; stdcall;
 function shutdown(s: THandle; how: integer): integer; stdcall;
 function closesocket(s: THandle): integer; stdcall;
-function __WSAFDIsSet(s: THandle; var FDSet: TFDSet): Boolean; stdcall;
+//function __WSAFDIsSet(s: THandle; var FDSet: TFDSet): Boolean; stdcall;
 
 const
+  INVALID_SOCKET = THandle(not(0));
   AF_INET = 2;
   SOCKET_ERROR = -1;
   SOCK_STREAM = 1;
   IPPROTO_IP = 0;
-  IPPROTO_TCP = 6;
-  INVALID_SOCKET = THandle(not(0));
-  TCP_NODELAY = 1;
-  SD_BOTH = 2;
   SOMAXCONN = 5;
+  SOL_SOCKET = $FFFF;
+  SO_SNDTIMEO = $1005;
+  SO_RCVTIMEO = $1006;
+  SD_BOTH = 2;
+  IPPROTO_TCP = 6;
+  TCP_NODELAY = 1;
 
 implementation
 
@@ -182,7 +187,8 @@ begin
   FSocket:=ASocket;
   if FSocket=INVALID_SOCKET then RaiseLastWSAError;
   i:=1;
-  setsockopt(FSocket,IPPROTO_TCP,TCP_NODELAY,@i,4);
+  if setsockopt(FSocket,IPPROTO_TCP,TCP_NODELAY,@i,4)<>0 then
+    RaiseLastWSAError;
   FConnected:=true;//?
 end;
 
@@ -226,13 +232,21 @@ end;
 function TTcpSocket.ReceiveBuf(var Buf; BufSize: Integer): Integer;
 begin
   Result:=recv(FSocket,Buf,BufSize,0);
-  if Result=SOCKET_ERROR then RaiseLastWSAError;
+  if Result=SOCKET_ERROR then
+   begin
+    Disconnect;
+    RaiseLastWSAError;
+   end;
 end;
 
 function TTcpSocket.SendBuf(var Buf; BufSize: Integer): Integer;
 begin
   Result:=send(FSocket,Buf,BufSize,0);
-  if Result=SOCKET_ERROR then RaiseLastWSAError;
+  if Result=SOCKET_ERROR then
+   begin
+    Disconnect;
+    RaiseLastWSAError;
+   end;
 end;
 
 { TTcpServer }
@@ -274,9 +288,9 @@ begin
   x.fd_count:=1;
   x.fd_array[0]:=FSocket;
   if select(FSocket+1,@r,nil,@x,nil)=SOCKET_ERROR then RaiseLastWSAError;
-  if __WSAFDIsSet(FSocket,x) then
+  if x.fd_count=1 then //if __WSAFDIsSet(FSocket,x) then
     raise ETcpSocketError.Create('Socket in error state');//?
-  if not __WSAFDIsSet(FSocket,r) then
+  if r.fd_count=0 then //if not __WSAFDIsSet(FSocket,r) then
     raise ETcpSocketError.Create('Select without error nor result');//??
 end;
 
@@ -313,7 +327,7 @@ function select; external winsockdll;
 function send; external winsockdll;
 function shutdown; external winsockdll;
 function closesocket; external winsockdll;
-function __WSAFDIsSet; external winsockdll;
+//function __WSAFDIsSet; external winsockdll;
 
 initialization
   WSAStartup($0101,@WSAData);

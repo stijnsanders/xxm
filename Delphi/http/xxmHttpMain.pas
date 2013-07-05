@@ -3,8 +3,8 @@ unit xxmHttpMain;
 interface
 
 uses
-  SysUtils, xxmSock, xxmThreadPool, xxm, Classes, ActiveX, xxmContext,
-  xxmPReg, xxmPRegXml, xxmParams, xxmParUtils, xxmHeaders;
+  SysUtils, Windows, xxmSock, xxmThreadPool, xxm, Classes, ActiveX,
+  xxmContext, xxmPReg, xxmPRegXml, xxmParams, xxmParUtils, xxmHeaders;
 
 type
   TXxmHttpServerListener=class(TThread)
@@ -30,6 +30,8 @@ type
     FKeepConnection:boolean;
     procedure HandleRequest;
   protected
+    WasKept:boolean;
+    KeptCount:integer;
     function GetSessionID: WideString; override;
     procedure DispositionAttach(FileName: WideString); override;
     procedure SendRaw(const Data: WideString); override;
@@ -68,6 +70,20 @@ type
     procedure Execute; override;
   end;
 
+  TXxmKeptConnections=class(TThread)
+  private
+    FLock:TRTLCriticalSection;
+    FQueueEvent:THandle;
+    FContexts:array of TXxmHttpContext;
+    FContextIndex,FContextSize:integer;
+  protected
+    procedure Execute; override;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    procedure Queue(Context:TXxmHttpContext);
+  end;
+
   EXxmMaximumHeaderLines=class(Exception);
   EXxmAutoBuildFailed=class(Exception);
   EXxmContextStringUnknown=class(Exception);
@@ -86,7 +102,7 @@ procedure XxmRunServer;
 
 implementation
 
-uses Windows, Variants, ComObj, xxmCommonUtils, xxmReadHandler, ShellApi;
+uses Variants, ComObj, xxmCommonUtils, xxmReadHandler, ShellApi;
 
 resourcestring
   SXxmMaximumHeaderLines='Maximum header lines exceeded.';
@@ -98,6 +114,7 @@ const
 
 var
   HttpSelfVersion:AnsiString;
+  KeptConnections:TXxmKeptConnections;
 
 threadvar
   ContentBuffer:TMemoryStream;
@@ -172,6 +189,7 @@ begin
       ShellExecute(GetDesktopWindow,nil,PChar(StartURL),nil,nil,SW_NORMAL);//check result?
 
     Listener:=TXxmHttpServerListener.Create(Server);
+    KeptConnections:=TXxmKeptConnections.Create;
     try
       repeat
         if GetMessage(Msg,0,0,0) then
@@ -183,6 +201,7 @@ begin
       until Msg.message=WM_QUIT;
     finally
       Listener.Free;
+      KeptConnections.Free;
     end;
 
   finally
@@ -194,13 +213,15 @@ end;
 
 constructor TXxmHttpContext.Create(Socket:TTcpSocket);
 var
-  i,l:integer;
+  i:integer;
 begin
   inherited Create('');//URL is parsed by Execute
   FSocket:=Socket;
-  i:=1;
-  l:=4;
-  setsockopt(FSocket.Handle,IPPROTO_TCP,TCP_NODELAY,@i,l);
+  i:=30000;//TODO: setting
+  if (setsockopt(FSocket.Handle,SOL_SOCKET,SO_RCVTIMEO,@i,4)<>0) or
+     (setsockopt(FSocket.Handle,SOL_SOCKET,SO_SNDTIMEO,@i,4)<>0) then
+    RaiseLastOSError;
+  WasKept:=false;
 end;
 
 destructor TXxmHttpContext.Destroy;
@@ -220,6 +241,11 @@ begin
   FSessionID:='';//see GetSessionID
   FURI:='';//see Execute
   FRedirectPrefix:='';
+  if WasKept then
+   begin
+    WasKept:=false;
+    _Release;
+   end;
 end;
 
 procedure TXxmHttpContext.EndRequest;
@@ -240,7 +266,7 @@ end;
 procedure TXxmHttpContext.Execute;
 begin
   FKeepConnection:=true;
-  while FKeepConnection do
+  //while FKeepConnection do
    begin
     FKeepConnection:=false;
     BeginRequest;
@@ -250,7 +276,10 @@ begin
       EndRequest;
     end;
    end;
-  FSocket.Disconnect;
+  if FKeepConnection then
+    KeptConnections.Queue(Self)
+  else
+    FSocket.Disconnect;
 end;
 
 procedure TXxmHttpContext.HandleRequest;
@@ -672,6 +701,7 @@ constructor TXxmHttpServerListener.Create(Server: TTcpServer);
 begin
   inherited Create(false);
   FServer:=Server;
+  //Priority:=tpNormal;?
 end;
 
 destructor TXxmHttpServerListener.Destroy;
@@ -688,10 +718,170 @@ begin
     try
       FServer.WaitForConnection;
       if not Terminated then
-        PageLoaderPool.Queue(TXxmHttpContext.Create(FServer.Accept));
+        KeptConnections.Queue( //PageLoaderPool.Queue(
+          TXxmHttpContext.Create(
+            FServer.Accept));
     except
       //TODO: log? display?
     end;
+end;
+
+{ TXxmKeptConnections }
+
+constructor TXxmKeptConnections.Create;
+begin
+  inherited Create(false);
+  Priority:=tpLower;//?
+  FContextIndex:=0;
+  FContextSize:=0;
+  InitializeCriticalSection(FLock);
+  FQueueEvent:=CreateEventA(nil,true,false,
+    PAnsiChar('xxmHttp:KeepConnection:'+IntToHex(GetCurrentThreadId,8)));
+end;
+
+destructor TXxmKeptConnections.Destroy;
+begin
+  SetEvent(FQueueEvent);//wake up thread
+  Terminate;
+  CloseHandle(FQueueEvent);
+  DeleteCriticalSection(FLock);
+  inherited;
+end;
+
+procedure TXxmKeptConnections.Queue(Context: TXxmHttpContext);
+const
+  GrowStep=$100;
+var
+  i:integer;
+begin
+  //TODO: maximum lingering connections? or close oldest on queue newer?
+  EnterCriticalSection(FLock);
+  try
+    i:=0;
+    while (i<FContextIndex) and (FContexts[i]<>nil) do inc(i);
+    if i=FContextIndex then
+     begin
+      if FContextIndex=FContextSize then
+       begin
+        inc(FContextSize,GrowStep);
+        SetLength(FContexts,FContextSize);
+       end;
+      FContexts[FContextIndex]:=Context;
+      inc(FContextIndex);
+     end
+    else
+      FContexts[i]:=Context;
+    Context.KeptCount:=0;
+    //protect from destruction by TXxmPageLoader.Execute:
+    Context.WasKept:=true;
+    Context._AddRef;
+    SetEvent(FQueueEvent);
+  finally
+    LeaveCriticalSection(FLock);
+  end;
+end;
+
+procedure TXxmKeptConnections.Execute;
+var
+  r,x:TFDSet;
+  i,ii,j,k:integer;
+  t:TTimeVal;
+begin
+  inherited;
+  i:=0;
+  while not Terminated do
+   begin
+    EnterCriticalSection(FLock);
+    try
+      r.fd_count:=0;
+      x.fd_count:=0;
+      j:=0;
+      while (j<FContextIndex) and (r.fd_count<64) do
+       begin
+        ii:=(i+j) mod FContextIndex;
+        if FContexts[ii]<>nil then
+         begin
+          inc(FContexts[ii].KeptCount);
+          //timed out? (see also t value below: 300x100ms~=30s)
+          if FContexts[ii].KeptCount=300 then
+           begin
+            try
+              FContexts[ii]._Release; //FContexts[ii].Free;
+            except
+              //ignore
+            end;
+            FContexts[ii]:=nil;
+           end
+          else
+           begin
+            r.fd_array[r.fd_count]:=FContexts[ii].FSocket.Handle;
+            inc(r.fd_count);
+            x.fd_array[x.fd_count]:=FContexts[ii].FSocket.Handle;
+            inc(x.fd_count);
+           end;
+         end;
+        inc(j);
+       end;
+    finally
+      LeaveCriticalSection(FLock);
+    end;
+    if FContextIndex=0 then i:=0 else i:=(i+j) mod FContextIndex;
+    if r.fd_count=0 then
+     begin
+      ResetEvent(FQueueEvent);
+      WaitForSingleObject(FQueueEvent,INFINITE);
+     end
+    else
+     begin
+      t.tv_sec:=0;
+      t.tv_usec:=100000;//microseconds
+      if select(0,@r,nil,@x,@t)=SOCKET_ERROR then
+       begin
+        //TODO: raise? log? sleep?
+       end
+      else
+       begin
+        EnterCriticalSection(FLock);
+        try
+          //errors
+          for k:=0 to x.fd_count-1 do
+           begin
+            j:=0;
+            while (j<FContextIndex) and not((FContexts[j]<>nil)
+              and (FContexts[j].FSocket.Handle=x.fd_array[k])) do inc(j);
+            if j<FContextIndex then
+             begin
+              try
+                FContexts[j]._Release; //FContexts[j].Free;
+              except
+                //ignore
+              end;
+              FContexts[j]:=nil;
+             end;
+            //else raise?
+           end;
+          //reads
+          for k:=0 to r.fd_count-1 do
+           begin
+            j:=0;
+            while (j<FContextIndex) and not((FContexts[j]<>nil)
+              and (FContexts[j].FSocket.Handle=r.fd_array[k])) do inc(j);
+            if j<FContextIndex then
+             begin
+              PageLoaderPool.Queue(FContexts[j]);
+              FContexts[j]:=nil;
+             end;
+            //else raise?
+           end;
+          //clean-up
+          while (FContextIndex>0) and (FContexts[FContextIndex-1]=nil) do
+            dec(FContextIndex);
+        finally
+          LeaveCriticalSection(FLock);
+        end;
+       end;
+     end;
+   end;
 end;
 
 end.

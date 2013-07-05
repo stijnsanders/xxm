@@ -85,7 +85,7 @@ begin
   inherited Create(false);
   //FInUse:=false;
   FNextJobEvent:=CreateEventA(nil,true,false,
-    PAnsiChar('xxmLocal:PageLoader:NextJob:'+IntToHex(GetCurrentThreadId,8)));
+    PAnsiChar('xxm:PageLoader:NextJob:'+IntToHex(GetCurrentThreadId,8)));
 end;
 
 destructor TXxmPageLoader.Destroy;
@@ -109,7 +109,7 @@ begin
     if Context=nil then
      begin
       FInUse:=false;//used by PageLoaderPool.Queue
-      SetThreadName('(xxm)');
+      //SetThreadName('(xxm)');
       ResetEvent(FNextJobEvent);
       WaitForSingleObject(FNextJobEvent,INFINITE);
       FInUse:=true;
@@ -118,7 +118,7 @@ begin
      begin
       ContextI:=Context;//keep refcount up for premature terminate
       try
-        SetThreadName('xxm:'+Context.FURL);
+        //SetThreadName('xxm:'+Context.FURL);
         Context.Execute;//assert all exceptions handled!
       finally
         ContextI:=nil;
@@ -207,41 +207,39 @@ procedure TXxmPageLoaderPool.Queue(Context:TXxmQueueContext);
 var
   i:integer;
 begin
-  EnterCriticalSection(FLock);
-  try
-    //add to queue
-    Context.QueueIn:=FQueueIn;
-    Context.QueueOut:=nil;
-    if FQueueIn=nil then
-     begin
-      FQueueIn:=Context;
-      FQueueOut:=Context;
-     end
-    else
-     begin
-      FQueueIn.QueueOut:=Context;
-      FQueueIn:=Context;
-     end;
-  finally
-    LeaveCriticalSection(FLock);
-  end;
+  //TODO: max on queue, fire 'server busy' when full?
+  if Context<>nil then
+   begin
+    EnterCriticalSection(FLock);
+    try
+      //add to queue
+      Context.QueueIn:=FQueueIn;
+      Context.QueueOut:=nil;
+      if FQueueIn=nil then
+       begin
+        FQueueIn:=Context;
+        FQueueOut:=Context;
+       end
+      else
+       begin
+        FQueueIn.QueueOut:=Context;
+        FQueueIn:=Context;
+       end;
+    finally
+      LeaveCriticalSection(FLock);
+    end;
+   end;
 
   //fire thread
   //TODO: see if a rotary index matters in any way
   i:=0;
   while (i<FLoaderSize) and (FLoaders[i]<>nil) and FLoaders[i].InUse do inc(i);
-  if i=FLoaderSize then
-   begin
-    //pool full, leave on queue
-   end
-  else
-   begin
+  if i<>FLoaderSize then
     if FLoaders[i]=nil then
       FLoaders[i]:=TXxmPageLoader.Create //start thread
     else
-      FLoaders[i].SignalNextJob;
-    //TODO: expire unused threads on low load
-   end;
+      FLoaders[i].SignalNextJob; //so it calls Unqueue
+  //TODO: expire unused threads on low load
 end;
 
 function TXxmPageLoaderPool.Unqueue:TXxmQueueContext;

@@ -1,7 +1,9 @@
 v1.1.9.300
+- sourceforge repository caught up with previous private repo, so version build number will now follow svn revision number
 - support for If-Modified-Since, If-Unmodified-Since headers
 - serving content-files uses FILE_FLAG_SEQUENTIAL_SCAN
 - xxmHttp: switched to custom winsock wrapper
+- xxmHttp: central holding for 'keep' connections awaiting requests
 - xxmLocal: fixed issue with first request for a static file after reload
 
 v1.1.8.295
