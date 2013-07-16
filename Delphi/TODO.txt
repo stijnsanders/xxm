@@ -40,7 +40,6 @@ ISAPI
 
 http
 - logging
-- max time to parse header and start pagebuild
 
 local
 - CritSection in loader, not context (saves on resources)
@@ -50,7 +49,7 @@ local
 - history by xxm project
 
 grand rework
-- transfer-encoding chunked? keep-connection?
+- transfer-encoding chunked?
 - Accept-Ranges: bytes on files ('Range' request header?)
 - IPv6 support?
 

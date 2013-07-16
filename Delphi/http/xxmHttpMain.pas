@@ -110,6 +110,7 @@ resourcestring
 
 const
   HTTPMaxHeaderLines=$400;
+  HTTPMaxHeaderParseTimeMS=10000;
   PostDataThreshold=$100000;
 
 var
@@ -288,9 +289,11 @@ var
   x,y:AnsiString;
   s:TStream;
   si:int64;
+  tc:cardinal;
 begin
   try
     //command line and headers
+    tc:=GetTickCount;
     y:='';
     k:=$10000;
     SetLength(x,k);
@@ -309,8 +312,9 @@ begin
             inc(k,$10000);
             SetLength(x,k);
            end;
-          l:=l+FSocket.ReceiveBuf(x[l+1],k-l);//TODO: timeout
-          if l<=j then raise EXxmConnectionLost.Create('Connection Lost');
+          l:=l+FSocket.ReceiveBuf(x[l+1],k-l);
+          if (l<=j) or (cardinal(GetTickCount-tc)>HTTPMaxHeaderParseTimeMS) then
+            raise EXxmConnectionLost.Create('Connection Lost');
          end;
         inc(j);
        end;
@@ -740,11 +744,21 @@ begin
 end;
 
 destructor TXxmKeptConnections.Destroy;
+var
+  i:integer;
 begin
   SetEvent(FQueueEvent);//wake up thread
   Terminate;
+  WaitFor;
   CloseHandle(FQueueEvent);
   DeleteCriticalSection(FLock);
+  for i:=0 to FContextIndex-1 do
+    if FContexts[i]<>nil then
+      try
+        FContexts[i]._Release;//FContexts[i].Free;
+      except
+        //ignore
+      end;
   inherited;
 end;
 
