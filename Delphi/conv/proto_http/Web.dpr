@@ -27,6 +27,8 @@ uses
   xxmCommonUtils in '[[XxmSourcePath]]\common\xxmCommonUtils.pas',
   xxmContext in '[[XxmSourcePath]]\common\xxmContext.pas',
   xxmReadHandler in '[[XxmSourcePath]]\http\xxmReadHandler.pas',
+  xxmSock in '[[XxmSourcePath]]\http\xxmSock.pas',
+  xxmThreadPool in '[[XxmSourcePath]]\common\xxmThreadPool.pas',
   [[@Include]][[IncludeUnit]] in '[[ProjectPath]][[IncludePath]][[IncludeUnit]].pas',
   [[@]][[@Fragment]][[FragmentUnit]] in '[[FragmentPath]][[FragmentUnit]].pas', {[[FragmentAddress]]}
   [[@]][[UsesClause]]
