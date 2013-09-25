@@ -574,7 +574,7 @@ end;
 
 function TXxmIsapiContext.GetRequestHeader(const Name: WideString): WideString;
 begin
-  Result:=FReqHeaders.Item[Name];
+  Result:=GetRequestHeaders.Item[Name];
 end;
 
 procedure TXxmIsapiContext.AddResponseHeader(const Name, Value: WideString);

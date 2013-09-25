@@ -91,7 +91,6 @@ begin
   OutputData:=nil;
   OutputSize:=0;
   ClippedSize:=0;
-  Queue:=nil;
   InitializeCriticalSection(FLock);
 
   BindInfo:=OIBindInfo;

@@ -8,7 +8,7 @@ uses
   xxmHSysSvcMain in 'xxmHSysSvcMain.pas' {TxxmService: TService},
   xxm in '..\bin\public\xxm.pas',
   xxmHSys2Run in 'xxmHSys2Run.pas',
-  httpapi1 in 'httpapi1.pas',
+  httpapi2 in 'httpapi2.pas',
   xxmHSysMain in 'xxmHSysMain.pas',
   xxmParams in '..\common\xxmParams.pas',
   xxmParUtils in '..\common\xxmParUtils.pas',
