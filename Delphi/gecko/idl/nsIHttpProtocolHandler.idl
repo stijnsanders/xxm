@@ -1,45 +1,11 @@
 /* -*- Mode: C++; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- */
-/* ***** BEGIN LICENSE BLOCK *****
- * Version: MPL 1.1/GPL 2.0/LGPL 2.1
- *
- * The contents of this file are subject to the Mozilla Public License Version
- * 1.1 (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
- * http://www.mozilla.org/MPL/
- *
- * Software distributed under the License is distributed on an "AS IS" basis,
- * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
- * for the specific language governing rights and limitations under the
- * License.
- *
- * The Original Code is Mozilla.
- *
- * The Initial Developer of the Original Code is
- * Netscape Communications.
- * Portions created by the Initial Developer are Copyright (C) 2001
- * the Initial Developer. All Rights Reserved.
- *
- * Contributor(s):
- *   Gagan Saksena <gagan@netscape.com> (original author)
- *   Darin Fisher <darin@netscape.com>
- *
- * Alternatively, the contents of this file may be used under the terms of
- * either the GNU General Public License Version 2 or later (the "GPL"), or
- * the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
- * in which case the provisions of the GPL or the LGPL are applicable instead
- * of those above. If you wish to allow use of your version of this file only
- * under the terms of either the GPL or the LGPL, and not to allow others to
- * use your version of this file under the terms of the MPL, indicate your
- * decision by deleting the provisions above and replace them with the notice
- * and other provisions required by the GPL or the LGPL. If you do not delete
- * the provisions above, a recipient may use your version of this file under
- * the terms of any one of the MPL, the GPL or the LGPL.
- *
- * ***** END LICENSE BLOCK ***** */
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "nsIProxiedProtocolHandler.idl"
 
-[scriptable, uuid(9814fdf0-5ac3-11e0-80e3-0800200c9a66)]
+[scriptable, uuid(c48126d9-2ddd-485b-a51a-378e917e75f8)]
 interface nsIHttpProtocolHandler : nsIProxiedProtocolHandler
 {
     /**
@@ -60,16 +26,6 @@ interface nsIHttpProtocolHandler : nsIProxiedProtocolHandler
      * @return The complete version (major and minor) string. (eg. "5.0")
      */
     readonly attribute ACString appVersion;
-
-    /**
-     * @return The product name.
-     */
-    readonly attribute ACString product;
-
-    /**
-     * @return A product sub string.
-     */
-    readonly attribute ACString productSub;
 
     /**
      * Get the current platform.
@@ -94,14 +50,14 @@ interface nsIHttpProtocolHandler : nsIProxiedProtocolHandler
 };
 
 %{C++
-// ----------- Categories ----------- 
+// ----------- Categories -----------
 /**
  * At initialization time, the HTTP handler will initialize each service
  * registered under this category:
  */
 #define NS_HTTP_STARTUP_CATEGORY "http-startup-category"
 
-// ----------- Observer topics ----------- 
+// ----------- Observer topics -----------
 /**
  * nsIObserver notification corresponding to startup category.  Services
  * registered under the startup category will receive this observer topic at
@@ -109,6 +65,24 @@ interface nsIHttpProtocolHandler : nsIProxiedProtocolHandler
  * is the nsIHttpProtocolHandler instance.
  */
 #define NS_HTTP_STARTUP_TOPIC "http-startup"
+
+/**
+ * This observer topic is notified when an HTTP channel is opened.
+ * It is similar to http-on-modify-request, except that
+ * 1) The notification is guaranteed to occur before on-modify-request, during
+ *    the AsyncOpen call itself.
+ * 2) It only occurs for the initial open of a channel, not for internal
+ *    asyncOpens that happen during redirects, etc.
+ * 3) Some information (most notably nsIProxiedChannel.proxyInfo) may not be set
+ *    on the channel object yet.
+ *
+ * The "subject" of the notification is the nsIHttpChannel instance.
+ *
+ * Generally the 'http-on-modify-request' notification is preferred unless the
+ * synchronous, during-asyncOpen behavior that this notification provides is
+ * required.
+ */
+#define NS_HTTP_ON_OPENING_REQUEST_TOPIC "http-on-opening-request"
 
 /**
  * Before an HTTP request is sent to the server, this observer topic is

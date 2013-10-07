@@ -580,6 +580,7 @@ type
   nsIIOService = interface;
   nsIJSON = interface;
   nsILoadGroup = interface;
+  nsILoadGroupConnectionInfo = interface;
   nsILocalFile = interface;
   nsIMemory = interface;
   nsIModule = interface;
@@ -772,7 +773,7 @@ type
   end;
 
   nsIChannel = interface(nsIRequest)
-  ['{06f6ada3-7729-4e72-8d3f-bf8ba630ff9b}']
+  ['{2a8a7237-c1e2-4de7-b669-2002af29e42d}']
     function GetOriginalURI: nsIURI; safecall;
     procedure SetOriginalURI(aOriginalURI: nsIURI); safecall;
     property OriginalURI: nsIURI read GetOriginalURI write SetOriginalURI;
@@ -790,14 +791,16 @@ type
     procedure SetContentType(const aContentType: nsACString); safecall;
     procedure GetContentCharset(aContentCharset: nsACString); safecall;
     procedure SetContentCharset(const aContentCharset: nsACString); safecall;
-    function GetContentLength: PRInt32; safecall;
-    procedure SetContentLength(aContentLength: PRInt32); safecall;
-    property ContentLength: PRInt32 read GetContentLength write SetContentLength;
+    function GetContentLength: PRInt64; safecall;
+    procedure SetContentLength(aContentLength: PRInt64); safecall;
+    property ContentLength: PRInt64 read GetContentLength write SetContentLength;
     function Open: nsIInputStream; safecall;
     procedure AsyncOpen(aListener: nsIStreamListener; aContext: nsISupports); safecall;
     function GetContentDisposition: PRUint32; safecall;
-    property ContentDisposition: PRUint32 read GetContentDisposition;
+    procedure SetContentDisposition(aContentDisposition: PRUint32); safecall;
+    property ContentDisposition: PRUint32 read GetContentDisposition write SetContentDisposition;
     procedure GetContentDispositionFileName(aContentDispositionFileName: nsACString); safecall;
+    procedure SetContentDispositionFileName(const aContentDispositionFileName: nsACString); safecall;
     procedure GetContentDispositionHeader(aContentDispositionHeader: nsACString); safecall;
   end;
 
@@ -843,8 +846,8 @@ type
     procedure GetClassObjectByContractID(const aContractID: PAnsiChar; const aIID: TGUID; out _result); safecall;
     procedure CreateInstance(const aClass: TGUID; const aDelegate: nsISupports; const aIID: TGUID; out _result); safecall;
     procedure CreateInstanceByContractID(const aContractID: PAnsiChar; const aDelegate: nsISupports; const aIID: TGUID; out _result); safecall;
-    procedure AddBootstappedManifestLocation(const aLocation: nsILocalFile); safecall;
-    procedure RemoverBootstrappedManifestLocation(const aLocation: nsILocalFile); safecall;
+    procedure AddBootstappedManifestLocation(const aLocation: nsIFile); safecall;
+    procedure RemoverBootstrappedManifestLocation(const aLocation: nsIFile); safecall;
   end;
 
   nsIComponentRegistrar = interface(nsISupports)
@@ -2592,7 +2595,7 @@ type
   end;
 
   nsIURL = interface(nsIURI)
-  ['{067d697a-c725-4293-9656-e658a75e6bcf}']
+  ['{1419aa16-f134-4154-9886-00c7c5147a13}']
     procedure GetFilePath(aFilePath: nsAUTF8String); safecall;
     procedure SetFilePath(const aFilePath: nsAUTF8String); safecall;
     procedure GetQuery(aQuery: nsAUTF8String); safecall;
@@ -2640,7 +2643,7 @@ type
   end;
 
   nsIHttpChannel = interface(nsIChannel)
-  ['{9277fe09-f0cc-4cd9-bbce-581dd94b0260}']
+  ['{a01362a0-5c45-11e2-bcfd-0800200c9a66}']
     procedure GetRequestMethod(aRequestMethod: nsACString); safecall;
     procedure SetRequestMethod(const aRequestMethod: nsACString); safecall;
     function GetReferrer: nsIURI; safecall;
@@ -2665,6 +2668,7 @@ type
     procedure VisitResponseHeaders(aVisitor: nsIHttpHeaderVisitor); safecall;
     function IsNoStoreResponse: PRBool; safecall;
     function IsNoCacheResponse: PRBool; safecall;
+    procedure RedirectTo(aNewURI: nsIURI); safecall;
   end;
 
   nsIHttpHeaderVisitor = interface(nsISupports)
@@ -2673,9 +2677,9 @@ type
   end;
 
   nsIInputStream = interface(nsISupports)
-  ['{fa9c7f6c-61b3-11d4-9877-00c04fa0cf4a}']
+  ['{53cdbc97-c2d7-4e30-b2c3-45b2ee79db18}']
     procedure Close; safecall;
-    function Available: PRUint32; safecall;
+    function Available: PRUint64; safecall;
     function Read(aBuf: PAnsiChar; aCount: PRUint32): PRUint32; safecall;
     function ReadSegments(aWriter: nsWriteSegmentFun; aClosure: Pointer; aCount: PRUint32): PRUint32; safecall;
     function IsNonBlocking: PRBool; safecall;
@@ -2710,7 +2714,7 @@ type
   end;
 
   nsILoadGroup = interface(nsIRequest)
-  ['{3de0a31c-feaf-400f-9f1e-4ef71f8b20cc}']
+  ['{19501006-46e3-4634-b97d-26eff894b4d3}']
     function GetGroupObserver: nsIRequestObserver; safecall;
     procedure SetGroupObserver(aGroupObserver: nsIRequestObserver); safecall;
     property GroupObserver: nsIRequestObserver read GetGroupObserver write SetGroupObserver;
@@ -2726,29 +2730,23 @@ type
     function GetNotificationCallbacks: nsIInterfaceRequestor; safecall;
     procedure SetNotificationCallbacks(aNotificationCallbacks: nsIInterfaceRequestor); safecall;
     property NotificationCallbacks: nsIInterfaceRequestor read GetNotificationCallbacks write SetNotificationCallbacks;
+    function GetConnectionInfo: nsILoadGroupConnectionInfo; safecall;
+    property ConnectionInfo: nsILoadGroupConnectionInfo read GetConnectionInfo;
+  end;
+
+  nsILoadGroupConnectionInfo = interface(nsISupports)
+  ['{5361f30e-f968-437c-8f41-69d2756a6022}']
+    function GetBlockingTransactionCount: PRUint32; safecall;
+    property BlockingTransactionCount: PRUint32 read GetBlockingTransactionCount;
+    procedure AddBlockingTransaction; safecall;
+    function RemoveBlockingTransaction: PRUint32; safecall;
+    function GetSpdyPushCache3: pointer; safecall;
+    procedure SetSpdyPushCache3(a:pointer); safecall;
+    property SpdyPushCache3: pointer read GetSpdyPushCache3 write SetSpdyPushCache3;
   end;
 
   nsILocalFile = interface(nsIFile)
-  ['{aa610f20-a889-11d3-8c81-000064657374}']
-    procedure InitWithPath(const filePath: nsAString); safecall;
-    procedure InitWithNativePath(const filePath: nsACString); safecall;
-    procedure InitWithFile(aFile: nsILocalFile); safecall;
-    function GetFollowLinks: PRBool; safecall;
-    procedure SetFollowLinks(aFollowLinks: PRBool); safecall;
-    property FollowLinks: PRBool read GetFollowLinks write SetFollowLinks;
-    function OpenNSPRFileDesc(flags: PRInt32; mode: PRInt32): PPRFileDesc; safecall;
-    function OpenANSIFileDesc(const mode: PAnsiChar): PFILE; safecall;
-    function Load: PPRLibrary; safecall;
-    function GetDiskSpaceAvailable: PRInt64; safecall;
-    property DiskSpaceAvailable: PRInt64 read GetDiskSpaceAvailable;
-    procedure AppendRelativePath(const relativeFilePath: nsAString); safecall;
-    procedure AppendRelativeNativePath(const relativeFilePath: nsACString); safecall;
-    procedure GetPersistentDescriptor(aPersistentDescriptor: nsACString); safecall;
-    procedure SetPersistentDescriptor(const aPersistentDescriptor: nsACString); safecall;
-    procedure Reveal; safecall;
-    procedure Launch; safecall;
-    function GetRelativeDescriptor(fromFile: nsILocalFile): nsACString; safecall;
-    procedure SetRelativeDescriptor(fromFile: nsILocalFile; const relativeDesc: nsACString); safecall;
+  ['{ce4ef184-7660-445e-9e59-6731bdc65505}']
   end;
 
   nsIMemory = interface(nsISupports)
@@ -3202,8 +3200,9 @@ type
   end;
 
   nsIStreamListener = interface(nsIRequestObserver)
-  ['{1a637020-1482-11d3-9333-00104ba0fd40}']
-    procedure OnDataAvailable(aRequest: nsIRequest; aContext: nsISupports; aInputStream: nsIInputStream; aOffset: PRUint32; aCount: PRUint32); safecall;
+  ['{3b4c8a77-76ba-4610-b316-678c73a3b88c}']
+    procedure OnDataAvailable(aRequest: nsIRequest; aContext: nsISupports;
+      aInputStream: nsIInputStream; aOffset: PRUint64; aCount: PRUint32); safecall;
   end;
 
   nsISupportsPrimitive = interface(nsISupports)
@@ -3372,14 +3371,24 @@ type
 
   nsIUnicharStreamListener = interface(nsIRequestObserver)
   ['{4a7e9b62-fef8-400d-9865-d6820f630b4c}']
-    procedure OnUnicharDataAvailable(aRequest: nsIRequest; aContext: nsISupports; const aData: nsAString); safecall;
+    procedure OnUnicharDataAvailable(aRequest: nsIRequest;
+      aContext: nsISupports; const aData: nsAString); safecall;
   end;
 
   nsIUploadChannel = interface(nsISupports)
-  ['{ddf633d8-e9a4-439d-ad88-de636fd9bb75}']
-    procedure SetUploadStream(aStream: nsIInputStream; const aContentType: nsACString; aContentLength: PRInt32); safecall;
+  ['{5cfe15bd-5adb-4a7f-9e55-4f5a67d15794}']
+    procedure SetUploadStream(aStream: nsIInputStream;
+      const aContentType: nsACString; aContentLength: PRInt64); safecall;
     function GetUploadStream: nsIInputStream; safecall;
     property UploadStream: nsIInputStream read GetUploadStream;
+  end;
+
+  nsIUploadChannel2 = interface(nsISupports)
+  ['{AD9D3F1C-A8DE-4d0b-9714-1B922297AD65}']
+    procedure ExplicitSetUploadStream(aStream: nsIInputStream;
+      const aContentType: nsACString; aContentLength: PRInt64;
+      const aMethod: nsACString; aStreamHasHeaders: PRBool); safecall;
+    function GetUploadStreamHasHeaders: PRBool; safecall;
   end;
 
   nsIURIContentListener = interface(nsISupports)

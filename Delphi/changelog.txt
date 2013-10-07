@@ -5,6 +5,7 @@ v1.1.9.300
 - xxmHttp: switched to custom winsock wrapper
 - xxmHttp: central holding for 'keep' connections awaiting requests
 - xxmLocal: fixed issue with first request for a static file after reload
+- fixed issue with multi-byte ANSI encodings
 
 v1.1.8.295
 - optional project interface: IXxmProjectEvents1

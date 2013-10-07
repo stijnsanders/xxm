@@ -205,7 +205,7 @@ end;
 procedure TxxmAhttpdContext.Redirect(RedirectURL: WideString;
   Relative: boolean);
 var
-  NewURL:WideString;
+  NewURL,RedirBody:WideString;
 begin
   //HeaderOK;//see SetStatus
   SetStatus(301,'Moved Permanently');
@@ -213,7 +213,16 @@ begin
   if Relative and (NewURL<>'') and (NewURL[1]='/') then NewURL:=FRedirectPrefix+NewURL;
   AddResponseHeader('Location',NewURL);
   //TODO: move this to execute's except?
-  SendRaw('<a href="'+HTMLEncode(NewURL)+'">'+HTMLEncode(NewURL)+'</a>'#13#10);
+  RedirBody:='<a href="'+HTMLEncode(NewURL)+'">'+HTMLEncode(NewURL)+'</a>'#13#10;
+  case FAutoEncoding of
+    aeUtf8:
+      AddResponseHeader('Content-Length',IntToStr(Length(UTF8Encode(RedirBody))+3));
+    aeUtf16:
+      AddResponseHeader('Content-Length',IntToStr(Length(RedirBody)*2+2));
+    aeIso8859:
+      AddResponseHeader('Content-Length',IntToStr(Length(AnsiString(RedirBody))));
+  end;
+  SendRaw(RedirBody);
   if FBufferSize<>0 then Flush;
   raise EXxmPageRedirected.Create(RedirectURL);
 end;
@@ -367,7 +376,8 @@ begin
     i:=FBuffer.Position;
     if i<>0 then
      begin
-      if ap_rwrite(FBuffer.Memory^,i,rq)<>i then raise EXxmRWriteFailed.Create(SXxmRWriteFailed);
+      if ap_rwrite(FBuffer.Memory^,i,rq)<>i then
+        raise EXxmRWriteFailed.Create(SXxmRWriteFailed);
       FBuffer.Position:=0;
       ap_rflush(rq)//?
      end;

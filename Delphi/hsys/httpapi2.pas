@@ -119,7 +119,7 @@ type
     RequestQueue: USHORT;
     IdleConnection: USHORT;
     HeaderWait: USHORT;
-    MinSendRate: USHORT;
+    MinSendRate: ULONG;
   end;
   PHTTP_TIMEOUT_LIMIT_INFO=^THTTP_TIMEOUT_LIMIT_INFO;
 
@@ -892,7 +892,7 @@ function HttpAddUrlToUrlGroup(UrlGroupId: THTTP_URL_GROUP_ID; pFullyQualifiedUrl
 function HttpRemoveUrlFromUrlGroup(UrlGroupId: THTTP_URL_GROUP_ID; pFullyQualifiedUrl: PCWSTR; Flags: ULONG): ULONG; stdcall;
 function HttpSetUrlGroupProperty(UrlGroupId: THTTP_URL_GROUP_ID; Property_: THTTP_SERVER_PROPERTY;
   pPropertyInformation: PVOID; PropertyInformationLength: ULONG): ULONG; stdcall;
-function HttpQueryUrlGroupProperty(UrlGroupId: THTTP_URL_GROUP_ID; var Property_: THTTP_SERVER_PROPERTY;
+function HttpQueryUrlGroupProperty(UrlGroupId: THTTP_URL_GROUP_ID; Property_: THTTP_SERVER_PROPERTY;
   pPropertyInformation: PVOID; PropertyInformationLength: ULONG; var pReturnLength: ULONG): ULONG; stdcall;
 function HttpReceiveHttpRequest(ReqQueueHandle: THandle; RequestId: THTTP_REQUEST_ID; Flags: ULONG;
   pRequestBuffer: PHTTP_REQUEST; RequestBufferLength: ULONG; var pBytesReceived: ULONG;

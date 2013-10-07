@@ -26,7 +26,7 @@ type
     FAutoEncoding: TXxmAutoEncoding;
     FPostData: TStream;
     FPostTempFile: AnsiString;
-    StatusSet, SettingCookie: boolean;
+    StatusSet, SettingCookie, BuildDone: boolean;
     FBufferSize: integer;
 
     { IXxmContext }
@@ -170,6 +170,7 @@ begin
   FStatusText:='OK';//default
   StatusSet:=false;
   SettingCookie:=false;
+  BuildDone:=false;//see BuildPage
   FProjectName:='';//parsed from URL later
   FFragmentName:='';//parsed from URL later
   FBufferSize:=0;//TOOD: from project settings?
@@ -211,6 +212,7 @@ procedure TXxmGeneralContext.BuildPage;
 var
   p:IXxmPage;
 begin
+  BuildDone:=false;//see below
   FProjectEntry:=GetProjectEntry;//(FProjectName);
   if @XxmAutoBuildHandler<>nil then
     if not(XxmAutoBuildHandler(FProjectEntry,Self,FProjectName)) then
@@ -243,7 +245,10 @@ begin
         SendHeader;
        end
       else
+       begin
+        BuildDone:=true;
         if FBufferSize<>0 then Flush;
+       end;
 
     finally
       FBuilding:=nil;

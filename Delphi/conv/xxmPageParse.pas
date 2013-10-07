@@ -509,6 +509,7 @@ var
   Section,p,q,r:integer;
   b:byte;
   pv:TXxmPageParserValues;
+  p1,p2:PAnsiChar;
 begin
   ss:=TStringStream.Create('');
   try
@@ -587,8 +588,12 @@ begin
                 else
                  begin
                   OpenString;
-                  ss.Write(FData[p],1);
-                  inc(l);
+                  p1:=@FData[p];
+                  p2:=CharNextA(p1);
+                  r:=integer(p2)-integer(p1);
+                  ss.Write(FData[p],r);
+                  inc(l,r);
+                  inc(p,r-1);
                  end;
               end;
               inc(p);

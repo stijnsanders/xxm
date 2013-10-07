@@ -1,39 +1,7 @@
 /* -*- Mode: C++; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 4 -*- */
-/* ***** BEGIN LICENSE BLOCK *****
- * Version: MPL 1.1/GPL 2.0/LGPL 2.1
- *
- * The contents of this file are subject to the Mozilla Public License Version
- * 1.1 (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
- * http://www.mozilla.org/MPL/
- *
- * Software distributed under the License is distributed on an "AS IS" basis,
- * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
- * for the specific language governing rights and limitations under the
- * License.
- *
- * The Original Code is mozilla.org code.
- *
- * The Initial Developer of the Original Code is
- * Netscape Communications Corporation.
- * Portions created by the Initial Developer are Copyright (C) 1998
- * the Initial Developer. All Rights Reserved.
- *
- * Contributor(s):
- *
- * Alternatively, the contents of this file may be used under the terms of
- * either the GNU General Public License Version 2 or later (the "GPL"), or
- * the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
- * in which case the provisions of the GPL or the LGPL are applicable instead
- * of those above. If you wish to allow use of your version of this file only
- * under the terms of either the GPL or the LGPL, and not to allow others to
- * use your version of this file under the terms of the MPL, indicate your
- * decision by deleting the provisions above and replace them with the notice
- * and other provisions required by the GPL or the LGPL. If you do not delete
- * the provisions above, a recipient may use your version of this file under
- * the terms of any one of the MPL, the GPL or the LGPL.
- *
- * ***** END LICENSE BLOCK ***** */
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "nsISupports.idl"
 
@@ -43,7 +11,7 @@ interface nsIChannel;
 /**
  * nsIProtocolHandler
  */
-[scriptable, uuid(15fd6940-8ea7-11d3-93ad-00104ba0fd40)]
+[scriptable, uuid(f5753fec-a051-4ddc-8891-11f1f1575072)]
 interface nsIProtocolHandler : nsISupports
 {
     /**
@@ -133,6 +101,27 @@ interface nsIProtocolHandler : nsISupports
     const unsigned long URI_NOAUTH = (1<<1);
 
     /**
+     * This protocol handler can be proxied via a proxy (socks or http)
+     * (e.g., irc, smtp, http, etc.).  If the protocol supports transparent
+     * proxying, the handler should implement nsIProxiedProtocolHandler.
+     *
+     * If it supports only HTTP proxying, then it need not support
+     * nsIProxiedProtocolHandler, but should instead set the ALLOWS_PROXY_HTTP
+     * flag (see below).
+     *
+     * @see nsIProxiedProtocolHandler
+     */
+    const unsigned long ALLOWS_PROXY = (1<<2);
+
+    /**
+     * This protocol handler can be proxied using a http proxy (e.g., http,
+     * ftp, etc.).  nsIIOService::newChannelFromURI will feed URIs from this
+     * protocol handler to the HTTP protocol handler instead.  This flag is
+     * ignored if ALLOWS_PROXY is not set.
+     */
+    const unsigned long ALLOWS_PROXY_HTTP = (1<<3);
+
+    /**
      * The URIs for this protocol have no inherent security context, so
      * documents loaded via this protocol should inherit the security context
      * from the document that loads them.
@@ -212,13 +201,7 @@ interface nsIProtocolHandler : nsISupports
      * principal that subsumes this uri. For example, privileged code and
      * websites that are same origin as this uri.
      */
-    const unsigned long URI_LOADABLE_BY_SUBSUMERS = (1<<14);
-
-    /**
-     * Loading channels from this protocol has side-effects that make
-     * it unsuitable for saving to a local file.
-     */
-    const unsigned long URI_NON_PERSISTABLE = (1<<10);
+    const unsigned long URI_LOADABLE_BY_SUBSUMERS = (1<<10);
 
     /**
      * Channels using this protocol never call OnDataAvailable
@@ -239,34 +222,37 @@ interface nsIProtocolHandler : nsISupports
      */
     const unsigned long URI_OPENING_EXECUTES_SCRIPT = (1<<13);
 
-    // Note that 1 << 14 is used above
-
     /**
-     * This protocol handler can be proxied via a proxy (socks or http)
-     * (e.g., irc, smtp, http, etc.).  If the protocol supports transparent
-     * proxying, the handler should implement nsIProxiedProtocolHandler.
-     *
-     * If it supports only HTTP proxying, then it need not support
-     * nsIProxiedProtocolHandler, but should instead set the ALLOWS_PROXY_HTTP
-     * flag (see below).
-     *
-     * @see nsIProxiedProtocolHandler
+     * Loading channels from this protocol has side-effects that make
+     * it unsuitable for saving to a local file.
      */
-    const unsigned long ALLOWS_PROXY = (1<<2);
-
-    /**
-     * This protocol handler can be proxied using a http proxy (e.g., http,
-     * ftp, etc.).  nsIIOService::newChannelFromURI will feed URIs from this
-     * protocol handler to the HTTP protocol handler instead.  This flag is
-     * ignored if ALLOWS_PROXY is not set.
-     */
-    const unsigned long ALLOWS_PROXY_HTTP = (1<<3);
+    const unsigned long URI_NON_PERSISTABLE = (1<<14);
 
     /**
      * This protocol handler forbids accessing cookies e.g. for mail related
      * protocols.
      */
     const unsigned long URI_FORBIDS_COOKIE_ACCESS = (1<<15);
+
+    /**
+     * URIs for this protocol require the webapps permission on the principal
+     * when opening URIs for a different domain. See bug#773886
+     */
+    const unsigned long URI_CROSS_ORIGIN_NEEDS_WEBAPPS_PERM = (1<<16);
+
+    /**
+     * Channels for this protocol don't need to spin the event loop to handle
+     * Open() and reads on the resulting stream.
+     */
+    const unsigned long URI_SYNC_LOAD_IS_OK = (1<<17);
+
+    /**
+     * URI is secure to load in an https page and should not be blocked
+     * by nsMixedContentBlocker
+     */
+    const unsigned long URI_SAFE_TO_LOAD_IN_SECURE_CONTEXT = (1<<18);
+
+
 };
 
 %{C++

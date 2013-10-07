@@ -1,50 +1,19 @@
 /* -*- Mode: C++; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 4 -*- */
-/* ***** BEGIN LICENSE BLOCK *****
- * Version: MPL 1.1/GPL 2.0/LGPL 2.1
- *
- * The contents of this file are subject to the Mozilla Public License Version
- * 1.1 (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
- * http://www.mozilla.org/MPL/
- *
- * Software distributed under the License is distributed on an "AS IS" basis,
- * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
- * for the specific language governing rights and limitations under the
- * License.
- *
- * The Original Code is mozilla.org code.
- *
- * The Initial Developer of the Original Code is
- * Netscape Communications Corporation.
- * Portions created by the Initial Developer are Copyright (C) 1998
- * the Initial Developer. All Rights Reserved.
- *
- * Contributor(s):
- *
- * Alternatively, the contents of this file may be used under the terms of
- * either the GNU General Public License Version 2 or later (the "GPL"), or
- * the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
- * in which case the provisions of the GPL or the LGPL are applicable instead
- * of those above. If you wish to allow use of your version of this file only
- * under the terms of either the GPL or the LGPL, and not to allow others to
- * use your version of this file under the terms of the MPL, indicate your
- * decision by deleting the provisions above and replace them with the notice
- * and other provisions required by the GPL or the LGPL. If you do not delete
- * the provisions above, a recipient may use your version of this file under
- * the terms of any one of the MPL, the GPL or the LGPL.
- *
- * ***** END LICENSE BLOCK ***** */
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "nsIRequest.idl"
 
 interface nsISimpleEnumerator;
 interface nsIRequestObserver;
 interface nsIInterfaceRequestor;
+interface nsILoadGroupConnectionInfo;
 
 /**
  * A load group maintains a collection of nsIRequest objects. 
  */
-[scriptable, uuid(3de0a31c-feaf-400f-9f1e-4ef71f8b20cc)]
+[scriptable, uuid(19501006-46e3-4634-b97d-26eff894b4d3)]
 interface nsILoadGroup : nsIRequest
 {
     /**
@@ -103,4 +72,50 @@ interface nsILoadGroup : nsIRequest
      * Notification callbacks for the load group.
      */
     attribute nsIInterfaceRequestor notificationCallbacks;
+
+    /**
+     * Connection information for managing things like js/css
+     * connection blocking, and per-tab connection grouping
+     */
+    readonly attribute nsILoadGroupConnectionInfo connectionInfo;
+};
+
+%{C++
+#include "mozilla/net/PSpdyPush3.h"
+%}
+
+[ptr] native SpdyPushCache3Ptr(mozilla::net::SpdyPushCache3);
+
+/**
+ * Used to maintain state about the connections of a load group and
+ * how they interact with blocking items like HEAD css/js loads.
+ */
+
+[uuid(5361f30e-f968-437c-8f41-69d2756a6022)]
+interface nsILoadGroupConnectionInfo : nsISupports
+{
+    /**
+     * Number of active blocking transactions associated with this load group
+     */
+    readonly attribute unsigned long blockingTransactionCount;
+
+    /**
+     * Increase the number of active blocking transactions associated
+     * with this load group by one.
+     */
+    void addBlockingTransaction();
+
+    /**
+     * Decrease the number of active blocking transactions associated
+     * with this load group by one. The return value is the number of remaining
+     * blockers.
+     */
+    unsigned long removeBlockingTransaction();
+
+    /* reading this attribute gives out weak pointers to the push
+     * cache. The nsILoadGroupConnectionInfo implemenation owns the cache
+     * and will destroy it when overwritten or when the load group
+    *  ends.
+    */
+    [noscript]  attribute SpdyPushCache3Ptr spdyPushCache3;
 };
