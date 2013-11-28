@@ -1,4 +1,5 @@
-interfaces platform/WINNT/components/xxmGeckoDev.xpt
-binary-component platform/WINNT/components/xxmGeckoDev.dll os=WINNT
-component {78786D00-0000-0010-C000-000000000010} platform/WINNT/components/xxmGeckoDev.dll os=WINNT
+component {78786D00-0000-0010-C000-000000000010} components/xxmGecko.js
+component {78786B00-0002-0001-C000-000000000001} components/xxmGecko.js
 contract @mozilla.org/network/protocol;1?name=xxm {78786D00-0000-0010-C000-000000000010}
+contract @xxm.sourceforge.net/xxmGeckoChannel;1 {78786B00-0002-0001-C000-000000000001}
+content xxm components/

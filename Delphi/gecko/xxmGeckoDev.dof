@@ -90,7 +90,7 @@ MaxStackSize=1048576
 ImageBase=4194304
 ExeDescription=
 [Directories]
-OutputDir=..\bin
+OutputDir=setup\xxmGeckoDev\components
 UnitOutputDir=..\dcu
 PackageDLLOutputDir=
 PackageDCPOutputDir=
@@ -100,8 +100,8 @@ Conditionals=
 DebugSourceDirs=
 UsePackages=0
 [Parameters]
-RunParams=-X xxm://proto
-HostApplication=C:\mozilla-build\beta-src\obj-i686-pc-mingw32\dist\bin\firefox.exe
+RunParams=-P "test"
+HostApplication=C:\Program Files (x86)\Mozilla Firefox\firefox.exe
 Launcher=
 UseLauncher=0
 DebugCWD=
@@ -130,3 +130,16 @@ OriginalFilename=
 ProductName=xxm
 ProductVersion=1.0.0.0
 Comments=http://xxm.sf.net/
+[HistoryLists\hlUnitAliases]
+Count=1
+Item0=WinTypes=Windows;WinProcs=Windows;DbiTypes=BDE;DbiProcs=BDE;DbiErrs=BDE;
+[HistoryLists\hlSearchPath]
+Count=1
+Item0=sdk;..\public
+[HistoryLists\hlUnitOutputDirectory]
+Count=1
+Item0=..\dcu
+[HistoryLists\hlOutputDirectorry]
+Count=2
+Item0=setup\xxmGeckoDev\components
+Item1=C:\Users\User1\AppData\Roaming\Mozilla\Firefox\Profiles\5697xjrm.test\extensions\xxmGeckoDev@xxm.sourceforge.net\components

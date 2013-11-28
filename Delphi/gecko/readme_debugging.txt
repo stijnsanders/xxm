@@ -1,17 +1,15 @@
 Though a xxmGeckoDev.xpi file is available for install,
 when debugging the xxmGeckoDev.dpr project, it's
-advised to install xxmGeckoDev.dll with a registry entry.
+advised to install xxmGeckoDev from the source folder as an extension:
 
-Open "regedit", locate this key:
+Open "%APPDATA%\Mozilla\Firefox\Profiles"
+Open your profile directory
+Open directory "extensions"
 
-HKEY_LOCAL_MACHINE\SOFTWARE\Mozilla\Firefox\Extensions
+Create a file named "xxmGeckoDev@xxm.sourceforge.net"
+and edit it to contain the full path, including a trailing backslash, for example:
 
-And add an item of type string, with this name:
+C:\MyCurrentProjects\xxm\gecko\setup\xxmGeckoDev\
 
-xxmGeckoDev@xxm.sourceforge.net
-
-and the directory that holds the files that are in the xpi package as well, for example:
-
-C:\MyCurrentProjects\xxm\gecko\setup\xxmGeckoDev
-
-
+See also
+https://developer.mozilla.org/en-US/docs/Building_an_Extension#Test
