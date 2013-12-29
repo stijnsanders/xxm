@@ -27,7 +27,7 @@ begin
   dg:=dd+tz.Bias/1440;
   DecodeDateFully(dg,y,m,d,wd);
   DecodeTime(dg,th,tm,ts,tms);
-  FmtStr(Result, '%s, %d-%s-%d %.2d:%.2d:%.2d GMT',
+  FmtStr(Result, '%s, %d %s %d %.2d:%.2d:%.2d GMT',
     [Days[wd],d,Months[m],y,th,tm,ts]);
 end;
 
