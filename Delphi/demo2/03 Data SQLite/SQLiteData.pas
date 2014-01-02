@@ -1,3 +1,10 @@
+//////////////////////////////////////////////////
+//  TSQLite                                     //
+//    Delphi SQLite3 wrapper                    //
+//                                              //
+//  https://github.com/stijnsanders/TSQLite     //
+//////////////////////////////////////////////////
+
 unit SQLiteData;
 
 interface
@@ -147,6 +154,7 @@ var
 begin
   sqlite3_check(FHandle,sqlite3_prepare_v2(FHandle,
     PAnsiChar(SQL),Length(SQL),h,PAnsiChar(nil^)));
+  //TODO: tail!
   try
     r:=sqlite3_step(h);
     case r of
@@ -217,16 +225,8 @@ var
 begin
   inherited Create;
   FDB:=Connection.Handle;
-  try
-    sqlite3_check(FDB,sqlite3_prepare_v2(FDB,
-      PAnsiChar(SQL),Length(SQL),FHandle,PAnsiChar(nil^)));
-  except
-    on e:ESQLiteException do
-	 begin
-	  e.Message:=e.Message+#13#10+SQL;
-	  raise;
-	 end;
-  end;
+  sqlite3_check(FDB,sqlite3_prepare_v2(FDB,
+    PAnsiChar(SQL),Length(SQL),FHandle,PAnsiChar(nil^)));
   DoInit;
   for i:=0 to Length(Parameters)-1 do SetParameter(i+1,Parameters[i]);
 end;

@@ -1,4 +1,13 @@
+//////////////////////////////////////////////////
+//  TSQLite                                     //
+//    Delphi SQLite3 wrapper                    //
+//                                              //
+//  https://github.com/stijnsanders/TSQLite     //
+//////////////////////////////////////////////////
+
 unit SQLite;
+
+//based on sqlite.h 3.8.2 2014-01-02
 
 interface
 
@@ -59,7 +68,9 @@ const
   SQLITE_FORMAT      = 24 ;  // Auxiliary database format error
   SQLITE_RANGE       = 25 ;  // 2nd parameter to sqlite3_bind out of range
   SQLITE_NOTADB      = 26 ;  // File opened that is not a database file 
-  SQLITE_ROW         = 100;  // sqlite3_step() has another row ready 
+  SQLITE_NOTICE      = 27 ;  // Notifications from sqlite3_log()
+  SQLITE_WARNING     = 28 ;  // Warnings from sqlite3_log()
+  SQLITE_ROW         = 100;  // sqlite3_step() has another row ready
   SQLITE_DONE        = 101;  // sqlite3_step() has finished executing 
 
   SQLITE_IOERR_READ              = SQLITE_IOERR or $0100;
@@ -82,14 +93,37 @@ const
   SQLITE_IOERR_SHMOPEN           = SQLITE_IOERR or $1200;
   SQLITE_IOERR_SHMSIZE           = SQLITE_IOERR or $1300;
   SQLITE_IOERR_SHMLOCK           = SQLITE_IOERR or $1400;
+  SQLITE_IOERR_SHMMAP            = SQLITE_IOERR or $1500;
+  SQLITE_IOERR_SEEK              = SQLITE_IOERR or $1600;
+  SQLITE_IOERR_DELETE_NOENT      = SQLITE_IOERR or $1700;
+  SQLITE_IOERR_MMAP              = SQLITE_IOERR or $1800;
+  SQLITE_IOERR_GETTEMPPATH       = SQLITE_IOERR or $1900;
+  SQLITE_IOERR_CONVPATH          = SQLITE_IOERR or $1A00;
   SQLITE_LOCKED_SHAREDCACHE      = SQLITE_LOCKED or $0100;
-  SQLITE_BUSY_RECOVERY           = SQLITE_BUSY   or $0100;
+  SQLITE_BUSY_RECOVERY           = SQLITE_BUSY or $0100;
+  SQLITE_BUSY_SNAPSHOT           = SQLITE_BUSY or $0200;
   SQLITE_CANTOPEN_NOTEMPDIR      = SQLITE_CANTOPEN or $0100;
   SQLITE_CANTOPEN_ISDIR          = SQLITE_CANTOPEN or $0200;
+  SQLITE_CANTOPEN_FULLPATH       = SQLITE_CANTOPEN or $0300;
+  SQLITE_CANTOPEN_CONVPATH       = SQLITE_CANTOPEN or $0400;
   SQLITE_CORRUPT_VTAB            = SQLITE_CORRUPT or $0100;
   SQLITE_READONLY_RECOVERY       = SQLITE_READONLY or $0100;
   SQLITE_READONLY_CANTLOCK       = SQLITE_READONLY or $0200;
+  SQLITE_READONLY_ROLLBACK       = SQLITE_READONLY or $0300;
   SQLITE_ABORT_ROLLBACK          = SQLITE_ABORT or $0200;
+  SQLITE_CONSTRAINT_CHECK        = SQLITE_CONSTRAINT or $0100;
+  SQLITE_CONSTRAINT_COMMITHOOK   = SQLITE_CONSTRAINT or $0200;
+  SQLITE_CONSTRAINT_FOREIGNKEY   = SQLITE_CONSTRAINT or $0300;
+  SQLITE_CONSTRAINT_FUNCTION     = SQLITE_CONSTRAINT or $0400;
+  SQLITE_CONSTRAINT_NOTNULL      = SQLITE_CONSTRAINT or $0500;
+  SQLITE_CONSTRAINT_PRIMARYKEY   = SQLITE_CONSTRAINT or $0600;
+  SQLITE_CONSTRAINT_TRIGGER      = SQLITE_CONSTRAINT or $0700;
+  SQLITE_CONSTRAINT_UNIQUE       = SQLITE_CONSTRAINT or $0800;
+  SQLITE_CONSTRAINT_VTAB         = SQLITE_CONSTRAINT or $0900;
+  SQLITE_CONSTRAINT_ROWID        = SQLITE_CONSTRAINT or $0A00;
+  SQLITE_NOTICE_RECOVER_WAL      = SQLITE_NOTICE or $0100;
+  SQLITE_NOTICE_RECOVER_ROLLBACK = SQLITE_NOTICE or $0200;
+  SQLITE_WARNING_AUTOINDEX       = SQLITE_WARNING or $0100;
 
   SQLITE_OPEN_READONLY         = $00000001;
   SQLITE_OPEN_READWRITE        = $00000002;
@@ -143,6 +177,10 @@ const
   SQLITE_CONFIG_URI          = 17;
   SQLITE_CONFIG_PCACHE2      = 18;
   SQLITE_CONFIG_GETPCACHE2   = 19;
+  SQLITE_CONFIG_COVERING_INDEX_SCAN = 20;
+  SQLITE_CONFIG_SQLLOG       = 21;
+  SQLITE_CONFIG_MMAP_SIZE    = 22;
+  SQLITE_CONFIG_WIN32_HEAPSIZE = 23;
 
   SQLITE_DBCONFIG_LOOKASIDE       = 1001;
   SQLITE_DBCONFIG_ENABLE_FKEY     = 1002;
@@ -240,11 +278,13 @@ const
   SQLITE_DBSTATUS_CACHE_HIT            = 7;
   SQLITE_DBSTATUS_CACHE_MISS           = 8;
   SQLITE_DBSTATUS_CACHE_WRITE          = 9;
-  SQLITE_DBSTATUS_MAX                  = 9;   // Largest defined DBSTATUS
+  SQLITE_DBSTATUS_DEFERRED_FKS         = 10;
+  SQLITE_DBSTATUS_MAX                  = 10;  // Largest defined DBSTATUS
 
   SQLITE_STMTSTATUS_FULLSCAN_STEP    = 1;
   SQLITE_STMTSTATUS_SORT             = 2;
   SQLITE_STMTSTATUS_AUTOINDEX        = 3;
+  SQLITE_STMTSTATUS_VM_STEP          = 4;
 
   SQLITE_CHECKPOINT_PASSIVE = 0;
   SQLITE_CHECKPOINT_FULL    = 1;
@@ -284,8 +324,8 @@ function sqlite3_shutdown:integer; cdecl;
 function sqlite3_os_init:integer; cdecl;
 function sqlite3_os_end:integer; cdecl;
 
-//function sqlite3_config(:integer;...):integer; cdecl;
-//function sqlite3_db_config(SQLiteDB:HSQLiteDB;op:integer;...):integer; cdecl;
+function sqlite3_config(op:integer):integer; cdecl; varargs;
+function sqlite3_db_config(SQLiteDB:HSQLiteDB;op:integer):integer; cdecl; varargs;
 function sqlite3_extended_result_codes(SQLiteDB:HSQLiteDB;onoff:integer):integer; cdecl;
 function sqlite3_last_insert_rowid(SQLiteDB:HSQLiteDB):int64; cdecl;
 function sqlite3_changes(SQLiteDB:HSQLiteDB):integer; cdecl;
@@ -324,6 +364,7 @@ function sqlite3_errcode(SQLiteDB:HSQLiteDB):integer; cdecl;
 function sqlite3_extended_errcode(SQLiteDB:HSQLiteDB):integer; cdecl;
 function sqlite3_errmsg(SQLiteDB:HSQLiteDB):PAnsiChar; cdecl;
 function sqlite3_errmsg16(SQLiteDB:HSQLiteDB):PWideChar; cdecl;
+function sqlite3_errstr(ResultCode:integer):PAnsiChar; cdecl;
 function sqlite3_limit(SQLiteDB:HSQLiteDB;id:integer;newVal:integer):integer; cdecl;
 
 function sqlite3_prepare(SQLiteDB:HSQLiteDB;Sql:PAnsiChar;nByte:integer;
@@ -441,7 +482,9 @@ function sqlite3_collation_needed(SQLiteDB:HSQLiteDB;Context:pointer;CallBack:TS
 function sqlite3_collation_needed16(SQLiteDB:HSQLiteDB;Context:pointer;CallBack:TSQLiteCollationNeeded16):integer; cdecl;
 
 //sqlite3_key
+//sqlite3_key_v2
 //sqlite3_rekey
+//sqlite3_rekey_v2
 //sqlite3_activate_see
 //sqlite3_activate_cerod
 
@@ -468,6 +511,7 @@ function sqlite3_load_extension(SQLiteDB:HSQLiteDB;xFile:PAnsiChar;xProc:PAnsiCh
   var ErrorMessage:PAnsiChar):integer; cdecl;
 function sqlite3_enable_load_extension(SQLiteDB:HSQLiteDB;onoff:integer):integer; cdecl;
 //sqlite3_auto_extension
+//sqlite3_cancel_auto_extension
 //sqlite3_reset_auto_extension
 
 //TODO: virtual table modules
@@ -510,8 +554,9 @@ function sqlite3_backup_pagecount(Backup:HSQLiteBackup):integer; cdecl;
 
 function sqlite3_unlock_notify(Blocked:HSQLiteDB;xNotify:TSQLiteUnlockNotify;Context:pointer):integer; cdecl;
 
-//sqlite3_stricmp
+function sqlite3_stricmp(X:PAnsiChar;Y:PAnsiChar):integer; cdecl;
 function sqlite3_strnicmp(X:PAnsiChar;Y:PAnsiChar;Z:integer):integer; cdecl;
+function sqlite3_strglob(X:PAnsiChar;Y:PAnsiChar):integer; cdecl;
 
 //sqlite3_log
 
@@ -543,8 +588,8 @@ function sqlite3_initialize; external SqlLite3Dll;
 function sqlite3_shutdown; external SqlLite3Dll;
 function sqlite3_os_init; external SqlLite3Dll;
 function sqlite3_os_end; external SqlLite3Dll;
-//function sqlite3_config; external SqlLite3Dll;
-//function sqlite3_db_config; external SqlLite3Dll;
+function sqlite3_config; external SqlLite3Dll;
+function sqlite3_db_config; external SqlLite3Dll;
 function sqlite3_extended_result_codes; external SqlLite3Dll;
 function sqlite3_last_insert_rowid; external SqlLite3Dll;
 function sqlite3_changes; external SqlLite3Dll;
@@ -578,6 +623,7 @@ function sqlite3_errcode; external SqlLite3Dll;
 function sqlite3_extended_errcode; external SqlLite3Dll;
 function sqlite3_errmsg; external SqlLite3Dll;
 function sqlite3_errmsg16; external SqlLite3Dll;
+function sqlite3_errstr; external SqlLite3Dll;
 function sqlite3_limit; external SqlLite3Dll;
 
 function sqlite3_prepare; external SqlLite3Dll;
@@ -744,7 +790,9 @@ function sqlite3_backup_pagecount; external SqlLite3Dll;
 
 function sqlite3_unlock_notify; external SqlLite3Dll;
 
+function sqlite3_stricmp; external SqlLite3Dll;
 function sqlite3_strnicmp; external SqlLite3Dll;
+function sqlite3_strglob; external SqlLite3Dll;
 
 //sqlite3_log
 
