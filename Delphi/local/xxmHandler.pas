@@ -130,16 +130,14 @@ begin
   Result:=E_NOTIMPL;
 end;
 
-function TXxmLocalHandler.Continue(
-  const ProtocolData: _tagPROTOCOLDATA): HRESULT;
+function TXxmLocalHandler.Continue(const ProtocolData: _tagPROTOCOLDATA): HRESULT;
 begin
   Result:=E_NOTIMPL;
 end;
 
-function TXxmLocalHandler.Abort(hrReason: HRESULT;
-  dwOptions: Cardinal): HRESULT;
+function TXxmLocalHandler.Abort(hrReason: HRESULT; dwOptions: Cardinal): HRESULT;
 begin
-  FContext.Disconnect;
+  FContext.Aborted:=true;
   Result:=S_OK;
 end;
 
@@ -196,7 +194,6 @@ begin
      begin
       if (FContext.OutputData is TMemoryStream) then
        begin
-        FContext.ClippedSize:=FContext.ClippedSize+FContext.OutputSize;
         FContext.OutputSize:=0;//no SetSize, just reset pointer, saves on realloc calls
         FDataPos:=0;
        end;

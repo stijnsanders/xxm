@@ -43,7 +43,6 @@ var
   hrq:THTTP_BINDING_INFO;
   hrss:THTTP_STATE_INFO;
   QuitApp:boolean;
-
 begin
   CoInitialize(nil);
   QuitApp:=false;

@@ -53,7 +53,7 @@ type
     procedure Connect(const Address:AnsiString;Port:word);
     procedure Disconnect;
     function ReceiveBuf(var Buf; BufSize: Integer): Integer;
-    function SendBuf(var Buf; BufSize: Integer): Integer;
+    function SendBuf(const Buffer; Count: LongInt): LongInt;
     property Handle:THandle read FSocket;
     property Connected:boolean read FConnected;
     property Port:word read GetPort;
@@ -239,9 +239,12 @@ begin
    end;
 end;
 
-function TTcpSocket.SendBuf(var Buf; BufSize: Integer): Integer;
+function TTcpSocket.SendBuf(const Buffer; Count: LongInt): LongInt;
+var
+  p:pointer;
 begin
-  Result:=send(FSocket,Buf,BufSize,0);
+  p:=@Buffer;
+  Result:=send(FSocket,p^,Count,0);
   if Result=SOCKET_ERROR then
    begin
     Disconnect;

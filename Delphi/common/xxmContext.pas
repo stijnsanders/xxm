@@ -6,8 +6,13 @@ uses Windows, SysUtils, Classes, ActiveX, xxm, xxmPReg, xxmHeaders, xxmParams;
 
 const
   XxmMaxIncludeDepth=64;//TODO: setting?
+  XxmHeaderSent=0;
+  XxmHeaderNotSent=1;
+  XxmHeaderOnNextFlush=2;
 
 type
+  TXxmSendBufHandler=function(const Buffer; Count: LongInt): LongInt of object;
+
   TXxmGeneralContext=class(TInterfacedObject,
     IXxmContext,
     IxxmParameterCollection,
@@ -16,9 +21,8 @@ type
   private
     FProjectEntry: TXxmProjectEntry;
     FPage, FBuilding: IXxmFragment;
-    FStatusCode, FIncludeDepth: integer;
+    FStatusCode, FIncludeDepth, FHeaderSent, FBufferSize: integer;
     FStatusText, FSingleFileSent: WideString;
-    FHeaderSent: boolean;
     FParams: TXxmReqPars;
     FIncludeCheck: pointer;//see Include
   protected
@@ -26,8 +30,8 @@ type
     FAutoEncoding: TXxmAutoEncoding;
     FPostData: TStream;
     FPostTempFile: AnsiString;
-    StatusSet, SettingCookie, BuildDone: boolean;
-    FBufferSize: integer;
+    SendBuf, SendDirect: TXxmSendBufHandler;
+    SettingCookie: boolean;
 
     { IXxmContext }
     function GetURL: WideString;
@@ -58,8 +62,7 @@ type
     //abstract methods, inheriters need to implement these
     function GetSessionID: WideString; virtual; abstract;
     procedure DispositionAttach(FileName: WideString); virtual; abstract;
-    procedure SendRaw(const Data: WideString); virtual; abstract;
-    procedure SendStream(s: IStream); virtual; abstract;
+    //function SendDirect(const Buffer; Count: LongInt): LongInt; virtual; abstract;
     function ContextString(cs: TXxmContextString): WideString; virtual; abstract;
     function Connected: Boolean; virtual; abstract;
     procedure Redirect(RedirectURL: WideString; Relative:boolean); virtual; abstract;
@@ -68,9 +71,11 @@ type
     procedure SetCookie(Name,Value:WideString; KeepSeconds:cardinal;
       Comment,Domain,Path:WideString; Secure,HttpOnly:boolean); overload; virtual;
 
+    procedure SendStr(const Data:WideString);
+    procedure SendStream(s: IStream);
     function GetBufferSize: integer;
-    procedure SetBufferSize(ABufferSize: integer); virtual;
-    procedure Flush; virtual; abstract;
+    procedure SetBufferSize(ABufferSize: integer);
+    procedure Flush;
 
     { IxxmParameterCollection }
     procedure AddParameter(Param: IUnknown);//IxxmParameter
@@ -88,7 +93,7 @@ type
     procedure CheckHeaderNotSent;
     function CheckSendStart:boolean;
 
-    procedure SendError(const res:AnsiString;const vals:array of AnsiString);
+    procedure SendError(const res:string;const vals:array of string);
     procedure ForceStatus(Code: Integer; Text: WideString);
     function HandleException(Ex: Exception): boolean;
 
@@ -98,6 +103,7 @@ type
     procedure EndRequest; virtual;
 
     property ProjectEntry: TXxmProjectEntry read FProjectEntry;
+    property BufferSize: integer read GetBufferSize;//write? only for IXxmContext consumers!
   public
     //abstract! constructor only here for private variable init
     constructor Create(const URL:WideString);
@@ -109,13 +115,18 @@ type
     property SingleFileSent:WideString read FSingleFileSent;
   end;
 
+  EXxmTransferError=class(Exception);
   EXxmAutoBuildFailed=class(Exception);
   EXxmDirectInclude=class(Exception);
+  EXxmPageRedirected=class(Exception);
   EXxmIncludeStackFull=class(Exception);
   EXxmIncludeFragmentNotFound=class(Exception);
   EXxmIncludeCrossProjectDisabled=class(Exception);
   EXxmParametersAlreadyParsed=class(Exception);
   EXxmBufferSizeInvalid=class(Exception);
+
+threadvar
+  ContentBuffer:TStream;
 
 var
   //see xxmSettings
@@ -127,7 +138,7 @@ const
 
 implementation
 
-uses Variants, xxmCommonUtils, xxmParUtils;
+uses Variants, ComObj, xxmCommonUtils, xxmParUtils;
 
 const //resourcestring?
   SXxmDirectInclude='Direct call to include fragment is not allowed';
@@ -143,6 +154,7 @@ constructor TXxmGeneralContext.Create(const URL: WideString);
 begin
   inherited Create;
   FURL:=URL;
+  SendDirect:=nil;//TODO: stub raise abstract error?
   BeginRequest;
 end;
 
@@ -163,17 +175,16 @@ begin
   FPage:=nil;
   FBuilding:=nil;
   FPageClass:='';
-  FHeaderSent:=false;
+  FHeaderSent:=XxmHeaderNotSent;
   FIncludeDepth:=0;
   FIncludeCheck:=nil;
   FStatusCode:=200;//default
   FStatusText:='OK';//default
-  StatusSet:=false;
   SettingCookie:=false;
-  BuildDone:=false;//see BuildPage
   FProjectName:='';//parsed from URL later
   FFragmentName:='';//parsed from URL later
-  FBufferSize:=0;//TOOD: from project settings?
+  FBufferSize:=0;//TODO: from project settings?
+  SendBuf:=SendDirect;
 end;
 
 procedure TXxmGeneralContext.EndRequest;
@@ -196,6 +207,7 @@ begin
   end;
   FreeAndNil(FParams);
   FURL:='';
+  if (FBufferSize<>0) and (ContentBuffer<>nil) then ContentBuffer.Position:=0;
 end;
 
 function TXxmGeneralContext.GetURL: WideString;
@@ -211,8 +223,8 @@ end;
 procedure TXxmGeneralContext.BuildPage;
 var
   p:IXxmPage;
+  i:int64;
 begin
-  BuildDone:=false;//see below
   FProjectEntry:=GetProjectEntry;//(FProjectName);
   if @XxmAutoBuildHandler<>nil then
     if not(XxmAutoBuildHandler(FProjectEntry,Self,FProjectName)) then
@@ -238,17 +250,15 @@ begin
       FPage.Build(Self,nil,[],[]);//any parameters?
 
       //any content?
-      if not FHeaderSent then
+      if FHeaderSent<>XxmHeaderSent then
        begin
-        ForceStatus(204,'No Content');
-        AddResponseHeader('Content-Length','0');
-        SendHeader;
-       end
-      else
-       begin
-        BuildDone:=true;
-        if FBufferSize<>0 then Flush;
+        if FBufferSize=0 then i:=0 else i:=ContentBuffer.Position;
+        if i=0 then ForceStatus(204,'No Content');
+        if FStatusCode<>304 then
+          AddResponseHeader('Content-Length',IntToStr(i));
+        if i=0 then SendHeader;
        end;
+      Flush;
 
     finally
       FBuilding:=nil;
@@ -294,7 +304,7 @@ begin
       if (y<>'') and (GetRequestHeader('If-Modified-Since')=y) then
        begin
         ForceStatus(304,'Not Modified');
-        AddResponseHeader('Content-Length','0');
+        //AddResponseHeader('Content-Length',?
         SendHeader;
        end
       else
@@ -344,30 +354,39 @@ end;
 
 function TXxmGeneralContext.CheckSendStart: boolean;
 begin
-  //FAutoEncoding: see SendHTML
-  if FHeaderSent then
+  if FHeaderSent=XxmHeaderSent then
    begin
     FSingleFileSent:='';
     Result:=false;
    end
   else
-   begin
-    SendHeader;
-    FHeaderSent:=true;
-    Result:=true;
-   end;
+    if FBufferSize=0 then
+     begin
+      SendHeader;
+      FHeaderSent:=XxmHeaderSent;
+      Result:=true;
+     end
+    else
+      if FHeaderSent=XxmHeaderNotSent then
+       begin
+        FHeaderSent:=XxmHeaderOnNextFlush;
+        Result:=true;
+       end
+      else
+        Result:=false;
 end;
 
 procedure TXxmGeneralContext.CheckHeaderNotSent;
 begin
-  if FHeaderSent then
+  if FHeaderSent<>XxmHeaderNotSent then
     raise EXxmResponseHeaderAlreadySent.Create(SXxmResponseHeaderAlreadySent);
 end;
 
-procedure TXxmGeneralContext.SendError(const res: AnsiString;
-  const vals: array of AnsiString);
+procedure TXxmGeneralContext.SendError(const res: string;
+  const vals: array of string);
 var
   s:AnsiString;
+  ss:string;
   i:integer;
   r:TResourceStream;
   l:Int64;
@@ -376,11 +395,11 @@ const
 begin
   if Connected then
    begin
-    if FHeaderSent and (FContentType='text/plain') then
+    if (FHeaderSent=XxmHeaderSent) and (FContentType='text/plain') then
      begin
-      s:=#13#10'----------------------------------------'#13#10'### '+res+' ###';
+      ss:=#13#10'----------------------------------------'#13#10'### '+res+' ###';
       for i:=0 to (Length(vals) div 2)-1 do
-        s:=s+#13#10+vals[i*2]+' = '+vals[i*2+1];
+        ss:=ss+#13#10+vals[i*2]+' = '+vals[i*2+1];
      end
     else
      begin
@@ -392,15 +411,16 @@ begin
       finally
         r.Free;
       end;
+      ss:=string(s);
       for i:=0 to (Length(vals) div 2)-1 do
-        s:=StringReplace(s,'[['+vals[i*2]+']]',vals[i*2+1],[rfReplaceAll]);
-      if not(FHeaderSent) then
+        ss:=StringReplace(ss,'[['+vals[i*2]+']]',vals[i*2+1],[rfReplaceAll]);
+      if FHeaderSent<>XxmHeaderSent then
        begin
         FContentType:='text/html';
         FAutoEncoding:=aeContentDefined;//?
        end;
      end;
-    SendRaw(s);
+    SendStr(WideString(ss));
     if FBufferSize<>0 then Flush;
    end;
 end;
@@ -433,7 +453,6 @@ begin
   CheckHeaderNotSent;
   FStatusCode:=Code;
   FStatusText:=Text;
-  StatusSet:=true;
 end;
 
 procedure TXxmGeneralContext.ForceStatus(Code: Integer; Text: WideString);
@@ -553,6 +572,59 @@ begin
   end;
 end;
 
+procedure TXxmGeneralContext.SendStr(const Data: WideString);
+var
+  s:AnsiString;
+  l:cardinal;
+begin
+  if Data<>'' then
+   begin
+    if CheckSendStart then
+      case FAutoEncoding of
+        aeUtf8: SendBuf(Utf8ByteOrderMark[1],3);
+        aeUtf16:SendBuf(Utf16ByteOrderMark[1],2);
+      end;
+    case FAutoEncoding of
+      aeUtf16:
+       begin
+        l:=Length(Data)*2;
+        SendBuf(Data[1],l);
+       end;
+      aeUtf8:
+       begin
+        s:=UTF8Encode(Data);
+        l:=Length(s);
+        SendBuf(s[1],l);
+       end;
+      else
+       begin
+        s:=Data;
+        l:=Length(s);
+        SendBuf(s[1],l);
+       end;
+    end;
+    if (FBufferSize<>0) and (ContentBuffer.Position>=FBufferSize) then Flush;
+   end;
+end;
+
+procedure TXxmGeneralContext.SendStream(s: IStream);
+const
+  dSize=$10000;
+var
+  d:array[0..dSize-1] of byte;
+  l:integer;
+begin
+  CheckSendStart;
+  if FBufferSize<>0 then Flush;
+  repeat
+    l:=dSize;
+    OleCheck(s.Read(@d[0],dSize,@l));
+    if l<>0 then
+      if SendDirect(d[0],l)<>l then
+        raise EXxmTransferError.Create(SysErrorMessage(GetLastError));
+  until l=0;
+end;
+
 function VarToWideStrX(const V: Variant): WideString;
 var
   p:IXxmParameter;
@@ -571,12 +643,12 @@ end;
 
 procedure TXxmGeneralContext.SendHTML(Data: OleVariant);
 begin
-  SendRaw(VarToWideStrX(Data));
+  SendStr(VarToWideStrX(Data));
 end;
 
 procedure TXxmGeneralContext.Send(Data: OleVariant);
 begin
-  SendRaw(HTMLEncode(VarToWideStrX(Data)));
+  SendStr(HTMLEncode(VarToWideStrX(Data)));
 end;
 
 procedure TXxmGeneralContext.SendFile(FilePath: WideString);
@@ -585,38 +657,38 @@ var
 begin
   inherited;
   //TODO: auto mimetype by extension?
-  b:=FHeaderSent;
+  b:=FHeaderSent<>XxmHeaderNotSent;
   SendStream(TStreamAdapter.Create(TFileStream.Create(FilePath,fmOpenRead or fmShareDenyNone),soOwned));//does CheckSendStart
   if b then FSingleFileSent:='' else FSingleFileSent:=FilePath;
 end;
 
 procedure TXxmGeneralContext.Send(Value: integer);
 begin
-  SendRaw(IntToStr(Value));
+  SendStr(IntToStr(Value));
 end;
 
 procedure TXxmGeneralContext.Send(Value: int64);
 begin
-  SendRaw(IntToStr(Value));
+  SendStr(IntToStr(Value));
 end;
 
 procedure TXxmGeneralContext.Send(Value: cardinal);
 begin
-  SendRaw(IntToStr(Value));
+  SendStr(IntToStr(Value));
 end;
 
 procedure TXxmGeneralContext.Send(const Values: array of OleVariant);
 var
   i:integer;
 begin
-  for i:=0 to Length(Values)-1 do SendRaw(HTMLEncode(Values[i]));
+  for i:=0 to Length(Values)-1 do SendStr(HTMLEncode(Values[i]));
 end;
 
 procedure TXxmGeneralContext.SendHTML(const Values: array of OleVariant);
 var
   i:integer;
 begin
-  for i:=0 to Length(Values)-1 do SendRaw(VarToWideStrX(Values[i]));
+  for i:=0 to Length(Values)-1 do SendStr(VarToWideStrX(Values[i]));
 end;
 
 function TXxmGeneralContext.PostData: IStream;
@@ -695,6 +767,58 @@ begin
     raise EXxmBufferSizeInvalid.Create(SXxmBufferSizeInvalid);
   if FBufferSize>ABufferSize then Flush;
   FBufferSize:=ABufferSize;
+  if FBufferSize=0 then SendBuf:=SendDirect else
+   begin
+    if ContentBuffer=nil then
+      ContentBuffer:=TMemoryStream.Create;//TODO: tmp file when large buffer
+    if ContentBuffer.Position>ABufferSize then Flush;
+    if ContentBuffer.Size<ABufferSize then ContentBuffer.Size:=ABufferSize;
+    SendBuf:=ContentBuffer.Write;
+   end;
+end;
+
+procedure TXxmGeneralContext.Flush;
+const
+  dSize=$10000;
+var
+  i:int64;
+  d:array[0..dSize-1] of byte;
+  l:integer;
+begin
+  if FHeaderSent=XxmHeaderOnNextFlush then
+   begin
+    SendHeader;
+    FHeaderSent:=XxmHeaderSent;
+   end;
+  if FBufferSize<>0 then
+   begin
+    i:=ContentBuffer.Position;
+    if i<>0 then
+     begin
+      if ContentBuffer is TMemoryStream then
+       begin
+        if SendDirect((ContentBuffer as TMemoryStream).Memory^,i)<>i then
+          raise EXxmTransferError.Create(SysErrorMessage(GetLastError));
+       end
+      else
+       begin
+        ContentBuffer.Position:=0;
+        repeat
+          if i>dSize then l:=dSize else l:=i;
+          l:=ContentBuffer.Read(d[0],l);
+          if l<>0 then
+           begin
+            if SendDirect(d[0],l)<>l then
+              raise EXxmTransferError.Create(SysErrorMessage(GetLastError));
+            i:=i-l;
+           end
+          else
+            i:=0;//raise?
+        until i=0;
+       end;
+      ContentBuffer.Position:=0;
+     end;
+   end;
 end;
 
 function TXxmGeneralContext.HandleException(Ex: Exception): boolean;

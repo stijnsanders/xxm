@@ -34,14 +34,10 @@ type
     KeptCount:integer;
     function GetSessionID: WideString; override;
     procedure DispositionAttach(FileName: WideString); override;
-    procedure SendRaw(const Data: WideString); override;
-    procedure SendStream(s: IStream); override;
     function ContextString(cs: TXxmContextString): WideString; override;
     function Connected: Boolean; override;
     procedure Redirect(RedirectURL: WideString; Relative:boolean); override;
     function GetCookie(Name: WideString): WideString; override;
-    procedure SetBufferSize(ABufferSize: Integer); override;
-    procedure Flush; override;
 
     function GetProjectEntry:TXxmProjectEntry; override;
     procedure SendHeader; override;
@@ -85,10 +81,8 @@ type
   end;
 
   EXxmMaximumHeaderLines=class(Exception);
-  EXxmAutoBuildFailed=class(Exception);
   EXxmContextStringUnknown=class(Exception);
   EXxmUnknownPostDataTymed=class(Exception);
-  EXxmPageRedirected=class(Exception);
 
   TXxmHttpRunParameters=(
     rpPort,
@@ -116,9 +110,6 @@ const
 var
   HttpSelfVersion:AnsiString;
   KeptConnections:TXxmKeptConnections;
-
-threadvar
-  ContentBuffer:TMemoryStream;
 
 type
   EXxmConnectionLost=class(Exception);
@@ -223,6 +214,7 @@ begin
      (setsockopt(FSocket.Handle,SOL_SOCKET,SO_SNDTIMEO,@i,4)<>0) then
     RaiseLastOSError;
   WasKept:=false;
+  SendDirect:=FSocket.SendBuf;
 end;
 
 destructor TXxmHttpContext.Destroy;
@@ -507,8 +499,7 @@ begin
   Result:=FSessionID;
 end;
 
-procedure TXxmHttpContext.Redirect(RedirectURL: WideString;
-  Relative: boolean);
+procedure TXxmHttpContext.Redirect(RedirectURL: WideString; Relative: boolean);
 var
   NewURL,RedirBody:WideString;
 begin
@@ -523,73 +514,9 @@ begin
     aeUtf16:FResHeaders['Content-Length']:=IntToStr(Length(RedirBody)*2+2);
     aeIso8859:FResHeaders['Content-Length']:=IntToStr(Length(AnsiString(RedirBody)));
   end;
-  SendRaw(RedirBody);
-  if FBufferSize<>0 then Flush;
+  SendStr(RedirBody);
+  Flush;
   raise EXxmPageRedirected.Create(RedirectURL);
-end;
-
-procedure TXxmHttpContext.SendRaw(const Data:WideString);
-const
-  Utf8ByteOrderMark=#$EF#$BB#$BF;
-  Utf16ByteOrderMark=#$FF#$FE;
-var
-  s:AnsiString;
-  l:cardinal;
-  p:pointer;
-begin
-  if Data<>'' then
-   begin
-    if CheckSendStart then
-      case FAutoEncoding of
-        aeUtf8:
-          if FBufferSize=0 then
-            FSocket.SendBuf(PAnsiChar(Utf8ByteOrderMark)^,3)
-          else
-            ContentBuffer.Write(Utf8ByteOrderMark[1],3);
-        aeUtf16:
-          if FBufferSize=0 then
-            FSocket.SendBuf(PAnsiChar(Utf16ByteOrderMark)^,2)
-          else
-            ContentBuffer.Write(Utf16ByteOrderMark[1],2);
-      end;
-    case FAutoEncoding of
-      aeUtf16:
-       begin
-        l:=Length(Data)*2;
-        p:=@Data[1];
-        if FBufferSize=0 then FSocket.SendBuf(p^,l) else ContentBuffer.Write(Data[1],l);
-       end;
-      aeUtf8:
-       begin
-        s:=UTF8Encode(Data);
-        l:=Length(s);
-        if FBufferSize=0 then FSocket.SendBuf(s[1],l) else ContentBuffer.Write(s[1],l);
-       end;
-      else
-       begin
-        s:=Data;
-        l:=Length(s);
-        if FBufferSize=0 then FSocket.SendBuf(s[1],l) else ContentBuffer.Write(s[1],l);
-       end;
-    end;
-    if (FBufferSize<>0) and (ContentBuffer.Position>=FBufferSize) then Flush;
-   end;
-end;
-
-procedure TXxmHttpContext.SendStream(s: IStream);
-const
-  dSize=$10000;
-var
-  d:array[0..dSize-1] of byte;
-  l:integer;
-begin
-  CheckSendStart;
-  if FBufferSize<>0 then Flush;
-  repeat
-    l:=dSize;
-    OleCheck(s.Read(@d[0],dSize,@l));
-    if l<>0 then FSocket.SendBuf(d[0],l);
-  until l=0;
 end;
 
 procedure TXxmHttpContext.SendHeader;
@@ -610,9 +537,6 @@ begin
   FSocket.SendBuf(x[1],Length(x));
   if FResHeaders['Content-Length']<>'' then FKeepConnection:=true;
   //TODO: transfer encoding chunked
-
-  //clear buffer just in case
-  if ContentBuffer<>nil then ContentBuffer.Position:=0;
 end;
 
 function TXxmHttpContext.GetRequestHeader(const Name: WideString): WideString;
@@ -671,32 +595,6 @@ end;
 procedure TXxmHttpContext.PostProcessRequest;
 begin
   //inheritants can perform post-page logging here
-end;
-
-procedure TXxmHttpContext.Flush;
-var
-  i:int64;
-begin
-  if FBufferSize<>0 then
-   begin
-    i:=ContentBuffer.Position;
-    if i<>0 then
-     begin
-      FSocket.SendBuf(ContentBuffer.Memory^,i);
-      ContentBuffer.Position:=0;
-     end;
-   end;
-end;
-
-procedure TXxmHttpContext.SetBufferSize(ABufferSize: Integer);
-begin
-  inherited;
-  if ABufferSize<>0 then
-   begin
-    if ContentBuffer=nil then ContentBuffer:=TMemoryStream.Create;//TODO: tmp file when large buffer
-    if ContentBuffer.Position>ABufferSize then Flush;
-    if ContentBuffer.Size<ABufferSize then ContentBuffer.Size:=ABufferSize;
-   end;
 end;
 
 { TXxmHttpServerListener }

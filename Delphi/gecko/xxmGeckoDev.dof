@@ -109,9 +109,9 @@ DebugCWD=
 IncludeVerInfo=1
 AutoIncBuild=0
 MajorVer=1
-MinorVer=1
-Release=6
-Build=286
+MinorVer=2
+Release=0
+Build=315
 Debug=0
 PreRelease=0
 Special=0
@@ -122,7 +122,7 @@ CodePage=1252
 [Version Info Keys]
 CompanyName=
 FileDescription=xxm Gecko Protocol Handler (AutoBuild)
-FileVersion=1.1.6.286
+FileVersion=1.2.0.315
 InternalName=xxmGecko
 LegalCopyright=
 LegalTrademarks=
@@ -130,16 +130,3 @@ OriginalFilename=
 ProductName=xxm
 ProductVersion=1.0.0.0
 Comments=http://xxm.sf.net/
-[HistoryLists\hlUnitAliases]
-Count=1
-Item0=WinTypes=Windows;WinProcs=Windows;DbiTypes=BDE;DbiProcs=BDE;DbiErrs=BDE;
-[HistoryLists\hlSearchPath]
-Count=1
-Item0=sdk;..\public
-[HistoryLists\hlUnitOutputDirectory]
-Count=1
-Item0=..\dcu
-[HistoryLists\hlOutputDirectorry]
-Count=2
-Item0=setup\xxmGeckoDev\components
-Item1=C:\Users\User1\AppData\Roaming\Mozilla\Firefox\Profiles\5697xjrm.test\extensions\xxmGeckoDev@xxm.sourceforge.net\components

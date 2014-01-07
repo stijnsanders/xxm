@@ -24,14 +24,11 @@ type
   protected
     function GetSessionID: WideString; override;
     procedure DispositionAttach(FileName: WideString); override;
-    procedure SendRaw(const Data: WideString); override;
-    procedure SendStream(s: IStream); override;
+    function SendData(const Buffer; Count: LongInt): LongInt;
     function ContextString(cs: TXxmContextString): WideString; override;
     function Connected: Boolean; override;
     procedure Redirect(RedirectURL: WideString; Relative:boolean); override;
     function GetCookie(Name: WideString): WideString; override;
-    procedure SetBufferSize(ABufferSize: integer); override;
-    procedure Flush; override;
 
     function GetProjectEntry:TXxmProjectEntry; override;
     function GetProjectPage(FragmentName: WideString):IXxmFragment; override;
@@ -78,8 +75,6 @@ type
   end;
 
   EXxmContextStringUnknown=class(Exception);
-  EXxmAutoBuildFailed=class(Exception);
-  EXxmPageRedirected=class(Exception);
 
 const
   PoolMaxThreads=64;//TODO: from setting?
@@ -93,9 +88,6 @@ uses Variants, ComObj, xxmCommonUtils, xxmIsapiStream;
 
 resourcestring
   SXxmContextStringUnknown='Unknown ContextString __';
-
-threadvar
-  ContentBuffer: TMemoryStream;
 
 function GetExtensionVersion(var Ver: THSE_VERSION_INFO): BOOL; stdcall;
 var
@@ -185,6 +177,7 @@ begin
     httpScheme[UpperCase(GetVar(pecb,'HTTPS'))='ON']+
     GetVar(pecb,'HTTP_HOST')+uri);//TODO: unicode?
   ecb:=pecb;
+  SendDirect:=SendData;
   FURI:=uri;
   FCookieParsed:=false;
   FSessionID:='';//see GetSessionID
@@ -355,95 +348,13 @@ begin
     ['filename']:=FileName;
 end;
 
-procedure TXxmIsapiContext.SendRaw(const Data: WideString);
-const
-  Utf8ByteOrderMark=#$EF#$BB#$BF;
-  Utf16ByteOrderMark=#$FF#$FE;
-var
-  s:AnsiString;
-  l:cardinal;
+function TXxmIsapiContext.SendData(const Buffer; Count: LongInt): LongInt;
 begin
-  if Data<>'' then
+  if Count=0 then Result:=0 else
    begin
-    if CheckSendStart then
-      case FAutoEncoding of
-        aeUtf8:
-         begin
-          l:=3;
-          if FBufferSize<>0 then
-            ContentBuffer.Write(Utf8ByteOrderMark[1],l)
-          else
-            if not(ecb.WriteClient(ecb.ConnID,PAnsiChar(Utf8ByteOrderMark),l,HSE_IO_SYNC)) then
-              RaiseLastOSError;
-         end;
-        aeUtf16:
-         begin
-          l:=2;
-          if FBufferSize<>0 then
-            ContentBuffer.Write(Utf16ByteOrderMark[1],l)
-          else
-            if not(ecb.WriteClient(ecb.ConnID,PAnsiChar(Utf16ByteOrderMark),l,HSE_IO_SYNC)) then
-              RaiseLastOSError;
-         end;
-      end;
-    case FAutoEncoding of
-      aeUtf16:
-       begin
-        l:=Length(Data)*2;
-        if FBufferSize<>0 then
-          ContentBuffer.Write(PWideChar(Data)^,l)
-        else
-          if not(ecb.WriteClient(ecb.ConnID,PWideChar(Data),l,HSE_IO_SYNC)) then
-            RaiseLastOSError;
-       end;
-      aeUtf8:
-       begin
-        s:=UTF8Encode(Data);
-        l:=Length(s);
-        if FBufferSize<>0 then
-          ContentBuffer.Write(PAnsiChar(s)^,l)
-        else
-          if not(ecb.WriteClient(ecb.ConnID,PAnsiChar(s),l,HSE_IO_SYNC)) then
-            RaiseLastOSError;
-       end;
-      else
-       begin
-        s:=Data;
-        l:=Length(s);
-        if FBufferSize<>0 then
-          ContentBuffer.Write(PAnsiChar(s)^,l)
-        else
-          if not(ecb.WriteClient(ecb.ConnID,PAnsiChar(s),l,HSE_IO_SYNC)) then
-            RaiseLastOSError;
-       end;
-    end;
-    if FBufferSize<>0 then if ContentBuffer.Position>=FBufferSize then Flush;
-    //ReportData;
-   end;
-end;
-
-procedure TXxmIsapiContext.SendStream(s: IStream);
-const
-  dSize=$10000;
-var
-  l:cardinal;
-  d:array[0..dSize-1] of byte;
-begin
-  inherited;
-  //TODO: keep-connection since content-length known?
-  //if s.Size<>0 then
-   begin
-    CheckSendStart;
-    if FBufferSize<>0 then Flush;
-    //no autoencoding here
-    repeat
-      l:=dSize;
-      OleCheck(s.Read(@d[0],l,@l));
-      if l<>0 then
-        if not(ecb.WriteClient(ecb.ConnID,@d[0],l,HSE_IO_SYNC)) then
-          RaiseLastOSError;
-      //ReportData;
-    until l=0;
+    Result:=Count;
+    if not(ecb.WriteClient(ecb.ConnID,@Buffer,cardinal(Result),HSE_IO_SYNC)) then
+      raise EXxmTransferError.Create(SysErrorMessage(GetLastError));
    end;
 end;
 
@@ -586,33 +497,6 @@ begin
    end
   else
     FResHeaders[Name]:=Value;
-end;
-
-procedure TXxmIsapiContext.Flush;
-var
-  l:cardinal;
-begin
-  if FBufferSize<>0 then
-   begin
-    l:=ContentBuffer.Position;
-    if l<>0 then
-     begin
-      if not(ecb.WriteClient(ecb.ConnID,ContentBuffer.Memory,l,HSE_IO_SYNC)) then
-        RaiseLastOSError;
-      ContentBuffer.Position:=0;
-     end;
-   end;
-end;
-
-procedure TXxmIsapiContext.SetBufferSize(ABufferSize: integer);
-begin
-  inherited;
-  if ABufferSize<>0 then
-   begin
-    if ContentBuffer=nil then ContentBuffer:=TMemoryStream.Create;//TODO: tmp file when large buffer
-    if ContentBuffer.Position>ABufferSize then Flush;
-    if ContentBuffer.Size<ABufferSize then ContentBuffer.Size:=ABufferSize;
-   end;
 end;
 
 { TXxmIsapiHandler }

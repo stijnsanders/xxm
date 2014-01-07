@@ -36,8 +36,7 @@ type
     FQueryStringIndex:integer;
     function GetCGIValue(Name:AnsiString):AnsiString;
   protected
-    procedure SendRaw(const Data: WideString); override;
-    procedure SendStream(s:IStream); override;
+    function SendData(const Buffer; Count: LongInt): LongInt;
     procedure DispositionAttach(FileName: WideString); override;
     function ContextString(cs:TXxmContextString):WideString; override;
     procedure Redirect(RedirectURL:WideString; Relative:boolean); override;
@@ -45,8 +44,6 @@ type
     function GetSessionID:WideString; override;
     procedure SendHeader; override;
     function GetCookie(Name:WideString):WideString; override;
-    procedure SetBufferSize(ABufferSize: Integer); override;
-    procedure Flush; override;
 
     function GetProjectEntry:TXxmProjectEntry; override;
     function GetRequestHeader(const Name: WideString): WideString; override;
@@ -66,7 +63,6 @@ type
   EXxmMaximumHeaderLines=class(Exception);
   EXxmContextStringUnknown=class(Exception);
   EXxmUnknownPostDataTymed=class(Exception);
-  EXxmPageRedirected=class(Exception);
 
 implementation
 
@@ -87,6 +83,7 @@ begin
   Queue:=nil;//used by thread pool
   FPipeIn:=PipeIn;
   FPipeOut:=PipeOut;
+  SendDirect:=SendData;
   FReqHeaders:=nil;
   FResHeaders:=TResponseHeaders.Create;
   (FResHeaders as IUnknown)._AddRef;
@@ -325,80 +322,19 @@ begin
     aeUtf16:FResHeaders['Content-Length']:=IntToStr(Length(RedirBody)*2+2);
     aeIso8859:FResHeaders['Content-Length']:=IntToStr(Length(AnsiString(RedirBody)));
   end;
-  SendRaw(RedirBody);
-  if FBufferSize<>0 then Flush;  
+  SendStr(RedirBody);
+  if BufferSize<>0 then Flush;
   raise EXxmPageRedirected.Create(RedirectURL);
 end;
 
-procedure TXxmHostedContext.SendRaw(const Data:WideString);
-const
-  Utf8ByteOrderMark=#$EF#$BB#$BF;
-  Utf16ByteOrderMark=#$FF#$FE;
-var
-  s:AnsiString;
-  l:cardinal;
+function TXxmHostedContext.SendData(const Buffer; Count: LongInt): LongInt;
 begin
-  //TODO: catch WriteFile returned values!
-  if Data<>'' then
+  if Count=0 then Result:=0 else
    begin
-    if CheckSendStart then
-      case FAutoEncoding of
-        aeUtf8:
-          if FBufferSize=0 then
-            WriteFile(FPipeOut,Utf8ByteOrderMark[1],3,l,nil)
-          else
-            ContentBuffer.Write(Utf8ByteOrderMark[1],3);
-        aeUtf16:
-          if FBufferSize=0 then
-            WriteFile(FPipeOut,Utf16ByteOrderMark[1],2,l,nil)
-          else
-            ContentBuffer.Write(Utf16ByteOrderMark[1],2);
-      end;
-    case FAutoEncoding of
-      aeUtf16:
-        if FBufferSize=0 then
-          WriteFile(FPipeOut,Data[1],Length(Data)*2,l,nil)
-        else
-          ContentBuffer.Write(Data[1],Length(Data)*2);
-      aeUtf8:
-       begin
-        s:=UTF8Encode(Data);
-        if FBufferSize=0 then
-          WriteFile(FPipeOut,s[1],Length(s),l,nil)
-        else
-          ContentBuffer.Write(s[1],Length(s));
-       end;
-      else
-       begin
-        s:=Data;
-        if FBufferSize=0 then
-          WriteFile(FPipeOut,s[1],Length(s),l,nil)
-        else
-          ContentBuffer.Write(s[1],Length(s));
-       end;
-    end;
-    if (FBufferSize<>0) and (ContentBuffer.Position>=FBufferSize) then Flush;
+    Result:=Count;
+    if not WriteFile(FPipeOut,Buffer,Count,cardinal(Result),nil) then
+      raise EXxmTransferError.Create(SysErrorMessage(GetLastError));
    end;
-end;
-
-procedure TXxmHostedContext.SendStream(s: IStream);
-const
-  dSize=$10000;
-var
-  l,l1:cardinal;
-  d:array[0..dSize-1] of byte;
-begin
-  CheckSendStart;
-  repeat
-    l:=dSize;
-    OleCheck(s.Read(@d[0],l,@l));
-    if l<>0 then
-     begin
-      if FBufferSize<>0 then Flush;
-      if not(WriteFile(FPipeOut,d[0],l,l1,nil)) then RaiseLastOSError;
-      if l<>l1 then raise Exception.Create('Stream Write Failed');
-     end;
-  until l=0;
 end;
 
 procedure TXxmHostedContext.SendHeader;
@@ -463,32 +399,6 @@ begin
    end
   else
     FResHeaders[Name]:=Value;
-end;
-
-procedure TXxmHostedContext.Flush;
-var
-  i,l:cardinal;
-begin
-  if FBufferSize<>0 then
-   begin
-    i:=ContentBuffer.Position;
-    if i<>0 then
-     begin
-      WriteFile(FPipeOut,ContentBuffer.Memory^,i,l,nil);
-      ContentBuffer.Position:=0;
-     end;
-   end;
-end;
-
-procedure TXxmHostedContext.SetBufferSize(ABufferSize: Integer);
-begin
-  inherited;
-  if ABufferSize<>0 then
-   begin
-    if ContentBuffer=nil then ContentBuffer:=TMemoryStream.Create;//TODO: tmp file when large buffer
-    if ContentBuffer.Position>ABufferSize then Flush;
-    if ContentBuffer.Size<ABufferSize then ContentBuffer.Size:=ABufferSize;
-   end;
 end;
 
 { TXxmPostDataStream }

@@ -36,14 +36,11 @@ type
 
     function GetSessionID: WideString; override;
     procedure DispositionAttach(FileName: WideString); override;
-    procedure SendRaw(const Data: WideString); override;
-    procedure SendStream(s: IStream); override;
+    function SendData(const Buffer; Count: LongInt): LongInt;
     function ContextString(cs: TXxmContextString): WideString; override;
     function Connected: Boolean; override;
     procedure Redirect(RedirectURL: WideString; Relative:boolean); override;
     function GetCookie(Name: WideString): WideString; override;
-    procedure SetBufferSize(ABufferSize: Integer); override;
-    procedure Flush; override;
 
     function GetProjectEntry:TXxmProjectEntry; override;
     procedure SendHeader; override;
@@ -74,10 +71,8 @@ type
   end;
 
   EXxmMaximumHeaderLines=class(Exception);
-  EXxmAutoBuildFailed=class(Exception);
   EXxmContextStringUnknown=class(Exception);
   EXxmUnknownPostDataTymed=class(Exception);
-  EXxmPageRedirected=class(Exception);
 
   TXxmSynaRunParameters=(
     rpPort,
@@ -106,9 +101,6 @@ const
 
 var
   HttpSelfVersion:AnsiString;
-
-threadvar
-  ContentBuffer:TMemoryStream;
 
 procedure XxmRunServer;
 const
@@ -250,6 +242,7 @@ begin
   inherited Create('');//URL is parsed by Execute
   FSocket:=TTCPBlockSocket.Create;
   FSocket.Socket:=SocketHandle;
+  SendDirect:=SendData;
   i:=1;
   l:=4;
   setsockopt(FSocket.Socket,IPPROTO_TCP,TCP_NODELAY,@i,l);
@@ -553,73 +546,15 @@ begin
     aeUtf16:FResHeaders['Content-Length']:=IntToStr(Length(RedirBody)*2+2);
     aeIso8859:FResHeaders['Content-Length']:=IntToStr(Length(AnsiString(RedirBody)));
   end;
-  SendRaw(RedirBody);
-  if FBufferSize<>0 then Flush;
+  SendStr(RedirBody);
+  if BufferSize<>0 then Flush;
   raise EXxmPageRedirected.Create(RedirectURL);
 end;
 
-procedure TXxmSynaContext.SendRaw(const Data:WideString);
-const
-  Utf8ByteOrderMark=#$EF#$BB#$BF;
-  Utf16ByteOrderMark=#$FF#$FE;
-var
-  s:AnsiString;
-  l:cardinal;
+function TXxmSynaContext.SendData(const Buffer; Count: LongInt): LongInt;
 begin
-  if Data<>'' then
-   begin
-    if CheckSendStart then
-      case FAutoEncoding of
-        aeUtf8:
-          if FBufferSize=0 then
-            FSocket.SendBuffer(@Utf8ByteOrderMark[1],3)
-          else
-            ContentBuffer.Write(Utf8ByteOrderMark[1],3);
-        aeUtf16:
-          if FBufferSize=0 then
-            FSocket.SendBuffer(@Utf16ByteOrderMark[1],2)
-          else
-            ContentBuffer.Write(Utf16ByteOrderMark[1],2);
-      end;
-    case FAutoEncoding of
-      aeUtf16:
-       begin
-        l:=Length(Data)*2;
-        if FBufferSize=0 then FSocket.SendBuffer(@Data[1],l) else ContentBuffer.Write(Data[1],l);
-       end;
-      aeUtf8:
-       begin
-        s:=UTF8Encode(Data);
-        l:=Length(s);
-        if FBufferSize=0 then FSocket.SendBuffer(@s[1],l) else ContentBuffer.Write(s[1],l);
-       end;
-      else
-       begin
-        s:=Data;
-        l:=Length(s);
-        if FBufferSize=0 then FSocket.SendBuffer(@s[1],l) else ContentBuffer.Write(s[1],l);
-       end;
-    end;
-    if (FBufferSize<>0) and (ContentBuffer.Position>=FBufferSize) then Flush;
-   end;
-end;
-
-procedure TXxmSynaContext.SendStream(s: IStream);
-var
-  os:TOleStream;
-begin
-  //if s.Size<>0 then
-   begin
-    CheckSendStart;
-    if FBufferSize<>0 then Flush;
-    //no autoencoding here
-    os:=TOleStream.Create(s);
-    try
-      FSocket.SendStreamRaw(os);
-    finally
-      os.Free;
-    end;
-   end;
+  if Count=0 then Result:=0 else
+    Result:=FSocket.SendBuffer(@Buffer,Count);
 end;
 
 procedure TXxmSynaContext.SendHeader;
@@ -710,32 +645,6 @@ end;
 procedure TXxmSynaContext.PostProcessRequest;
 begin
   //inheritants can perform pre-page-build logging or checking here
-end;
-
-procedure TXxmSynaContext.Flush;
-var
-  i:int64;
-begin
-  if FBufferSize<>0 then
-   begin
-    i:=ContentBuffer.Position;
-    if i<>0 then
-     begin
-      FSocket.SendBuffer(@ContentBuffer.Memory^,i);
-      ContentBuffer.Position:=0;
-     end;
-   end;
-end;
-
-procedure TXxmSynaContext.SetBufferSize(ABufferSize: Integer);
-begin
-  inherited;
-  if ABufferSize<>0 then
-   begin
-    if ContentBuffer=nil then ContentBuffer:=TMemoryStream.Create;//TODO: tmp file when large buffer
-    if ContentBuffer.Position>ABufferSize then Flush;
-    if ContentBuffer.Size<ABufferSize then ContentBuffer.Size:=ABufferSize;
-   end;
 end;
 
 end.

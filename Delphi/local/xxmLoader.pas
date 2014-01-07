@@ -14,19 +14,17 @@ type
     PrPos,PrMax:Integer;
     FLock:TRTLCriticalSection;
     FExtraInfo,FQueryString:WideString;
-    FirstData,Aborted:boolean;
+    FirstData:boolean;
     FGotSessionID:boolean;
     FReqHeaders: TRequestHeaders;
     FResHeaders: TResponseHeaders;
     FHttpNegotiate: IHttpNegotiate;
-    procedure ReportData;
     function StgMediumAsStream(stgmed:TStgMedium):TStream;
     function LocaleLanguage: AnsiString;
     procedure CheckReqHeaders;
   protected
     procedure SendHeader; override;
-    procedure SendRaw(const Data: WideString); override;
-    procedure SendStream(s: IStream); override;
+    function SendData(const Buffer; Count: LongInt): LongInt;
     function Connected: Boolean; override;
     procedure Redirect(RedirectURL: WideString; Relative:boolean); override;
     function ContextString(cs: TXxmContextString): WideString; override;
@@ -43,11 +41,10 @@ type
     function GetResponseHeaders:IxxmDictionaryEx;
     function GetRequestHeader(const Name: WideString): WideString; override;
     procedure AddResponseHeader(const Name, Value: WideString); override;
-    procedure Flush; override;
   public
     OutputData:TStream;
-    OutputSize,ClippedSize:Int64;
-    PageComplete,Redirected,DataReported:boolean;
+    OutputSize:Int64;
+    PageComplete,Redirected,DataReported,Aborted:boolean;
     Loader:TXxmPageLoader;
 
     constructor Create(URL:WideString;
@@ -58,14 +55,13 @@ type
 
     procedure Lock;
     procedure Unlock;
-    procedure Disconnect;
 
     property Verb: WideString read FVerb;
   end;
   
   EXxmContextStringUnknown=class(Exception);
   EXxmUnknownPostDataTymed=class(Exception);
-  EXxmPageRedirected=class(Exception);
+  EXxmPageLoadAborted=class(Exception);
 
 var
   //see xxmSettings
@@ -77,6 +73,7 @@ uses Variants, ComObj, AxCtrls, xxmCommonUtils;
 
 const //resourcestring?
   SXxmContextStringUnknown='Unknown ContextString __';
+  SXxmPageLoadAborted='Page Load Aborted';
 
 { TXxmLocalContext }
 
@@ -90,7 +87,7 @@ begin
   Aborted:=false;
   OutputData:=nil;
   OutputSize:=0;
-  ClippedSize:=0;
+  SendDirect:=SendData;
   InitializeCriticalSection(FLock);
 
   BindInfo:=OIBindInfo;
@@ -285,31 +282,12 @@ begin
     //OleCheck?
     //PrPos:=PrMax;
     ProtSink.ReportData(BSCF_LASTDATANOTIFICATION or BSCF_DATAFULLYAVAILABLE,PrPos,PrMax);
-    if not(StatusSet) or (StatusCode=200) then
+    if StatusCode=200 then
       ProtSink.ReportResult(S_OK,StatusCode,nil)
     else
       ProtSink.ReportResult(S_OK,StatusCode,PWideChar(StatusText))
     //TODO: find out why iexplore keeps counting up progress sometimes (even after terminate+unlock)
    end;
-end;
-
-procedure TXxmLocalContext.ReportData;
-begin
-  //BSCF_AVAILABLEDATASIZEUNKNOWN?
-  if FirstData then
-   begin
-    OleCheck(ProtSink.ReportData(BSCF_FIRSTDATANOTIFICATION,PrPos,PrMax));
-    FirstData:=false;
-   end
-  else
-    if not(DataReported) then
-     begin
-      DataReported:=true;
-      inc(PrPos);//needs to change for IE to react
-      if PrPos>PrMax then PrMax:=PrMax*10;
-      OleCheck(ProtSink.ReportData(BSCF_INTERMEDIATEDATANOTIFICATION,PrPos,PrMax));
-     end;
-  //if Aborted then raise?
 end;
 
 procedure TXxmLocalContext.DispositionAttach(FileName: WideString);
@@ -339,73 +317,37 @@ begin
   ProtSink.ReportProgress(BINDSTATUS_CONTENTDISPOSITIONFILENAME,PWideChar(FileName));
 end;
 
-procedure TXxmLocalContext.SendRaw(const Data: WideString);
-var
-  s:AnsiString;
-  b:boolean;
+function TXxmLocalContext.SendData(const Buffer; Count: LongInt): LongInt;
 begin
-  inherited;
-  if Data<>'' then
+  if Aborted then raise EXxmPageLoadAborted.Create(SXxmPageLoadAborted);
+  if Count=0 then Result:=0 else
    begin
-    //report mime type makes handler lock, so check before lock
-    b:=CheckSendStart;
     Lock;
     try
       if OutputData=nil then OutputData:=TMemoryStream.Create;
       OutputData.Position:=OutputSize;
-      //check start and start with UTF Byte Order Mark
-      if b then
-        case FAutoEncoding of
-          aeUtf8:OutputData.Write(Utf8ByteOrderMark,3);
-          aeUtf16:OutputData.Write(Utf16ByteOrderMark,2);
-        end;
-      case FAutoEncoding of
-        aeUtf16:OutputData.Write(Data[1],Length(Data)*2);
-        aeUtf8:
-         begin
-          s:=UTF8Encode(Data);
-          OutputData.Write(s[1],Length(s));
-         end;
-        else
-         begin
-          s:=Data;
-          OutputData.Write(s[1],Length(s));
-         end;
-      end;
-      OutputSize:=OutputData.Position;
+      Result:=OutputData.Write(Buffer,Count);
+      OutputSize:=OutputSize+Result; //OutputSize:=OutputData.Position;
     finally
       Unlock;
     end;
-    if OutputSize>=FBufferSize then ReportData;
-   end;
-end;
 
-procedure TXxmLocalContext.SendStream(s: IStream);
-const
-  SendBufferSize=$10000;
-var
-  l:integer;
-  d:array[0..SendBufferSize-1] of byte;
-begin
-  inherited;
-  //if s.Size<>0 then
-   begin
-    CheckSendStart;
-    //no autoencoding here!
-    repeat
-      Lock;
-      try
-        l:=SendBufferSize;
-        if OutputData=nil then OutputData:=TMemoryStream.Create;
-        OutputData.Position:=OutputSize;
-        OleCheck(s.Read(@d[0],l,@l));
-        if l<>0 then OutputData.Write(d[0],l);
-        OutputSize:=OutputData.Position;
-      finally
-        Unlock;
-      end;
-      if OutputSize>=FBufferSize then ReportData;
-    until (l=0) or Aborted;
+    //BSCF_AVAILABLEDATASIZEUNKNOWN?
+    if FirstData then
+     begin
+      OleCheck(ProtSink.ReportData(BSCF_FIRSTDATANOTIFICATION,PrPos,PrMax));
+      FirstData:=false;
+     end
+    else
+      if not(DataReported) then
+       begin
+        DataReported:=true;
+        inc(PrPos);//needs to change for IE to react
+        if PrPos>PrMax then PrMax:=PrMax*10;
+        OleCheck(ProtSink.ReportData(BSCF_INTERMEDIATEDATANOTIFICATION,PrPos,PrMax));
+       end;
+    //if Aborted then raise?
+
    end;
 end;
 
@@ -798,12 +740,6 @@ begin
   //GetCurrentThreadId?
 end;
 
-procedure TXxmLocalContext.Disconnect;
-begin
-  Aborted:=true;
-  //throw exception in thread?
-end;
-
 procedure TXxmLocalContext.Lock;
 begin
   EnterCriticalSection(FLock);
@@ -833,11 +769,6 @@ end;
 procedure TXxmLocalContext.AddResponseHeader(const Name, Value: WideString);
 begin
   FResHeaders.Add(Name,Value);
-end;
-
-procedure TXxmLocalContext.Flush;
-begin
-  ReportData;
 end;
 
 end.

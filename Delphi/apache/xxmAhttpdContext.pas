@@ -14,19 +14,15 @@ type
     FCookieParsed: boolean;
     FCookie: AnsiString;
     FCookieIdx: TParamIndexes;
-    FBuffer: TMemoryStream;
   protected
-    procedure SendStream(s:IStream); override;
     function GetSessionID:WideString; override;
     procedure DispositionAttach(FileName: WideString); override;
     function ContextString(cs:TXxmContextString):WideString; override;
     function Connected:boolean; override;
     procedure Redirect(RedirectURL:WideString; Relative:boolean); override;
     function GetCookie(Name:WideString):WideString; override;
-    procedure SetBufferSize(ABufferSize: Integer); override;
-    procedure Flush; override;
     procedure SendHeader; override;
-    procedure SendRaw(const Data: WideString); override;
+    function SendData(const Buffer; Count: LongInt): LongInt;
     function GetProjectEntry:TXxmProjectEntry; override;
     function GetRequestHeader(const Name: WideString): WideString; override;
     procedure AddResponseHeader(const Name, Value: WideString); override;
@@ -39,10 +35,6 @@ type
     destructor Destroy; override;
     procedure Execute;
   end;
-
-  EXxmRWriteFailed=class(Exception);
-  EXxmAutoBuildFailed=class(Exception);
-  EXxmPageRedirected=class(Exception);
 
 implementation
 
@@ -61,13 +53,12 @@ begin
   FRedirectPrefix:='';//see Execute
   FCookieParsed:=false;
   FSessionID:='';//see GetSessionID
-  FBuffer:=nil;
+  SendDirect:=SendData;
 end;
 
 destructor TxxmAhttpdContext.Destroy;
 begin
   rq:=nil;
-  if FBuffer<>nil then FBuffer.Free;
   inherited;
 end;
 
@@ -222,103 +213,15 @@ begin
     aeIso8859:
       AddResponseHeader('Content-Length',IntToStr(Length(AnsiString(RedirBody))));
   end;
-  SendRaw(RedirBody);
-  if FBufferSize<>0 then Flush;
+  SendStr(RedirBody);
+  if BufferSize<>0 then Flush;
   raise EXxmPageRedirected.Create(RedirectURL);
 end;
 
-procedure TxxmAhttpdContext.SendRaw(const Data: WideString);
-var
-  s:AnsiString;
-  l:integer;
-  p:pointer;
+function TxxmAhttpdContext.SendData(const Buffer; Count: LongInt): LongInt;
 begin
-  if Data<>'' then
-   begin
-    if CheckSendStart then
-      case FAutoEncoding of
-        aeUtf8:
-         begin
-          s:=Utf8ByteOrderMark;
-          if FBuffer<>nil then
-            FBuffer.Write(s[1],3)
-          else
-            if ap_rwrite(s[1],3,rq)<>3 then raise EXxmRWriteFailed.Create(SXxmRWriteFailed);
-         end;
-        aeUtf16:
-         begin
-          s:=Utf16ByteOrderMark;
-          if FBuffer<>nil then
-            FBuffer.Write(s[1],2)
-          else
-            if ap_rwrite(s[1],2,rq)<>2 then raise EXxmRWriteFailed.Create(SXxmRWriteFailed);
-         end;
-      end;
-    case FAutoEncoding of
-      aeUtf16:
-       begin
-        l:=Length(Data)*2;
-        if FBuffer<>nil then
-          FBuffer.Write(Data[1],l)
-        else
-         begin
-          p:=@Data[1];
-          if ap_rwrite(p^,l,rq)<>l then raise EXxmRWriteFailed.Create(SXxmRWriteFailed);
-         end;
-       end;
-      aeUtf8:
-       begin
-        s:=UTF8Encode(Data);
-        l:=Length(s);
-        if FBuffer<>nil then
-          FBuffer.Write(s[1],l)
-        else
-          if ap_rwrite(s[1],l,rq)<>l then raise EXxmRWriteFailed.Create(SXxmRWriteFailed);
-       end;
-      else
-       begin
-        s:=Data;
-        l:=Length(s);
-        if FBuffer<>nil then
-          FBuffer.Write(s[1],l)
-        else
-          if ap_rwrite(s[1],l,rq)<>l then raise EXxmRWriteFailed.Create(SXxmRWriteFailed);
-       end;
-    end;
-    if FBuffer=nil then
-      ap_rflush(rq)//? only every x bytes?
-    else
-      if FBuffer.Position>=FBufferSize then Flush;
-   end;
-end;
-
-procedure TxxmAhttpdContext.SendStream(s: IStream);
-const
-  dSize=$10000;
-var
-  d:array[0..dSize-1] of byte;
-  l:integer;
-begin
-  {
-  if not(FHeaderSent) then
-   begin
-    //TODO: (Apache does 'Transfer-Encoding: chunked' for us!)
-    //'Content-Length':=IntToStr(s.Size);
-    //'Accept-Ranges':='bytes';
-   end;
-  }
-  CheckSendStart;
-  if FBuffer<>nil then Flush;
-  repeat
-    l:=dSize;
-    OleCheck(s.Read(@d[0],dSize,@l));
-    if l<>0 then
-     begin
-      if ap_rwrite(d[0],l,rq)<>l then
-        raise EXxmRWriteFailed.Create(SXxmRWriteFailed);
-      ap_rflush(rq);//?
-     end;
-  until l=0;
+  if Count=0 then Result:=0 else
+    Result:=ap_rwrite(pointer(@Buffer)^,Count,rq);
 end;
 
 procedure TxxmAhttpdContext.SetStatus(Code: integer; Text: WideString);
@@ -340,9 +243,6 @@ begin
     else      ;//rq.content_encoding:=apr_pstrdup(rq.pool,PAnsiChar('?
   end;
   //rq.connection.keepalive?//TODO
-
-  //clear buffer just in case
-  if FBuffer<>nil then FBuffer.Position:=0;
 end;
 
 function TxxmAhttpdContext.GetRequestHeader(const Name: WideString): WideString;
@@ -365,44 +265,6 @@ begin
     apr_table_set(rq.headers_out,
       apr_pstrdup(rq.pool,PAnsiChar(AnsiString(Name))),
       apr_pstrdup(rq.pool,PAnsiChar(AnsiString(Value))));
-end;
-
-procedure TxxmAhttpdContext.Flush;
-var
-  i:int64;
-begin
-  if FBuffer<>nil then
-   begin
-    i:=FBuffer.Position;
-    if i<>0 then
-     begin
-      if ap_rwrite(FBuffer.Memory^,i,rq)<>i then
-        raise EXxmRWriteFailed.Create(SXxmRWriteFailed);
-      FBuffer.Position:=0;
-      ap_rflush(rq)//?
-     end;
-   end;
-end;
-
-procedure TxxmAhttpdContext.SetBufferSize(ABufferSize: Integer);
-begin
-  inherited;
-  if ABufferSize=0 then
-   begin
-    if FBuffer<>nil then
-     begin
-      //assert Flush called by inherited
-      FBuffer.Free;
-      FBuffer:=nil;
-     end;
-   end
-  else
-   begin
-    //TODO: keep in a pool after use, take from pool here
-    if FBuffer=nil then FBuffer:=TMemoryStream.Create;//TODO: tmp file when large buffer
-    if FBuffer.Position>ABufferSize then Flush;
-    FBuffer.Size:=ABufferSize;
-   end;
 end;
 
 end.

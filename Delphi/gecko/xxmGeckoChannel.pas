@@ -21,25 +21,17 @@ type
     FCookieIdx: TParamIndexes;
     FCookieParsed: boolean;
     FTotalSize,FOutputSize:int64;
-    FData:TMemoryStream;
-    FLock:TRTLCriticalSection;
-    procedure Lock;
-    procedure Unlock;
-    procedure ReportData;//call within lock!
     procedure FlagMsg(const msg: AnsiString);
     function FlagValue(const msg: AnsiString): AnsiString;
-    function Write(const Buffer; Count: Longint): Longint;//call within lock!
   protected
     //IxxmContext
     function GetSessionID: WideString; override;
     procedure DispositionAttach(FileName: WideString); override;
-    procedure SendRaw(const Data: WideString); override;
-    procedure SendStream(s: IStream); override;
+    function SendData(const Buffer; Count: LongInt): LongInt;
     function ContextString(cs: TXxmContextString): WideString; override;
     function Connected: Boolean; override;
     procedure Redirect(RedirectURL: WideString; Relative:boolean); override;
     function GetCookie(Name: WideString): WideString; override;
-    procedure Flush; override;
 
     //other TXxmGeneralContext abstract methods
     function GetProjectEntry:TXxmProjectEntry; override;
@@ -87,8 +79,6 @@ type
   end;
 
   EXxmContextStringUnknown=class(Exception);
-  EXxmAutoBuildFailed=class(Exception);
-  EXxmPageRedirected=class(Exception);
 
 const
   PoolMaxThreads=64;//TODO: setting?
@@ -202,8 +192,7 @@ begin
     integer(Self) and $FFFF]);
 
   FGotSessionID:=false;
-  FData:=TMemoryStream.Create;
-  InitializeCriticalSection(FLock);
+  SendDirect:=SendData;
   FOutputSize:=0;
   FTotalSize:=0;
   //FRequestHeaders is TResponseHeaders because data is set later
@@ -227,9 +216,6 @@ begin
   CloseHandle(FPipeOut);
   CloseHandle(FPipeCmd);
   
-  //assert not ReportPending
-  FData.Free;
-  DeleteCriticalSection(FLock);
   (FRequestHeaders as IUnknown)._Release;
   FRequestHeaders:=nil;
   (FResponseHeaders as IUnknown)._Release;
@@ -482,32 +468,6 @@ begin
   raise EXxmPageRedirected.Create(RedirectURL);
 end;
 
-procedure TxxmChannel.SendStream(s: IStream);
-const
-  SendBufferSize=$10000;
-var
-  l:integer;
-  d:array[0..SendBufferSize-1] of byte;
-begin
-  inherited;
-  //if s.Size<>0 then
-   begin
-    CheckSendStart; //SendHeader out of lock
-    //no autoencoding here!
-    repeat
-      Lock;
-      try
-        l:=SendBufferSize;
-        OleCheck(s.Read(@d[0],l,@l));
-        if l<>0 then Write(d[0],l);
-        if FOutputSize>=FBufferSize then ReportData;
-      finally
-        Unlock;
-      end;
-    until (l=0);//TODO: or (FReports.State<>csSending);
-   end;
-end;
-
 procedure TxxmChannel.SendHeader;
 begin
   FlagMsg('hdr'+'Content-Type '+FContentType);
@@ -523,80 +483,15 @@ begin
   //TODO: +'; charset='+?
 end;
 
-const
-  Utf8ByteOrderMark=#$EF#$BB#$BF;
-  Utf16ByteOrderMark=#$FF#$FE;
-
-procedure TxxmChannel.SendRaw(const Data: WideString);
-var
-  s:AnsiString;
-  startdata:boolean;
-begin
-  inherited;
-  if Data<>'' then
-   begin
-    startdata:=CheckSendStart; //SendHeader outside of lock
-    Lock;
-    try
-      if startdata then
-        case FAutoEncoding of
-          aeUtf8:Write(Utf8ByteOrderMark,3);
-          aeUtf16:Write(Utf16ByteOrderMark,2);
-        end;
-      case FAutoEncoding of
-        aeUtf16:Write(Data[1],Length(Data)*2);
-        aeUtf8:
-         begin
-          s:=UTF8Encode(Data);
-          Write(s[1],Length(s));
-         end;
-        else
-         begin
-          s:=Data;
-          Write(s[1],Length(s));
-         end;
-      end;
-      if FOutputSize>=FBufferSize then ReportData;
-    finally
-      Unlock;
-    end;
-   end;             
-end;
-
-procedure TxxmChannel.ReportData;
-var
-  l:cardinal;
+function TxxmChannel.SendData(const Buffer; Count: LongInt): LongInt;
 begin
   //assert within Lock/Unlock try/finally!
-  if FOutputSize<>0 then
+  if Count<>0 then
    begin
-    FlagMsg('dta'+IntToStr(FOutputSize));
-    if not WriteFile(FPipeOut,FData.Memory^,FOutputSize,l,nil) then
-      RaiseLastOSError;
-    //assert FOutputSize=l
-    FOutputSize:=0;
-    FData.Position:=0;
+    FlagMsg('dta'+IntToStr(Count));
+    if not WriteFile(FPipeOut,Buffer,Count,cardinal(Result),nil) then
+      raise EXxmTransferError.Create(SysErrorMessage(GetLastError));
    end;
-end;
-
-procedure TxxmChannel.Lock;
-begin
-  EnterCriticalSection(FLock);
-end;
-
-procedure TxxmChannel.Unlock;
-begin
-  LeaveCriticalSection(FLock);
-end;
-
-function TxxmChannel.Write(const Buffer; Count: Integer): Longint;
-begin
-  //assert between Lock/Unlock try/finally calls!
-  FData.Position:=FOutputSize;
-  Result:=FData.Write(Buffer,Count);
-  //Result=Count
-  FOutputSize:=FOutputSize+Result;
-  FTotalSize:=FTotalSize+Result;
 end;
 
 function TxxmChannel.GetRequestHeaders: IxxmDictionaryEx;
@@ -607,18 +502,6 @@ end;
 function TxxmChannel.GetResponseHeaders: IxxmDictionaryEx;
 begin
   Result:=FResponseHeaders;
-end;
-
-procedure TxxmChannel.Flush;
-begin
-  inherited;
-  Lock;
-  try
-    ReportData;
-  finally
-    Unlock;
-  end;
-  //TODO: wait until data read?
 end;
 
 { TXxmGeckoLoader }

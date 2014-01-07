@@ -130,19 +130,3 @@ OriginalFilename=
 ProductName=
 ProductVersion=1.0.0.0
 Comments=
-[HistoryLists\hlUnitAliases]
-Count=1
-Item0=WinTypes=Windows;WinProcs=Windows;DbiTypes=BDE;DbiProcs=BDE;DbiErrs=BDE;
-[HistoryLists\hlSearchPath]
-Count=2
-Item0=C:\Program Files\Indy9
-Item1=..\..\public
-[HistoryLists\hlUnitOutputDirectory]
-Count=2
-Item0=..\dcu
-Item1=dcu
-[HistoryLists\hlOutputDirectorry]
-Count=3
-Item0=..\bin
-Item1=C:\Inetpub\xxm
-Item2=..\

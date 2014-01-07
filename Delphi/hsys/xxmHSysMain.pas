@@ -47,8 +47,7 @@ type
     function GetResponseHeaderIndex(Idx:integer):WideString;
     procedure SetResponseHeaderIndex(Idx:integer;const Value:WideString);
   protected
-    procedure SendRaw(const Data: WideString); override;
-    procedure SendStream(s:IStream); override;
+    function SendData(const Buffer; Count: LongInt): LongInt;
     procedure DispositionAttach(FileName: WideString); override;
     function ContextString(cs:TXxmContextString):WideString; override;
     procedure Redirect(RedirectURL:WideString; Relative:boolean); override;
@@ -56,8 +55,6 @@ type
     function GetSessionID:WideString; override;
     procedure SendHeader; override;
     function GetCookie(Name:WideString):WideString; override;
-    procedure SetBufferSize(ABufferSize: Integer); override;
-    procedure Flush; override;
 
     function GetProjectEntry:TXxmProjectEntry; override;
     function GetRequestHeader(const Name: WideString): WideString; override;
@@ -77,7 +74,6 @@ type
   EXxmMaximumHeaderLines=class(Exception);
   EXxmContextStringUnknown=class(Exception);
   EXxmUnknownPostDataTymed=class(Exception);
-  EXxmPageRedirected=class(Exception);
 
 implementation
 
@@ -99,6 +95,7 @@ begin
   inherited Create('');//empty here, see Execute
   Queue:=nil;//used by thread pool
 
+  SendDirect:=SendData;
   FHSysQueue:=HSysQueue;
   FReq:=PHTTP_REQUEST(@FData[0]);
   ZeroMemory(FReq,XxmHSys1ContextDataSize);
@@ -298,100 +295,26 @@ begin
     aeUtf16:SetResponseHeader(HttpHeaderContentLength,IntToStr(Length(RedirBody)*2+2));
     aeIso8859:SetResponseHeader(HttpHeaderContentLength,IntToStr(Length(AnsiString(RedirBody))));
   end;
-  SendRaw(RedirBody);
-  if FBufferSize<>0 then Flush;  
+  SendStr(RedirBody);
+  if BufferSize<>0 then Flush;  
   raise EXxmPageRedirected.Create(RedirectURL);
 end;
 
-procedure TXxmHSys1Context.SendRaw(const Data:WideString);
-const
-  Utf8ByteOrderMark=#$EF#$BB#$BF;
-  Utf16ByteOrderMark=#$FF#$FE;
+function TXxmHSys1Context.SendData(const Buffer; Count: LongInt): LongInt;
 var
-  s:AnsiString;
-
-  procedure SendChunk(x:pointer;l:cardinal);
-  var
-    c:THTTP_DATA_CHUNK;
-  begin
-    ZeroMemory(@c,SizeOf(THTTP_DATA_CHUNK));
-    c.DataChunkType:=HttpDataChunkFromMemory;
-    c.pBuffer:=x;
-    c.BufferLength:=l;
-    HttpCheck(HttpSendResponseEntityBody(FHSysQueue,FReq.RequestId,
-      HTTP_SEND_RESPONSE_FLAG_MORE_DATA,
-      1,@c,l,nil,0,nil,nil));
-  end;
-
-begin
-  //TODO: catch WriteFile returned values!
-  if Data<>'' then
-   begin
-    if CheckSendStart then
-      case FAutoEncoding of
-        aeUtf8:
-          if FBufferSize=0 then
-            SendChunk(@Utf8ByteOrderMark[1],3)
-          else
-            ContentBuffer.Write(Utf8ByteOrderMark[1],3);
-        aeUtf16:
-          if FBufferSize=0 then
-            SendChunk(@Utf16ByteOrderMark[1],2)
-          else
-            ContentBuffer.Write(Utf16ByteOrderMark[1],2);
-      end;
-    case FAutoEncoding of
-      aeUtf16:
-        if FBufferSize=0 then
-          SendChunk(@Data[1],Length(Data)*2)
-        else
-          ContentBuffer.Write(Data[1],Length(Data)*2);
-      aeUtf8:
-       begin
-        s:=UTF8Encode(Data);
-        if FBufferSize=0 then
-          SendChunk(@s[1],Length(s))
-        else
-          ContentBuffer.Write(s[1],Length(s));
-       end;
-      else
-       begin
-        s:=Data;
-        if FBufferSize=0 then
-          SendChunk(@s[1],Length(s))
-        else
-          ContentBuffer.Write(s[1],Length(s));
-       end;
-    end;
-    if (FBufferSize<>0) and (ContentBuffer.Position>=FBufferSize) then Flush;
-   end;
-end;
-
-procedure TXxmHSys1Context.SendStream(s: IStream);
-const
-  dSize=$10000;
-var
-  l,l1:cardinal;
-  d:array[0..dSize-1] of byte;
   c:THTTP_DATA_CHUNK;
 begin
-  CheckSendStart;
-  ZeroMemory(@c,SizeOf(THTTP_DATA_CHUNK));
-  c.DataChunkType:=HttpDataChunkFromMemory;
-  c.pBuffer:=@d[0];
-  repeat
-    l:=dSize;
-    OleCheck(s.Read(@d[0],l,@l));
-    if l<>0 then
-     begin
-      if FBufferSize<>0 then Flush;
-      c.BufferLength:=l;
-      HttpCheck(HttpSendResponseEntityBody(FHSysQueue,FReq.RequestId,
-        HTTP_SEND_RESPONSE_FLAG_MORE_DATA,
-        1,@c,l1,nil,0,nil,nil));
-      if l<>l1 then raise Exception.Create('Stream Write Failed');
-     end;
-  until l=0;
+  if Count=0 then Result:=0 else
+   begin
+    ZeroMemory(@c,SizeOf(THTTP_DATA_CHUNK));
+    c.DataChunkType:=HttpDataChunkFromMemory;
+    c.pBuffer:=@Buffer;
+    c.BufferLength:=Count;
+    Result:=Count;
+    HttpCheck(HttpSendResponseEntityBody(FHSysQueue,FReq.RequestId,
+      HTTP_SEND_RESPONSE_FLAG_MORE_DATA,
+      1,@c,cardinal(Result),nil,0,nil,nil));
+   end;
 end;
 
 procedure TXxmHSys1Context.SendHeader;
@@ -506,39 +429,6 @@ begin
    end
   else
     CacheString(Value,FRes.Headers.KnownHeaders[x].RawValueLength,FRes.Headers.KnownHeaders[x].pRawValue);
-end;
-
-procedure TXxmHSys1Context.Flush;
-var
-  i,l:cardinal;
-  c:THTTP_DATA_CHUNK;
-begin
-  if FBufferSize<>0 then
-   begin
-    i:=ContentBuffer.Position;
-    if i<>0 then
-     begin
-      ZeroMemory(@c,SizeOf(THTTP_DATA_CHUNK));
-      c.DataChunkType:=HttpDataChunkFromMemory;
-      c.pBuffer:=ContentBuffer.Memory;
-      c.BufferLength:=i;
-      HttpCheck(HttpSendResponseEntityBody(FHSysQueue,FReq.RequestId,
-        HTTP_SEND_RESPONSE_FLAG_MORE_DATA,
-        1,@c,l,nil,0,nil,nil));
-      ContentBuffer.Position:=0;
-     end;
-   end;
-end;
-
-procedure TXxmHSys1Context.SetBufferSize(ABufferSize: Integer);
-begin
-  inherited;
-  if ABufferSize<>0 then
-   begin
-    if ContentBuffer=nil then ContentBuffer:=TMemoryStream.Create;//TODO: tmp file when large buffer
-    if ContentBuffer.Position>ABufferSize then Flush;
-    if ContentBuffer.Size<ABufferSize then ContentBuffer.Size:=ABufferSize;
-   end;
 end;
 
 procedure TXxmHSys1Context.SetResponseHeader(id: THTTP_HEADER_ID;
