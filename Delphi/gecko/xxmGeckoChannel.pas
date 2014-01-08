@@ -107,7 +107,7 @@ exports
 
 implementation
 
-uses Variants, nsInit, nsNetUtil, xxmCommonUtils, ComObj;
+uses Variants, xxmCommonUtils, ComObj;
 
 resourcestring
   SXxmContextStringUnknown='Unknown ContextString __';

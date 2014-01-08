@@ -700,7 +700,7 @@ var
   cli:integer;
   clx,cld,d1:AnsiString;
   pi:TProcessInformation;
-  si:TStartupInfo;
+  si:TStartupInfoA;
   h1,h2:THandle;
   sa:TSecurityAttributes;
   h:THandleStream;
