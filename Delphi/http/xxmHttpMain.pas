@@ -390,6 +390,7 @@ begin
         s:=TFileStream.Create(FPostTempFile,fmCreate);
        end;
       s.Size:=si;
+      s.Position:=0;
       FPostData:=THandlerReadStreamAdapter.Create(FSocket,si,s,x);
      end;
 
