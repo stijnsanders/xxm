@@ -151,7 +151,7 @@ begin
   //assert x<>''
   c:=char(UpCase(x[1]));
   //skip anything longer than longest word
-  if not(c in ['A'..'B']) or (Length(x)>ResWordMaxLength[c]) then Result:=false else
+  if not(c in ['A'..'Z']) or (Length(x)>ResWordMaxLength[c]) then Result:=false else
    begin
     y:=LowerCase(x);
     i:=0;

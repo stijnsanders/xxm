@@ -694,6 +694,11 @@ begin
   end;
 end;
 
+{$IF not Declared(TStartupInfoA)}
+type
+  TStartupInfoA=TStartupInfo;
+{$IFEND}
+
 function TXxmWebProject.Compile:boolean;
 var
   cl:TStringList;

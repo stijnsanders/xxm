@@ -1,6 +1,7 @@
 v1.2.0.?
 - revised internal send/buffer logic
 - when Context.BufferSize is set, don't send header rightaway, and add Content-Length when all of content fits in buffer
+- xxmHttp: fixed issue when posting 1MB or more
 
 v1.1.9.300
 - sourceforge repository caught up with previous private repo, so version build number will now follow svn revision number
