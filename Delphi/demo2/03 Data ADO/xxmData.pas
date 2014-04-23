@@ -3,18 +3,18 @@ unit xxmData;
 {
 xxmData provides a lightweight alternative to datamodules
 
-SQL is stored in a file: "queries.xml"
+SQL is stored in a file: "queries.sql"
+Queries are defined by a preceding line with '--"QueryName"'
 
-Add this line to the project initialization code or the PrepareRequest method or session initialization code:
+Add this line to the project initialization code
+or the PrepareRequest method or session initialization code:
   if QueryStore=nil then QueryStore:=TQueryStore.Create;
-  
-(in unit initialization, CoInitialize is not called, which is needed for MSXML objects)
 
 }
 
 interface
 
-uses SysUtils, ADODB_TLB, MSXML2_TLB;
+uses SysUtils, ADODB_TLB;
 
 type
   TQueryStore=class(TObject)
@@ -22,7 +22,7 @@ type
     FQueries:array of record
       ID,SQL:AnsiString;
     end;
-    procedure ReadQueriesXML;
+    procedure ReadQueriesSQL;
   public
     constructor Create;
     destructor Destroy; override;
@@ -81,14 +81,14 @@ var
 
 implementation
 
-uses Variants, xxmSession, ComObj;
+uses Variants, Classes, ComObj, xxmSession;
 
 { TQueryStore }
 
 constructor TQueryStore.Create;
 begin
   inherited Create;
-  ReadQueriesXML;
+  ReadQueriesSQL;
 end;
 
 destructor TQueryStore.Destroy;
@@ -111,37 +111,77 @@ begin
   Result:=FQueries[i].SQL;
 end;
 
-procedure TQueryStore.ReadQueriesXML;
+procedure TQueryStore.ReadQueriesSQL;
 var
-  doc:DOMDocument;
-  xl1:IXMLDOMNodeList;
-  x1:IXMLDOMNode;
-  i:integer;
+  s:string;
+  f:TFileStream;
+  i,l,q,r1,r2,s1,s2,n1,n2:integer;
 begin
-  //assert CoInitialize called
   //assert currentdir set to modulepath
-  doc:=CoDOMDocument.Create;
+  f:=TFileStream.Create('queries.sql',fmOpenRead or fmShareDenyWrite);
   try
-    if not(doc.load('queries.xml')) then
-      raise EQueryStoreError.Create('queries.xml: '+doc.parseError.reason);
-    xl1:=doc.documentElement.childNodes;
-    x1:=xl1.nextNode;
-    i:=0;
-    while not(x1=nil) do
-     begin
-      //if x1.nodeType=NODE_ELEMENT then
-      if x1.nodeName='query' then
-       begin
-        SetLength(FQueries,i+1);
-        FQueries[i].ID:=(x1 as IXMLDOMElement).getAttribute('id');
-		    FQueries[i].SQL:=x1.text;
-        inc(i);
-       end;
-      x1:=xl1.nextNode;
-     end;
+    //TODO: support unicode?
+    l:=f.Size;
+    SetLength(s,l);
+    f.Read(s[1],l);
   finally
-    doc:=nil;
+    f.Free;
   end;
+  i:=1;
+  q:=0;
+  r1:=0;
+  s1:=0;
+  s2:=0;
+  while (i<=l) do
+   begin
+    //does it start with '--"'
+    if (i+3<l) and (s[i]='-') and (s[i+1]='-') and (s[i+2]='"') then
+     begin
+      r2:=i-1;
+      inc(i,3);
+      n1:=i;
+      //skip trailing whitespace
+      while (r2<>0) and (s[r2]<' ') do dec(r2);
+      //and is it properly closed with '"'
+      while (i<=l) and (s[i]<>'"') and (s[i]<>#13) and (s[i]<>#10) do inc(i);
+      if (i<=l) and (s[i]='"') then
+       begin
+        n2:=i;
+        //skip to EOL
+        while (i<=l) and (s[i]<>#13) and (s[i]<>#10) do inc(i);
+        if (i<l) and (s[i]=#13) and (s[i+1]=#10) then inc(i);
+        inc(i);
+        //skip preceding whitespace
+        while (i<=l) and (s[i]<' ') do inc(i);
+        //process previous marker
+        if r1<>0 then
+         begin
+          SetLength(FQueries,q+1);
+          FQueries[q].ID:=Copy(s,s1,s2-s1);
+          FQueries[q].SQL:=Copy(s,r1,r2-r1+1);
+          inc(q);
+         end;
+        //set start marker
+        r1:=i;
+        s1:=n1;
+        s2:=n2;
+       end;
+     end;
+    //find EOL
+    while (i<=l) and (s[i]<>#13) and (s[i]<>#10) do inc(i);
+    if (i<l) and (s[i]=#13) and (s[i+1]=#10) then inc(i);
+    inc(i);
+   end;
+  //process final query
+  if r1<>0 then
+   begin
+    //skip trailing whitespace
+    dec(i);
+    while (i<>0) and (s[i]<' ') do dec(i);
+    SetLength(FQueries,q+1);
+    FQueries[q].ID:=Copy(s,s1,s2-s1);
+    FQueries[q].SQL:=Copy(s,r1,i-r1+1);
+   end;
 end;
 
 procedure CmdParameters(Cmd:Command;const Values:array of Variant);
@@ -326,7 +366,7 @@ function TQueryResult.GetValue(Idx: OleVariant): OleVariant;
 begin
   try
     //Result:=FRecordSet.Fields[Idx].Value;
-	Result:=FRecordSet.Collect[Idx];
+	  Result:=FRecordSet.Collect[Idx];
   except
     on e:EOleException do
       if cardinal(e.ErrorCode)=$800A0CC1 then
@@ -348,13 +388,13 @@ begin
     Result:=VarIsNull(FRecordSet.Collect[Idx]);
   except
     on e:EOleException do
-	 begin
+	   begin
       if cardinal(e.ErrorCode)=$800A0CC1 then
         raise EFieldNotFound.Create('GetInt: Field not found: '+VarToStr(Idx))
       else
         raise;
-	  Result:=true;//counter warning
-	 end;
+	    Result:=true;//counter warning
+	   end;
   end;
 end;
 

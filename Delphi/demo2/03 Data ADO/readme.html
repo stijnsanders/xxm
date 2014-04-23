@@ -14,12 +14,12 @@ Use xxmProject.exe to edit and manage project settings.</dd>
 This one has been modified to include the <code>SetSession(Context);</code> call on LoadPage, linking each request to a new or existing session.</dd>
 <dt>ADODB_TLB.pas</dt>
 <dd>A generated unit based on the Type Library of the Microsoft ActiveX Data Objects (ADO).</dd>
-<dt>queries.xml</dt>
-<dd>An XML file holding the SQL queries the project uses.<br />
+<dt>queries.sql</dt>
+<dd>An SQL file holding the queries the project uses.<br />
+Each query is preceded with a line of the form <code>--"QueryName"</code>.<br />
 It is included into Web.xxmp as a resource file, so a change to this file will force a re-start of the project.</dd>
 <dt>xxmData.pas</dt>
-<dd>This unit defines the TQueryResult and TDataChanger classes. It also defines the QueryStore that is used to store SQL queries. When initialized, <code>queries.xml</code> is loaded into memory.<br />
-Please note <code>xxmData.pas</code> doesn't check for changes to <code>queries.xml</code>. A change made to <code>queries.xml</code> only will not cause the xxm project to (re)compile when you use a xxm*Dev handler.</dd>
+<dd>This unit defines the TQueryResult and TDataChanger classes. It also defines the QueryStore that is used to store SQL queries. When initialized, <code>queries.sql</code> is loaded into memory.</dd>
 <dt>xxmSession.pas</dt>
 <dd>This unit defines the TxxmSession class. This website uses a single database connection object for each session. This works good for a small number of visitors, but websites that expect a larger number of visitors should implement a connection pool.<br />
 Also note that the TxxmSession constructor checks if the QueryStore is already initialized.

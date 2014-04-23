@@ -1,5 +1,0 @@
-<queries>
-<query id="MyQuery1">select * from Table1</query>
-<query id="GetOne">select * from Table1 where id=?</query>
-<query id="DeleteItem">delete from Table1 where id=?</query>
-</queries>

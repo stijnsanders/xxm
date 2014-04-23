@@ -78,6 +78,15 @@ or a website that forwards to sites with absolute URL's from websites should use
 <dt>why does my website show a build failed error message on one page when I'm browsing to another page?</dt>
 <dd>it's a side-effect of using a compiled library to run the website for you. If the auto-build fails (auto-build is triggered by any page-refresh to the site, even AJAX-calls and image-loads), the library isn't loaded and the build failed page is shown, for every request to the site. It's strongly advised to use a single instance of the website source-files to work on for each developer. If you work on the same set of files with a number of developer's, each build failed error caused by one developer will interrupt the testing of the other developers. (It's also strongly advised to use a version control system on the source-files between multiple developers. e.g. <a href="http://subversion.tigris.org/">SVN</a> or <a href="http://git-scm.com/">Git</a>)</dd>
 
+<dt>can I keep sending when a client disconnects</dt>
+<dd>no. If <code>Context.BufferSize</code> is 0, <code>Context.Send</code> may throw an exception depending on which handler is used.
+Most handlers will throw an exception from deep within the underlying data transport system.<br />
+If <code>Context.BufferSize</code> is set to something more than 0, this exception will get thrown
+when the buffer is full, or when <code>Context.Flush</code> is called, and an attempt is made to transmit data.<br />
+If you want to maintain a long-running process with the client disconnected, check <code>Context.Connected</code> whether it is safe to send data.<br />
+(Though this will keep one of the threads in the thread-pool occupied and unavailable to process incoming requests.<br />
+For long-running processes please use threads you manage yourself, or use another server process with IPC like COM, named pipes or network connections.)</dd>
+
 <dt><a name="debug"></a>how do I debug an xxm project</dt>
 <dd>an xxm project is still a Delphi project, so you can open the project's dpr in Delphi, just remember to edit the xxm and xxmi files, and not the pas files directly (unless for temporary debugging behaviour).<br />
 When you're using xxmLocal (or xxmLocalDev), set the host application to Internet Explorer (typically <code>C:\Program Files\Internet Explorer\iexplore.exe</code>), optionally with an "xxm://" URL to open your project. (Update: to force IE8 to run in a single process, see <a href="http://blogs.msdn.com/askie/archive/2009/03/09/opening-a-new-tab-may-launch-a-new-process-with-internet-explorer-8-0.aspx">TabProcGrowth</a>)<br />
