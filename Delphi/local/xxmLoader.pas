@@ -576,6 +576,7 @@ begin
         IID_IHttpNegotiate,IID_IHttpNegotiate,FHttpNegotiate));
     OleCheck(FHttpNegotiate.BeginningTransaction(PWideChar(FURL),nil,0,px));
     ps:=px;//TODO: encoding?
+    CoTaskMemFree(px);
     if FPostData<>nil then ps:=ps+'Content-Length: '+IntToStr(FPostData.Size)+#13#10;
     FReqHeaders:=TRequestHeaders.Create(ps);
     (FReqHeaders as IUnknown)._AddRef;

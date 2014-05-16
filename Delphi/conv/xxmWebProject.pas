@@ -850,9 +850,10 @@ function TXxmWebProject.ResolveErrorLines(
 var
   sl_in,sl_out:TStringList;
   sl_x:integer;
-  s:string;
+  s,t:string;
   i,j,l:integer;
   map:TXxmLineNumbersMap;
+  x:IXMLDOMElement;
 begin
   //TODO: call ResolveErrorLines from xxmConv also
   map:=TXxmLineNumbersMap.Create;
@@ -872,7 +873,10 @@ begin
         while (j<=l) and (s[j]<>')') do inc(j);
         try
           map.Load(ChangeFileExt(FSrcFolder+Copy(s,1,i-2),LinesMapExtension));
-          s:=Copy(s,1,i-2)+'['+map.GetXxmLines(StrToInt(Copy(s,i,j-i)))+
+          x:=DataFiles.selectSingleNode('File[@UnitName="'+
+            Copy(s,1,i-6)+'"]/Path') as IXMLDOMElement;
+          if x=nil then t:=Copy(s,1,i-2) else t:=x.text;
+          s:=t+'['+map.GetXxmLines(StrToInt(Copy(s,i,j-i)))+
             ']'+Copy(s,j+1,Length(s)-j);
         except
           //silent
