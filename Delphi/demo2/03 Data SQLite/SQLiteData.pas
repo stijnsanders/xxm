@@ -49,9 +49,9 @@ type
     procedure DoInit;
     procedure DoStep;
   public
-    constructor Create(Connection:TSQLiteConnection;SQL:UTF8String); overload;
-    constructor Create(Connection:TSQLiteConnection;SQL:UTF8String;var NextIndex:integer); overload;
-    constructor Create(Connection:TSQLiteConnection;SQL:UTF8String;const Parameters:array of OleVariant); overload;
+    constructor Create(Connection:TSQLiteConnection;const SQL:UTF8String); overload;
+    constructor Create(Connection:TSQLiteConnection;const SQL:UTF8String;var NextIndex:integer); overload;
+    constructor Create(Connection:TSQLiteConnection;const SQL:UTF8String;const Parameters:array of OleVariant); overload;
     destructor Destroy; override;
     procedure ExecSQL;
     function Read:boolean;//Next?
@@ -64,11 +64,12 @@ type
     property ParameterName[Idx:integer]:WideString read GetParameterName;
     property ParameterCount:integer read GetParameterCount;
     property Eof:boolean read GetEOF;
-    function GetInt(Idx:OleVariant):integer;
-    function GetStr(Idx:OleVariant):WideString;
-    function GetDate(Idx:OleVariant):TDateTime;
-	  function GetDefault(Idx,Default:OleVariant):OleVariant;
-    function IsNull(Idx:OleVariant):boolean;
+    function GetInt(const Idx:OleVariant):integer;
+    function GetInt64(const Idx:OleVariant):int64;
+    function GetStr(const Idx:OleVariant):WideString;
+    function GetDate(const Idx:OleVariant):TDateTime;
+	  function GetDefault(const Idx,Default:OleVariant):OleVariant;
+    function IsNull(const Idx:OleVariant):boolean;
   end;
 
   ESQLiteDataException=class(Exception);
@@ -195,7 +196,7 @@ end;
 { TSQLiteStatement }
 
 constructor TSQLiteStatement.Create(Connection: TSQLiteConnection;
-  SQL: UTF8String);
+  const SQL: UTF8String);
 begin
   inherited Create;
   FDB:=Connection.Handle;
@@ -205,7 +206,7 @@ begin
 end;
 
 constructor TSQLiteStatement.Create(Connection: TSQLiteConnection;
-  SQL: UTF8String; var NextIndex: integer);
+  const SQL: UTF8String; var NextIndex: integer);
 var
   x,y:PAnsiChar;
 begin
@@ -219,7 +220,7 @@ begin
 end;
 
 constructor TSQLiteStatement.Create(Connection: TSQLiteConnection;
-  SQL: UTF8String; const Parameters: array of OleVariant);
+  const SQL: UTF8String; const Parameters: array of OleVariant);
 var
   i:integer;
 begin
@@ -476,25 +477,31 @@ begin
   Result:=FParamNames[Idx-1];
 end;
 
-function TSQLiteStatement.GetDate(Idx: OleVariant): TDateTime;
-begin
-  if FFirstStep then DoStep;
-  Result:=sqlite3_column_double(FHandle,GetColumnIdx(Idx));
-end;
-
-function TSQLiteStatement.GetInt(Idx: OleVariant): integer;
+function TSQLiteStatement.GetInt(const Idx: OleVariant): integer;
 begin
   if FFirstStep then DoStep;
   Result:=sqlite3_column_int(FHandle,GetColumnIdx(Idx));
 end;
 
-function TSQLiteStatement.GetStr(Idx: OleVariant): WideString;
+function TSQLiteStatement.GetInt64(const Idx: OleVariant): int64;
+begin
+  if FFirstStep then DoStep;
+  Result:=sqlite3_column_int64(FHandle,GetColumnIdx(Idx));
+end;
+
+function TSQLiteStatement.GetStr(const Idx: OleVariant): WideString;
 begin
   if FFirstStep then DoStep;
   Result:=WideString(sqlite3_column_text16(FHandle,GetColumnIdx(Idx)));
 end;
 
-function TSQLiteStatement.GetDefault(Idx,Default:OleVariant):OleVariant;
+function TSQLiteStatement.GetDate(const Idx: OleVariant): TDateTime;
+begin
+  if FFirstStep then DoStep;
+  Result:=sqlite3_column_double(FHandle,GetColumnIdx(Idx));
+end;
+
+function TSQLiteStatement.GetDefault(const Idx,Default:OleVariant):OleVariant;
 begin
   if FFirstStep then DoStep;
   if sqlite3_column_type(FHandle,GetColumnIdx(Idx))=SQLITE_NULL then
@@ -503,7 +510,7 @@ begin
     Result:=GetField(Idx);
 end;
 
-function TSQLiteStatement.IsNull(Idx: OleVariant): boolean;
+function TSQLiteStatement.IsNull(const Idx: OleVariant): boolean;
 begin
   if FFirstStep then DoStep;
   Result:=sqlite3_column_type(FHandle,GetColumnIdx(Idx))=SQLITE_NULL;

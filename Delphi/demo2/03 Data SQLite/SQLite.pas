@@ -7,7 +7,7 @@
 
 unit SQLite;
 
-//based on sqlite.h 3.8.2 2014-01-02
+//based on sqlite.h 3.8.4.3 2014-04-23
 
 interface
 
@@ -110,6 +110,7 @@ const
   SQLITE_READONLY_RECOVERY       = SQLITE_READONLY or $0100;
   SQLITE_READONLY_CANTLOCK       = SQLITE_READONLY or $0200;
   SQLITE_READONLY_ROLLBACK       = SQLITE_READONLY or $0300;
+  SQLITE_READONLY_DBMOVED        = SQLITE_READONLY or $0400;
   SQLITE_ABORT_ROLLBACK          = SQLITE_ABORT or $0200;
   SQLITE_CONSTRAINT_CHECK        = SQLITE_CONSTRAINT or $0100;
   SQLITE_CONSTRAINT_COMMITHOOK   = SQLITE_CONSTRAINT or $0200;
@@ -222,6 +223,7 @@ const
   SQLITE_FUNCTION            = 31;
   SQLITE_SAVEPOINT           = 32;
   SQLITE_COPY                =  0;  
+  SQLITE_RECURSIVE           = 33;
 
   SQLITE_LIMIT_LENGTH                  =  0;
   SQLITE_LIMIT_SQL_LENGTH              =  1;
@@ -247,6 +249,8 @@ const
   SQLITE_UTF16          = 4;    // Use native byte order
   SQLITE_ANY            = 5;    // sqlite3_create_function only
   SQLITE_UTF16_ALIGNED  = 8;    // sqlite3_create_collation only
+
+  SQLITE_DETERMINISTIC    = $800;
 
   SQLITE_MUTEX_FAST            = 0;
   SQLITE_MUTEX_RECURSIVE       = 1;

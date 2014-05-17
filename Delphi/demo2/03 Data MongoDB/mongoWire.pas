@@ -1,3 +1,12 @@
+{
+
+TMongoWire: mongoWire.pas
+
+Copyright 2010-2014 Stijn Sanders
+Made available under terms described in file "LICENSE"
+https://github.com/stijnsanders/TMongoWire
+
+}
 unit mongoWire;
 
 interface
@@ -5,70 +14,78 @@ interface
 uses SysUtils, SyncObjs, Classes, Sockets, bsonDoc;
 
 type
-  TBSONDocumentsEnumerator=class //abstract
-  public
-    function Next(Doc:IBSONDocument):boolean; virtual; abstract;
-  end;
-
   TMongoWire=class(TObject)
   private
-    FSocket:TTcpClient;
-    FData:TStreamAdapter;
-    FWriteLock,FReadLock:TCriticalSection;
-    FQueue:array of record
-      RequestID:integer;
-      Data:TStreamAdapter;
+    FSocket: TTcpClient;
+    FData: TStreamAdapter;
+    FWriteLock, FReadLock: TCriticalSection;
+    FQueue: array of record
+      RequestID: integer;
+      Data: TStreamAdapter;
     end;
-    FQueueIndex,FRequestIndex:integer;
+    FQueueIndex, FRequestIndex: integer;
     procedure DataCString(const x: WideString);
-    procedure OpenMsg(OpCode,Flags:integer;const Collection:WideString);
-    function CloseMsg(Data:TStreamAdapter=nil):integer;//RequestID
-    procedure ReadMsg(RequestID:integer);
+    procedure OpenMsg(OpCode, Flags: integer; const Collection: WideString);
+    function CloseMsg(Data: TStreamAdapter = nil): integer;//RequestID
+    procedure ReadMsg(RequestID: integer);
   public
     constructor Create;
     destructor Destroy; override;
 
-    procedure Open(const ServerName:string='localhost';Port:integer=27017);
+    procedure Open(const ServerName: string = 'localhost';
+      Port: integer = 27017);
     procedure Close;
 
     function Get(
-      const Collection:WideString;
-      QryObj:IBSONDocument;
-      ReturnFieldSelector:IBSONDocument=nil
+      const Collection: WideString;
+      QryObj: IBSONDocument;
+      ReturnFieldSelector: IBSONDocument = nil
     ):IBSONDocument;
     //Query: see TMongoWireQuery.Create
     procedure Update(
-      const Collection:WideString;
-      Selector,Doc:IBSONDocument;
-      Upsert:boolean=false;
-      MultiUpdate:boolean=false
+      const Collection: WideString;
+      const Selector, Doc: IBSONDocument;
+      Upsert: boolean = false;
+      MultiUpdate: boolean = false
     );
     procedure Insert(
-      const Collection:WideString;
-      Doc:IBSONDocument
+      const Collection: WideString;
+      const Doc: IBSONDocument
     ); overload;
     procedure Insert(
-      const Collection:WideString;
-      const Docs:array of IBSONDocument
+      const Collection: WideString;
+      const Docs: array of IBSONDocument
     ); overload;
     procedure Insert(
-      const Collection:WideString;
-      Docs:TBSONDocumentsEnumerator
+      const Collection: WideString;
+      const Docs: IBSONDocumentEnumerator
     ); overload;
     procedure Delete(
-      const Collection:WideString;
-      Selector:IBSONDocument;
-      SingleRemove:boolean=false
+      const Collection: WideString;
+      const Selector: IBSONDocument;
+      SingleRemove: boolean = false
     );
     function Ping: Boolean;
     procedure EnsureIndex(
-      const Database,Collection:WideString;
-      Index:IBSONDocument;
-      Options:IBSONDocument=nil
+      const Database,Collection: WideString;
+      const Index: IBSONDocument;
+      const Options: IBSONDocument = nil
     );
+
+    function RunCommand(
+      const Collection: WideString;
+      CmdObj: IBSONDocument
+    ):IBSONDocument;
+
+    function Count(const Collection: WideString): integer;
+    function Distinct(const Collection, Key: WideString;
+      Query: IBSONDocument=nil): OleVariant;
+
+    function Eval(const Collection, JSFn: WideString;
+      const Args: array of Variant; NoLock: boolean=false):OleVariant;
   end;
 
-  TMongoWireQuery=class(TBSONDocumentsEnumerator)
+  TMongoWireQuery=class(TObject)
   private
     FOwner:TMongoWire;
     FData:TStreamAdapter;
@@ -85,7 +102,7 @@ type
       QryObj:IBSONDocument;
       ReturnFieldSelector:IBSONDocument=nil;
       Flags:integer=0);
-    function Next(Doc:IBSONDocument):boolean; override;
+    function Next(const Doc:IBSONDocument):boolean;
     property NumberToReturn:integer read FNumberToReturn write FNumberToReturn;
     property NumberToSkip:integer read FNumberToSkip write FNumberToSkip;//TODO: set?
   end;
@@ -97,6 +114,7 @@ type
   EMongoNotConnected=class(EMongoException);
   EMongoTransferError=class(EMongoException);
   EMongoQueryError=class(EMongoException);
+  EMongoCommandError=class(EMongoException);
 
 const
   mongoWire_QueryFlag_TailableCursor  = $0002;
@@ -115,11 +133,11 @@ uses ActiveX, Variants, WinSock;
 const
   OP_REPLY        = 1;
   OP_MSG          = 1000;
-  OP_UPDATE       = 2001;
-  OP_INSERT       = 2002;
+  //OP_UPDATE       = 2001;
+  //OP_INSERT       = 2002;
   OP_QUERY        = 2004;
   OP_GET_MORE     = 2005;
-  OP_DELETE       = 2006;
+  //OP_DELETE       = 2006;
   OP_KILL_CURSORS = 2007;
 
   MongoWireStartDataSize=$10000;
@@ -149,6 +167,7 @@ begin
   m:=TMemoryStream.Create;
   m.Size:=MongoWireStartDataSize;//start keeping some data
   FData:=TStreamAdapter.Create(m,soOwned);
+  (FData as IUnknown)._AddRef;
   FWriteLock:=TCriticalSection.Create;
   FReadLock:=TCriticalSection.Create;
   FRequestIndex:=1;
@@ -157,7 +176,7 @@ end;
 destructor TMongoWire.Destroy;
 begin
   FSocket.Free;
-  FData.Free;
+  (FData as IUnknown)._Release;//FData.Free;
   FWriteLock.Free;
   FReadLock.Free;
   inherited;
@@ -172,7 +191,8 @@ begin
   FSocket.RemotePort:=IntToStr(Port);
   FSocket.Open;
   if not FSocket.Connected then
-    raise EMongoConnectFailed.Create('MongoWire: failed to connect to "'+ServerName+':'+IntToStr(Port)+'"');
+    raise EMongoConnectFailed.Create(
+      'MongoWire: failed to connect to "'+ServerName+':'+IntToStr(Port)+'"');
   i:=1;
   l:=4;
   setsockopt(FSocket.Handle,IPPROTO_TCP,TCP_NODELAY,@i,l);
@@ -272,7 +292,7 @@ begin
     i:=0;
     while (i<FQueueIndex) and (FQueue[i].RequestID<>RequestID) do inc(i);
     if i=FQueueIndex then
-      raise Exception.Create('MongoWire: ReadMsg called on not queued requestID');
+      raise EMongoException.Create('MongoWire: ReadMsg called on not queued requestID');
     if FQueue[i].Data=nil then
      begin
       //yes, it's in, release this spot on the queue
@@ -383,104 +403,71 @@ begin
   end;
 end;
 
-procedure TMongoWire.Update(const Collection: WideString; Selector,
+procedure TMongoWire.Update(const Collection: WideString; const Selector,
   Doc: IBSONDocument; Upsert, MultiUpdate: boolean);
 var
-  i:integer;
+  d:IBSONDocument;
 begin
   if Doc=nil then raise EMongoException.Create('MongoWire.Update: Doc required');
-  FWriteLock.Enter;
-  try
-    OpenMsg(OP_UPDATE,0,Collection);
-    i:=0;
-    if Upsert then inc(i,$0001);
-    if MultiUpdate then inc(i,$0002);
-    FData.Stream.Write(i,4);
-    if Selector=nil then
-     begin
-      i:=5;//empty document
-      FData.Stream.Write(i,4);
-      i:=0;//terminator
-      FData.Stream.Write(i,1);
-     end
-    else
-      (Selector as IPersistStream).Save(FData,false);
-    (Doc as IPersistStream).Save(FData,false);
-    CloseMsg;
-  finally
-    FWriteLock.Leave;
-  end;
+  d:=BSON(
+    ['q',Selector
+    ,'u',Doc
+    ]);
+  if Upsert then d['upsert']:=true;
+  if MultiUpdate then d['multi']:=true;
+  RunCommand(Collection,BSON(
+    ['update',Collection
+    ,'updates',VarArrayOf([d])
+    ]));
 end;
 
-procedure TMongoWire.Insert(const Collection: WideString; Doc: IBSONDocument);
+procedure TMongoWire.Insert(const Collection: WideString;
+  const Doc: IBSONDocument);
 begin
   if Doc=nil then raise EMongoException.Create('MongoWire.Insert: Doc required');
-  FWriteLock.Enter;
-  try
-    OpenMsg(OP_INSERT,0,Collection);
-    (Doc as IPersistStream).Save(FData,false);
-    CloseMsg;
-  finally
-    FWriteLock.Leave;
-  end;
+  RunCommand(Collection,BSON(
+    ['insert',Collection
+    ,'documents',VarArrayOf([Doc])
+    ]));
 end;
 
 procedure TMongoWire.Insert(const Collection: WideString;
   const Docs: array of IBSONDocument);
 var
-  i:integer;
+  i,l:integer;
+  v:OleVariant;
 begin
-  FWriteLock.Enter;
-  try
-    OpenMsg(OP_INSERT,0,Collection);
-    for i:=0 to Length(Docs)-1 do (Docs[i] as IPersistStream).Save(FData,false);
-    CloseMsg;
-  finally
-    FWriteLock.Leave;
-  end;
+  l:=Length(Docs);
+  v:=VarArrayCreate([0,l-1],varUnknown);
+  for i:=0 to l-1 do v[i]:=Docs[i];
+  RunCommand(Collection,BSON(
+    ['insert',Collection
+    ,'documents',v
+    ]));
 end;
 
 procedure TMongoWire.Insert(const Collection: WideString;
-  Docs: TBSONDocumentsEnumerator);
+  const Docs: IBSONDocumentEnumerator);
 var
-  d:IBSONDocument;
+  d,dx:IBSONDocument;
 begin
-  FWriteLock.Enter;
-  try
-    OpenMsg(OP_INSERT,0,Collection);
-    d:=TBSONDocument.Create as IBSONDocument;
-    while Docs.Next(d) do (d as IPersistStream).Save(FData,false);
-    CloseMsg;
-  finally
-    FWriteLock.Leave;
-  end;
+  d:=BSON;
+  dx:=BSON(['insert',Collection,'documents',d]);
+  while Docs.Next(d) do RunCommand(Collection,dx);
 end;
 
 procedure TMongoWire.Delete(const Collection: WideString;
-  Selector: IBSONDocument; SingleRemove: boolean);
+  const Selector: IBSONDocument; SingleRemove: boolean);
 var
-  i:integer;
+  l:integer;
 begin
-  FWriteLock.Enter;
-  try
-    OpenMsg(OP_DELETE,0,Collection);
-    i:=0;
-    if SingleRemove then inc(i,$0001);
-    FData.Stream.Write(i,4);
-    if Selector=nil then
-     begin
-      //raise? warning?
-      i:=5;//empty document
-      FData.Stream.Write(i,4);
-      i:=0;//terminator
-      FData.Stream.Write(i,1);
-     end
-    else
-      (Selector as IPersistStream).Save(FData,false);
-    CloseMsg;
-  finally
-    FWriteLock.Leave;
-  end;
+  if SingleRemove then l:=1 else l:=0;
+  RunCommand(Collection,BSON(
+    ['delete',Collection
+    ,'deletes','['
+      ,'q',Selector
+      ,'limit',l
+    ]));
 end;
 
 function TMongoWire.Ping: Boolean;
@@ -492,8 +479,8 @@ begin
   end;
 end;
 
-procedure TMongoWire.EnsureIndex(const Database,Collection:WideString;
-  Index:IBSONDocument;Options:IBSONDocument=nil);
+procedure TMongoWire.EnsureIndex(const Database, Collection: WideString;
+  const Index: IBSONDocument; const Options: IBSONDocument=nil);
 var
   Document: IBSONDocument;
   Name: String;
@@ -534,6 +521,46 @@ begin
   Insert(Database + '.' + mongoWire_Db_SystemIndexCollection, Document);
 end;
 
+function TMongoWire.RunCommand(const Collection: WideString;
+  CmdObj: IBSONDocument): IBSONDocument;
+begin
+  Result:=Get(Collection+'.$cmd',CmdObj);
+  if Result['ok']<>1 then
+    try
+      if VarIsNull(Result['errmsg']) then
+        raise EMongoCommandError.Create('Unspecified error with "'+
+          VarToStr(CmdObj.ToVarArray[0][0])+'"')
+      else
+        raise EMongoCommandError.Create('Command "'+
+          VarToStr(CmdObj.ToVarArray[0][0])+'" failed: '+
+          VarToStr(Result['errmsg']));
+    except
+      raise EMongoCommandError.Create('Command failed');
+    end;
+end;
+
+function TMongoWire.Count(const Collection: WideString): integer;
+begin
+  Result:=RunCommand(Collection,BSON(['count',Collection]))['n'];
+end;
+
+function TMongoWire.Distinct(const Collection, Key: WideString;
+  Query: IBSONDocument): OleVariant;
+var
+  d:IBSONDocument;
+begin
+  d:=BSON(['distinct',Collection,'key',Key]);
+  if Query<>nil then d['query']:=Query;
+  Result:=RunCommand(Collection,d)['values'];
+end;
+
+function TMongoWire.Eval(const Collection, JSFn: WideString;
+  const Args: array of Variant; NoLock: boolean): OleVariant;
+begin
+  Result:=RunCommand(Collection,BSON(['eval',bsonJavaScriptCodePrefix+
+    JSFn,'args',VarArrayOf(Args)]))['retval'];
+end;
+
 { TMongoWireQuery }
 
 constructor TMongoWireQuery.Create(MongoWire: TMongoWire);
@@ -546,6 +573,7 @@ begin
   m:=TMemoryStream.Create;
   m.Size:=MongoWireStartDataSize;//start keeping some data
   FData:=TStreamAdapter.Create(m,soOwned);
+  (FData as IUnknown)._AddRef;
   FNumberToReturn:=0;//use db default
   FNumberToSkip:=0;
   FPageIndex:=0;
@@ -557,7 +585,7 @@ destructor TMongoWireQuery.Destroy;
 begin
   KillCursor;
   FOwner:=nil;//TODO: unregister
-  FData.Free;
+  (FData as IUnknown)._Release;//FData.Free;
   inherited;
 end;
 
@@ -611,7 +639,7 @@ begin
   FCollection:=Collection;
 end;
 
-function TMongoWireQuery.Next(Doc: IBSONDocument): boolean;
+function TMongoWireQuery.Next(const Doc: IBSONDocument): boolean;
 var
   i:integer;
 begin
