@@ -230,8 +230,9 @@ type
 function XxmVersion:TXxmVersion;
 function HTMLEncode(const Data:WideString):WideString; overload;
 function HTMLEncode(const Data:OleVariant):WideString; overload;
-function URLEncode(const Data:OleVariant):AnsiString;
+function URLEncode(const Data:OleVariant):AnsiString; overload;
 function URLDecode(const Data:AnsiString):WideString;
+function URLEncode(const KeyValuePairs:array of OleVariant):AnsiString; overload;
 
 implementation
 
@@ -382,13 +383,38 @@ begin
   if (q>1) and (Result='') then Result:=WideString(t);
 end;
 
+function URLEncode(const KeyValuePairs:array of OleVariant):AnsiString; overload;
+var
+  i,l:integer;
+begin
+  i:=0;
+  l:=Length(KeyValuePairs);
+  if l=0 then Result:='' else
+   begin
+    while i<l do
+     begin
+      Result:=Result+'&'+URLEncode(VarToStr(KeyValuePairs[i]))+'=';
+      inc(i);
+      if i<l then
+        if VarIsNumeric(KeyValuePairs[i]) then
+          Result:=Result+VarToStr(KeyValuePairs[i])
+        else
+          Result:=Result+URLEncode(VarToStr(KeyValuePairs[i]));
+      inc(i);
+     end;
+    if i<l then
+      Result:=Result+'&'+URLEncode(VarToStr(KeyValuePairs[i]))+'=';
+    Result[1]:='?';
+   end;
+end;
+
 function XxmVersion: TXxmVersion;
 var
   s:string;
 begin
   s:=XxmRevision;
   Result.Major:=1;
-  Result.Minor:=1;
+  Result.Minor:=2;
   Result.Release:=0;
   Result.Build:=StrToInt(Copy(s,7,Length(s)-8));
 end;

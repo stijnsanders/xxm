@@ -78,6 +78,7 @@
 that any variable data is properly encoded. Use the <a href="#htmlencode"><code>HTMLEncode</code></a> function.
 Read more <a href="http://xxm.sourceforge.net/sec.html">here</a>.
 </dd>
+<dt><code>[[?'x',1,'y',2]]</code></dt><dd><b>URL encode:</b> encodes key-value pairs into a query string, see also <a href="#urlencode"><code>URLEncode</code></a> <span class="newver">1.2.0</span></dd>
 <dt><code>[[@Variants,]]</code></dt><dd><b>uses clause:</b> adds units to the uses clause. Separate unit names with comma. It's advised to follow the last unit name with a comma as well, as required by Delphi syntaxis, (but the parser detects when the trailing comma is missing and adds it <span class="newver">1.0.3</span>).</dd>
 <dt><code>[[!var i:integer;]]</code></dt><dd><b>header:</b> adds code in front of 'begin' of the fragment's Build method implementation, use this to declare local variables and constants,
 	<br /><b style="color:red;">*:</b> read below remarks for proper use</dd>
@@ -311,18 +312,19 @@ It is allowed to set BufferSize to a new value while data is already sent, but w
 <dt><code>function SaveToStream(Stream:IStream):integer;</code></dt>
 <dd>saves the uploaded content to a stream  (use <code>TStreamAdapter</code> from the Classes unit to provide an <code>IStream</code> interface on a <code>TStream</code> object)</dd>
 
-<dt class="title"><a name="XxmVersion"></a><code>function XxmVersion:TXxmVersion;<br />
+<dt class="title"><a name="xxmversion"></a><code>function XxmVersion:TXxmVersion;<br />
   TXxmVersion = record Major,Minor,Release,Build:integer; end;
 </code></dt>
 <dd>gets the xxm version, use the xxm version to check if newer features are available</dd>
 
-<dt class="title"><a name="HTMLEncode"></a><code>function HTMLEncode(Data:WideString):WideString; overload;<br />
+<dt class="title"><a name="htmlencode"></a><code>function HTMLEncode(Data:WideString):WideString; overload;<br />
 function HTMLEncode(Data:OleVariant):WideString; overload;
 </code></dt>
 <dd>encodes text for safe output into a HTML document</dd>
 
-<dt class="title"><a name="URLEncode"></a><code>function URLEncode(Data:OleVariant):string;<br />
-function URLDecode(Data:string):WideString;
+<dt class="title"><a name="urlencode"></a><code>function URLEncode(Data:OleVariant):string;<br />
+function URLDecode(Data:string):WideString;<br />
+function URLEncode(const KeyValuePairs:array of OleVariant):AnsiString; overload; <span class="newver">1.2.0</span>
 </code></dt>
 <dd>encodes/decodes data to/from URL notation</dd>
 
@@ -372,6 +374,8 @@ function URLDecode(Data:string):WideString;
 <dt>Send close (end of <code>[[=</code> sections)</dt><dd>default value: <code>);</code><br />use <code>[[*=)<span style="background-color:#FFCCCC;">&nbsp;&nbsp;&nbsp;</span>]]</code> to override</dd>
 <dt>Send HTML open (start of <code>[[#</code> sections)</dt><dd>default value: <code>Context.SendHTML(</code><br />use <code>[[*#(<span style="background-color:#FFCCCC;">&nbsp;&nbsp;&nbsp;</span>]]</code> to override</dd>
 <dt>Send HTML close (end of <code>[[#</code> sections)</dt><dd>default value: <code>);</code><br />use <code>[[*#)<span style="background-color:#FFCCCC;">&nbsp;&nbsp;&nbsp;</span>]]</code> to override</dd>
+<dt>URL encode open (start of <code>[[?</code> sections) <span class="newver">1.2.0</span></dt><dd>default value: <code>Context.Send(URLEncode([</code><br />use <code>[[*?(<span style="background-color:#FFCCCC;">&nbsp;&nbsp;&nbsp;</span>]]</code> to override</dd>
+<dt>URL encode close (end of <code>[[?</code> sections) <span class="newver">1.2.0</span></dt><dd>default value: <code>]));</code><br />use <code>[[*?)<span style="background-color:#FFCCCC;">&nbsp;&nbsp;&nbsp;</span>]]</code> to override</dd>
 </dl>
 
 <p>It is possible to override several parser values in one <code>[[* ]]</code> section by defining each one on a line by itself, e.g.:</p>

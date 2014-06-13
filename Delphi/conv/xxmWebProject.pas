@@ -65,6 +65,8 @@ const
     (Code:');';EOLs:0),//pvSendClose
     (Code:'Context.SendHTML(';EOLs:0),//pvSendHTML
     (Code:');';EOLs:0),//pvSendHTMLClose
+    (Code:'Context.Send(URLEncode([';EOLs:0),//pvURLEncode
+    (Code:']));';EOLs:0),//pvURLEncodeClose
     //add new above
     (Code:'';EOLs:0)
   );
@@ -74,6 +76,8 @@ const
     'SendClose',
     'SendHTMLOpen',
     'SendHTMLClose',
+    'URLEncodeOpen',
+    'URLEncodeClose',
     ''
   );
 

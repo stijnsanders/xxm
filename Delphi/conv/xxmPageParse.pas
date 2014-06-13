@@ -14,7 +14,8 @@ type
     psFooter,             // [[_
     psSend,               // [[=
     psSendHTML,           // [[#
-    psComment,            // [[/ or [[?
+    psURLEncode,          // [[?
+    psComment,            // [[/
     psParserParameter,    // [[*
     psSquareBracketsOpen, // [[[]]
     psSquareBracketsClose // [[]]]
@@ -44,6 +45,8 @@ type
     pvSendClose,
     pvSendHTML,
     pvSendHTMLClose,
+    pvURLEncode,
+    pvURLEncodeClose,
     //add new above
     pv_Unknown
   );
@@ -313,7 +316,8 @@ begin
             '_':ps:=psFooter;
             '#':ps:=psSendHTML;
             '=':ps:=psSend;
-            '/','?':ps:=psComment;
+            '?':ps:=psURLEncode;
+            '/':ps:=psComment;
             '*':ps:=psParserParameter;
             //'&$%^+|;.,
             else
@@ -466,6 +470,7 @@ var
       case Code[1] of
         '=':pv:=pvSend;
         '#':pv:=pvSendHTML;
+        '?':pv:=pvURLEncode;
         //else //TODO: parse parameter name
       end;
       if pv=pv_Unknown then raise Exception.Create('Unknown parse parameter');
@@ -599,18 +604,26 @@ begin
               inc(p);
              end;
            end;
-          psSend,psSendHTML:
+          psSend,psSendHTML,psURLEncode:
            begin
             CloseSend(Sections[Section].LineNr);
-            if Sections[Section].SectionType=psSend then
-              pv:=pvSend else pv:=pvSendHTML;
+            case Sections[Section].SectionType of
+              psSend:pv:=pvSend;
+              psSendHTML:pv:=pvSendHTML;
+              psURLEncode:pv:=pvURLEncode;
+              else pv:=pvSendHTML;//counter warning
+            end;
             r:=FParserValues[pv].EOLs;
             ss.WriteString('  '+StringReplace(FParserValues[pv].Code,
               '$l',IntToStr(r+Sections[Section].LineNr),[rfReplaceAll]));
             inc(r,EOLs(Section));
             ss.Write(FData[Sections[Section].Index],Sections[Section].Length);
-            if Sections[Section].SectionType=psSend then
-              pv:=pvSendClose else pv:=pvSendHTMLClose;
+            case Sections[Section].SectionType of
+              psSend:pv:=pvSendClose;
+              psSendHTML:pv:=pvSendHTMLClose;
+              psURLEncode:pv:=pvURLEncodeClose;
+              else pv:=pvSendHTMLClose;//counter warning
+            end;
             inc(r,FParserValues[pv].EOLs);
             ss.WriteString(StringReplace(FParserValues[pv].Code,
               '$l',IntToStr(r+Sections[Section].LineNr),[rfReplaceAll])+#13#10);

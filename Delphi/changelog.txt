@@ -4,6 +4,7 @@ v1.2.0.?
 - xxmHttp: fixed issue when posting 1MB or more
 - demo 03 ADO: switched query store to plain SQL file
 - AutoBuild: errors shown on local path to xxm file instead of .pas filename
+- URLEncode([]) and [[?]] syntax
 
 v1.1.9.300
 - sourceforge repository caught up with previous private repo, so version build number will now follow svn revision number
