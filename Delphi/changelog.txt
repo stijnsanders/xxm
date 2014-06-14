@@ -1,4 +1,4 @@
-v1.2.0.?
+v1.2.0.325
 - revised internal send/buffer logic
 - when Context.BufferSize is set, don't send header rightaway, and add Content-Length when all of content fits in buffer
 - xxmHttp: fixed issue when posting 1MB or more
