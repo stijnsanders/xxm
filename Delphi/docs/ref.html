@@ -64,11 +64,11 @@
 
 <p class="title">Fragment</p>
 
-<p>A the URL of a request to an xxm website is first parsed to see which xxm project to send the request to. (Each implementation has its specific project registry.) The project (IXxmProject) is loaded if not loaded already, and asked to provide a page object to handle the request (IXxmPage). A page can include fragments to help construct the response (IXxmInclude). Both pages and includes are fragments (IXxmFragment) provided by the project's fragment registry. Because an xxm project has to provide a fragment registry, it has freedom of how to construct portion of the URL it processes. A <i>stock-</i>implementation of a fragment registry is available by default for new xxm projects.</p>
+<p>The URL of a request to an xxm website is first parsed to determine which xxm project to send the request to. (Each handler has its specific project registry.) The project (IXxmProject) is loaded if not loaded already, and asked to provide a page object to handle the request (IXxmPage). A page can include fragments to help construct the response (IXxmInclude). Both pages and includes are fragments (IXxmFragment) provided by the project's fragment registry. Because an xxm project has to provide a fragment registry, it has freedom of how to construct portion of the URL it processes. A <i>stock-</i>implementation of a fragment registry is available by default for new xxm projects (xxmFReg.pas).</p>
 
 <p class="title"><a name="syntax"></a>Syntax</p>
 
-<p>xxm and xxmi contain both HTML and Delphi source code. Delphi code is enclosed in double square brackets ("<code>[[ ]]</code>"). A Delphi code block may have an alternate destination by starting with one of these characters:</p>
+<p>xxm and xxmi contain both HTML and Delphi source code. Delphi code is enclosed in double square brackets ("<code>[[ ]]</code>"). A code section may have an alternate destination by starting with one of these characters:</p>
 
 <dl>
 <dt><code>[[=i]]</code></dt><dd><b>send:</b> the expression is evaluated and sent to the context.</dd>
@@ -88,8 +88,10 @@ Read more <a href="http://xxm.sourceforge.net/sec.html">here</a>.
 <dt><code>[[_ ]]</code></dt><dd><b>footer:</b> adds code right after the fragment's Build method implementation,
 	<br /><b style="color:red;">*:</b> read below remarks for proper use</dd>
 <dt><code>[[* ]]</code></dt><dd><b><a href="#parservalues">override parser value</a></b> <span class="newver">1.1.3</span></dd>
-<dt><code>[[[]]</code></dt><dd><b>opening square brackets:</b> is replaced by opening square brackets</dd>
-<dt><code>[[]]]</code></dt><dd><b>closing square brackets:</b> is replaced by closing square brackets</dd>
+<dt><code>[[[]]</code></dt><dd><b>opening square brackets:</b> is replaced by two opening square brackets "<code>[[</code>"</dd>
+<dt><code>[[]]]</code></dt><dd><b>closing square brackets:</b> is replaced by two closing square brackets "<code>]]</code>"</dd>
+<dt><code>[[& ]]</code> <code>[[% ]]</code> <code>[[. ]]</code> <code>[[, ]]</code> <code>[[; ]]</code><dt>
+<dd>non-pre-defined section types for use with <a href="#parservalues">parser values</a> <span class="newver">1.2.0</span></dd>
 </dl>
 
 <p><b>Attention<span style="color:red;">*:</span></b> you can declare (nested) procedures and functions in header, footer and definition blocks, but you can't use the <code>[[= ]]</code> and <code>[[# ]]</code> syntax and embedded HTML since this will break the <code>[[ ]]</code>-block the declaration is in.
@@ -396,6 +398,8 @@ Use <code>[[*]]</code> to reset all parser values to the default values.</p>
 <li><code>$v</code> gets replaced by the current parser value, this allows to add to the parser value</li>
 <li><code>$d</code> gets replaced by the default value, this allows to revert to the default value and add to it in one operation</li>
 </ul>
+
+<p>To set parser values for the entire project, use xxmProject.exe. The values are stored in the <code>&lt;ParserValues&gt;</code> node in Web.xxmp.</p>
 
 <p class="title"><a name="projectintf"></a>Optional project interfaces</p>
 

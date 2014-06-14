@@ -45,7 +45,7 @@ object EditProjectMainForm: TEditProjectMainForm
       object txtProjectName: TEdit
         Left = 0
         Top = 16
-        Width = 377
+        Width = 400
         Height = 21
         Anchors = [akLeft, akTop, akRight]
         TabOrder = 0
@@ -55,7 +55,7 @@ object EditProjectMainForm: TEditProjectMainForm
       object txtCompileCommand: TEdit
         Left = 0
         Top = 56
-        Width = 377
+        Width = 400
         Height = 21
         Anchors = [akLeft, akTop, akRight]
         TabOrder = 1
@@ -143,6 +143,7 @@ object EditProjectMainForm: TEditProjectMainForm
         Height = 21
         Style = csDropDownList
         Anchors = [akLeft, akTop, akRight]
+        DropDownCount = 32
         ItemHeight = 13
         TabOrder = 0
         OnChange = cbParserValueChange
@@ -150,7 +151,19 @@ object EditProjectMainForm: TEditProjectMainForm
           '=( Send open'
           '=) Send close'
           '#( Send HTML open'
-          '#) Send HTML close')
+          '#) Send HTML close'
+          '?( URLEncode open'
+          '?) URLEncode close'
+          '&( Extra1 open'
+          '&) Extra1 close'
+          '%( Extra2 open'
+          '%) Extra2 close'
+          '.( Extra3 open'
+          '.) Extra3 close'
+          ',( Extra4 open'
+          ',) Extra4 close'
+          ';( Extra5 open'
+          ';) Extra5 close')
       end
       object txtParserValue: TMemo
         Left = 0

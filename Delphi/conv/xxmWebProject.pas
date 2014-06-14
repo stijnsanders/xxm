@@ -67,17 +67,24 @@ const
     (Code:');';EOLs:0),//pvSendHTMLClose
     (Code:'Context.Send(URLEncode([';EOLs:0),//pvURLEncode
     (Code:']));';EOLs:0),//pvURLEncodeClose
+    (Code:'Extra1(';EOLs:0),(Code:');';EOLs:0),//pvExtra1
+    (Code:'Extra2(';EOLs:0),(Code:');';EOLs:0),//pvExtra2
+    (Code:'Extra3(';EOLs:0),(Code:');';EOLs:0),//pvExtra3
+    (Code:'Extra4(';EOLs:0),(Code:');';EOLs:0),//pvExtra4
+    (Code:'Extra5(';EOLs:0),(Code:');';EOLs:0),//pvExtra5
     //add new above
     (Code:'';EOLs:0)
   );
 
   ParserValueElement:array[TXxmPageParserValues] of string=(
-    'SendOpen',
-    'SendClose',
-    'SendHTMLOpen',
-    'SendHTMLClose',
-    'URLEncodeOpen',
-    'URLEncodeClose',
+    'SendOpen','SendClose',
+    'SendHTMLOpen','SendHTMLClose',
+    'URLEncodeOpen','URLEncodeClose',
+    'Extra1Open','Extra1Close',
+    'Extra2Open','Extra2Close',
+    'Extra3Open','Extra3Close',
+    'Extra4Open','Extra4Close',
+    'Extra5Open','Extra5Close',
     ''
   );
 
@@ -201,7 +208,7 @@ begin
   while (pv<>pv_Unknown) do
    begin
     x:=RootNode.selectSingleNode('ParserValues/'+
-      ParserValueElement[pv]) as IXMLDOMElement;
+      +ParserValueElement[pv]) as IXMLDOMElement;
     if x<>nil then
      begin
       s:=StringReplace(StringReplace(x.text,

@@ -758,11 +758,15 @@ begin
 end;
 
 const
-  ParserValueElement:array[0..3] of string=(
-    'SendOpen',
-    'SendClose',
-    'SendHTMLOpen',
-    'SendHTMLClose'
+  ParserValueElement:array[0..15] of string=(
+    'SendOpen','SendClose',
+    'SendHTMLOpen','SendHTMLClose',
+    'URLEncodeOpen','URLEncodeClose',
+    'Extra1Open','Extra1Close',
+    'Extra2Open','Extra2Close',
+    'Extra3Open','Extra3Close',
+    'Extra4Open','Extra4Close',
+    'Extra5Open','Extra5Close'
   );
 
 procedure TEditProjectMainForm.cbParserValueChange(Sender: TObject);

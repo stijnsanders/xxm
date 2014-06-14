@@ -17,6 +17,11 @@ type
     psURLEncode,          // [[?
     psComment,            // [[/
     psParserParameter,    // [[*
+    psExtra1,             // [[&
+    psExtra2,             // [[%
+    psExtra3,             // [[.
+    psExtra4,             // [[,
+    psExtra5,             // [[;
     psSquareBracketsOpen, // [[[]]
     psSquareBracketsClose // [[]]]
   );
@@ -47,6 +52,11 @@ type
     pvSendHTMLClose,
     pvURLEncode,
     pvURLEncodeClose,
+    pvExtra1,pvExtra1Close,
+    pvExtra2,pvExtra2Close,
+    pvExtra3,pvExtra3Close,
+    pvExtra4,pvExtra4Close,
+    pvExtra5,pvExtra5Close,
     //add new above
     pv_Unknown
   );
@@ -77,6 +87,27 @@ type
     function AllSections(ps:TXxmPageSection;map:TXxmLineNumbersMap):AnsiString;
     function BuildBody(map:TXxmLineNumbersMap):AnsiString;
   end;
+
+const
+  SectionParserValue:array[TXxmPageSection] of TXxmPageParserValues=(
+    pv_Unknown,  //psHTML,
+    pv_Unknown,  //psUses,
+    pv_Unknown,  //psDefinitions,
+    pv_Unknown,  //psHeader,
+    pv_Unknown,  //psBody,
+    pv_Unknown,  //psFooter,
+    pvSend,      //psSend
+    pvSendHTML,  //psSendHTML
+    pvURLEncode, //psURLEncode
+    pv_Unknown,  //psComment
+    pv_Unknown,  //psParserParameter
+    pvExtra1,    //psExtra1
+    pvExtra1,    //psExtra2
+    pvExtra1,    //psExtra3
+    pvExtra1,    //psExtra4
+    pvExtra1,    //psExtra5
+    pv_Unknown,pv_Unknown //psSquareBrackets* etc
+  );
 
 implementation
 
@@ -319,6 +350,11 @@ begin
             '?':ps:=psURLEncode;
             '/':ps:=psComment;
             '*':ps:=psParserParameter;
+            '&':ps:=psExtra1;
+            '%':ps:=psExtra2;
+            '.':ps:=psExtra3;
+            ',':ps:=psExtra4;
+            ';':ps:=psExtra5;
             //'&$%^+|;.,
             else
              begin
@@ -471,6 +507,11 @@ var
         '=':pv:=pvSend;
         '#':pv:=pvSendHTML;
         '?':pv:=pvURLEncode;
+        '&':pv:=pvExtra1;
+        '%':pv:=pvExtra2;
+        '.':pv:=pvExtra3;
+        ',':pv:=pvExtra4;
+        ';':pv:=pvExtra5;
         //else //TODO: parse parameter name
       end;
       if pv=pv_Unknown then raise Exception.Create('Unknown parse parameter');
@@ -604,26 +645,17 @@ begin
               inc(p);
              end;
            end;
-          psSend,psSendHTML,psURLEncode:
+          psSend,psSendHTML,psURLEncode,
+          psExtra1,psExtra2,psExtra3,psExtra4,psExtra5:
            begin
             CloseSend(Sections[Section].LineNr);
-            case Sections[Section].SectionType of
-              psSend:pv:=pvSend;
-              psSendHTML:pv:=pvSendHTML;
-              psURLEncode:pv:=pvURLEncode;
-              else pv:=pvSendHTML;//counter warning
-            end;
+            pv:=SectionParserValue[Sections[Section].SectionType];
             r:=FParserValues[pv].EOLs;
             ss.WriteString('  '+StringReplace(FParserValues[pv].Code,
               '$l',IntToStr(r+Sections[Section].LineNr),[rfReplaceAll]));
             inc(r,EOLs(Section));
             ss.Write(FData[Sections[Section].Index],Sections[Section].Length);
-            case Sections[Section].SectionType of
-              psSend:pv:=pvSendClose;
-              psSendHTML:pv:=pvSendHTMLClose;
-              psURLEncode:pv:=pvURLEncodeClose;
-              else pv:=pvSendHTMLClose;//counter warning
-            end;
+            inc(pv);//pvXxxClose
             inc(r,FParserValues[pv].EOLs);
             ss.WriteString(StringReplace(FParserValues[pv].Code,
               '$l',IntToStr(r+Sections[Section].LineNr),[rfReplaceAll])+#13#10);
