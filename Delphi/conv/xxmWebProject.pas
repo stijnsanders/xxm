@@ -208,7 +208,7 @@ begin
   while (pv<>pv_Unknown) do
    begin
     x:=RootNode.selectSingleNode('ParserValues/'+
-      +ParserValueElement[pv]) as IXMLDOMElement;
+      ParserValueElement[pv]) as IXMLDOMElement;
     if x<>nil then
      begin
       s:=StringReplace(StringReplace(x.text,

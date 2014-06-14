@@ -102,10 +102,10 @@ const
     pv_Unknown,  //psComment
     pv_Unknown,  //psParserParameter
     pvExtra1,    //psExtra1
-    pvExtra1,    //psExtra2
-    pvExtra1,    //psExtra3
-    pvExtra1,    //psExtra4
-    pvExtra1,    //psExtra5
+    pvExtra2,    //psExtra2
+    pvExtra3,    //psExtra3
+    pvExtra4,    //psExtra4
+    pvExtra5,    //psExtra5
     pv_Unknown,pv_Unknown //psSquareBrackets* etc
   );
 
