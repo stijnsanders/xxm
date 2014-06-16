@@ -20,13 +20,13 @@ type
   TQueryStore=class(TObject)
   private
     FQueries:array of record
-      ID,SQL:AnsiString;
+      ID, SQL: AnsiString;
     end;
     procedure ReadQueriesSQL;
   public
     constructor Create;
     destructor Destroy; override;
-    function GetSQL(QueryName:AnsiString):AnsiString;
+    function GetSQL(const QueryName: AnsiString): AnsiString;
   end;
 
   TQueryResult=class(TObject)
@@ -36,16 +36,17 @@ type
     function GetValue(Idx:OleVariant):OleVariant;
     function IsEof:boolean;
   public
-    constructor Create(QueryName: AnsiString; const Values: array of Variant); overload;
+    constructor Create(const QueryName: AnsiString; const Values: array of Variant); overload;
     constructor Create(Recordset: Recordset); overload;
-    constructor Create(SQL:AnsiString); overload;
+    constructor Create(const SQL: AnsiString); overload;
     destructor Destroy; override;
 
-    class function SingleValue(QueryName: AnsiString; const Values: array of Variant):Variant; overload;
-    class function SingleValue(SQL:AnsiString):Variant; overload;
+    class function SingleValue(const QueryName: AnsiString; const Values: array of Variant): Variant; overload;
+    class function SingleValue(const SQL: AnsiString): Variant; overload;
 
     procedure Reset;
     function Read:boolean;
+    procedure CheckResultSet;
     property Fields[Idx:OleVariant]:OleVariant read GetValue; default;
     property EOF: boolean read IsEof;
     function GetInt(Idx:OleVariant):integer;
@@ -61,10 +62,10 @@ type
     function GetValue(Idx:OleVariant):OleVariant;
     procedure SetValue(Idx,Value:OleVariant);
   public
-    constructor Create(TableName: AnsiString; Id:integer);
+    constructor Create(const TableName, PKName: AnsiString; Id: integer);
     destructor Destroy; override;
 
-    class function Perform(QueryName:AnsiString; const Values: array of Variant): integer; overload;
+    class function Perform(const QueryName: AnsiString; const Values: array of Variant): integer; overload;
 
     procedure Update;
     procedure Cancel;
@@ -98,7 +99,7 @@ begin
   inherited;
 end;
 
-function TQueryStore.GetSQL(QueryName: AnsiString): AnsiString;
+function TQueryStore.GetSQL(const QueryName: AnsiString): AnsiString;
 var
   i,l:integer;
 begin
@@ -202,7 +203,7 @@ end;
 
 { TQueryResult }
 
-constructor TQueryResult.Create(QueryName: AnsiString;
+constructor TQueryResult.Create(const QueryName: AnsiString;
   const Values: array of Variant);
 var
   cmd:Command;
@@ -229,7 +230,7 @@ begin
   FRecordSet:=Recordset;//Clone?
 end;
 
-constructor TQueryResult.Create(SQL: AnsiString);
+constructor TQueryResult.Create(const SQL: AnsiString);
 begin
   inherited Create;
   FFirstRead:=true;
@@ -250,7 +251,7 @@ begin
   inherited;
 end;
 
-class function TQueryResult.SingleValue(QueryName: AnsiString;
+class function TQueryResult.SingleValue(const QueryName: AnsiString;
   const Values: array of Variant): Variant;
 var
   cmd:Command;
@@ -279,7 +280,7 @@ begin
   end;
 end;
 
-class function TQueryResult.SingleValue(SQL: AnsiString): Variant;
+class function TQueryResult.SingleValue(const SQL: AnsiString): Variant;
 var
   rs:Recordset;
 begin
@@ -412,15 +413,24 @@ begin
    end;
 end;
 
+procedure TQueryResult.CheckResultSet;
+var
+  v:OleVariant;
+begin
+  while (FRecordSet<>nil) and (FRecordSet.State=adStateClosed) do
+    FRecordSet:=FRecordSet.NextRecordset(v);
+  FFirstRead:=true;
+end;
+
 { TDataChanger }
 
-constructor TDataChanger.Create(TableName: AnsiString; Id: integer);
+constructor TDataChanger.Create(const TableName, PKName: AnsiString; Id: integer);
 begin
   inherited Create;
   FRecordSet:=CoRecordset.Create;
   //TODO: adCmdTable and find PK? first col?
   FRecordSet.Open(
-    'SELECT * FROM '+TableName+' WHERE id='+IntToStr(id),
+    'SELECT * FROM '+TableName+' WHERE '+PKName+'='+IntToStr(id),
     Session.Connection,
     adOpenKeyset,//?
     adLockOptimistic,//adLockPessimistic?
@@ -473,7 +483,7 @@ begin
   end;
 end;
 
-class function TDataChanger.Perform(QueryName: AnsiString;
+class function TDataChanger.Perform(const QueryName: AnsiString;
   const Values: array of Variant): integer;
 var
   cmd:Command;

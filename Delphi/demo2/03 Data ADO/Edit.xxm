@@ -20,7 +20,7 @@ if Context.Parameter['x'].AsInteger=0 then
  end
 else
  begin
-  dc:=TDataChanger.Create('Table1',id);
+  dc:=TDataChanger.Create('Table1','id',id);
   try
     dc['text']:=Context.Parameter['text'].Value;
     dc.Update;
