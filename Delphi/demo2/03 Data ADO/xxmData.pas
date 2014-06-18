@@ -45,8 +45,8 @@ type
     class function SingleValue(const SQL: AnsiString): Variant; overload;
 
     procedure Reset;
+	procedure CheckResultSet;//use with multiple resultsets (e.g. when calling stored procedure)
     function Read:boolean;
-    procedure CheckResultSet;
     property Fields[Idx:OleVariant]:OleVariant read GetValue; default;
     property EOF: boolean read IsEof;
     function GetInt(Idx:OleVariant):integer;
@@ -106,7 +106,7 @@ begin
   //TODO: store sorted, better lookup algo?
   l:=Length(FQueries);
   i:=0;
-  while (i<l) and not(FQueries[i].ID=QueryName) do inc(i);
+  while (i<l) and (FQueries[i].ID<>QueryName) do inc(i);
   if i=l then
     raise EQueryStoreError.Create('Undefined query "'+QueryName+'"');
   Result:=FQueries[i].SQL;
@@ -201,13 +201,25 @@ begin
    end;
 end;
 
+function ErrInfo(const QueryName: AnsiString; const Values: array of Variant):AnsiString;
+var
+  i,l:integer;
+begin
+  l:=Length(Values);
+  Result:='';
+  if l>0 then
+   begin
+    Result:=VarToStr(Values[0]);
+    for i:=1 to l-1 do Result:=Result+','+VarToStr(Values[i]);
+   end;
+  Result:=#13#10'"'+QueryName+'"['+Result+']';
+end;
+
 { TQueryResult }
 
-constructor TQueryResult.Create(const QueryName: AnsiString;
-  const Values: array of Variant);
+constructor TQueryResult.Create(const QueryName: AnsiString; const Values: array of Variant);
 var
   cmd:Command;
-  v:OleVariant;
 begin
   inherited Create;
   //FRecordSet:=Session.DbCon.Execute(,v,adCmdText);
@@ -217,9 +229,15 @@ begin
     cmd.CommandType:=adCmdText;
     cmd.CommandText:=QueryStore.GetSQL(QueryName);
     CmdParameters(cmd,Values);
-    FRecordSet:=cmd.Execute(v,EmptyParam,0);
-  finally
-    cmd:=nil;
+    FRecordset:=CoRecordset.Create;
+    FRecordset.CursorLocation:=adUseClient;
+    FRecordset.Open(cmd,EmptyParam,adOpenStatic,adLockReadOnly,0);
+  except
+    on e:Exception do
+     begin
+      e.Message:=e.Message+ErrInfo(QueryName,Values);
+      raise;
+     end;
   end;
 end;
 
@@ -251,16 +269,15 @@ begin
   inherited;
 end;
 
-class function TQueryResult.SingleValue(const QueryName: AnsiString;
-  const Values: array of Variant): Variant;
+class function TQueryResult.SingleValue(const QueryName: AnsiString; const Values: array of Variant): Variant;
 var
   cmd:Command;
   rs:Recordset;
   v:OleVariant;
 begin
   inherited Create;
-  cmd:=CoCommand.Create;
   try
+    cmd:=CoCommand.Create;
     cmd.CommandType:=adCmdText;
     cmd.CommandText:=QueryStore.GetSQL(QueryName);
     CmdParameters(cmd,Values);
@@ -274,9 +291,12 @@ begin
       if not rs.EOF then
         raise ESingleValueFailed.Create('SingleValue('+QueryName+') resulted in more than one value')
      end;
-  finally
-    rs:=nil;
-    cmd:=nil;
+  except
+    on e:Exception do
+     begin
+      e.Message:=e.Message+ErrInfo(QueryName,Values);
+      raise;
+     end;
   end;
 end;
 
@@ -285,25 +305,21 @@ var
   rs:Recordset;
 begin
   rs:=CoRecordset.Create;
-  try
-    rs.Open(
-      SQL,
-      Session.Connection,
-      adOpenStatic,//? adOpenForwardOnly,//?
-      adLockReadOnly,
-      adCmdText);
-    if rs.EOF then
-      raise ESingleValueFailed.Create('SingleValue did not result a value')
-    else
-     begin
-      Result:=rs.Fields[0].Value;
-      rs.MoveNext;
-      if not rs.EOF then
-        raise ESingleValueFailed.Create('SingleValue resulted in more than one value')
-     end;
-  finally
-    rs:=nil;
-  end;
+  rs.Open(
+    SQL,
+    Session.Connection,
+    adOpenStatic,//? adOpenForwardOnly,//?
+    adLockReadOnly,
+    adCmdText);
+  if rs.EOF then
+    raise ESingleValueFailed.Create('SingleValue did not result a value')
+  else
+   begin
+    Result:=rs.Fields[0].Value;
+    rs.MoveNext;
+    if not rs.EOF then
+      raise ESingleValueFailed.Create('SingleValue resulted in more than one value')
+   end;
 end;
 
 procedure TQueryResult.Reset;
@@ -318,7 +334,7 @@ var
 begin
   try
     //v:=FRecordSet.Fields[Idx].Value;
-	  v:=FRecordSet.Collect[idx];
+    v:=FRecordSet.Collect[idx];
   except
     on e:EOleException do
       if cardinal(e.ErrorCode)=$800A0CC1 then
@@ -333,7 +349,7 @@ function TQueryResult.GetStr(Idx: OleVariant): WideString;
 begin
   try
     //Result:=VarToWideStr(FRecordSet.Fields[Idx].Value);
-	  Result:=VarToWideStr(FRecordSet.Collect[Idx]);
+    Result:=VarToWideStr(FRecordSet.Collect[Idx]);
   except
     on e:EOleException do
       if cardinal(e.ErrorCode)=$800A0CC1 then
@@ -349,7 +365,7 @@ var
 begin
   try
     //v:=FRecordSet.Fields[Idx].Value;
-	  v:=FRecordSet.Collect[Idx];
+    v:=FRecordSet.Collect[Idx];
   except
     on e:EOleException do
       if cardinal(e.ErrorCode)=$800A0CC1 then
@@ -367,7 +383,7 @@ function TQueryResult.GetValue(Idx: OleVariant): OleVariant;
 begin
   try
     //Result:=FRecordSet.Fields[Idx].Value;
-	  Result:=FRecordSet.Collect[Idx];
+    Result:=FRecordSet.Collect[Idx];
   except
     on e:EOleException do
       if cardinal(e.ErrorCode)=$800A0CC1 then
@@ -389,13 +405,13 @@ begin
     Result:=VarIsNull(FRecordSet.Collect[Idx]);
   except
     on e:EOleException do
-	   begin
+     begin
       if cardinal(e.ErrorCode)=$800A0CC1 then
-        raise EFieldNotFound.Create('GetInt: Field not found: '+VarToStr(Idx))
+        raise EFieldNotFound.Create('IsNull: Field not found: '+VarToStr(Idx))
       else
         raise;
-	    Result:=true;//counter warning
-	   end;
+      Result:=true;//counter warning
+     end;
   end;
 end;
 
@@ -417,8 +433,7 @@ procedure TQueryResult.CheckResultSet;
 var
   v:OleVariant;
 begin
-  while (FRecordSet<>nil) and (FRecordSet.State=adStateClosed) do
-    FRecordSet:=FRecordSet.NextRecordset(v);
+  while (FRecordSet<>nil) and (FRecordSet.State=adStateClosed) do FRecordSet:=FRecordSet.NextRecordset(v);
   FFirstRead:=true;
 end;
 
@@ -460,7 +475,7 @@ function TDataChanger.GetValue(Idx: OleVariant): OleVariant;
 begin
   try
     //Result:=FRecordSet.Fields[Idx].Value;
-	Result:=FRecordSet.Collect[Idx];
+    Result:=FRecordSet.Collect[Idx];
   except
     on e:EOleException do
       if cardinal(e.ErrorCode)=$800A0CC1 then
@@ -483,19 +498,26 @@ begin
   end;
 end;
 
-class function TDataChanger.Perform(const QueryName: AnsiString;
-  const Values: array of Variant): integer;
+class function TDataChanger.Perform(const QueryName: AnsiString; const Values: array of Variant): integer;
 var
   cmd:Command;
   v:OleVariant;
 begin
-  cmd:=CoCommand.Create;
-  cmd.CommandType:=adCmdText;
-  cmd.CommandText:=QueryStore.GetSQL(QueryName);
-  CmdParameters(cmd,Values);
-  cmd.Execute(v,EmptyParam,0);
-  cmd:=nil;
-  Result:=v;
+  try
+    cmd:=CoCommand.Create;
+    cmd.CommandType:=adCmdText;
+    cmd.CommandText:=QueryStore.GetSQL(QueryName);
+    CmdParameters(cmd,Values);
+    cmd.Execute(v,EmptyParam,0);//rs:=
+	//while (rs<>nil) and (rs.State=adStateClosed) do rs:=rs.NextRecordset(v);
+    Result:=v;
+  except
+    on e:Exception do
+     begin
+      e.Message:=e.Message+ErrInfo(QueryName,Values);
+      raise;
+     end;
+  end;
 end;
 
 initialization
