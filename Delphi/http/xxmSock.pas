@@ -7,12 +7,12 @@ uses SysUtils, Classes;
 {$D-}
 
 type
-  TSocketAddress=record
-    family:word;
-    port:word;
-    data:array[0..3] of cardinal;
-  end;
   PSocketAddress=^TSocketAddress;
+  TSocketAddress=record
+    family: word;
+    port: word;
+    data: array[0..5] of cardinal;
+  end;
 
   THostEntry=record
     h_name:PAnsiChar;
@@ -36,6 +36,21 @@ type
   end;
   PTimeVal = ^TTimeVal;
 
+const
+  INVALID_SOCKET = THandle(not(0));
+  AF_INET = 2;
+  AF_INET6 = 23;
+  SOCKET_ERROR = -1;
+  SOCK_STREAM = 1;
+  IPPROTO_IP = 0;
+  SOMAXCONN = 5;
+  SOL_SOCKET = $FFFF;
+  SO_SNDTIMEO = $1005;
+  SO_RCVTIMEO = $1006;
+  SD_BOTH = 2;
+  IPPROTO_TCP = 6;
+  TCP_NODELAY = 1;
+
 type
   TTcpSocket=class(TObject)
   private
@@ -43,12 +58,12 @@ type
     FAddr:TSocketAddress;
     FConnected:boolean;
   protected
-    constructor Create(ASocket:THandle); overload;
+    constructor Create(family: word; ASocket:THandle); overload;
     function GetPort:word;
     function GetAddress:string;
     function GetHostName:string;
   public
-    constructor Create; overload;
+    constructor Create(family: word= AF_INET); overload;
     destructor Destroy; override;
     procedure Connect(const Address:AnsiString;Port:word);
     procedure Disconnect;
@@ -63,9 +78,10 @@ type
 
   TTcpServer=class(TObject)
   private
-    FSocket:THandle;
+    FFamily: word;
+    FSocket: THandle;
   public
-    constructor Create;
+    constructor Create(family: word= AF_INET);
     destructor Destroy; override;
     procedure Bind(const Address:AnsiString;Port:word);
     procedure Listen;
@@ -100,20 +116,6 @@ function shutdown(s: THandle; how: integer): integer; stdcall;
 function closesocket(s: THandle): integer; stdcall;
 //function __WSAFDIsSet(s: THandle; var FDSet: TFDSet): Boolean; stdcall;
 
-const
-  INVALID_SOCKET = THandle(not(0));
-  AF_INET = 2;
-  SOCKET_ERROR = -1;
-  SOCK_STREAM = 1;
-  IPPROTO_IP = 0;
-  SOMAXCONN = 5;
-  SOL_SOCKET = $FFFF;
-  SO_SNDTIMEO = $1005;
-  SO_RCVTIMEO = $1006;
-  SD_BOTH = 2;
-  IPPROTO_TCP = 6;
-  TCP_NODELAY = 1;
-
 implementation
 
 uses Math;
@@ -134,18 +136,19 @@ begin
   raise ETcpSocketError.Create(SysErrorMessage(WSAGetLastError));
 end;
 
-procedure PrepareSockAddr(var addr: TSocketAddress; port: word;
+procedure PrepareSockAddr(var addr: TSocketAddress; family, port: word;
   const host: AnsiString);
 var
   e:PHostEntry;
 begin
-  addr.family:=AF_INET;
+  addr.family:=family;//AF_INET
   addr.port:=htons(port);
   addr.data[0]:=0;
   addr.data[1]:=0;
   addr.data[2]:=0;
   addr.data[3]:=0;
-  //TODO: IPv6
+  addr.data[4]:=0;
+  addr.data[5]:=0;
   if host<>'' then
     if char(host[1]) in ['0'..'9'] then
       addr.data[0]:=inet_addr(PAnsiChar(host))
@@ -163,27 +166,29 @@ end;
 
 procedure TTcpSocket.Connect(const Address: AnsiString; Port: word);
 begin
-  PrepareSockAddr(FAddr,Port,Address);
+  PrepareSockAddr(FAddr,FAddr.family,Port,Address);
   if xxmSock.connect(FSocket,FAddr,SizeOf(TSocketAddress))=SOCKET_ERROR then
     RaiseLastWSAError
   else
     FConnected:=true;
 end;
 
-constructor TTcpSocket.Create;
+constructor TTcpSocket.Create(family: word);
 begin
   inherited Create;
   FConnected:=false;
-  FSocket:=socket(AF_INET,SOCK_STREAM,IPPROTO_IP);//PF_INET6?
+  FAddr.family:=family;//AF_INET
+  FSocket:=socket(family,SOCK_STREAM,IPPROTO_IP);
   if FSocket=INVALID_SOCKET then RaiseLastWSAError;
   FillChar(FAddr,SizeOf(TSocketAddress),#0);
 end;
 
-constructor TTcpSocket.Create(ASocket: THandle);
+constructor TTcpSocket.Create(family: word; ASocket: THandle);
 var
   i:integer;
 begin
   inherited Create;
+  FAddr.family:=family;
   FSocket:=ASocket;
   if FSocket=INVALID_SOCKET then RaiseLastWSAError;
   i:=1;
@@ -254,11 +259,11 @@ end;
 
 { TTcpServer }
 
-constructor TTcpServer.Create;
+constructor TTcpServer.Create(family: word);
 begin
   inherited Create;
-  FSocket:=socket(AF_INET,SOCK_STREAM,IPPROTO_IP);
-  if FSocket=INVALID_SOCKET then RaiseLastWSAError;
+  FFamily:=family;//AF_INET
+  FSocket:=socket(FFamily,SOCK_STREAM,IPPROTO_IP);
 end;
 
 destructor TTcpServer.Destroy;
@@ -271,13 +276,15 @@ procedure TTcpServer.Bind(const Address: AnsiString; Port: word);
 var
   a:TSocketAddress;
 begin
-  PrepareSockAddr(a,Port,Address);
+  if FSocket=INVALID_SOCKET then RaiseLastWSAError;
+  PrepareSockAddr(a,FFamily,Port,Address);
   if xxmSock.bind(FSocket,a,SizeOf(TSocketAddress))=SOCKET_ERROR then
     RaiseLastWSAError;
 end;
 
 procedure TTcpServer.Listen;
 begin
+  //call bind first!
   if xxmSock.listen(FSocket,SOMAXCONN)=SOCKET_ERROR then
     RaiseLastWSAError;
 end;
@@ -304,7 +311,7 @@ var
 begin
   l:=SizeOf(TSocketAddress);
   FillChar(a,l,#0);
-  Result:=TTcpSocket.Create(xxmSock.accept(FSocket,@a,@l));
+  Result:=TTcpSocket.Create(FFamily,xxmSock.accept(FSocket,@a,@l));
   Result.FAddr:=a;
 end;
 

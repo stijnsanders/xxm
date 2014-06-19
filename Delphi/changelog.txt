@@ -1,3 +1,6 @@
+v1.2.1.???
+- xxmHttp: IPv6 support
+
 v1.2.0.325
 - revised internal send/buffer logic
 - when Context.BufferSize is set, don't send header rightaway, and add Content-Length when all of content fits in buffer

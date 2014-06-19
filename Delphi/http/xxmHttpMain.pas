@@ -125,8 +125,8 @@ const
     '');
   WM_QUIT = $0012;//from Messages
 var
-  Server:TTcpServer;
-  Listener:TXxmHttpServerListener;
+  Server,Server6:TTcpServer;
+  Listener,Listener6:TXxmHttpServerListener;
   i,j,Port,Threads:integer;
   StartURL,s,t:AnsiString;
   Msg:TMsg;
@@ -170,8 +170,9 @@ begin
   //
   CoInitialize(nil);
   XxmProjectCache:=TXxmProjectCacheXml.Create;
-  PageLoaderPool:=TXxmPageLoaderPool.Create(Threads);  
+  PageLoaderPool:=TXxmPageLoaderPool.Create(Threads);
   Server:=TTcpServer.Create;
+  Server6:=TTcpServer.Create(AF_INET6);
   try
     Server.Bind('',Port);
     //TODO: bind to multiple ports
@@ -179,6 +180,16 @@ begin
 
     if StartURL<>'' then
       ShellExecute(GetDesktopWindow,nil,PChar(StartURL),nil,nil,SW_NORMAL);//check result?
+
+    try
+      Server6.Bind('',Port);
+      //TODO: bind to multiple ports
+      Server6.Listen;
+      Listener6:=TXxmHttpServerListener.Create(Server6);
+    except
+      //silent? log? raise?
+      Listener6:=nil;
+    end;
 
     Listener:=TXxmHttpServerListener.Create(Server);
     KeptConnections:=TXxmKeptConnections.Create;
@@ -193,11 +204,13 @@ begin
       until Msg.message=WM_QUIT;
     finally
       Listener.Free;
+      Listener6.Free;
       KeptConnections.Free;
     end;
 
   finally
     Server.Free;
+    Server6.Free;
   end;
 end;
 
