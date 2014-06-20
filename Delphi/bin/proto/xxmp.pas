@@ -10,7 +10,7 @@ It is advised to link each request to a session here, if you want session manage
 (See  an example xxmSession.pas in the public folder.)
 Use LoadFragment to handle calls made to Context.Include.
 
-  $Rev: 102 $ $Date: 2010-09-15 14:42:45 +0200 (wo, 15 sep 2010) $
+  $Rev: 331 $ $Date: 2014-06-20 23:12:52 +0200 (vr, 20 jun 2014) $
 }
 
 interface
@@ -43,6 +43,7 @@ begin
   inherited;
   //TODO: link session to request
   Result:=XxmFragmentRegistry.GetFragment(Self,Address,'');
+  //TODO: if Context.ContextString(csVerb)='OPTION' then...
 end;
 
 function TXxm[[ProjectName]].LoadFragment(Context: IXxmContext; Address, RelativeTo: WideString): IXxmFragment;

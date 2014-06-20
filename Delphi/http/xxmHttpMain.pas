@@ -27,7 +27,7 @@ type
     FCookie: AnsiString;
     FCookieIdx: TParamIndexes;
     FQueryStringIndex:integer;
-    FKeepConnection:boolean;
+    FKeepConnection, FHeaderOnly:boolean;
     procedure HandleRequest;
   protected
     WasKept:boolean;
@@ -247,6 +247,7 @@ begin
   FSessionID:='';//see GetSessionID
   FURI:='';//see Execute
   FRedirectPrefix:='';
+  FHeaderOnly:=false;
   if WasKept then
    begin
     WasKept:=false;
@@ -290,7 +291,7 @@ end;
 
 procedure TXxmHttpContext.HandleRequest;
 var
-  i,j,k,l,m:integer;
+  i,j,k,l,m,n:integer;
   x,y:AnsiString;
   s:TStream;
   si:int64;
@@ -300,56 +301,56 @@ begin
     //command line and headers
     tc:=GetTickCount;
     y:='';
-    k:=$10000;
-    SetLength(x,k);
-    l:=FSocket.ReceiveBuf(x[1],k);
-    if l<=0 then raise EXxmConnectionLost.Create('Connection Lost');
+    k:=0;
+    l:=0;
     m:=0;
+    i:=1;
     j:=1;
     repeat
-      i:=j;
-      while (j<=l) and (x[j]<>#13) and (x[j]<>#10) do
+      if j>l then
        begin
-        if j=l then
+        if l=k then
          begin
-          if l=k then
-           begin
-            inc(k,$10000);
-            SetLength(x,k);
-           end;
-          l:=l+FSocket.ReceiveBuf(x[l+1],k-l);
-          if (l<=j) or (cardinal(GetTickCount-tc)>HTTPMaxHeaderParseTimeMS) then
-            raise EXxmConnectionLost.Create('Connection Lost');
+          inc(k,$10000);
+          SetLength(x,k);
          end;
-        inc(j);
+        n:=FSocket.ReceiveBuf(x[l+1],k-l);
+        if (n<=0) or (cardinal(GetTickCount-tc)>HTTPMaxHeaderParseTimeMS) then
+          raise EXxmConnectionLost.Create('Connection Lost');
+        inc(l,n);
        end;
-      if m=0 then
+      while (j<=l) and (x[j]<>#13) and (x[j]<>#10) do inc(j);
+      if (j<=l) and ((x[j]=#13) or (x[j]=#10)) then
        begin
-        //i:=1;
-        while (i<=l) and (x[i]>' ') do inc(i);
-        FVerb:=UpperCase(Copy(x,1,i-1));
-        inc(i);
-        j:=i;
-        while (j<=l) and (x[j]>' ') do inc(j);
-        FURI:=Copy(x,i,j-i);
-        inc(j);
-        i:=j;
-        while (j<=l) and (x[j]<>#13) and (x[j]<>#10) do inc(j);
-        FHTTPVersion:=Copy(x,i,j-i);
-        inc(m);
-       end
-      else
-       begin
-        y:=y+Copy(x,i,j-i)+#13#10;
-        if i=j then m:=-1 else
+        if m=0 then
          begin
+          //i:=1;
+          while (i<=l) and (x[i]>' ') do inc(i);
+          FVerb:=UpperCase(Copy(x,1,i-1));
+          inc(i);
+          j:=i;
+          while (j<=l) and (x[j]>' ') do inc(j);
+          FURI:=Copy(x,i,j-i);    
+          inc(j);
+          i:=j;
+          while (j<=l) and (x[j]<>#13) and (x[j]<>#10) do inc(j);
+          FHTTPVersion:=Copy(x,i,j-i);
           inc(m);
-          if m=HTTPMaxHeaderLines then
-            raise EXxmMaximumHeaderLines.Create(SXxmMaximumHeaderLines);
+         end
+        else
+         begin
+          y:=y+Copy(x,i,j-i)+#13#10;
+          if i=j then m:=-1 else
+           begin
+            inc(m);
+            if m=HTTPMaxHeaderLines then
+              raise EXxmMaximumHeaderLines.Create(SXxmMaximumHeaderLines);
+           end;
          end;
+        inc(j);
+        if (j<=l) and (x[j]=#10) then inc(j);
+        i:=j;
        end;
-      inc(j);
-      if (j<=l) and (x[j]=#10) then inc(j);
     until m=-1;
     x:=Copy(x,j,l-j+1);
     FReqHeaders:=TRequestHeaders.Create(y);
@@ -407,7 +408,28 @@ begin
       FPostData:=THandlerReadStreamAdapter.Create(FSocket,si,s,x);
      end;
 
-    BuildPage;
+    if FVerb='OPTIONS' then
+     begin
+      FHeaderOnly:=true;
+      FAutoEncoding:=aeContentDefined;//prevent Content-Type
+      AddResponseHeader('Allow','OPTIONS, GET, HEAD, POST');
+      AddResponseHeader('Public','OPTIONS, GET, HEAD, POST');
+      AddResponseHeader('Content-Length','0');
+      LoadPage;//IXxmProject.LoadPage without IXxmPage.Build
+      CheckSendStart;
+      Flush;
+     end
+    else if FVerb='TRACE' then
+     begin
+      SetStatus(501,'Not Implemented');
+      SendStr('<h1>Not Implemented</h1>');
+      Flush;
+     end
+    else
+     begin
+      if FVerb='HEAD' then FHeaderOnly:=true;//see SendHeader
+      BuildPage;
+     end;
 
   except
     on EXxmPageRedirected do Flush;
@@ -529,7 +551,6 @@ begin
     aeIso8859:FResHeaders['Content-Length']:=IntToStr(Length(AnsiString(RedirBody)));
   end;
   SendStr(RedirBody);
-  Flush;
   raise EXxmPageRedirected.Create(RedirectURL);
 end;
 
@@ -551,6 +572,7 @@ begin
   FSocket.SendBuf(x[1],Length(x));
   if FResHeaders['Content-Length']<>'' then FKeepConnection:=true;
   //TODO: transfer encoding chunked
+  if FHeaderOnly then raise EXxmPageRedirected.Create(FVerb);
 end;
 
 function TXxmHttpContext.GetRequestHeader(const Name: WideString): WideString;

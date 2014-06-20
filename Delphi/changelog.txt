@@ -1,5 +1,6 @@
 v1.2.1.???
 - xxmHttp: IPv6 support
+- xxmHttp: support OPTIONS, HEAD, TRACE
 
 v1.2.0.325
 - revised internal send/buffer logic

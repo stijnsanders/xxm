@@ -98,6 +98,7 @@ type
     function HandleException(Ex: Exception): boolean;
 
     procedure BeginRequest; virtual;
+    procedure LoadPage;
     procedure BuildPage;
     procedure SingleFile;
     procedure EndRequest; virtual;
@@ -119,6 +120,7 @@ type
   EXxmAutoBuildFailed=class(Exception);
   EXxmDirectInclude=class(Exception);
   EXxmPageRedirected=class(Exception);
+  EXxmIncludeOnlyOnBuild=class(Exception);
   EXxmIncludeStackFull=class(Exception);
   EXxmIncludeFragmentNotFound=class(Exception);
   EXxmIncludeCrossProjectDisabled=class(Exception);
@@ -142,6 +144,7 @@ uses Variants, ComObj, xxmCommonUtils, xxmParUtils;
 
 const //resourcestring?
   SXxmDirectInclude='Direct call to include fragment is not allowed';
+  SXxmIncludeOnlyOnBuild='Include only allowed when building a page';
   SXxmIncludeStackFull='Maximum level of includes exceeded';
   SXxmIncludeFragmentNotFound='Include fragment not found "__"';
   SXxmIncludeCrossProjectDisabled='Cross-project includes not enabled';
@@ -220,10 +223,7 @@ begin
   Result:=FProjectEntry.Project.LoadPage(Self,FragmentName);
 end;
 
-procedure TXxmGeneralContext.BuildPage;
-var
-  p:IXxmPage;
-  i:int64;
+procedure TXxmGeneralContext.LoadPage;
 begin
   FProjectEntry:=GetProjectEntry;//(FProjectName);
   if @XxmAutoBuildHandler<>nil then
@@ -234,6 +234,14 @@ begin
      end;
   FProjectEntry.OpenContext;
   FPage:=GetProjectPage(FFragmentName);
+end;
+
+procedure TXxmGeneralContext.BuildPage;
+var
+  p:IXxmPage;
+  i:int64;
+begin
+  LoadPage;
   if FPage=nil then
     SingleFile
   else
@@ -362,8 +370,8 @@ begin
   else
     if FBufferSize=0 then
      begin
-      SendHeader;
       FHeaderSent:=XxmHeaderSent;
+      SendHeader;
       Result:=true;
      end
     else
@@ -491,6 +499,8 @@ var
   px:TXxmCrossProjectIncludeCheck;
   i,j,l:integer;
 begin
+  if FBuilding=nil then
+    raise  EXxmIncludeOnlyOnBuild.Create(SXxmIncludeOnlyOnBuild);
   if FIncludeDepth=XxmMaxIncludeDepth then
     raise EXxmIncludeStackFull.Create(SXxmIncludeStackFull);
   pe:=FProjectEntry;
@@ -513,7 +523,7 @@ begin
         if (j<=l) and (Address[j]='/') then inc(j);
         FProjectEntry:=GetProjectEntry;
         //XxmAutoBuildHandler but check for recurring PE's to avoid deadlock
-        if (@XxmAutoBuildHandler<>nil) then
+        if @XxmAutoBuildHandler<>nil then
          begin
           px:=FIncludeCheck;
           while (px<>nil) and (px.Entry<>FProjectEntry) do px:=px.Next;
@@ -787,8 +797,8 @@ var
 begin
   if FHeaderSent=XxmHeaderOnNextFlush then
    begin
-    SendHeader;
     FHeaderSent:=XxmHeaderSent;
+    SendHeader;
    end;
   if FBufferSize<>0 then
    begin

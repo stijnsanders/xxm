@@ -11,7 +11,7 @@ type
   TSocketAddress=record
     family: word;
     port: word;
-    data: array[0..5] of cardinal;
+    data: array[0..11] of word;
   end;
 
   THostEntry=record
@@ -140,15 +140,11 @@ procedure PrepareSockAddr(var addr: TSocketAddress; family, port: word;
   const host: AnsiString);
 var
   e:PHostEntry;
+  i:integer;
 begin
   addr.family:=family;//AF_INET
   addr.port:=htons(port);
-  addr.data[0]:=0;
-  addr.data[1]:=0;
-  addr.data[2]:=0;
-  addr.data[3]:=0;
-  addr.data[4]:=0;
-  addr.data[5]:=0;
+  for i:=0 to 11 do addr.data[i]:=0;
   if host<>'' then
     if char(host[1]) in ['0'..'9'] then
       addr.data[0]:=inet_addr(PAnsiChar(host))
@@ -226,10 +222,26 @@ end;
 function TTcpSocket.GetHostName: string;
 var
   e:PHostEntry;
+  i:integer;
 begin
-  e:=gethostbyaddr(@FAddr.data[0],SizeOf(TSocketAddress),AF_INET);
+  e:=gethostbyaddr(@FAddr.data[0],SizeOf(TSocketAddress),FAddr.family);
   if e=nil then
-    Result:=inet_ntoa(FAddr.data[0])
+    //inet_ntop?
+    if FAddr.family=AF_INET6 then
+     begin
+      i:=3;
+      if FAddr.data[i]=0 then Result:=':' else
+        Result:=Result+IntToHex(FAddr.data[i],4)+':';
+      while (i<10) do
+       begin
+        while (i<10) and (FAddr.data[i]=0) do inc(i);
+        if i=10 then Result:=Result+':' else
+          Result:=Result+':'+IntToHex(FAddr.data[i],4);
+        inc(i);
+       end;
+     end
+    else
+      Result:=inet_ntoa(FAddr.data[0])
   else
     Result:=e.h_name;
 end;
