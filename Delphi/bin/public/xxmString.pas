@@ -63,7 +63,7 @@ type
 
     property AutoEncoding:TXxmAutoEncoding read GetAutoEncoding write SetAutoEncoding;
     property Result:WideString read GetResult;
-    procedure SaveToFile(FileName:AnsiString);
+    procedure SaveToFile(const FileName: string);
   end;
 
   EXxmUnsupported=class(Exception);
@@ -122,7 +122,7 @@ begin
   FResult:='';
 end;
 
-procedure TStringContext.SaveToFile(FileName: AnsiString);
+procedure TStringContext.SaveToFile(const FileName: string);
 const
   Utf8ByteOrderMark=#$EF#$BB#$BF;
   Utf16ByteOrderMark=#$FF#$FE;
@@ -148,7 +148,7 @@ begin
        end;
       aeIso8859:
        begin
-        s:=Copy(FResult,1,FIndex);
+        s:=AnsiString(Copy(FResult,1,FIndex));
         f.Write(s[1],Length(s));
        end;
     end;

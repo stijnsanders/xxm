@@ -261,7 +261,8 @@ begin
       if FHeaderSent<>XxmHeaderSent then
        begin
         if FBufferSize=0 then i:=0 else i:=ContentBuffer.Position;
-        if i=0 then ForceStatus(204,'No Content');
+        if (i=0) and (FStatusCode=200) then
+          ForceStatus(204,'No Content');
         if FStatusCode<>304 then
           AddResponseHeader('Content-Length',IntToStr(i));
         if i=0 then SendHeader;
