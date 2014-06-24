@@ -5,8 +5,8 @@ interface
 uses SysUtils, Classes, ActiveX;
 
 const
-  //$Date: 2014-06-13 23:55:10 +0200 (vr, 13 jun 2014) $
-  XxmRevision='$Rev: 324 $';
+  //$Date: 2014-06-24 17:25:14 +0200 (di, 24 jun 2014) $
+  XxmRevision='$Rev: 332 $';
 
 type
   IXxmContext=interface;//forward
@@ -387,10 +387,11 @@ function URLEncode(const KeyValuePairs:array of OleVariant):AnsiString; overload
 var
   i,l:integer;
 begin
-  i:=0;
+  Result:='';
   l:=Length(KeyValuePairs);
-  if l=0 then Result:='' else
+  if l<>0 then
    begin
+    i:=0;
     while i<l do
      begin
       Result:=Result+'&'+URLEncode(VarToStr(KeyValuePairs[i]))+'=';
