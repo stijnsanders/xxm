@@ -719,9 +719,7 @@ var
   si:TStartupInfoA;
   h1,h2:THandle;
   sa:TSecurityAttributes;
-  h:THandleStream;
   f:TFileStream;
-  c:cardinal;
   d:array[0..$FFF] of char;
   procedure GetNodesText(element: IXMLDOMElement; xpath, prefix: AnsiString);
   var
@@ -747,6 +745,8 @@ var
      end;
   end;
   function DoCommand(cmd,fld:AnsiString):boolean;
+  var
+    c:cardinal;
   begin
     if not(CreateProcessA(nil,PAnsiChar(AnsiString(
       StringReplace(
@@ -765,9 +765,12 @@ var
       raise EXxmWebProjectCompile.Create('Error performing'#13#10'"'+cmd+'":'#13#10+SysErrorMessage(GetLastError));
     CloseHandle(pi.hThread);
     try
-      while (WaitForSingleObject(pi.hProcess,50)=WAIT_TIMEOUT) or (h.Size<>0) do
+      c:=1;
+      while (WaitForSingleObject(pi.hProcess,50)=WAIT_TIMEOUT) or (c<>0) do
        begin
-        c:=h.Read(d[0],$1000);
+        if not PeekNamedPipe(h1,nil,0,nil,@c,nil) then c:=0;//RaiseLastOSError;
+        if c<>0 then
+          if not ReadFile(h1,d[0],$1000,c,nil) then c:=0;//RaiseLastOSError;
         if c<>0 then
          begin
           f.Write(d[0],c);
@@ -816,7 +819,6 @@ begin
         si.hStdOutput:=h2;
         si.hStdError:=h2;
         Result:=true;//default
-        h:=THandleStream.Create(h1);
         try
           cli:=0;
           while (cli<cl.Count) and Result do
@@ -837,7 +839,6 @@ begin
              end;
            end;
         finally
-          h.Free;
           CloseHandle(h1);
           CloseHandle(h2);
         end;

@@ -5,8 +5,8 @@ interface
 uses SysUtils, Classes, ActiveX;
 
 const
-  //$Date: 2014-06-24 17:25:14 +0200 (di, 24 jun 2014) $
-  XxmRevision='$Rev: 332 $';
+  //$Date: 2014-07-02 22:03:19 +0200 (wo, 02 jul 2014) $
+  XxmRevision='$Rev: 334 $';
 
 type
   IXxmContext=interface;//forward
@@ -264,7 +264,7 @@ begin
   Result:=Data;
   di:=1;
   dl:=Length(Data);
-  while (di<=dl) and not(char(Data[di]) in ['&','<','"','>',#13,#10]) do inc(di);
+  while (di<=dl) and not(AnsiChar(Data[di]) in ['&','<','"','>',#13,#10]) do inc(di);
   if di<=dl then
    begin
     ri:=di;
@@ -394,17 +394,17 @@ begin
     i:=0;
     while i<l do
      begin
-      Result:=Result+'&'+URLEncode(VarToStr(KeyValuePairs[i]))+'=';
+      Result:=Result+'&'+URLEncode(KeyValuePairs[i])+'=';
       inc(i);
       if i<l then
         if VarIsNumeric(KeyValuePairs[i]) then
-          Result:=Result+VarToStr(KeyValuePairs[i])
+          Result:=Result+AnsiString(VarToStr(KeyValuePairs[i]))
         else
-          Result:=Result+URLEncode(VarToStr(KeyValuePairs[i]));
+          Result:=Result+URLEncode(KeyValuePairs[i]);
       inc(i);
      end;
     if i<l then
-      Result:=Result+'&'+URLEncode(VarToStr(KeyValuePairs[i]))+'=';
+      Result:=Result+'&'+URLEncode(KeyValuePairs[i])+'=';
     Result[1]:='?';
    end;
 end;
