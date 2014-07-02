@@ -747,6 +747,7 @@ var
   function DoCommand(cmd,fld:AnsiString):boolean;
   var
     c:cardinal;
+    running:boolean;
   begin
     if not(CreateProcessA(nil,PAnsiChar(AnsiString(
       StringReplace(
@@ -765,19 +766,22 @@ var
       raise EXxmWebProjectCompile.Create('Error performing'#13#10'"'+cmd+'":'#13#10+SysErrorMessage(GetLastError));
     CloseHandle(pi.hThread);
     try
-      c:=1;
-      while (WaitForSingleObject(pi.hProcess,50)=WAIT_TIMEOUT) or (c<>0) do
-       begin
+      running:=true;
+      repeat
+        if running then
+          running:=WaitForSingleObject(pi.hProcess,50)=WAIT_TIMEOUT;
         if not PeekNamedPipe(h1,nil,0,nil,@c,nil) then c:=0;//RaiseLastOSError;
         if c<>0 then
-          if not ReadFile(h1,d[0],$1000,c,nil) then c:=0;//RaiseLastOSError;
-        if c<>0 then
          begin
-          f.Write(d[0],c);
-          d[c]:=#0;
-          BuildOutput(d);
+          if not ReadFile(h1,d[0],$1000,c,nil) then c:=0;//RaiseLastOSError;
+          if c<>0 then
+           begin
+            f.Write(d[0],c);
+            d[c]:=#0;
+            BuildOutput(d);
+           end;
          end;
-       end;
+      until not(running) and (c=0);
       if GetExitCodeProcess(pi.hProcess,c) then
         if c=0 then
           Result:=true
