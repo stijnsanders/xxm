@@ -5,8 +5,8 @@ interface
 uses SysUtils, Classes, ActiveX;
 
 const
-  //$Date: 2014-07-02 22:03:19 +0200 (wo, 02 jul 2014) $
-  XxmRevision='$Rev: 334 $';
+  //$Date: 2014-07-31 00:04:37 +0200 (do, 31 jul 2014) $
+  XxmRevision='$Rev: 336 $';
 
 type
   IXxmContext=interface;//forward
@@ -416,7 +416,7 @@ begin
   s:=XxmRevision;
   Result.Major:=1;
   Result.Minor:=2;
-  Result.Release:=0;
+  Result.Release:=1;
   Result.Build:=StrToInt(Copy(s,7,Length(s)-8));
 end;
 

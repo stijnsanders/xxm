@@ -773,7 +773,7 @@ var
         if not PeekNamedPipe(h1,nil,0,nil,@c,nil) then c:=0;//RaiseLastOSError;
         if c<>0 then
          begin
-          if not ReadFile(h1,d[0],$1000,c,nil) then c:=0;//RaiseLastOSError;
+          if not ReadFile(h1,d[0],$FFF,c,nil) then c:=0;//RaiseLastOSError;
           if c<>0 then
            begin
             f.Write(d[0],c);

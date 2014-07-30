@@ -108,6 +108,7 @@ type
   public
     //abstract! constructor only here for private variable init
     constructor Create(const URL:WideString);
+    procedure AfterConstruction; override;
     destructor Destroy; override;
     //property URL:WideString read GetURL;
     property ContentType:WideString read FContentType;
@@ -158,6 +159,11 @@ begin
   inherited Create;
   FURL:=URL;
   SendDirect:=nil;//TODO: stub raise abstract error?
+end;
+
+procedure TXxmGeneralContext.AfterConstruction;
+begin
+  inherited;
   BeginRequest;
 end;
 
