@@ -867,7 +867,7 @@ var
   sl_in,sl_out:TStringList;
   sl_x:integer;
   s,t:string;
-  i,j,l:integer;
+  i,j,k,l:integer;
   map:TXxmLineNumbersMap;
   x:IXMLDOMElement;
 begin
@@ -883,15 +883,18 @@ begin
       i:=Pos('.pas(',s);
       if i<>0 then
        begin
+        k:=i;
+        while (k<>0) and (s[k]<>'\') do dec(k);
         inc(i,5);
         j:=i;
         l:=Length(s);
         while (j<=l) and (s[j]<>')') do inc(j);
         try
-          map.Load(ChangeFileExt(FSrcFolder+Copy(s,1,i-2),LinesMapExtension));
+          t:=Copy(s,1,i-2);
+          map.Load(ChangeFileExt(FSrcFolder+t,LinesMapExtension));
           x:=DataFiles.selectSingleNode('File[@UnitName="'+
-            Copy(s,1,i-6)+'"]/Path') as IXMLDOMElement;
-          if x=nil then t:=Copy(s,1,i-2) else t:=x.text;
+            Copy(s,k+1,i-k-6)+'"]/Path') as IXMLDOMElement;
+          if x<>nil then t:=x.text;
           s:=t+'['+map.GetXxmLines(StrToInt(Copy(s,i,j-i)))+
             ']'+Copy(s,j+1,Length(s)-j);
         except

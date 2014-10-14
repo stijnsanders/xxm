@@ -1,5 +1,7 @@
 general
 
+- central version resource(s)
+
 - XxmProjectUnload
 
 - LastModified: use bias! (an hour less than IIS?)
