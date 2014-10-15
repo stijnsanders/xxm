@@ -1,8 +1,9 @@
-v1.2.1.335
+v1.2.1.337
 - xxmHttp: IPv6 support
 - xxmHttp: support OPTIONS, HEAD, TRACE
 - xxmISAPI: fixed initialization issue
 - fixed issue mapping error line numbers on files in a deeper folder
+- fixed issue with BufferSize and smaller responses
 
 v1.2.0.325
 - revised internal send/buffer logic

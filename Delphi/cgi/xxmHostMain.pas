@@ -360,8 +360,6 @@ begin
     'Status: '+IntToStr(i)+' '+StatusText+#13#10+
     FResHeaders.Build+#13#10;
   WriteFile(FPipeOut,x[1],Length(x),l,nil);
-  //clear buffer just in case
-  if ContentBuffer<>nil then ContentBuffer.Position:=0;
 end;
 
 function TXxmHostedContext.GetRequestHeaders: IxxmDictionaryEx;

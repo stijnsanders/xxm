@@ -580,9 +580,6 @@ begin
   FSocket.SendBuffer(@d[0],l);
   if FResHeaders['Content-Length']<>'' then FKeepConnection:=true;
   //TODO: transfer encoding chunked
-
-  //clear buffer just in case
-  if ContentBuffer<>nil then ContentBuffer.Position:=0;
 end;
 
 function TXxmSynaContext.GetRequestHeader(const Name: WideString): WideString;

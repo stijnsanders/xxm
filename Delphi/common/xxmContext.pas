@@ -247,6 +247,9 @@ var
   p:IXxmPage;
   i:int64;
 begin
+  //clear buffer just in case
+  if ContentBuffer<>nil then ContentBuffer.Position:=0;
+
   LoadPage;
   if FPage=nil then
     SingleFile

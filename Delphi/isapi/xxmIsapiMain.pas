@@ -390,9 +390,6 @@ begin
   head.cchHeader:=Length(t);
   head.fKeepConn:=FResHeaders['Content-Length']<>'';//TODO: chunked encoding
   ServerFunction(HSE_REQ_SEND_RESPONSE_HEADER_EX,@head,nil,nil);
-
-  //clear buffer just in case
-  if ContentBuffer<>nil then ContentBuffer.Position:=0;
 end;
 
 function TXxmIsapiContext.Connected: Boolean;
