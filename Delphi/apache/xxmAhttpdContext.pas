@@ -99,15 +99,7 @@ begin
         except
           x:='unknown';
         end;
-        SendError('error',[
-          'ERRORCLASS',e.ClassName,
-          'ERROR',HTMLEncode(e.Message),
-          'CLASS',FPageClass,
-          'URL',HTMLEncode(rq.unparsed_uri),
-          'POSTDATA',x,
-          'QUERYSTRING',HTMLEncode(rq.args),
-          'VERSION',SelfVersion
-        ]);
+        SendError('error',e.ClassName,e.Message);
        end;
   end;
 end;

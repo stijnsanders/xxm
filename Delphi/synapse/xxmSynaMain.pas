@@ -392,15 +392,7 @@ begin
       ForceStatus(400,'Bad Request');
       FProjectName:='';
       FFragmentName:='';
-      SendError('error',[
-        'ERRORCLASS','',
-        'ERROR','Bad Request',
-        'CLASS','',
-        'URL',HTMLEncode(FURI),
-        'POSTDATA','',
-        'QUERYSTRING','',
-        'VERSION',SelfVersion
-      ]);
+      SendError('error','','Bad Request');
       raise EXxmPageRedirected.Create(FHTTPVersion+' 400 Bad Request');
      end;
 
@@ -442,15 +434,7 @@ begin
         except
           x:='unknown';
         end;
-        SendError('error',[
-          'ERRORCLASS',e.ClassName,
-          'ERROR',HTMLEncode(e.Message),
-          'CLASS',FPageClass,
-          'URL',HTMLEncode(ContextString(csURL)),
-          'POSTDATA',x,
-          'QUERYSTRING',HTMLEncode(ContextString(csQueryString)),
-          'VERSION',SelfVersion
-        ]);
+        SendError('error',e.ClassName,e.Message);
        end;
   end;
   PostProcessRequest;

@@ -223,15 +223,7 @@ begin
         except
           x:='unknown';
         end;
-        SendError('error',[
-          'ERRORCLASS',e.ClassName,
-          'ERROR',HTMLEncode(e.Message),
-          'CLASS',FPageClass,
-          'URL',HTMLEncode(ContextString(csURL)),
-          'POSTDATA',x,
-          'QUERYSTRING',HTMLEncode(ContextString(csQueryString)),
-          'VERSION',ContextString(csVersion)
-        ]);
+        SendError('error',e.ClassName,e.Message);
        end;
   end;
 end;

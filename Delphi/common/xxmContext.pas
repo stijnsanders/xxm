@@ -93,7 +93,7 @@ type
     procedure CheckHeaderNotSent;
     function CheckSendStart:boolean;
 
-    procedure SendError(const res:string;const vals:array of string);
+    procedure SendError(const res,val1,val2:string);
     procedure ForceStatus(Code: Integer; Text: WideString);
     function HandleException(Ex: Exception): boolean;
 
@@ -342,13 +342,7 @@ begin
     if FPage=nil then
      begin
       ForceStatus(StatusFileNotFound,'File not found');
-      SendError('fnf',[
-        'URL',HTMLEncode(FURL),
-        'PROJECT',FProjectName,
-        'ADDRESS',FFragmentName,
-        'PATH',HTMLEncode(FSingleFileSent),
-        'VERSION',ContextString(csVersion)
-      ]);
+      SendError('fnf','','');
      end
     else
       try
@@ -400,14 +394,12 @@ begin
     raise EXxmResponseHeaderAlreadySent.Create(SXxmResponseHeaderAlreadySent);
 end;
 
-procedure TXxmGeneralContext.SendError(const res: string;
-  const vals: array of string);
+procedure TXxmGeneralContext.SendError(const res, val1, val2: string);
 var
   s:AnsiString;
-  ss:string;
-  i:integer;
+  ss,tt,t:string;
+  i,j,l:integer;
   r:TResourceStream;
-  l:Int64;
 const
   RT_HTML = MakeIntResource(23);
 begin
@@ -415,9 +407,27 @@ begin
    begin
     if (FHeaderSent=XxmHeaderSent) and (FContentType='text/plain') then
      begin
-      ss:=#13#10'----------------------------------------'#13#10'### '+res+' ###';
-      for i:=0 to (Length(vals) div 2)-1 do
-        ss:=ss+#13#10+vals[i*2]+' = '+vals[i*2+1];
+      tt:=#13#10'----------------------------------------'+
+        #13#10'### '+res+' ###'+
+        #13#10+val1+
+        #13#10+val2+
+        #13#10'URL: '+FURL+
+        #13#10'Project: '+FProjectName+
+        #13#10'Address: '+FFragmentName+
+        #13#10'Class: '+FPageClass;
+      if FSingleFileSent<>'' then tt:=tt+#13#10'Path: '+FSingleFileSent;
+      tt:=tt+#13#10'QueryString: '+ContextString(csQueryString)+
+        #13#10'PostData: ';
+      try
+        if FPostData=nil then
+          tt:=tt+'none'
+        else
+          tt:=tt+IntToStr(FPostData.Size)+' bytes';
+      except
+        tt:=tt+'unknown';
+      end;
+      tt:=tt+
+        #13#10'Version: '+ContextString(csVersion);
      end
     else
      begin
@@ -430,15 +440,77 @@ begin
         r.Free;
       end;
       ss:=string(s);
-      for i:=0 to (Length(vals) div 2)-1 do
-        ss:=StringReplace(ss,'[['+vals[i*2]+']]',vals[i*2+1],[rfReplaceAll]);
+      tt:='';
+      l:=Length(ss);
+      i:=1;
+      t:='';//default
+      while i<=l do
+       begin
+        j:=i;
+        while (j<l) and (ss[j]<>'$') do inc(j);
+        if j=l then inc(j);
+        tt:=tt+Copy(ss,i,j-i);
+        if j<l then
+         begin
+          inc(j);
+          case ss[j] of
+            '1':tt:=tt+HTMLEncode(val1);
+            '2':tt:=tt+HTMLEncode(val2);
+            'A':tt:=tt+HTMLEncode(FFragmentName);
+            'C':tt:=tt+HTMLEncode(FPageClass);
+            'D':
+              try
+                if FPostData=nil then
+                  tt:=tt+'none'
+                else
+                  tt:=tt+IntToStr(FPostData.Size)+' bytes';
+              except
+                tt:=tt+'unknown';
+              end;
+            'L':tt:=tt+t;//see 'R','X'
+            'P':tt:=tt+HTMLEncode(FProjectName);
+            'Q':tt:=tt+HTMLEncode(ContextString(csQueryString));
+            'R':
+             begin
+              t:=ContextString(csReferer);
+              if t='' then
+               begin
+                tt:=tt+'#';
+                t:='';
+               end
+              else
+               begin
+                tt:=tt+HTMLEncode(t);
+                t:='back';
+               end;
+             end;
+            'S':tt:=tt+HTMLEncode(FSingleFileSent);
+            'U':tt:=tt+HTMLEncode(FURL);
+            'V':tt:=tt+ContextString(csVersion);
+            'X':
+              if ContextString(csVerb)='GET' then
+               begin
+                tt:=tt+HTMLEncode(FURL);
+                t:='refresh';
+               end
+              else
+               begin
+                tt:=tt+'#';
+                t:='';
+               end;
+            //else ?
+          end;
+          inc(j);
+         end;
+        i:=j;
+       end;
       if FHeaderSent<>XxmHeaderSent then
        begin
         FContentType:='text/html';
         FAutoEncoding:=aeContentDefined;//?
        end;
      end;
-    SendStr(WideString(ss));
+    SendStr(WideString(tt));
     if FBufferSize<>0 then Flush;
    end;
 end;

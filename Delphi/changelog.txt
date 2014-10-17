@@ -1,3 +1,6 @@
+v1.2.2.???
+- error page: back link when referer, refresh link only on GET
+
 v1.2.1.337
 - xxmHttp: IPv6 support
 - xxmHttp: support OPTIONS, HEAD, TRACE

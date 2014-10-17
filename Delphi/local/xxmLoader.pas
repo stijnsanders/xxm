@@ -262,15 +262,7 @@ begin
         except
           x:='unknown';
         end;
-        SendError('error',[
-          'ERRORCLASS',e.ClassName,
-          'ERROR',HTMLEncode(e.Message),
-          'CLASS',FPageClass,
-          'URL',HTMLEncode(FURL),
-          'POSTDATA',x,
-          'QUERYSTRING',FQueryString,
-          'VERSION',SelfVersion
-        ]);
+        SendError('error',e.ClassName,e.Message);
        end;
   end;
 

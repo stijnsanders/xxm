@@ -254,15 +254,7 @@ begin
             except
               y:='unknown';
             end;
-            SendError('error',[
-              'ERRORCLASS',e.ClassName,
-              'ERROR',HTMLEncode(e.Message),
-              'CLASS',FPageClass,
-              'URL',HTMLEncode(FURL),
-              'POSTDATA',y,
-              'QUERYSTRING',ecb.lpszQueryString,
-              'VERSION',ContextString(csVersion)
-            ]);
+            SendError('error',e.ClassName,e.Message);
            end;
         except
           //silent
