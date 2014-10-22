@@ -116,7 +116,7 @@ procedure TQueryStore.ReadQueriesSQL;
 var
   s:string;
   f:TFileStream;
-  i,l,q,r1,r2,s1,s2,n1,n2:integer;
+  i,l,q,ql,r1,r2,s1,s2,n1,n2:integer;
 begin
   //assert currentdir set to modulepath
   f:=TFileStream.Create('queries.sql',fmOpenRead or fmShareDenyWrite);
@@ -130,6 +130,7 @@ begin
   end;
   i:=1;
   q:=0;
+  ql:=0;
   r1:=0;
   s1:=0;
   s2:=0;
@@ -157,7 +158,11 @@ begin
         //process previous marker
         if r1<>0 then
          begin
-          SetLength(FQueries,q+1);
+		  if q=ql then
+		   begin
+		    inc(ql,$100);//grow
+			SetLength(FQueries,ql);
+		   end;
           FQueries[q].ID:=Copy(s,s1,s2-s1);
           FQueries[q].SQL:=Copy(s,r1,r2-r1+1);
           inc(q);
@@ -179,10 +184,16 @@ begin
     //skip trailing whitespace
     dec(i);
     while (i<>0) and (s[i]<' ') do dec(i);
-    SetLength(FQueries,q+1);
+	if q=ql then
+	 begin
+	  inc(ql);//,$100);
+      SetLength(FQueries,ql);
+	 end;
     FQueries[q].ID:=Copy(s,s1,s2-s1);
     FQueries[q].SQL:=Copy(s,r1,i-r1+1);
+	inc(q);
    end;
+  SetLength(FQueries,q);
 end;
 
 procedure CmdParameters(Cmd:Command;const Values:array of Variant);

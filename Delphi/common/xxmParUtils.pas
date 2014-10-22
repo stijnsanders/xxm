@@ -148,10 +148,11 @@ uses Variants;
 procedure SplitHeader(const Value:AnsiString; var Params:TParamIndexes);
 var
   b:boolean;
-  p,q,l,r,i:integer;
+  p,q,l,r,i,pl:integer;
 begin
   q:=1;
   i:=0;
+  pl:=0;
   l:=Length(Value);
   while (q<=l) do
    begin
@@ -170,7 +171,11 @@ begin
       while (r<=q) and (char(Value[r]) in [#1..#32]) do inc(r);
       if r=p then
        begin
-        SetLength(Params,i+1);
+        if i=pl then
+         begin
+          inc(pl,$10);//grow
+          SetLength(Params,pl);
+         end;
         Params[i].NameStart:=p;
         r:=p;
         while (r<=q) and (Value[r]<>':') do inc(r);
@@ -189,23 +194,29 @@ begin
        end;
      end;
    end;
+  SetLength(Params,i);
 end;
 
 function SplitHeaderValue(const Value:AnsiString;
   ValueStart,ValueLength:integer;var Params:TParamIndexes):AnsiString;
 var
-  i,j,l,q:integer;
+  i,j,l,q,pl:integer;
 begin
+  q:=0;
+  pl:=0;
   l:=ValueStart+ValueLength-1;
   i:=ValueStart;//set to 0 to start parsing sub-values
   if i=0 then inc(l) else while (i<=l) and (Value[i]<>';') do inc(i);
   if i<=l then
    begin
     if i=0 then Result:='' else Result:=Copy(Value,ValueStart,i-ValueStart);
-    q:=0;
     while i<=l do
      begin
-      SetLength(Params,q+1);
+      if q=pl then
+       begin
+        inc(pl,$10);
+        SetLength(Params,pl);
+       end;
       inc(i);
       while (i<=l) and (char(Value[i]) in [#1..#32]) do inc(i);
       Params[q].NameStart:=i;
@@ -236,10 +247,8 @@ begin
      end;
    end
   else
-   begin
     Result:=Copy(Value,ValueStart,ValueLength);
-    SetLength(Params,0);
-   end;
+  SetLength(Params,q);
 end;
 
 function GetParamValue(const Data:AnsiString;
@@ -366,14 +375,16 @@ end;
 
 function TStreamNozzle.GetHeader(var Params: TParamIndexes): AnsiString;
 const
-  GrowStep=$1000;
+  sGrowStep=$1000;
+  pGrowStep=$10;
 var
   b:boolean;
-  p,q,r,s,i:integer;
+  p,q,r,s,i,l:integer;
 begin
   p:=0;
   q:=1;
   i:=0;
+  l:=0;
   s:=0;
   while Ensure(1) and (q-p<>2) do //2 being Length(EOL)
    begin
@@ -383,7 +394,7 @@ begin
      begin
       if q>s then
        begin
-        inc(s,GrowStep);
+        inc(s,sGrowStep);
         SetLength(Result,s);
        end;
       Result[q]:=Data[Index];
@@ -397,7 +408,11 @@ begin
 
     if q-p<>2 then
      begin
-      SetLength(Params,i+1);
+      if i=l then
+       begin
+        inc(l,pGrowStep);
+        SetLength(Params,l);
+       end;
       Params[i].NameStart:=p;
       r:=p;
       while (r<=q) and (Result[r]<>':') do inc(r);
@@ -409,6 +424,7 @@ begin
       inc(i);
      end;
    end;
+  SetLength(Params,i);
   SetLength(Result,q-1);
   Flush;
 end;
