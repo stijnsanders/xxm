@@ -13,18 +13,21 @@ type
     FHandle:THandle;
     FLoadSignature:AnsiString;
     FCheckMutex:THandle;
+    FFilePath,FLoadPath:WideString;
+    FLoadCopy:boolean;
   protected
     FSignature:AnsiString;
-    FFilePath,FLoadPath:WideString;
     function GetProject: IXxmProject;
     function LoadProject: IXxmProject; virtual;
     function GetModulePath:WideString; virtual;
     procedure SetSignature(const Value: AnsiString); virtual; abstract;
+    procedure SetFilePath(const FilePath: WideString; LoadCopy: boolean);
     function ProjectLoaded:boolean;
     function GetExtensionMimeType(const x:AnsiString): AnsiString; virtual;
     function GetAllowInclude:boolean; virtual; abstract;
+    property FilePath: WideString read FFilePath;
   published
-    constructor Create(const Name:WideString);//abstract! only here for initialization
+    constructor Create(const Name: WideString);
     destructor Destroy; override;
   public
     //used by auto-build/auto-update
@@ -77,15 +80,16 @@ uses Registry, xxmCommonUtils;
 
 { TXxmProjectEntry }
 
-constructor TXxmProjectEntry.Create(const Name:WideString);
+constructor TXxmProjectEntry.Create(const Name: WideString);
 begin
   inherited Create;
   FName:=Name;
   FContextCount:=0;
   FProject:=nil;
   FHandle:=0;
-  FFilePath:='';//set by inheriters
-  FLoadPath:='';//set by inheriters
+  FFilePath:='';//see SetFilePath
+  FLoadPath:='';
+  FLoadCopy:=false;
   FSignature:='';//used for auto-build
   FLoadSignature:='';//used for auto-update
   FCheckMutex:=0;
@@ -177,7 +181,8 @@ begin
     if FLoadPath<>'' then
      begin
       //SetFileAttributesW(PWideChar(FLoadPath),0);
-      DeleteFileW(PWideChar(FLoadPath));
+      DeleteFileW(PWideChar(FLoadPath));//ignore errors
+      FLoadPath:='';
      end;
    end;
 end;
@@ -206,25 +211,38 @@ end;
 function TXxmProjectEntry.LoadProject: IXxmProject;
 var
   lp:TXxmProjectLoadProc;
+  i:DWORD;
 begin
   FLoadSignature:=GetFileSignature(FFilePath);
   if FLoadSignature='' then //if not(FileExists(FFilePath)) then
     raise EXxmModuleNotFound.Create(StringReplace(
       SXxmModuleNotFound,'__',FFilePath,[]));
-  if FLoadPath='' then
+  if not(FLoadCopy and GlobalAllowLoadCopy) then
     FHandle:=LoadLibraryW(PWideChar(FFilePath))
   else
    begin
-    if not(CopyFileW(PWideChar(FFilePath),PWideChar(FLoadPath),false)) then
-      raise EXxmProjectLoadFailed.Create('LoadProject: Create load copy failed: '+SysErrorMessage(GetLastError));
-    SetFileAttributesW(PWideChar(FLoadPath),FILE_ATTRIBUTE_HIDDEN or FILE_ATTRIBUTE_SYSTEM);
+    FLoadPath:=Copy(FFilePath,1,Length(FFilePath)-4)+
+      '_'+WideString(FLoadSignature)+'.xxlc';
+    if CopyFileW(PWideChar(FFilePath),PWideChar(FLoadPath),true) then
+      SetFileAttributesW(PWideChar(FLoadPath),
+        FILE_ATTRIBUTE_HIDDEN or FILE_ATTRIBUTE_SYSTEM)//ignore error
+    else
+     begin
+      i:=GetLastError;
+      if i<>ERROR_FILE_EXISTS then
+        raise EXxmProjectLoadFailed.Create('LoadProject: Create load copy failed: '+
+          SysErrorMessage(i));
+      //else assert files are equal
+     end;
     FHandle:=LoadLibraryW(PWideChar(FLoadPath));
    end;
   if FHandle=0 then
-    raise EXxmProjectLoadFailed.Create('LoadProject: LoadLibrary failed: '+SysErrorMessage(GetLastError));
+    raise EXxmProjectLoadFailed.Create('LoadProject: LoadLibrary failed: '+
+      SysErrorMessage(GetLastError));
   @lp:=GetProcAddress(FHandle,'XxmProjectLoad');
   if @lp=nil then
-    raise EXxmProjectLoadFailed.Create('LoadProject: GetProcAddress failed: '+SysErrorMessage(GetLastError));
+    raise EXxmProjectLoadFailed.Create('LoadProject: GetProcAddress failed: '+
+      SysErrorMessage(GetLastError));
   Result:=lp(FName);//try?
 end;
 
@@ -316,6 +334,16 @@ end;
 function TXxmProjectEntry.GetProjectInterface(const IID: TGUID): IUnknown;
 begin
   if (Self=nil) or (FProject=nil) or (FProject.QueryInterface(IID,Result)<>S_OK) then Result:=nil;
+end;
+
+procedure TXxmProjectEntry.SetFilePath(const FilePath: WideString;
+  LoadCopy: boolean);
+begin
+  //assert FProject=nil//if FFilePath<>'' then Release;
+  FFilePath:=FilePath;
+  FLoadPath:='';
+  FLoadCopy:=LoadCopy;
+  //if FLoadCopy then FLoadPath:=FFilePath+'_'+IntToHex(GetCurrentProcessId,4);
 end;
 
 { TXxmProjectCache }

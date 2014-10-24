@@ -1,5 +1,6 @@
 v1.2.2.???
 - error page: back link when referer, refresh link only on GET
+- LoadCopy by library file signature to avoid multiple copies being loaded
 
 v1.2.1.337
 - xxmHttp: IPv6 support

@@ -13,7 +13,7 @@ type
       Name,Value:WideString;
       //TODO: expiry, domain, path...
     end;
-    procedure GetRegisteredPath;
+    function GetRegisteredPath: WideString;
   protected
     function LoadProject: IXxmProject; override;
     function GetModulePath:WideString; override;
@@ -113,15 +113,10 @@ end;
 
 function TXxmProjectCacheEntry.LoadProject: IXxmProject;
 begin
-  if not ProjectLoaded and ((FFilePath='') or not(FileExists(FFilePath))) then
+  if not ProjectLoaded and ((FilePath='') or not(FileExists(FilePath))) then
     GetRegisteredPath;//refresh
   Result:=inherited LoadProject;
-  if not ProjectLoaded then
-   begin
-    //force refresh next time
-    FFilePath:='';
-    FLoadPath:='';
-   end;
+  if not ProjectLoaded then SetFilePath('',false);
 end;
 
 function TXxmProjectCacheEntry.GetSessionCookie(const Name: WideString): WideString;
@@ -189,38 +184,29 @@ begin
   end;
 end;
 
-procedure TXxmProjectCacheEntry.GetRegisteredPath;
+function TXxmProjectCacheEntry.GetRegisteredPath: WideString;
 var
   r:TRegistry;
   k:AnsiString;
   i:integer;
-  LoadCopy:boolean;
 begin
   k:='\Software\xxm\local\'+Name;
   r:=TRegistry.Create;
   try
     r.RootKey:=HKEY_CURRENT_USER;
     if r.OpenKeyReadOnly(k) then
-     begin
-      FFilePath:=r.ReadString('');
-      LoadCopy:=not(r.ValueExists('LoadCopy')) or r.ReadBool('LoadCopy');
-     end
+      SetFilePath(r.ReadString(''),
+        not(r.ValueExists('LoadCopy')) or r.ReadBool('LoadCopy'))
     else
      begin
       r.RootKey:=HKEY_LOCAL_MACHINE;
       if r.OpenKeyReadOnly(k) then
-       begin
-        FFilePath:=r.ReadString('');
-        LoadCopy:=not(r.ValueExists('LoadCopy')) or r.ReadBool('LoadCopy');
-       end
+        SetFilePath(r.ReadString(''),
+          not(r.ValueExists('LoadCopy')) or r.ReadBool('LoadCopy'))
       else
-       begin
-        FFilePath:='';
-        FLoadPath:='';
-        LoadCopy:=false;//counter warning
-       end;
+        SetFilePath('',false);
      end;
-    if FFilePath='' then
+    if FilePath='' then
       raise EXxmProjectNotFound.Create(StringReplace(
         SXxmProjectNotFound,'__',Name,[]));
 
@@ -234,22 +220,19 @@ begin
     //TODO: extra flags,settings?
 
     //TODO: from setting?
-    i:=Length(FFilePath);
-    while (i<>0) and (FFilePath[i]<>PathDelim) do dec(i);
-    FCookiePath:=Copy(FFilePath,1,i);
-
-    if LoadCopy and GlobalAllowLoadCopy then
-      FLoadPath:=FFilePath+'_'+IntToHex(GetCurrentProcessId,4);
+    i:=Length(FilePath);
+    while (i<>0) and (FilePath[i]<>PathDelim) do dec(i);
+    FCookiePath:=Copy(FilePath,1,i);
 
   finally
     r.Free;
   end;
+  Result:=FilePath;
 end;
 
 function TXxmProjectCacheEntry.GetModulePath: WideString;
 begin
-  if FFilePath='' then GetRegisteredPath;
-  Result:=FFilePath;
+  if FilePath='' then Result:=GetRegisteredPath else Result:=FilePath;
 end;
 
 function TXxmProjectCacheEntry.GetAllowInclude: Boolean;

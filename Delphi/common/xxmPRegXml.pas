@@ -77,9 +77,8 @@ constructor TXxmProjectCacheEntry.Create(const Name, FilePath: WideString;
   LoadCopy, AllowInclude: boolean);
 begin
   inherited Create(Name);
-  FFilePath:=FilePath;
   FAllowInclude:=AllowInclude;
-  if LoadCopy then FLoadPath:=FFilePath+'_'+IntToHex(GetCurrentProcessId,4);
+  SetFilePath(FilePath,LoadCopy);
 end;
 
 destructor TXxmProjectCacheEntry.Destroy;
@@ -254,19 +253,14 @@ begin
 
               if FProjects[i].Entry=nil then
                 FProjects[i].Entry:=TXxmProjectCacheEntry.Create(s,p,
-                  GlobalAllowLoadCopy and (VarToStr(x.getAttribute('LoadCopy'))<>'0'),
+                  VarToStr(x.getAttribute('LoadCopy'))<>'0',
                   VarToStr(x.getAttribute('AllowInclude'))<>'0')
               else
                begin
-                if p<>FProjects[i].Entry.FFilePath then
+                if p<>FProjects[i].Entry.FilePath then
                  begin
-                  FProjects[i].Entry.Release;
-                  FProjects[i].Entry.FFilePath:=p;
-                  if GlobalAllowLoadCopy and (VarToStr(x.getAttribute('LoadCopy'))<>'0') then
-                    FProjects[i].Entry.FLoadPath:=
-                      p+'_'+IntToHex(GetCurrentProcessId,4)
-                  else
-                    FProjects[i].Entry.FLoadPath:='';
+                  FProjects[i].Entry.SetFilePath(p,
+                    VarToStr(x.getAttribute('LoadCopy'))<>'0');
                   FProjects[i].Entry.FAllowInclude:=
                     VarToStr(x.getAttribute('AllowInclude'))<>'0';
                  end;
