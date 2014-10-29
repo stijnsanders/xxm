@@ -19,7 +19,7 @@ end;
 
 interface
 
-uses xxm, Contnrs;
+uses xxm, Classes;
 
 type
   TXxmSession=class(TObject)
@@ -32,11 +32,11 @@ type
     Name:AnsiString;
 
     constructor Create(Context: IXxmContext);
-	
-	//CSRF protection by posting session cookie value
-	function FormProtect:WideString;
-	procedure CheckProtect;
-	
+
+    //CSRF protection by posting session cookie value
+    function FormProtect:WideString;
+    procedure CheckProtect(Context: IXxmContext);
+
     property SessionID:WideString read FSessionID;
   end;
 
@@ -50,35 +50,39 @@ implementation
 
 uses SysUtils;
 
-//TODO: something better than plain objectlist
 var
-  SessionStore:TObjectList;
+  SessionStore:TStringList;
 
 procedure SetSession(Context: IXxmContext);
 var
   i:integer;
   sid:WideString;
 begin
-  if SessionStore=nil then SessionStore:=TObjectList.Create(true);
+  if SessionStore=nil then
+   begin
+    SessionStore:=TStringList.Create;
+    SessionStore.Sorted:=true;
+    SessionStore.CaseSensitive:=true;
+    //SessionStore.Duplicates:=dupError;
+   end;
   sid:=Context.SessionID;
-  i:=0;
-  while (i<SessionStore.Count) and not(TXxmSession(SessionStore[i]).SessionID=sid) do inc(i);
+  i:=SessionStore.IndexOf(sid);
   //TODO: session expiry!!!
-  if (i<SessionStore.Count) then Session:=TXxmSession(SessionStore[i]) else
+  if (i<>-1) then Session:=SessionStore.Objects[i] as TXxmSession else
    begin
     //as a security measure, disallow  new sessions on a first POST request
     if Context.ContextString(csVerb)='POST' then
       raise Exception.Create('Access denied.');
     Session:=TXxmSession.Create(Context);
-    SessionStore.Add(Session);
+    SessionStore.AddObject(sid,Session);
    end;
 end;
 
 //call AbandonSession to release session data (e.g. logoff)
 procedure AbandonSession;
 begin
-  SessionStore.Remove(Session);
-  Session:=nil;
+  SessionStore.Delete(SessionStore.IndexOf(Session.SessionID));
+  FreeAndNil(Session);
 end;
 
 { TxxmSession }
@@ -100,22 +104,23 @@ begin
   Result:='<input type="hidden" name="XxmSessionID" value="'+HTMLEncode(FSessionID)+'" />';
 end;
 
-procedure TXxmSession.CheckProtect;
+procedure TXxmSession.CheckProtect(Context: IXxmContext);
 var
   p:IXxmParameter;
+  pp:IXxmParameterPost;
 begin
   if Context.ContextString(csVerb)='POST' then
    begin
     p:=Context.Parameter['XxmSessionID'];
-	if not((p is IxxmParameterPost) and (p.Value=FSessionID)) then
-	  raise Exception.Create('Invalid POST source detected.');
+    if not((p.QueryInterface(IxxmParameterPost,pp)=S_OK) and (p.Value=FSessionID)) then
+      raise Exception.Create('Invalid POST source detected.');
    end
   else
     raise Exception.Create('xxmSession.CheckProtect only works on POST requests.');
 end;
 
 initialization
-  SessionStore:=nil;
+  SessionStore:=nil;//see SetSession
 finalization
   FreeAndNil(SessionStore);
 

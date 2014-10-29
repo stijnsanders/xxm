@@ -53,7 +53,7 @@ local
 grand rework
 - transfer-encoding chunked?
 - Accept-Ranges: bytes on files ('Range' request header?)
-- IPv6 support?
+- IPv6 support? http://[::]/
 
 idea's
 - find something better than a threadvar for the session data object reference

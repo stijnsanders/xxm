@@ -2,7 +2,7 @@ unit xxmSession;
 
 interface
 
-uses xxm, Contnrs;
+uses xxm, Classes;
 
 type
   TXxmSession=class(TObject)
@@ -10,7 +10,7 @@ type
     FSessionID:WideString;
   public
     //TODO: support multiple concurrent uploads per session with upload identifiers
-	UploadProgressPosition,UploadProgressLength:integer;
+    UploadProgressPosition,UploadProgressLength:integer;
 
     constructor Create(Context: IXxmContext);
     property SessionID:WideString read FSessionID;
@@ -26,35 +26,39 @@ implementation
 
 uses SysUtils;
 
-//TODO: something better than plain objectlist
 var
-  SessionStore:TObjectList;
+  SessionStore:TStringList;
 
 procedure SetSession(Context: IXxmContext);
 var
   i:integer;
   sid:WideString;
 begin
-  if SessionStore=nil then SessionStore:=TObjectList.Create(true);
+  if SessionStore=nil then
+   begin
+    SessionStore:=TStringList.Create;
+    SessionStore.Sorted:=true;
+    SessionStore.CaseSensitive:=true;
+    //SessionStore.Duplicates:=dupError;
+   end;
   sid:=Context.SessionID;
-  i:=0;
-  while (i<SessionStore.Count) and not(TXxmSession(SessionStore[i]).SessionID=sid) do inc(i);
+  i:=SessionStore.IndexOf(sid);
   //TODO: session expiry!!!
-  if (i<SessionStore.Count) then Session:=TXxmSession(SessionStore[i]) else
+  if (i<>-1) then Session:=SessionStore.Objects[i] as TXxmSession else
    begin
     //as a security measure, disallow  new sessions on a first POST request
     if Context.ContextString(csVerb)='POST' then
       raise Exception.Create('Access denied.');
     Session:=TXxmSession.Create(Context);
-    SessionStore.Add(Session);
+    SessionStore.AddObject(sid,Session);
    end;
 end;
 
 //call AbandonSession to release session data (e.g. logoff)
 procedure AbandonSession;
 begin
-  SessionStore.Remove(Session);
-  Session:=nil;
+  SessionStore.Delete(SessionStore.IndexOf(Session.SessionID));
+  FreeAndNil(Session);
 end;
 
 { TxxmSession }
