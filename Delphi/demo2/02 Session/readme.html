@@ -1,7 +1,7 @@
 <h3>xxm Demo Projects - 02 Session</h3>
 <p>This is a demo project showing how to set up basic session management in a xxm project.</p>
 <p style="background-color:gold;"><b>Important:</b> Some website-platforms use multiple processes to host a website.
-Since this demonstration project uses a single TObjectList object to store session data,
+Since this demonstration project uses a single TStringList object to store session data under the sorted SessionID's,
 the processes won't be able to access eachother's session data in this case, which results in unexpected behavior.<br />
 For advanced projects it is strongly advised to use a central session object store (e.g.: a database, COM or COM+ server),
 or to disable multiple processes (IIS: limit to 1 worker processes, Apache: single-process mode "-X")</p>
