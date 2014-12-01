@@ -1,0 +1,15 @@
+<h3>xxm Demo Projects - 11 Basic Authentication</h3>
+<p>This is a demo project showing how to protect one or more pages with a plain username and password.</p>
+<p><b>Attention:</b> This method doesn't apply a high level of security. Username and password combination is transmitted in the HTTP meta-data, and is vulnerable to man-in-the-middle attacks. Therefore it's advisable to force the client to use HTTPS, but even so if you want proper security you should look into proper authentication on the server level by dedicated security infrastructure.</p>
+<dl>
+<dt>Web.xxmp</dt>
+<dd>The project file, contains an internal list of the files of the project, and other data about the project.<br />
+Use xxmProject.exe to edit and manage project settings.</dd>
+<dt>Default.xxm</dt>
+<dd>The website's default page. It is not protected.</dd>
+<dt>Secret.xxm</dt>
+<dd>This page is protected by asking for username and password. If none is available, the page responds with HTTP status code 401 and a <code>WWW-Authenticate</code> header causing the user agent to pop-up a dialog to enter username and password.</dd>
+<dt>xxmp.pas</dt>
+<dd>The project's main unit. When this file is missing form the project, xxm creates one for you.<br />
+Here, <code>TXxmdemo.LoadPage</code> contains a section of code commented out showing how to enable the password protection over the entire site.</dd>
+</dl>

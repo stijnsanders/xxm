@@ -123,7 +123,7 @@ begin
   while not QuitApp do
    begin
     //if WaitForSingleObject(hrq,0)=WAIT_OBJECT_0 then ???
-      PageLoaderPool.Queue(TXxmHSys1Context.Create(hrq.RequestQueueHandle));
+      PageLoaderPool.Queue(TXxmHSysContext.Create(hrq.RequestQueueHandle));
     HandleMessagesProc(QuitApp);
    end;
 

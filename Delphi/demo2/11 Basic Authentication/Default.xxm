@@ -1,0 +1,7 @@
+<html>
+<body>
+<h1>Demo Basic Authentication</h1>
+<p>This is an unprotected page.</p>
+<p><a href="Secret.xxm">Click here!</a></p>
+</body>
+</html>

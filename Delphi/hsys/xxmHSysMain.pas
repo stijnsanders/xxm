@@ -9,7 +9,7 @@ uses
   xxmPRegXml, xxmParams, xxmParUtils, xxmHeaders;
 
 const
-  XxmHSys1ContextDataSize=$1000;
+  XxmHSysContextDataSize=$1000;
 
 type
   TXxmPostDataStream=class(TCustomMemoryStream)
@@ -25,9 +25,9 @@ type
     procedure SetSize(NewSize: Integer); override;
   end;
 
-  TXxmHSys1Context=class(TXxmQueueContext, IxxmHttpHeaders)
+  TXxmHSysContext=class(TXxmQueueContext, IxxmHttpHeaders)
   private
-    FData:array[0..XxmHSys1ContextDataSize-1] of byte;
+    FData:array[0..XxmHSysContextDataSize-1] of byte;
     FHSysQueue:THandle;
     FReq:PHTTP_REQUEST;
     FRes:THTTP_RESPONSE;
@@ -63,7 +63,7 @@ type
     function GetRequestHeaders:IxxmDictionaryEx;
     function GetResponseHeaders:IxxmDictionaryEx;
   public
-    Queue:TXxmHSys1Context;
+    Queue:TXxmHSysContext;
 
     constructor Create(HSysQueue:THandle);
     destructor Destroy; override;
@@ -86,9 +86,9 @@ resourcestring
 const
   StringCacheGrowStep=$20;
 
-{ TXxmHSys1Context }
+{ TXxmHSysContext }
 
-constructor TXxmHSys1Context.Create(HSysQueue:THandle);
+constructor TXxmHSysContext.Create(HSysQueue:THandle);
 var
   l:cardinal;
 begin
@@ -98,10 +98,10 @@ begin
   SendDirect:=SendData;
   FHSysQueue:=HSysQueue;
   FReq:=PHTTP_REQUEST(@FData[0]);
-  ZeroMemory(FReq,XxmHSys1ContextDataSize);
+  ZeroMemory(FReq,XxmHSysContextDataSize);
   HttpCheck(HttpReceiveHttpRequest(HSysQueue,HTTP_NULL_ID,
     0,//HTTP_RECEIVE_REQUEST_FLAG_FLUSH_BODY,
-    FReq,XxmHSys1ContextDataSize,l,nil));
+    FReq,XxmHSysContextDataSize,l,nil));
 
   //SetLength(FUnknownHeaders,0);
   ZeroMemory(@FRes,SizeOf(THTTP_RESPONSE));
@@ -117,13 +117,13 @@ begin
   FRedirectPrefix:='';
 end;
 
-destructor TXxmHSys1Context.Destroy;
+destructor TXxmHSysContext.Destroy;
 begin
   //
   inherited;
 end;
 
-procedure TXxmHSys1Context.Execute;
+procedure TXxmHSysContext.Execute;
 var
   i:integer;
   x:AnsiString;
@@ -171,17 +171,17 @@ begin
     0,nil,cardinal(nil^),nil,0,nil,nil);
 end;
 
-function TXxmHSys1Context.GetProjectEntry: TXxmProjectEntry;
+function TXxmHSysContext.GetProjectEntry: TXxmProjectEntry;
 begin
   Result:=XxmProjectCache.GetProject(FProjectName);
 end;
 
-function TXxmHSys1Context.Connected: boolean;
+function TXxmHSysContext.Connected: boolean;
 begin
   Result:=true;//HttpSend* fails on disconnect
 end;
 
-function TXxmHSys1Context.ContextString(cs: TXxmContextString): WideString;
+function TXxmHSysContext.ContextString(cs: TXxmContextString): WideString;
 const
   HttpVerb:array[THTTP_VERB] of WideString=(
     '',//HttpVerbUnparsed,
@@ -229,8 +229,8 @@ begin
     csLanguage:x:=HttpHeaderAcceptLanguage;//HttpHeaderContentLanguage?
     csRemoteAddress:Result:=inet_ntoa(FReq.Address.pRemoteAddress.sin_addr);
     csRemoteHost:Result:=inet_ntoa(FReq.Address.pRemoteAddress.sin_addr);//TODO: resolve name
-    csAuthUser:;//TODO:Result:=GetCGIValue('AUTH_USER');
-    csAuthPassword:;//TODO:Result:=GetCGIValue('AUTH_PASSWORD');
+    csAuthUser:     begin CheckAuth; Result:=FAuthUserName; end;
+    csAuthPassword: begin CheckAuth; Result:=FAuthPassword; end;
     else
       raise EXxmContextStringUnknown.Create(StringReplace(
         SXxmContextStringUnknown,'__',IntToHex(integer(cs),8),[]));
@@ -238,12 +238,12 @@ begin
   if x<>THTTP_HEADER_ID(-1) then Result:=FReq.Headers.KnownHeaders[x].pRawValue;
 end;
 
-procedure TXxmHSys1Context.DispositionAttach(FileName: WideString);
+procedure TXxmHSysContext.DispositionAttach(FileName: WideString);
 begin
   AddResponseHeader('Content-disposition','attachment; filename="'+FileName+'"');
 end;
 
-function TXxmHSys1Context.GetCookie(Name: WideString): WideString;
+function TXxmHSysContext.GetCookie(Name: WideString): WideString;
 begin
   if not(FCookieParsed) then
    begin
@@ -254,7 +254,7 @@ begin
   Result:=GetParamValue(FCookie,FCookieIdx,Name);
 end;
 
-function TXxmHSys1Context.GetSessionID: WideString;
+function TXxmHSysContext.GetSessionID: WideString;
 const
   SessionCookie='xxmSessionID';
 begin
@@ -270,7 +270,7 @@ begin
   Result:=FSessionID;
 end;
 
-procedure TXxmHSys1Context.Redirect(RedirectURL: WideString;
+procedure TXxmHSysContext.Redirect(RedirectURL: WideString;
   Relative: boolean);
 var
   NewURL,RedirBody:WideString;
@@ -292,7 +292,7 @@ begin
   raise EXxmPageRedirected.Create(RedirectURL);
 end;
 
-function TXxmHSys1Context.SendData(const Buffer; Count: LongInt): LongInt;
+function TXxmHSysContext.SendData(const Buffer; Count: LongInt): LongInt;
 var
   c:THTTP_DATA_CHUNK;
 begin
@@ -309,7 +309,7 @@ begin
    end;
 end;
 
-procedure TXxmHSys1Context.SendHeader;
+procedure TXxmHSysContext.SendHeader;
 var
   l:cardinal;
 const
@@ -339,7 +339,7 @@ begin
     @FRes,nil,l,nil,0,nil,nil));
 end;
 
-function TXxmHSys1Context.GetRequestHeaders: IxxmDictionaryEx;
+function TXxmHSysContext.GetRequestHeaders: IxxmDictionaryEx;
 var
   s:AnsiString;
   x:THTTP_HEADER_ID;
@@ -358,7 +358,7 @@ begin
   Result:=TRequestHeaders.Create(s+#13#10);
 end;
 
-function TXxmHSys1Context.GetResponseHeaders: IxxmDictionaryEx;
+function TXxmHSysContext.GetResponseHeaders: IxxmDictionaryEx;
 begin
   Result:=TxxmHSysResponseHeaders.Create(
     GetResponseHeader,AddResponseHeader,
@@ -366,7 +366,7 @@ begin
     GetResponseHeaderIndex,SetResponseHeaderIndex);
 end;
 
-function TXxmHSys1Context.GetResponseHeader(const Name: WideString): WideString;
+function TXxmHSysContext.GetResponseHeader(const Name: WideString): WideString;
 var
   i:integer;
   x:THTTP_HEADER_ID;
@@ -385,17 +385,19 @@ begin
     Result:=FRes.Headers.KnownHeaders[x].pRawValue;
 end;
 
-function TXxmHSys1Context.GetRequestHeader(const Name: WideString): WideString;
+function TXxmHSysContext.GetRequestHeader(const Name: WideString): WideString;
+var
+  i:THTTP_HEADER_ID;
 begin
-  //TODO: more?
-  if Name='If-Modified-Since' then
-    Result:=WideString(FReq.Headers.KnownHeaders
-      [HttpHeaderIfModifiedSince].pRawValue)
-  else
-    Result:='';
+  //TODO: more? (see also TxxmHSysResponseHeaders, here internal use only)
+  if Name='If-Modified-Since' then i:=HttpHeaderIfModifiedSince else
+  if Name='Authorization' then i:=HttpHeaderAuthorization else
+    i:=THTTP_HEADER_ID(-1);
+  if i=THTTP_HEADER_ID(-1) then Result:='' else
+    Result:=WideString(FReq.Headers.KnownHeaders[i].pRawValue);
 end;
 
-procedure TXxmHSys1Context.AddResponseHeader(const Name, Value: WideString);
+procedure TXxmHSysContext.AddResponseHeader(const Name, Value: WideString);
 var
   i:integer;
   x:THTTP_HEADER_ID;
@@ -421,7 +423,7 @@ begin
     CacheString(Value,FRes.Headers.KnownHeaders[x].RawValueLength,FRes.Headers.KnownHeaders[x].pRawValue);
 end;
 
-procedure TXxmHSys1Context.SetResponseHeader(id: THTTP_HEADER_ID;
+procedure TXxmHSysContext.SetResponseHeader(id: THTTP_HEADER_ID;
   const Value: AnsiString);
 begin
   //TODO: SettingCookie allow multiples
@@ -430,7 +432,7 @@ begin
     FRes.Headers.KnownHeaders[id].pRawValue);
 end;
 
-procedure TXxmHSys1Context.CacheString(const x: AnsiString; var xLen: USHORT;
+procedure TXxmHSysContext.CacheString(const x: AnsiString; var xLen: USHORT;
   var xPtr: PCSTR);
 begin
   //TODO: check duplicate?
@@ -445,13 +447,13 @@ begin
   xPtr:=PAnsiChar(x);
 end;
 
-function TXxmHSys1Context.GetResponseHeaderCount: integer;
+function TXxmHSysContext.GetResponseHeaderCount: integer;
 begin
   Result:=integer(HttpHeaderResponseMaximum)+Length(FUnknownHeaders);
   //TODO: skip empty ones?
 end;
 
-function TXxmHSys1Context.GetResponseHeaderName(Idx: integer): WideString;
+function TXxmHSysContext.GetResponseHeaderName(Idx: integer): WideString;
 begin
   if (Idx>=0) and (Idx<=integer(HttpHeaderResponseMaximum)) then
     Result:=HttpResponseHeaderName[THTTP_HEADER_ID(Idx)]
@@ -462,7 +464,7 @@ begin
       raise ERangeError.Create('GetResponseHeaderName: Out of range');
 end;
 
-function TXxmHSys1Context.GetResponseHeaderIndex(Idx: integer): WideString;
+function TXxmHSysContext.GetResponseHeaderIndex(Idx: integer): WideString;
 begin
   if (Idx>=0) and (Idx<=integer(HttpHeaderResponseMaximum)) then
     Result:=FRes.Headers.KnownHeaders[THTTP_HEADER_ID(Idx)].pRawValue
@@ -473,7 +475,7 @@ begin
       raise ERangeError.Create('GetResponseHeaderIndex: Out of range');
 end;
 
-procedure TXxmHSys1Context.SetResponseHeaderIndex(Idx: integer;
+procedure TXxmHSysContext.SetResponseHeaderIndex(Idx: integer;
   const Value: WideString);
 begin
   if (Idx>=0) and (Idx<=integer(HttpHeaderResponseMaximum)) then

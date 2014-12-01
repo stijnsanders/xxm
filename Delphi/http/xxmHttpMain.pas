@@ -470,8 +470,8 @@ begin
     csLanguage:Result:=FReqHeaders['Accept-Language'];
     csRemoteAddress:Result:=FSocket.Address;
     csRemoteHost:Result:=FSocket.HostName;
-    csAuthUser:Result:='';//TODO:
-    csAuthPassword:Result:='';//TODO:
+    csAuthUser:     begin CheckAuth; Result:=FAuthUserName; end;
+    csAuthPassword: begin CheckAuth; Result:=FAuthPassword; end;
     else
       raise EXxmContextStringUnknown.Create(StringReplace(
         SXxmContextStringUnknown,'__',IntToHex(integer(cs),8),[]));
@@ -553,7 +553,7 @@ end;
 
 function TXxmHttpContext.GetRequestHeader(const Name: WideString): WideString;
 begin
-  Result:=FReqHeaders.Item[Name];
+  Result:=FReqHeaders[Name];
 end;
 
 procedure TXxmHttpContext.AddResponseHeader(const Name, Value: WideString);

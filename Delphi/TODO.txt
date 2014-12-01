@@ -42,6 +42,7 @@ ISAPI
 
 http
 - logging
+- FCookie WideString
 
 local
 - CritSection in loader, not context (saves on resources)

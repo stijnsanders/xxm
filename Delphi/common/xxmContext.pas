@@ -25,11 +25,12 @@ type
     FStatusText, FSingleFileSent: WideString;
     FParams: TXxmReqPars;
     FIncludeCheck: pointer;//see Include
+    FAuthParsed: boolean;
   protected
     FURL, FContentType, FProjectName, FPageClass, FFragmentName: WideString;
     FAutoEncoding: TXxmAutoEncoding;
     FPostData: TStream;
-    FPostTempFile: AnsiString;
+    FPostTempFile, FAuthUserName, FAuthPassword: AnsiString;
     SendBuf, SendDirect: TXxmSendBufHandler;
     SettingCookie: boolean;
 
@@ -92,6 +93,7 @@ type
     function GetProjectPage(FragmentName: WideString):IXxmFragment; virtual;
     procedure CheckHeaderNotSent;
     function CheckSendStart:boolean;
+    procedure CheckAuth;
 
     procedure SendError(const res,val1,val2:string);
     procedure ForceStatus(Code: Integer; Text: WideString);
@@ -181,6 +183,9 @@ begin
   FParams:=nil;//see GetParameter
   FPostData:=nil;
   FPostTempFile:='';
+  FAuthParsed:=false;
+  FAuthUserName:='';
+  FAuthPassword:='';
   FPage:=nil;
   FBuilding:=nil;
   FPageClass:='';
@@ -965,6 +970,107 @@ begin
   SettingCookie:=true;//allow multiple?
   AddResponseHeader('Set-Cookie',x);
   //TODO: Set-Cookie2
+end;
+
+procedure TXxmGeneralContext.CheckAuth;
+var
+  s,t:AnsiString;
+  i,j,l:integer;
+  a,b:byte;
+begin
+  if not FAuthParsed then
+   begin
+    //base64 decode see http://www.faqs.org/rfcs/rfc2045.html #6.8
+    s:=AnsiString(GetRequestHeader('Authorization'));
+    l:=Length(s);
+    if l=0 then
+     begin
+      FAuthUserName:='';
+      FAuthPassword:='';
+     end
+    else
+     begin
+      if (l<6) or (Copy(s,1,6)<>'Basic ') then
+        raise Exception.Create('Unsupported authorization method');
+      i:=7;
+      j:=0;
+      SetLength(t,l div 2);
+      while i<=l do
+       begin
+        case char(s[i]) of
+          'A'..'Z':a:=byte(s[i])-65;
+          'a'..'z':a:=byte(s[i])-71;
+          '0'..'9':a:=byte(s[i])+4;
+          '+':a:=62;
+          '/':a:=63;
+          //'=':;
+          else raise Exception.Create('Authorization: invalid base64 character');
+        end;
+        inc(i);
+        if i<=l then
+         begin
+          case char(s[i]) of
+            'A'..'Z':b:=byte(s[i])-65;
+            'a'..'z':b:=byte(s[i])-71;
+            '0'..'9':b:=byte(s[i])+4;
+            '+':b:=62;
+            '/':b:=63;
+            //'=':;
+            else raise Exception.Create('Authorization: invalid base64 character');
+          end;
+          inc(j);
+          t[j]:=AnsiChar((a shl 2) or (b shr 4));
+          inc(i);
+         end
+        else
+          b:=0;//counter warning
+        if i<=l then
+         begin
+          case char(s[i]) of
+            'A'..'Z':a:=byte(s[i])-65;
+            'a'..'z':a:=byte(s[i])-71;
+            '0'..'9':a:=byte(s[i])+4;
+            '+':a:=62;
+            '/':a:=63;
+            '=':a:=$FF;
+            else raise Exception.Create('Authorization: invalid base64 character');
+          end;
+          if a<>$FF then
+           begin
+            inc(j);
+            t[j]:=AnsiChar((b shl 4) or (a shr 2));
+           end;
+          inc(i);
+         end;
+        if i<=l then
+         begin
+          case char(s[i]) of
+            'A'..'Z':b:=byte(s[i])-65;
+            'a'..'z':b:=byte(s[i])-71;
+            '0'..'9':b:=byte(s[i])+4;
+            '+':b:=62;
+            '/':b:=63;
+            '=':b:=$FF;
+            else raise Exception.Create('Authorization: invalid base64 character');
+          end;
+          if b<>$FF then
+           begin
+            inc(j);
+            t[j]:=AnsiChar((a shl 6) or b);
+           end;
+          inc(i);
+         end;
+       end;
+      //SetLength(t,j);
+      i:=1;
+      while (i<=j) and (t[i]<>':') do inc(i);
+      //if i>j then raise?
+      //TODO: encoding: utf8?
+      FAuthUserName:=Copy(t,1,i-1);
+      FAuthPassword:=Copy(t,i+1,j-i);
+     end;
+    FAuthParsed:=true;
+   end;
 end;
 
 { TXxmCrossProjectIncludeCheck }

@@ -2,6 +2,7 @@ v1.2.2.???
 - error page: back link when referer, refresh link only on GET
 - LoadCopy by library file signature to avoid multiple copies being loaded
 - default xxmSession on TStringList (sorted!) instead of TObjectList
+- xxmHttp: support basic authentication (401, "WWW-Authenticate: Basic")
 
 v1.2.1.337
 - xxmHttp: IPv6 support
