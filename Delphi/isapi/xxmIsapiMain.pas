@@ -324,8 +324,8 @@ begin
     csLanguage:          Result:=GetVar(ecb,'HTTP_ACCEPT_LANGUAGE');
     csRemoteAddress:     Result:=GetVar(ecb,'REMOTE_ADDR');
     csRemoteHost:        Result:=GetVar(ecb,'REMOTE_HOST');
-    csAuthUser:          Result:=GetVar(ecb,'AUTH_USER');
-    csAuthPassword:      Result:=GetVar(ecb,'AUTH_PASSWORD');
+    csAuthUser:          begin CheckAuth; Result:=FAuthUserName; end;
+    csAuthPassword:      begin CheckAuth; Result:=FAuthPassword; end;
     else
       raise EXxmContextStringUnknown.Create(StringReplace(
         SXxmContextStringUnknown,'__',IntToHex(integer(cs),8),[]));
