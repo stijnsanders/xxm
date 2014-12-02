@@ -229,8 +229,7 @@ begin
     csLanguage:x:=HttpHeaderAcceptLanguage;//HttpHeaderContentLanguage?
     csRemoteAddress:Result:=inet_ntoa(FReq.Address.pRemoteAddress.sin_addr);
     csRemoteHost:Result:=inet_ntoa(FReq.Address.pRemoteAddress.sin_addr);//TODO: resolve name
-    csAuthUser:     begin CheckAuth; Result:=FAuthUserName; end;
-    csAuthPassword: begin CheckAuth; Result:=FAuthPassword; end;
+    csAuthUser,csAuthPassword:Result:=AuthValue(cs);
     else
       raise EXxmContextStringUnknown.Create(StringReplace(
         SXxmContextStringUnknown,'__',IntToHex(integer(cs),8),[]));

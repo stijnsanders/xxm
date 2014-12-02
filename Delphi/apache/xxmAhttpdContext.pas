@@ -131,8 +131,7 @@ begin
     csLanguage:Result:=apr_table_get(rq.headers_in,'Accept-Language');
     csRemoteAddress:Result:=rq.main.connection.remote_ip;
     csRemoteHost:Result:=rq.main.connection.remote_host;
-    csAuthUser:Result:=apr_table_get(rq.headers_in,'Auth-User');
-    csAuthPassword:Result:=apr_table_get(rq.headers_in,'Auth-Password');
+    csAuthUser,csAuthPassword:Result:=AuthValue(cs);
     csProjectName:Result:=FProjectName;
     csLocalURL:Result:=FFragmentName;
   end;

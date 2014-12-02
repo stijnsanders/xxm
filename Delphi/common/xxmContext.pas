@@ -26,11 +26,12 @@ type
     FParams: TXxmReqPars;
     FIncludeCheck: pointer;//see Include
     FAuthParsed: boolean;
+    FAuthUserName, FAuthPassword: AnsiString;
   protected
     FURL, FContentType, FProjectName, FPageClass, FFragmentName: WideString;
     FAutoEncoding: TXxmAutoEncoding;
     FPostData: TStream;
-    FPostTempFile, FAuthUserName, FAuthPassword: AnsiString;
+    FPostTempFile: AnsiString;
     SendBuf, SendDirect: TXxmSendBufHandler;
     SettingCookie: boolean;
 
@@ -93,7 +94,7 @@ type
     function GetProjectPage(FragmentName: WideString):IXxmFragment; virtual;
     procedure CheckHeaderNotSent;
     function CheckSendStart:boolean;
-    procedure CheckAuth;
+    function AuthValue(cs:TXxmContextString):AnsiString;
 
     procedure SendError(const res,val1,val2:string);
     procedure ForceStatus(Code: Integer; Text: WideString);
@@ -972,7 +973,7 @@ begin
   //TODO: Set-Cookie2
 end;
 
-procedure TXxmGeneralContext.CheckAuth;
+function TXxmGeneralContext.AuthValue(cs:TXxmContextString):AnsiString;
 var
   s,t:AnsiString;
   i,j,l:integer;
@@ -1071,6 +1072,7 @@ begin
      end;
     FAuthParsed:=true;
    end;
+  if cs=csAuthPassword then Result:=FAuthPassword else Result:=FAuthUserName;
 end;
 
 { TXxmCrossProjectIncludeCheck }

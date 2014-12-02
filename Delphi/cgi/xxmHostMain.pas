@@ -256,8 +256,7 @@ begin
     csLanguage:Result:=FReqHeaders['Accept-Language'];
     csRemoteAddress:Result:=GetCGIValue('REMOTE_ADDR');
     csRemoteHost:Result:=GetCGIValue('REMOTE_HOST');
-    csAuthUser:Result:=GetCGIValue('AUTH_USER');
-    csAuthPassword:Result:=GetCGIValue('AUTH_PASSWORD');
+    csAuthUser,csAuthPassword:Result:=AuthValue(cs);
     else
       raise EXxmContextStringUnknown.Create(StringReplace(
         SXxmContextStringUnknown,'__',IntToHex(integer(cs),8),[]));

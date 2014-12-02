@@ -473,8 +473,7 @@ begin
     csLanguage:Result:=FReqHeaders['Accept-Language'];
     csRemoteAddress:Result:=FSocket.GetRemoteSinIP;
     csRemoteHost:Result:=FSocket.ResolveIPToName(FSocket.GetRemoteSinIP);
-    csAuthUser:     begin CheckAuth; Result:=FAuthUserName; end;
-    csAuthPassword: begin CheckAuth; Result:=FAuthPassword; end;
+    csAuthUser,csAuthPassword:Result:=AuthValue(cs);
     else
       raise EXxmContextStringUnknown.Create(StringReplace(
         SXxmContextStringUnknown,'__',IntToHex(integer(cs),8),[]));

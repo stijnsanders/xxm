@@ -404,6 +404,7 @@ begin
       Result:='127.0.0.1';//TODO: IPV6?
     csRemoteHost:
       Result:='localhost';
+    //csAuthUser,csAuthPassword:Result:=AuthValue(cs);
     csAuthUser:
       //TODO: GetUserNameEx?
       //TODO: get firefox profile descriptor?
