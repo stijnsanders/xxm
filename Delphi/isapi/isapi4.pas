@@ -130,7 +130,7 @@ type
   PHSE_VERSION_INFO = ^HSE_VERSION_INFO;
   HSE_VERSION_INFO = packed record
     dwExtensionVersion: DWORD;
-    lpszExtensionDesc: array [0..HSE_MAX_EXT_DLL_NAME_LEN-1] of Char;
+    lpszExtensionDesc: array [0..HSE_MAX_EXT_DLL_NAME_LEN-1] of AnsiChar;
   end;
   THSE_VERSION_INFO = HSE_VERSION_INFO;
   LPHSE_VERSION_INFO = PHSE_VERSION_INFO;
@@ -168,7 +168,7 @@ type
     ConnID: HCONN;                    // Context number not to be modified!
     dwHttpStatusCode: DWORD;          // HTTP Status code
                      // null terminated log info specific to this Extension DLL
-    lpszLogData: array [0..HSE_LOG_BUFFER_LEN-1] of Char;
+    lpszLogData: array [0..HSE_LOG_BUFFER_LEN-1] of AnsiChar;
     lpszMethod: PAnsiChar;                // REQUEST_METHOD
     lpszQueryString: PAnsiChar;           // QUERY_STRING
     lpszPathInfo: PAnsiChar;              // PATH_INFO
@@ -223,7 +223,7 @@ type
 
   PHSE_URL_MAPEX_INFO = ^THSE_URL_MAPEX_INFO;
   THSE_URL_MAPEX_INFO = packed record
-    lpszPath: array [0..MAX_PATH-1] of Char; // Physical path root mapped to
+    lpszPath: array [0..MAX_PATH-1] of AnsiChar; // Physical path root mapped to
     dwFlags: DWORD;            // Flags associated with this URL path
     cchMatchingPath: DWORD;    // Number of matching characters in physical path
     cchMatchingURL: DWORD;     // Number of matching characters in URL
@@ -774,7 +774,7 @@ type
     //
 
     dwFilterVersion: DWORD;
-    lpszFilterDesc: array[0..SF_MAX_FILTER_DESC_LEN - 1] of Char;
+    lpszFilterDesc: array[0..SF_MAX_FILTER_DESC_LEN - 1] of AnsiChar;
     dwFlags: DWORD;
   end;
   THTTP_FILTER_VERSION = HTTP_FILTER_VERSION;
