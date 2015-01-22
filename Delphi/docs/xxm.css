@@ -7,3 +7,4 @@ CODE {font-family:Consolas,Lucida Console,monospace;background-color:#CCFFCC;}
 .title2 {background-color:#FFFFCC;border-bottom:1px solid #CCCC99;padding:0.2em;}
 .warning {border:1px solid red;padding:0.5em;background-color:#FFFFCC;font-style:italic;}
 .newver {background-color:#FFCC00;border:1px solid #CC9900;font-size:9pt;padding:0.1em;}
+TH{background-color:#CCCCCC;border-bottom:1px solid #999999;}

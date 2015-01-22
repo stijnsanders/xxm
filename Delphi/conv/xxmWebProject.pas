@@ -488,7 +488,6 @@ begin
     q.Free;
     m.Free;
   end;
-
 end;
 
 function TXxmWebProject.GenerateProjectFiles(Rebuild:boolean;
@@ -508,9 +507,6 @@ begin
   fn2:=FRootFolder+ProtoProjectPas;
   if Modified or Rebuild or not(FileExists(fn1)) or not(FileExists(fn2)) then
    begin
-    //TODO: flags from project XML?
-    //TODO: signatures?
-
     p:=TXxmProtoParser.Create;
     try
       //[[ProjectName]].dpr
@@ -621,10 +617,8 @@ begin
     finally
       p.Free;
     end;
-
     Result:=true;
    end;
-
 end;
 
 function TXxmWebProject.ForceNode(element:IXMLDOMElement;

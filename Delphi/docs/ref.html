@@ -91,7 +91,7 @@ Read more <a href="http://xxm.sourceforge.net/sec.html">here</a>.
 <dt><code>[[[]]</code></dt><dd><b>opening square brackets:</b> is replaced by two opening square brackets "<code>[[</code>"</dd>
 <dt><code>[[]]]</code></dt><dd><b>closing square brackets:</b> is replaced by two closing square brackets "<code>]]</code>"</dd>
 <dt><code>[[& ]]</code> <code>[[% ]]</code> <code>[[. ]]</code> <code>[[, ]]</code> <code>[[; ]]</code><dt>
-<dd>non-pre-defined section types for use with <a href="#parservalues">parser values</a> <span class="newver">1.2.0</span></dd>
+<dd>non-pre-defined section types for use with <a href="#extrasections">parser values</a> <span class="newver">1.2.0</span></dd>
 </dl>
 
 <p><b>Attention<span style="color:red;">*:</span></b> you can declare (nested) procedures and functions in header, footer and definition blocks, but you can't use the <code>[[= ]]</code> and <code>[[# ]]</code> syntax and embedded HTML since this will break the <code>[[ ]]</code>-block the declaration is in.
@@ -122,8 +122,10 @@ Context.SendHTML('&lt;/b&gt;');</code></p>
 <p>As noted above, remember to use <code>begin</code> and <code>end</code> with larger HTML blocks or when the section has embedded code blocks.</p>
 <p><code style="background-color:#FFFFFF;">if MyBoolean then <span style="background-color:#CCFFCC">begin</span> &lt;&lt;b&gt;priority:[[=PriorityLevel]]&lt;/b&gt;&gt; <span style="background-color:#CCFFCC">end</span>;</code></p>
 
-<p>Blocks enclosed this way also support the alternate destination prefixes: <span class="newver">1.1.7</span></p>
+<p><span class="newver">1.1.7</span> Blocks enclosed this way also support the alternate destination prefixes:</p>
 <p><code>&lt;&lt;p&gt;Message: &lt;b&gt;&gt;=Message&lt;&lt;/p&gt;&gt;</code></p>
+
+<p><span class="newver">1.2.2</span> If a line in code only contains a HTML tag, the extra opening and closing angled brackets ("<code>&lt;&gt;</code>") are not required.</p>
 
 <p class="title"><a name="proto"></a>Proto</p>
 
@@ -326,8 +328,8 @@ function HTMLEncode(Data:OleVariant):WideString; overload;
 
 <dt class="title"><a name="urlencode"></a><code>function URLEncode(Data:OleVariant):string;<br />
 function URLDecode(Data:string):WideString;<br />
-function URLEncode(const KeyValuePairs:array of OleVariant):AnsiString; overload; <span class="newver">1.2.0</span>
-</code></dt>
+function URLEncode(const KeyValuePairs:array of OleVariant):AnsiString; overload;</code> <span class="newver">1.2.0</span>
+</dt>
 <dd>encodes/decodes data to/from URL notation</dd>
 
 </dl>
@@ -400,6 +402,18 @@ Use <code>[[*]]</code> to reset all parser values to the default values.</p>
 </ul>
 
 <p>To set parser values for the entire project, use xxmProject.exe. The values are stored in the <code>&lt;ParserValues&gt;</code> node in Web.xxmp.</p>
+
+<p><a name="extrasections"></a><span class="newver">1.2.0</span> Additional section prefixes are available that use these parser values:</p>
+
+<table cellspacing="4" cellpadding="1" border="0">
+<tr><th rowspan="2">Section</th><th colspan="2">&lt;ParserValues&gt; element</th><th colspan="2">Default values</th></tr>
+<tr><th>Open</th><th>Close</th><th>Open</th><th>Close</th></tr>
+<tr><td><code>[[& ]]</code></td><td>&lt;Extra1Open&gt;</td><td>&lt;Extra1Close&gt;</td><td><code>Extra(</code></td><td><code>);</code></td></tr>
+<tr><td><code>[[% ]]</code></td><td>&lt;Extra2Open&gt;</td><td>&lt;Extra2Close&gt;</td><td><code>Extra(</code></td><td><code>);</code></td></tr>
+<tr><td><code>[[. ]]</code></td><td>&lt;Extra3Open&gt;</td><td>&lt;Extra3Close&gt;</td><td><code>Extra(</code></td><td><code>);</code></td></tr>
+<tr><td><code>[[, ]]</code></td><td>&lt;Extra4Open&gt;</td><td>&lt;Extra4Close&gt;</td><td><code>Extra(</code></td><td><code>);</code></td></tr>
+<tr><td><code>[[; ]]</code></td><td>&lt;Extra5Open&gt;</td><td>&lt;Extra5Close&gt;</td><td><code>Extra(</code></td><td><code>);</code></td></tr>
+</table>
 
 <p class="title"><a name="projectintf"></a>Optional project interfaces</p>
 

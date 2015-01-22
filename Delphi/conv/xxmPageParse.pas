@@ -78,6 +78,7 @@ type
     FDefaultParserValues,FParserValues:TXxmPageParserValueList;
     procedure AddSection(Index,Length,LineNr:integer;ps:TXxmPageSection);
     function EOLs(Index: integer): integer;
+    function LineHasTag(var x:integer;l:integer):integer;
   public
     constructor Create(const ParserValues:TXxmPageParserValueList);
     destructor Destroy; override;
@@ -230,10 +231,14 @@ end;
 procedure TXxmPageParser.Parse(Data: AnsiString);
 type
   TDelim=(dNone,dSquareB,dAngleB);
+const
+  CodeType_Normal=0;
+  CodeType_String=1;
+  CodeType_CommentA=2;
+  CodeType_CommentB=3;
 var
+  a1,a2,b1,b2,bx,l,n1,n2,nx,sqd,CodeType,TagInCode:integer;
   Delim:TDelim;
-  InString:boolean;
-  a1,a2,b1,b2,bx,l,n1,n2,nx,sqd,InComment:integer;
   ps:TXxmPageSection;
 begin
   SectionsCount:=0;
@@ -241,6 +246,7 @@ begin
   //SetLength(Sections,0);
   FData:=Data;
   FIndex:=0;
+  TagInCode:=0;
   l:=Length(FData);
   a1:=1;//counter warning
   a2:=1;
@@ -263,7 +269,13 @@ begin
          begin
           inc(nx);
           if (FData[a2]=#13) and (a2<l) and (FData[a2+1]=#10) then inc(a2);
-          Delim:=dNone;
+          if TagInCode=0 then
+            Delim:=dNone
+          else
+           begin //make loop exit
+            Delim:=dAngleB;
+            a2:=TagInCode-1;
+           end;
          end;
         else Delim:=dNone;
       end;
@@ -271,14 +283,21 @@ begin
      end;
     b1:=a2+1;
     b2:=b1;
-    if Delim=dAngleB then a2:=b1;//inc(a2);
+    if Delim=dAngleB then
+     begin
+      a2:=b1;//inc(a2);
+      if TagInCode<>0 then
+       begin
+        inc(a2);
+        TagInCode:=0;
+       end;
+     end;
     if Delim<>dNone then
      begin
       //open tag found, look for close tag (carefully: check strings and opening/closing braces and things)
       Delim:=dNone;
       sqd:=0;//square bracket depth
-      InString:=false;
-      InComment:=0;
+      CodeType:=CodeType_Normal;
       n2:=nx;
       if (b1<=l) and (FData[b1]='*') then ps:=psParserParameter else ps:=psBody;
       while (b2<=l)
@@ -287,24 +306,30 @@ begin
        begin
         Delim:=dNone;
         if ps=psBody then
-          if InString then
-            InString:=not(char(FData[b2]) in ['''',#13,#10])
-          else
-            case InComment of
-              0:case char(FData[b2]) of
-                  '''':InString:=true;
-                  '[':inc(sqd);
-                  ']':if sqd=0 then Delim:=dSquareB else dec(sqd);
-                  '{':InComment:=1;
-                  //'}'
-                  '(':if (b2<l) and (FData[b2+1]='*') then InComment:=2;
-                  //')'
-                  '<':Delim:=dAngleB;
-                end;
-              1:if char(FData[b2])='}' then InComment:=0;
-              2:if (char(FData[b2])=')')
-                  and (b2>1) and (FData[b2-1]='*') then InComment:=0;
-            end
+          case CodeType of
+            CodeType_Normal:
+              case char(FData[b2]) of
+                '''':CodeType:=CodeType_String;
+                '[':inc(sqd);
+                ']':if sqd=0 then Delim:=dSquareB else dec(sqd);
+                '{':CodeType:=CodeType_CommentA;
+                //'}'
+                '(':
+                  if (b2<l) and (FData[b2+1]='*') then
+                    CodeType:=CodeType_CommentB;
+                //')'
+                '<':Delim:=dAngleB;
+              end;
+            CodeType_String:
+              if char(FData[b2]) in ['''',#13,#10] then
+                CodeType:=CodeType_Normal;
+            CodeType_CommentA:
+              if char(FData[b2])='}' then
+                CodeType:=CodeType_Normal;
+            CodeType_CommentB:
+              if (char(FData[b2])=')') and (b2>1) and (FData[b2-1]='*') then
+                CodeType:=CodeType_Normal;
+          end
         else
           case char(FData[b2]) of
             '<':Delim:=dAngleB;
@@ -314,6 +339,15 @@ begin
          begin
           inc(nx);
           if (FData[b2]=#13) and (b2<l) and (FData[b2+1]=#10) then inc(b2);
+          if CodeType=CodeType_Normal then
+           begin
+            TagInCode:=LineHasTag(b2,l);
+            if TagInCode<>0 then //make loop exit
+             begin
+              Delim:=dAngleB;
+              dec(b2);
+             end;
+           end;
          end;
         inc(b2);
        end;
@@ -679,7 +713,7 @@ begin
           psParserParameter:
            begin
             CloseSend(Sections[Section].LineNr);
-            if (Sections[Section].Length>2) and (char(FData[Sections[Section].Index]) in [#13,' ']) then
+            if (Sections[Section].Length>2) and (char(FData[Sections[Section].Index]) in [#13,#10,' ',#9]) then
               ParseParserValuesMultiLine(Section)
             else
               ParseParserValue(Copy(FData,Sections[Section].Index,Sections[Section].Length));
@@ -707,6 +741,31 @@ begin
     Result:=TotalLines-Sections[Index].LineNr
   else
     Result:=Sections[Index+1].LineNr-Sections[Index].LineNr;
+end;
+
+function TXxmPageParser.LineHasTag(var x:integer;l:integer):integer;
+var
+  a1,a2,a3:integer;
+begin
+  Result:=0;//default
+  a1:=x+1;
+  while (a1<=l) and (char(FData[a1]) in [#9,' ']) do inc(a1);
+  if (a1<l) and (FData[a1]='<') and (char(FData[a1+1]) in ['A'..'Z','a'..'z']) then
+   begin
+    a2:=0;
+    a3:=a1+2;
+    while (a3<=l) and not(char(FData[a3]) in [#13,#10]) do
+     begin
+      if FData[a3]='>' then a2:=a3 else
+        if (a2<>0) and not(FData[a3] in [#9,' ']) then a2:=0;
+      inc(a3);
+     end;
+    if (a2>a1) and (char(FData[a2-1]) in ['A'..'Z','a'..'z']) then
+     begin
+      Result:=a2;
+      x:=a1;
+     end;
+   end;
 end;
 
 end.
