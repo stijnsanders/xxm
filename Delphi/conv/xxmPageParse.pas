@@ -750,7 +750,8 @@ begin
   Result:=0;//default
   a1:=x+1;
   while (a1<=l) and (char(FData[a1]) in [#9,' ']) do inc(a1);
-  if (a1<l) and (FData[a1]='<') and (char(FData[a1+1]) in ['A'..'Z','a'..'z']) then
+  if (a1<l) and (FData[a1]='<')
+    and (char(FData[a1+1]) in ['A'..'Z','a'..'z','!','?']) then
    begin
     a2:=0;
     a3:=a1+2;
@@ -760,7 +761,7 @@ begin
         if (a2<>0) and not(FData[a3] in [#9,' ']) then a2:=0;
       inc(a3);
      end;
-    if (a2>a1) and (char(FData[a2-1]) in ['A'..'Z','a'..'z']) then
+    if (a2>a1) and (FData[a2-1]<>'>') then
      begin
       Result:=a2;
       x:=a1;
