@@ -18,6 +18,7 @@ uses
   xxmThreadPool in '..\common\xxmThreadPool.pas',
   xxmCommonUtils in '..\common\xxmCommonUtils.pas',
   xxmContext in '..\common\xxmContext.pas',
+  xxmAuth in 'xxmAuth.pas' {XxmAuthForm},
   xxmAutoBuild in '..\common\xxmAutoBuild.pas',
   xxmWebProject in '..\conv\xxmWebProject.pas',
   MSXML2_TLB in '..\common\MSXML2_TLB.pas',

@@ -125,7 +125,9 @@ Context.SendHTML('&lt;/b&gt;');</code></p>
 <p><span class="newver">1.1.7</span> Blocks enclosed this way also support the alternate destination prefixes:</p>
 <p><code>&lt;&lt;p&gt;Message: &lt;b&gt;&gt;=Message&lt;&lt;/p&gt;&gt;</code></p>
 
-<p><span class="newver">1.2.2</span> If a line in code only contains a HTML tag, the extra opening and closing angled brackets ("<code>&lt;&gt;</code>") are not required.</p>
+<p><span class="newver">1.2.2</span> If a line in code only contains a HTML tag, the extra opening and closing angled brackets ("<code>&lt;&gt;</code>") are not required.
+Please note that consecutive lines like this will have the end-of-line and surrounding whitespace converted to the module code and not the HTML output,
+which in some cases might slightly alter the layout.</p>
 
 <p class="title"><a name="proto"></a>Proto</p>
 

@@ -16,7 +16,8 @@ uses
   xxmHeaders in '..\bin\public\xxmHeaders.pas',
   xxmThreadPool in '..\common\xxmThreadPool.pas',
   xxmCommonUtils in '..\common\xxmCommonUtils.pas',
-  xxmContext in '..\common\xxmContext.pas';
+  xxmContext in '..\common\xxmContext.pas',
+  xxmAuth in 'xxmAuth.pas' {XxmAuthForm};
 
 exports
   DllGetClassObject,

@@ -17,6 +17,7 @@ uses
   xxmThreadPool in '..\common\xxmThreadPool.pas',
   xxmCommonUtils in '..\common\xxmCommonUtils.pas',
   xxmContext in '..\common\xxmContext.pas',
+  xxmAuth in 'xxmAuth.pas' {XxmAuthForm},
   xxmAutoUpdate in '..\common\xxmAutoUpdate.pas';
 
 exports

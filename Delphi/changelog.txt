@@ -4,6 +4,7 @@ v1.2.2.???
 - default xxmSession on TStringList (sorted!) instead of TObjectList
 - xxmHttp: support basic authentication (401, "WWW-Authenticate: Basic")
 - parser: in code, treat lines that start with "<" and end with ">" as HTML
+- xxmLocal: custom handling of WWW-Authenticate, when debugging hold 'X' on authenticated page load to clear stored credentials
 
 v1.2.1.337
 - xxmHttp: IPv6 support

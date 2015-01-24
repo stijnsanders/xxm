@@ -8,13 +8,12 @@ uses Windows, SysUtils, ActiveX, UrlMon, Classes, xxm, xxmContext,
 type
   TXxmLocalContext=class(TXxmQueueContext, IxxmHttpHeaders)
   private
-    FVerb: WideString;
     ProtSink: IInternetProtocolSink;
     BindInfo: IInternetBindInfo;
     PrPos,PrMax:Integer;
+    FVerb,FExtraInfo,FQueryString,FAuthUsr,FAuthPwd:WideString;
     FLock:TRTLCriticalSection;
-    FExtraInfo,FQueryString:WideString;
-    FirstData:boolean;
+    FFirstData:boolean;
     FGotSessionID:boolean;
     FReqHeaders: TRequestHeaders;
     FResHeaders: TResponseHeaders;
@@ -34,7 +33,6 @@ type
     procedure SetCookie(Name: WideString; Value: WideString); overload; override;
     procedure SetCookie(Name,Value:WideString; KeepSeconds:cardinal;
       Comment,Domain,Path:WideString; Secure,HttpOnly:boolean); overload; override;
-    function GetRequestParam(Name: AnsiString):AnsiString;
     function GetProjectEntry:TXxmProjectEntry; override;
     function GetProjectPage(FragmentName: WideString):IXxmFragment; override;
     function GetRequestHeaders:IxxmDictionaryEx;
@@ -69,7 +67,7 @@ var
 
 implementation
 
-uses Variants, ComObj, AxCtrls, xxmCommonUtils;
+uses Variants, ComObj, AxCtrls, xxmCommonUtils, xxmAuth;
 
 const //resourcestring?
   SXxmContextStringUnknown='Unknown ContextString __';
@@ -94,12 +92,14 @@ begin
   ProtSink:=OIProtSink;
   PrPos:=0;
   PrMax:=1;
-  FirstData:=true;
+  FFirstData:=true;
   FReqHeaders:=nil;
   FResHeaders:=TResponseHeaders.Create;
   (FResHeaders as IUnknown)._AddRef;
   FHttpNegotiate:=nil;
   FGotSessionID:=false;
+  FAuthUsr:='';
+  FAuthPwd:='';
 end;
 
 destructor TXxmLocalContext.Destroy;
@@ -236,9 +236,26 @@ begin
     while (j<=l) and (FURL[j]<>'#') do inc(j);
     FQueryString:=Copy(FURL,i,j-i);
 
-    //IHttpNegotiate here? see GetRequestParam
+    //BuildPage;
 
-    BuildPage;
+    //TODO: IAuthenticate doesn't work?
+    //custom authentication interface and credentials store:
+
+    i:=0;
+    while i=0 do
+     begin
+      i:=1;
+      try
+        BuildPage;
+      except
+        on e1:EXxmUserAuthenticated do
+         begin
+          FAuthUsr:=e1.UserName;
+          FAuthPwd:=e1.Password;
+          i:=0;//re-do BuildPage;
+         end;
+      end;
+     end;
 
   except
     on EXxmPageRedirected do
@@ -325,10 +342,10 @@ begin
     end;
 
     //BSCF_AVAILABLEDATASIZEUNKNOWN?
-    if FirstData then
+    if FFirstData then
      begin
       OleCheck(ProtSink.ReportData(BSCF_FIRSTDATANOTIFICATION,PrPos,PrMax));
-      FirstData:=false;
+      FFirstData:=false;
      end
     else
       if not(DataReported) then
@@ -385,20 +402,18 @@ begin
     csURL:               st:=BINDSTRING_URL;
     csProjectName:       Result:=FProjectName;
     csLocalURL:          Result:=FFragmentName;
-    csReferer:           Result:=GetRequestParam('Referer');
+    csReferer:           Result:=GetRequestHeader('Referer');
     csLanguage:
      begin
       //st:=BINDSTRING_LANGUAGE;//doc says not supported, get current
-      Result:=GetRequestParam('Accept-Language');
+      Result:=GetRequestHeader('Accept-Language');
       if Result='' then Result:=LocaleLanguage;
      end;
     csRemoteAddress:     Result:='127.0.0.1';//TODO: IPV6?
     csRemoteHost:        Result:='localhost';
-    csAuthUser:          //st:=BINDSTRING_USERNAME;//doc says not supported
-      //TODO: GetUserNameEx?
-      Result:=GetEnvironmentVariable('USERDOMAIN')+'\'+GetEnvironmentVariable('USERNAME');
-    csAuthPassword:      //st:=BINDSTRING_PASSWORD;//doc says not supported
-      Result:='';
+    //csAuthUser,csAuthPassword:Result:=AuthValue(cs);
+    csAuthUser:          Result:=FAuthUsr;
+    csAuthPassword:      Result:=FAuthPwd;
     else
       raise EXxmContextStringUnknown.Create(StringReplace(
         SXxmContextStringUnknown,'__',IntToHex(integer(cs),8),[]));
@@ -432,14 +447,23 @@ var
   px:WideString;
   py:PWideChar;
 begin
-  OleCheck(ProtSink.ReportProgress(BINDSTATUS_MIMETYPEAVAILABLE,PWideChar(FContentType)));
+  if StatusCode=401 then
+   begin
+    px:=FResHeaders.Item['WWW-Authenticate'];
+    if px<>'' then
+     begin
+      //?OleCheck(ProtSink.ReportResult(INET_E_AUTHENTICATION_REQUIRED,0,0));
+      XxmAuthenticateUser(FProjectName,FURL,px);
+     end;
+   end;
 
+  OleCheck(ProtSink.ReportProgress(BINDSTATUS_MIMETYPEAVAILABLE,PWideChar(FContentType)));
   if FHttpNegotiate=nil then
     OleCheck((ProtSink as IServiceProvider).QueryService(
       IID_IHttpNegotiate,IID_IHttpNegotiate,FHttpNegotiate));
   px:=FResHeaders.Build+#13#10;
   py:=nil;
-  OleCheck(FHttpNegotiate.OnResponse(StatusCode,PWideChar(px),nil,py));
+  OleCheck(FHttpNegotiate.OnResponse(StatusCode ,PWideChar(px),nil,py));
 
   //BINDSTATUS_ENCODING
   OleCheck(ProtSink.ReportProgress(BINDSTATUS_VERIFIEDMIMETYPEAVAILABLE,PWideChar(FContentType)));
@@ -573,12 +597,6 @@ begin
     FReqHeaders:=TRequestHeaders.Create(ps);
     (FReqHeaders as IUnknown)._AddRef;
    end;
-end;
-
-function TXxmLocalContext.GetRequestParam(Name: AnsiString): AnsiString;
-begin
-  CheckReqHeaders;
-  Result:=FReqHeaders.Item[Name];
 end;
 
 function XmlDate(s:AnsiString):TDateTime;
@@ -756,7 +774,8 @@ end;
 
 function TXxmLocalContext.GetRequestHeader(const Name: WideString): WideString;
 begin
-  Result:=FResHeaders.Item[Name];
+  CheckReqHeaders;
+  Result:=FReqHeaders.Item[Name];
 end;
 
 procedure TXxmLocalContext.AddResponseHeader(const Name, Value: WideString);
