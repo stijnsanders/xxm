@@ -301,16 +301,8 @@ begin
       CodeType:=CodeType_Normal;
       n2:=nx;
       case char(FData[b1]) of
-        '[':
-         begin
-          ps:=psSquareBracketsOpen;
-          if b2-b1=1 then Delim:=dSquareB else Delim:=dNone;
-         end;
-        ']':
-         begin
-          ps:=psSquareBracketsClose;
-          if b2-b1=1 then Delim:=dSquareB else Delim:=dNone;
-         end;
+        '[':ps:=psSquareBracketsOpen;
+        ']':ps:=psSquareBracketsClose;
         '!':ps:=psHeader;
         '@':ps:=psUses;
         ':':ps:=psDefinitions;
@@ -330,11 +322,7 @@ begin
         ',':ps:=psExtra4;
         ';':ps:=psExtra5;
         //'&$%^+|;.,
-        else
-         begin
-          ps:=psBody;
-          dec(bx);
-         end;
+        else ps:=psBody;
       end;
       while (b2<=l)
         and not((Delim=dSquareB) and (FData[b2]=']'))
