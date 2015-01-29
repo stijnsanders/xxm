@@ -7,7 +7,7 @@ uses
   xxm in '..\bin\public\xxm.pas',
   xxmHeaders in '..\bin\public\xxmHeaders.pas',
   xxmGeckoChannel in 'xxmGeckoChannel.pas',
-  xxmSettings in 'xxmSettings.pas',
+  xxmGeckoSettings in '..\conv\xxmGeckoSettings.pas',
   xxmPReg in '..\common\xxmPReg.pas',
   xxmPRegLocal in '..\common\xxmPRegLocal.pas',
   xxmParams in '..\common\xxmParams.pas',

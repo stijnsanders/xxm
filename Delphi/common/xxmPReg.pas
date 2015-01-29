@@ -78,6 +78,13 @@ implementation
 
 uses Registry, xxmCommonUtils;
 
+const //resourcestring?
+  SXxmLoadProjectCopyFailed='LoadProject: Create load copy failed: ';
+  SXxmLoadProjectLoadFailed='LoadProject: LoadLibrary failed: ';
+  SXxmLoadProjectProcFailed='LoadProject: GetProcAddress failed: ';
+  SXxmProjectEntryAcq='ProjectEntry acquire UpdateLock failed: ';
+  SXxmProjectEntryRel='ProjectEntry release UpdateLock failed: ';
+
 { TXxmProjectEntry }
 
 constructor TXxmProjectEntry.Create(const Name: WideString);
@@ -235,11 +242,11 @@ begin
       else
        begin
         i:=GetLastError;
-        if i=ERROR_FILE_EXISTS then r:=0 else
+        if i=ERROR_FILE_EXISTS then
          begin
           dec(r);
           if (r=0) or (i<>ERROR_ACCESS_DENIED) then
-            raise EXxmProjectLoadFailed.Create('LoadProject: Create load copy failed: '+
+            raise EXxmProjectLoadFailed.Create(SXxmLoadProjectCopyFailed+
               SysErrorMessage(i))
           else
             Sleep(20+(GetCurrentThreadId and $3F));
@@ -250,11 +257,11 @@ begin
     FHandle:=LoadLibraryW(PWideChar(FLoadPath));
    end;
   if FHandle=0 then
-    raise EXxmProjectLoadFailed.Create('LoadProject: LoadLibrary failed: '+
+    raise EXxmProjectLoadFailed.Create(SXxmLoadProjectLoadFailed+
       SysErrorMessage(GetLastError));
   @lp:=GetProcAddress(FHandle,'XxmProjectLoad');
   if @lp=nil then
-    raise EXxmProjectLoadFailed.Create('LoadProject: GetProcAddress failed: '+
+    raise EXxmProjectLoadFailed.Create(SXxmLoadProjectProcFailed+
       SysErrorMessage(GetLastError));
   Result:=lp(FName);//try?
 end;
@@ -334,14 +341,14 @@ procedure TXxmProjectEntry.Lock;
 begin
   if FCheckMutex<>0 then
     if WaitForSingleObject(FCheckMutex,INFINITE)<>WAIT_OBJECT_0 then
-      raise Exception.Create('ProjectEntry acquire UpdateLock failed: '+SysErrorMessage(GetLastError));
+      raise Exception.Create(SXxmProjectEntryAcq+SysErrorMessage(GetLastError));
 end;
 
 procedure TXxmProjectEntry.Unlock;
 begin
   if FCheckMutex<>0 then
     if not ReleaseMutex(FCheckMutex) then
-      raise Exception.Create('ProjectEntry release UpdateLock failed: '+SysErrorMessage(GetLastError));
+      raise Exception.Create(SXxmProjectEntryRel+SysErrorMessage(GetLastError));
 end;
 
 function TXxmProjectEntry.GetProjectInterface(const IID: TGUID): IUnknown;
