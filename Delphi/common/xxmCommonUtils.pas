@@ -2,14 +2,22 @@ unit xxmCommonUtils;
 
 interface
 
+uses SysUtils, Classes;
+
 function RFC822DateGMT(dd: TDateTime): string;
 function GetFileModifiedDateTime(const FilePath:AnsiString;
   var FileSize:Int64):TDateTime;
 function GetFileSignature(const Path:AnsiString):AnsiString;
 
+type
+  TOwningHandleStream=class(THandleStream)
+  public
+    destructor Destroy; override;
+  end;
+
 implementation
 
-uses Windows, SysUtils;
+uses Windows;
 
 function RFC822DateGMT(dd: TDateTime): string;
 const
@@ -66,6 +74,14 @@ begin
       IntToStr(fd.nFileSizeLow);
     Windows.FindClose(fh);
    end;
+end;
+
+{ TOwningHandleStream }
+
+destructor TOwningHandleStream.Destroy;
+begin
+  CloseHandle(FHandle);
+  inherited;
 end;
 
 end.

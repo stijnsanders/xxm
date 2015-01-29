@@ -30,8 +30,6 @@ type
     FKeepConnection, FHeaderOnly:boolean;
     procedure HandleRequest;
   protected
-    WasKept:boolean;
-    KeptCount:integer;
     function GetSessionID: WideString; override;
     procedure DispositionAttach(FileName: WideString); override;
     function ContextString(cs: TXxmContextString): WideString; override;
@@ -46,6 +44,8 @@ type
 
     procedure BeginRequest; override;
     procedure EndRequest; override;
+    procedure FlushFinal; override;
+    procedure FlushStream(AData:TStream;ADataSize:int64); override;
 
     function GetRequestHeaders:IxxmDictionaryEx;
     function GetResponseHeaders:IxxmDictionaryEx;
@@ -61,23 +61,13 @@ type
     property ReqHeaders:TRequestHeaders read FReqHeaders;
     property ResHeaders:TResponseHeaders read FResHeaders;
   public
+    WasKept:boolean;
+    KeptCount:cardinal;
     constructor Create(Socket:TTcpSocket);
     destructor Destroy; override;
     procedure Execute; override;
-  end;
-
-  TXxmKeptConnections=class(TThread)
-  private
-    FLock:TRTLCriticalSection;
-    FQueueEvent:THandle;
-    FContexts:array of TXxmHttpContext;
-    FContextIndex,FContextSize:integer;
-  protected
-    procedure Execute; override;
-  public
-    constructor Create;
-    destructor Destroy; override;
-    procedure Queue(Context:TXxmHttpContext);
+    procedure PostExecute;
+    property Socket: TTcpSocket read FSocket;
   end;
 
   EXxmMaximumHeaderLines=class(Exception);
@@ -96,20 +86,24 @@ procedure XxmRunServer;
 
 implementation
 
-uses Variants, ComObj, xxmCommonUtils, xxmReadHandler, ShellApi;
+uses Variants, ComObj, xxmCommonUtils, xxmReadHandler, ShellApi,
+  xxmKeptCon, xxmSpoolingCon;
 
 resourcestring
   SXxmMaximumHeaderLines='Maximum header lines exceeded.';
   SXxmContextStringUnknown='Unknown ContextString __';
 
 const
-  HTTPMaxHeaderLines=$400;
+  HTTPMaxHeaderLines=$400;//1KiB
   HTTPMaxHeaderParseTimeMS=10000;
-  PostDataThreshold=$100000;
+  PostDataThreshold=$100000;//1MiB
+  SpoolingThreshold=$10000;//64KiB
 
 var
   HttpSelfVersion:AnsiString;
+  //TODO: array, spread evenly over background threads
   KeptConnections:TXxmKeptConnections;
+  SpoolingConnections:TXxmSpoolingConnections;
 
 type
   EXxmConnectionLost=class(Exception);
@@ -193,6 +187,7 @@ begin
 
     Listener:=TXxmHttpServerListener.Create(Server);
     KeptConnections:=TXxmKeptConnections.Create;
+    SpoolingConnections:=TXxmSpoolingConnections.Create;
     try
       repeat
         if GetMessage(Msg,0,0,0) then
@@ -206,6 +201,7 @@ begin
       Listener.Free;
       Listener6.Free;
       KeptConnections.Free;
+      SpoolingConnections.Free;
     end;
 
   finally
@@ -248,6 +244,7 @@ begin
   FURI:='';//see Execute
   FRedirectPrefix:='';
   FHeaderOnly:=false;
+  FKeepConnection:=false;
   if WasKept then
    begin
     WasKept:=false;
@@ -272,17 +269,50 @@ end;
 
 procedure TXxmHttpContext.Execute;
 begin
-  FKeepConnection:=true;
-  //while FKeepConnection do
+  //while here now done by KeptConnections
+  BeginRequest;
+  try
+    HandleRequest;
+  finally
+    EndRequest;
+  end;
+  if WasKept then
+    WasKept:=false //FlushFinal did SpoolingConnections.Add
+  else
+    PostExecute;
+end;
+
+procedure TXxmHttpContext.FlushFinal;
+begin
+  //no inherited! override default behaviour:
+  if (BufferSize<>0) //and (ContentBuffer.Position<>0) then
+    and (ContentBuffer.Position>SpoolingThreshold) then
    begin
-    FKeepConnection:=false;
-    BeginRequest;
-    try
-      HandleRequest;
-    finally
-      EndRequest;
-    end;
-   end;
+    CheckSendStart(true);
+    WasKept:=true;//skip PostExecute in Execute
+    SpoolingConnections.Add(Self,ContentBuffer);
+    ContentBuffer:=nil;//since spooling will free it when done
+   end
+  else
+    inherited;//Flush;//assert WasKept=false
+end;
+
+procedure TXxmHttpContext.FlushStream(AData: TStream; ADataSize: int64);
+begin
+  //no inherited! override default behaviour:
+  if ADataSize>SpoolingThreshold then
+   begin
+    AData.Seek(0,soFromEnd);//used by SpoolingConnections.Add
+    CheckSendStart(true);
+    WasKept:=true;//skip PostExecute in Execute
+    SpoolingConnections.Add(Self,AData);
+   end
+  else
+    inherited;//assert WasKept=false
+end;
+
+procedure TXxmHttpContext.PostExecute;
+begin
   if FKeepConnection then
     KeptConnections.Queue(Self)
   else
@@ -408,8 +438,7 @@ begin
       AddResponseHeader('Public','OPTIONS, GET, HEAD, POST');
       AddResponseHeader('Content-Length','0');
       LoadPage;//IXxmProject.LoadPage without IXxmPage.Build
-      CheckSendStart;
-      Flush;
+      CheckSendStart(true);
      end
     else if FVerb='TRACE' then
      begin
@@ -532,6 +561,7 @@ end;
 procedure TXxmHttpContext.SendHeader;
 var
   x:AnsiString;
+  l:integer;
 const
   AutoEncodingCharset:array[TXxmAutoEncoding] of string=(
     '',//aeContentDefined
@@ -544,7 +574,9 @@ begin
   FResHeaders['Content-Type']:=FContentType+AutoEncodingCharset[FAutoEncoding];
   x:=FHTTPVersion+' '+IntToStr(StatusCode)+' '+StatusText+#13#10+
     FResHeaders.Build+#13#10;
-  FSocket.SendBuf(x[1],Length(x));
+  l:=Length(x);
+  if FSocket.SendBuf(x[1],l)<>l then
+    raise EXxmTransferError.Create(SysErrorMessage(GetLastError));
   if FResHeaders['Content-Length']<>'' then FKeepConnection:=true;
   //TODO: transfer encoding chunked
   if FHeaderOnly then raise EXxmPageRedirected.Create(FVerb);
@@ -606,6 +638,9 @@ end;
 procedure TXxmHttpContext.PostProcessRequest;
 begin
   //inheritants can perform post-page logging here
+  //ATTENTION: (v1.2.2) when Context.BufferSize is set,
+  //this may get called with data on the buffer not sent yet
+  //  see also TXxmSpoolingConnections
 end;
 
 { TXxmHttpServerListener }
@@ -637,174 +672,6 @@ begin
     except
       //TODO: log? display?
     end;
-end;
-
-{ TXxmKeptConnections }
-
-constructor TXxmKeptConnections.Create;
-begin
-  inherited Create(false);
-  Priority:=tpLower;//?
-  FContextIndex:=0;
-  FContextSize:=0;
-  InitializeCriticalSection(FLock);
-  FQueueEvent:=CreateEventA(nil,true,false,
-    PAnsiChar('xxmHttp:KeepConnection:'+IntToHex(GetCurrentThreadId,8)));
-end;
-
-destructor TXxmKeptConnections.Destroy;
-var
-  i:integer;
-begin
-  SetEvent(FQueueEvent);//wake up thread
-  Terminate;
-  WaitFor;
-  CloseHandle(FQueueEvent);
-  DeleteCriticalSection(FLock);
-  for i:=0 to FContextIndex-1 do
-    if FContexts[i]<>nil then
-      try
-        FContexts[i]._Release;//FContexts[i].Free;
-      except
-        //ignore
-      end;
-  inherited;
-end;
-
-procedure TXxmKeptConnections.Queue(Context: TXxmHttpContext);
-const
-  GrowStep=$100;
-var
-  i:integer;
-begin
-  //TODO: maximum lingering connections? or close oldest on queue newer?
-  EnterCriticalSection(FLock);
-  try
-    i:=0;
-    while (i<FContextIndex) and (FContexts[i]<>nil) do inc(i);
-    if i=FContextIndex then
-     begin
-      if FContextIndex=FContextSize then
-       begin
-        inc(FContextSize,GrowStep);
-        SetLength(FContexts,FContextSize);
-       end;
-      FContexts[FContextIndex]:=Context;
-      inc(FContextIndex);
-     end
-    else
-      FContexts[i]:=Context;
-    Context.KeptCount:=0;
-    //protect from destruction by TXxmPageLoader.Execute:
-    Context.WasKept:=true;
-    Context._AddRef;
-    SetEvent(FQueueEvent);
-  finally
-    LeaveCriticalSection(FLock);
-  end;
-end;
-
-procedure TXxmKeptConnections.Execute;
-var
-  r,x:TFDSet;
-  i,ii,j,k:integer;
-  t:TTimeVal;
-begin
-  inherited;
-  i:=0;
-  while not Terminated do
-   begin
-    EnterCriticalSection(FLock);
-    try
-      r.fd_count:=0;
-      x.fd_count:=0;
-      j:=0;
-      while (j<FContextIndex) and (r.fd_count<64) do
-       begin
-        ii:=(i+j) mod FContextIndex;
-        if FContexts[ii]<>nil then
-         begin
-          inc(FContexts[ii].KeptCount);
-          //timed out? (see also t value below: 300x100ms~=30s)
-          if FContexts[ii].KeptCount=300 then
-           begin
-            try
-              FContexts[ii]._Release; //FContexts[ii].Free;
-            except
-              //ignore
-            end;
-            FContexts[ii]:=nil;
-           end
-          else
-           begin
-            r.fd_array[r.fd_count]:=FContexts[ii].FSocket.Handle;
-            inc(r.fd_count);
-            x.fd_array[x.fd_count]:=FContexts[ii].FSocket.Handle;
-            inc(x.fd_count);
-           end;
-         end;
-        inc(j);
-       end;
-    finally
-      LeaveCriticalSection(FLock);
-    end;
-    if FContextIndex=0 then i:=0 else i:=(i+j) mod FContextIndex;
-    if r.fd_count=0 then
-     begin
-      ResetEvent(FQueueEvent);
-      WaitForSingleObject(FQueueEvent,INFINITE);
-     end
-    else
-     begin
-      t.tv_sec:=0;
-      t.tv_usec:=100000;//microseconds
-      if select(0,@r,nil,@x,@t)=SOCKET_ERROR then
-       begin
-        //TODO: raise? log? sleep?
-       end
-      else
-       begin
-        EnterCriticalSection(FLock);
-        try
-          //errors
-          for k:=0 to x.fd_count-1 do
-           begin
-            j:=0;
-            while (j<FContextIndex) and not((FContexts[j]<>nil)
-              and (FContexts[j].FSocket.Handle=x.fd_array[k])) do inc(j);
-            if j<FContextIndex then
-             begin
-              try
-                FContexts[j]._Release; //FContexts[j].Free;
-              except
-                //ignore
-              end;
-              FContexts[j]:=nil;
-             end;
-            //else raise?
-           end;
-          //reads
-          for k:=0 to r.fd_count-1 do
-           begin
-            j:=0;
-            while (j<FContextIndex) and not((FContexts[j]<>nil)
-              and (FContexts[j].FSocket.Handle=r.fd_array[k])) do inc(j);
-            if j<FContextIndex then
-             begin
-              PageLoaderPool.Queue(FContexts[j]);
-              FContexts[j]:=nil;
-             end;
-            //else raise?
-           end;
-          //clean-up
-          while (FContextIndex>0) and (FContexts[FContextIndex-1]=nil) do
-            dec(FContextIndex);
-        finally
-          LeaveCriticalSection(FLock);
-        end;
-       end;
-     end;
-   end;
 end;
 
 end.

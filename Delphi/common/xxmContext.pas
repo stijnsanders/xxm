@@ -78,6 +78,8 @@ type
     function GetBufferSize: integer;
     procedure SetBufferSize(ABufferSize: integer);
     procedure Flush;
+    procedure FlushFinal; virtual;
+    procedure FlushStream(AData:TStream;ADataSize:int64); virtual;
 
     { IxxmParameterCollection }
     procedure AddParameter(Param: IUnknown);//IxxmParameter
@@ -93,7 +95,7 @@ type
 
     function GetProjectPage(FragmentName: WideString):IXxmFragment; virtual;
     procedure CheckHeaderNotSent;
-    function CheckSendStart:boolean;
+    function CheckSendStart(NoOnNextFlush:boolean):boolean;
     function AuthValue(cs:TXxmContextString):AnsiString;
 
     procedure SendError(const res,val1,val2:string);
@@ -221,7 +223,6 @@ begin
     //silent
   end;
   FreeAndNil(FParams);
-  FURL:='';
   if (FBufferSize<>0) and (ContentBuffer<>nil) then ContentBuffer.Position:=0;
 end;
 
@@ -282,7 +283,7 @@ begin
           AddResponseHeader('Content-Length',IntToStr(i));
         if i=0 then SendHeader;
        end;
-      Flush;
+      FlushFinal;
 
     finally
       FBuilding:=nil;
@@ -335,10 +336,11 @@ begin
        begin
         if y<>'' then AddResponseHeader('Last-Modified',y);
         if fs<>0 then AddResponseHeader('Content-Length',IntToStr(fs));
-        SendStream(TStreamAdapter.Create(THandleStream.Create(fh),soOwned));
+        FlushStream(TOwningHandleStream.Create(fh),fs);
        end;
-    finally
+    except
       CloseHandle(fh);
+      raise;
     end;
    end
   else
@@ -361,8 +363,8 @@ begin
         FProjectEntry.Project.UnloadFragment(FPage);
         FPage:=nil;
       end;
+    if FBufferSize<>0 then Flush;
    end;
-  if FBufferSize<>0 then Flush;
 end;
 
 function TXxmGeneralContext.GetPage: IXxmFragment;
@@ -370,7 +372,7 @@ begin
   Result:=FPage;
 end;
 
-function TXxmGeneralContext.CheckSendStart: boolean;
+function TXxmGeneralContext.CheckSendStart(NoOnNextFlush:boolean):boolean;
 begin
   if FHeaderSent=XxmHeaderSent then
    begin
@@ -378,7 +380,7 @@ begin
     Result:=false;
    end
   else
-    if FBufferSize=0 then
+    if (FBufferSize=0) or NoOnNextFlush then
      begin
       FHeaderSent:=XxmHeaderSent;
       SendHeader;
@@ -588,7 +590,7 @@ var
   i,j,l:integer;
 begin
   if FBuilding=nil then
-    raise  EXxmIncludeOnlyOnBuild.Create(SXxmIncludeOnlyOnBuild);
+    raise EXxmIncludeOnlyOnBuild.Create(SXxmIncludeOnlyOnBuild);
   if FIncludeDepth=XxmMaxIncludeDepth then
     raise EXxmIncludeStackFull.Create(SXxmIncludeStackFull);
   pe:=FProjectEntry;
@@ -673,32 +675,39 @@ end;
 procedure TXxmGeneralContext.SendStr(const Data: WideString);
 var
   s:AnsiString;
-  l:cardinal;
+  l:LongInt;
 begin
   if Data<>'' then
    begin
-    if CheckSendStart then
+    if CheckSendStart(false) then
       case FAutoEncoding of
-        aeUtf8: SendBuf(Utf8ByteOrderMark[1],3);
-        aeUtf16:SendBuf(Utf16ByteOrderMark[1],2);
+        aeUtf8:
+          if SendBuf(Utf8ByteOrderMark[1],3)<>3 then
+            raise EXxmTransferError.Create(SysErrorMessage(GetLastError));
+        aeUtf16:
+          if SendBuf(Utf16ByteOrderMark[1],2)<>2 then
+            raise EXxmTransferError.Create(SysErrorMessage(GetLastError));
       end;
     case FAutoEncoding of
       aeUtf16:
        begin
         l:=Length(Data)*2;
-        SendBuf(Data[1],l);
+        if SendBuf(Data[1],l)<>l then
+          raise EXxmTransferError.Create(SysErrorMessage(GetLastError));
        end;
       aeUtf8:
        begin
         s:=UTF8Encode(Data);
         l:=Length(s);
-        SendBuf(s[1],l);
+        if SendBuf(s[1],l)<>l then
+          raise EXxmTransferError.Create(SysErrorMessage(GetLastError));
        end;
       else
        begin
         s:=Data;
         l:=Length(s);
-        SendBuf(s[1],l);
+        if SendBuf(s[1],l)<>l then
+          raise EXxmTransferError.Create(SysErrorMessage(GetLastError));
        end;
     end;
     if (FBufferSize<>0) and (ContentBuffer.Position>=FBufferSize) then Flush;
@@ -712,8 +721,7 @@ var
   d:array[0..dSize-1] of byte;
   l:integer;
 begin
-  CheckSendStart;
-  if FBufferSize<>0 then Flush;
+  CheckSendStart(true);
   repeat
     l:=dSize;
     OleCheck(s.Read(@d[0],dSize,@l));
@@ -1073,6 +1081,22 @@ begin
     FAuthParsed:=true;
    end;
   if cs=csAuthPassword then Result:=FAuthPassword else Result:=FAuthUserName;
+end;
+
+procedure TXxmGeneralContext.FlushFinal;
+begin
+  //inheritants can do alternate operations on final flush
+  Flush;
+end;
+
+procedure TXxmGeneralContext.FlushStream(AData: TStream; ADataSize: int64);
+begin
+  //inheritants can do alternate operations on sendstream+flush
+  //assert AData.Size=ADataSize
+  //assert AData.Position=0
+  //ATTENTION: TStreamAdapter will free AData when done
+  SendStream(TStreamAdapter.Create(AData,soOwned));
+  if FBufferSize<>0 then Flush;
 end;
 
 { TXxmCrossProjectIncludeCheck }

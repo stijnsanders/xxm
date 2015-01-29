@@ -5,12 +5,12 @@ interface
 uses SysUtils, Classes, ActiveX;
 
 const
-  //$Date: 2014-07-31 00:04:37 +0200 (do, 31 jul 2014) $
-  XxmRevision='$Rev: 336 $';
+  //$Date: 2015-01-29 19:24:45 +0100 (do, 29 jan 2015) $
+  XxmRevision='$Rev: 353 $';
 
 type
   IXxmContext=interface;//forward
-  IXxmFragment=interface; //forward
+  IXxmFragment=interface;//forward
 
   IXxmProject=interface
     ['{78786D00-0000-0002-C000-000000000002}']
@@ -416,7 +416,7 @@ begin
   s:=XxmRevision;
   Result.Major:=1;
   Result.Minor:=2;
-  Result.Release:=1;
+  Result.Release:=2;
   Result.Build:=StrToInt(Copy(s,7,Length(s)-8));
 end;
 

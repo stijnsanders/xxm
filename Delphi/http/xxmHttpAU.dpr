@@ -14,10 +14,12 @@ uses
   xxmCommonUtils in '..\common\xxmCommonUtils.pas',
   xxmContext in '..\common\xxmContext.pas',
   xxmReadHandler in 'xxmReadHandler.pas',
-  xxmAutoUpdate in '..\common\xxmAutoUpdate.pas',
   MSXML2_TLB in '..\common\MSXML2_TLB.pas',
   xxmSock in 'xxmSock.pas',
-  xxmThreadPool in '..\common\xxmThreadPool.pas';
+  xxmThreadPool in '..\common\xxmThreadPool.pas',
+  xxmKeptCon in 'xxmKeptCon.pas',
+  xxmSpoolingCon in 'xxmSpoolingCon.pas',
+  xxmAutoUpdate in '..\common\xxmAutoUpdate.pas';
 
 {$R *.res}
 
