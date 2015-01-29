@@ -100,7 +100,7 @@ Conditionals=
 DebugSourceDirs=
 UsePackages=0
 [Parameters]
-RunParams=/nocompile /proto ..\conv\proto_http /src ..\conv\demo1 /x:XxmSourcePath D:\Data\xxm\Delphi "..\demo2\03 Data MongoDB"
+RunParams=..\tx\txSQLite
 HostApplication=
 Launcher=
 UseLauncher=0

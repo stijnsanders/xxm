@@ -211,7 +211,7 @@ end;
 function TXxmProjectEntry.LoadProject: IXxmProject;
 var
   lp:TXxmProjectLoadProc;
-  i:DWORD;
+  i,r:DWORD;
 begin
   FLoadSignature:=GetFileSignature(FFilePath);
   if FLoadSignature='' then //if not(FileExists(FFilePath)) then
@@ -223,16 +223,29 @@ begin
    begin
     FLoadPath:=Copy(FFilePath,1,Length(FFilePath)-4)+
       '_'+WideString(FLoadSignature)+'.xxlc';
-    if CopyFileW(PWideChar(FFilePath),PWideChar(FLoadPath),true) then
-      SetFileAttributesW(PWideChar(FLoadPath),
-        FILE_ATTRIBUTE_HIDDEN or FILE_ATTRIBUTE_SYSTEM)//ignore error
-    else
+    r:=100;
+    while (r<>0) do
      begin
-      i:=GetLastError;
-      if i<>ERROR_FILE_EXISTS then
-        raise EXxmProjectLoadFailed.Create('LoadProject: Create load copy failed: '+
-          SysErrorMessage(i));
-      //else assert files are equal
+      if CopyFileW(PWideChar(FFilePath),PWideChar(FLoadPath),true) then
+       begin
+        SetFileAttributesW(PWideChar(FLoadPath),
+          FILE_ATTRIBUTE_HIDDEN or FILE_ATTRIBUTE_SYSTEM);//ignore error
+        r:=0;//done
+       end
+      else
+       begin
+        i:=GetLastError;
+        if i<>ERROR_FILE_EXISTS then
+         begin
+          dec(r);
+          if (r=0) or (i<>ERROR_ACCESS_DENIED) then
+            raise EXxmProjectLoadFailed.Create('LoadProject: Create load copy failed: '+
+              SysErrorMessage(i))
+          else
+            Sleep(20+(GetCurrentThreadId and $3F));
+         end;
+        //else assert files are equal
+       end;
      end;
     FHandle:=LoadLibraryW(PWideChar(FLoadPath));
    end;

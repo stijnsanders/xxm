@@ -24,14 +24,99 @@ type
       pBuffer: Pointer; cbBuffer: DWORD; var cbBuf: DWORD; dwReserved: DWORD): HResult; stdcall;
   end;
 
+const
+  UriProperty_ABSOLUTE_URI = 0;
+  UriProperty_STRING_START = UriProperty_ABSOLUTE_URI;
+  UriProperty_AUTHORITY = 1;
+  UriProperty_DISPLAY_URI = 2;
+  UriProperty_DOMAIN = 3;
+  UriProperty_EXTENSION = 4;
+  UriProperty_FRAGMENT = 5;
+  UriProperty_HOST = 6;
+  UriProperty_PASSWORD = 7;
+  UriProperty_PATH = 8;
+  UriProperty_PATH_AND_QUERY = 9;
+  UriProperty_QUERY = 10;
+  UriProperty_RAW_URI = 11;
+  UriProperty_SCHEME_NAME = 12;
+  UriProperty_USER_INFO = 13;
+  UriProperty_USER_NAME = 14;
+  UriProperty_STRING_LAST = UriProperty_USER_NAME;
+  UriProperty_HOST_TYPE = 15;
+  UriProperty_DWORD_START = UriProperty_HOST_TYPE;
+  UriProperty_PORT = 16;
+  UriProperty_SCHEME = 17;
+  UriProperty_ZONE = 18;
+  UriProperty_DWORD_LAST = UriProperty_ZONE;
 
-  TXxmLocalHandler=class(TComObject, IInternetProtocol, IWinInetHttpInfo, IInternetProtocolInfoX)
+type
+  IUri = interface
+    ['{a39ee748-6a27-4817-a6f2-13914bef5890}']
+    function GetPropertyBSTR(uriProp: DWORD; var strProperty: WideString; dwFlags: DWORD): DWORD; stdcall;
+    function GetPropertyLength(uriProp: DWORD; var pcPropLen: DWORD; dwFlags: DWORD): DWORD; stdcall;
+    function GetPropertyDWORD(uriProp: DWORD; var pcPropValue: DWORD; dwFlags: DWORD): DWORD; stdcall;
+    function HasProperty(uriProp: DWORD; var fHasProperty: BOOL): DWORD; stdcall;
+    function GetAbsoluteUri: WideString; stdcall;
+    function GetAuthority: WideString; stdcall;
+    function GetDisplayUri: WideString; stdcall;
+    function GetDomain: WideString; stdcall;
+    function GetExtension: WideString; stdcall;
+    function GetFragment: WideString; stdcall;
+    function GetHost: WideString; stdcall;
+    function GetPassword: WideString; stdcall;
+    function GetPath: WideString; stdcall;
+    function GetPathAndQuery: WideString; stdcall;
+    function GetQuery: WideString; stdcall;
+    function GetRawUri: WideString; stdcall;
+    function GetSchemeName: WideString; stdcall;
+    function GetUserInfo: WideString; stdcall;
+    function GetUserName: WideString; stdcall;
+    function GetHostType: WideString; stdcall;
+    function GetPort: WideString; stdcall;
+    function GetScheme: WideString; stdcall;
+    function GetZone: DWORD; stdcall;
+    function GetProperties: DWORD; stdcall;
+    function IsEqual(pUri: IUri): BOOL; stdcall;
+    property AbsoluteUri: WideString read GetAbsoluteUri;
+    property Authority: WideString read GetAuthority;
+    property DisplayUri: WideString read GetDisplayUri;
+    property Domain: WideString read GetDomain;
+    property Extension: WideString read GetExtension;
+    property Fragment: WideString read GetFragment;
+    property Host: WideString read GetHost;
+    property Password: WideString read GetPassword;
+    property Path: WideString read GetPath;
+    property PathAndQuery: WideString read GetPathAndQuery;
+    property Query: WideString read GetQuery;
+    property RawUri: WideString read GetRawUri;
+    property SchemeName: WideString read GetSchemeName;
+    property UserInfo: WideString read GetUserInfo;
+    property UserName: WideString read GetUserName;
+    property HostType: WideString read GetHostType;
+    property Port: WideString read GetPort;
+    property Scheme: WideString read GetScheme;
+    property Zone: DWORD read GetZone;
+    property Properties: DWORD read GetProperties;
+  end;
+
+  IInternetProtocolEx = interface(IInternetProtocol)
+    ['{c7a98e66-1010-492c-a1c8-c809e1f75905}']
+    function StartEx(Uri: IUri; OIProtSink: IInternetProtocolSink;
+      OIBindInfo: IInternetBindInfo; grfPI, dwReserved: DWORD): HResult; stdcall;
+  end;
+
+  TXxmLocalHandler=class(TComObject, IInternetProtocol,
+    //IInternetProtocolEx, 
+    IWinInetHttpInfo, IInternetProtocolInfoX)
   private
     FDataPos: Int64;
     FContext: TXxmLocalContext;
     FContextI: IXxmContext;
     FTerminateTC: cardinal;
   protected
+    { IInternetProtocolEx }
+    function StartEx(Uri: IUri; OIProtSink: IInternetProtocolSink;
+      OIBindInfo: IInternetBindInfo; grfPI, dwReserved: DWORD): HResult; stdcall;
     { IInternetProtocolRoot }
     function Start(szUrl: PWideChar; OIProtSink: IInternetProtocolSink;
       OIBindInfo: IInternetBindInfo; grfPI: Cardinal;
@@ -102,6 +187,24 @@ begin
   FContextI:=nil;//FreeAndNil(FContext);
   FContext:=nil;
   inherited;
+end;
+
+{ TXxmLocalHandler::IInternetProtocolEx }
+
+function TXxmLocalHandler.StartEx(Uri: IUri;
+  OIProtSink: IInternetProtocolSink; OIBindInfo: IInternetBindInfo; grfPI,
+  dwReserved: DWORD): HResult;
+var
+  xurl:WideString;
+begin
+  xurl:=Uri.RawUri;//Uri.DisplayUri
+  //xurl:=Uri.DisplayUri;
+  FContext:=TXxmLocalContext.Create(xurl,OIProtSink,OIBindInfo);
+  FContextI:=FContext;//use refcount to clean with later
+  if PageLoaderPool=nil then PageLoaderPool:=TXxmPageLoaderPool.Create($10);
+  SetThreadName('xxmLocalHandler:'+xurl);
+  PageLoaderPool.Queue(FContext);
+  Result:=HResult(E_PENDING);
 end;
 
 { TXxmLocalHandler::IInternetProtocolRoot }
