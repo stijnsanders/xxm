@@ -235,7 +235,7 @@ begin
       else
        begin
         i:=GetLastError;
-        if i<>ERROR_FILE_EXISTS then
+        if i=ERROR_FILE_EXISTS then r:=0 else
          begin
           dec(r);
           if (r=0) or (i<>ERROR_ACCESS_DENIED) then
