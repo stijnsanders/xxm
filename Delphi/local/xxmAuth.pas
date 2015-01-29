@@ -18,6 +18,7 @@ type
     txtPassword: TEdit;
     btnOK: TButton;
     btnCancel: TButton;
+    lblHoldXToClear: TLabel;
   protected
     procedure CreateParams(var Params: TCreateParams); override;
   end;

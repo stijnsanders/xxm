@@ -3,7 +3,7 @@ object XxmAuthForm: TXxmAuthForm
   Top = 129
   BorderStyle = bsSingle
   Caption = 'xxmLocal Authentication'
-  ClientHeight = 216
+  ClientHeight = 253
   ClientWidth = 284
   Color = clHighlight
   Font.Charset = DEFAULT_CHARSET
@@ -85,6 +85,17 @@ object XxmAuthForm: TXxmAuthForm
     AutoSize = False
     Caption = '&Password'
     FocusControl = txtPassword
+  end
+  object lblHoldXToClear: TLabel
+    Left = 8
+    Top = 208
+    Width = 265
+    Height = 33
+    AutoSize = False
+    Caption = 
+      'Hold "X" while loading an authenticated page to clear the creden' +
+      'tials cache.'
+    WordWrap = True
   end
   object txtURL: TEdit
     Left = 8
