@@ -35,7 +35,6 @@ Conv
 
 ISAPI
 - keep-connection?
-- authentication?
 - custom errors?
 - compile-time user (runas)
 - IP(range) to show compile log to
@@ -43,6 +42,7 @@ ISAPI
 http
 - logging
 - FCookie WideString
+- handling long uploads in group-thread like XxmSpoolingConnections
 
 local
 - CritSection in loader, not context (saves on resources)
@@ -60,7 +60,6 @@ idea's
 - find something better than a threadvar for the session data object reference
 - limit threads per session
 - limit threads per remote address
-- 401 auth & windows auth (IHttpAuthenticate on local?)
 - TXxmProjectEntry.GetFilePath virtual directories
 
 minor issues

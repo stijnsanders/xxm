@@ -236,6 +236,7 @@ const
   CodeType_String=1;
   CodeType_CommentA=2;
   CodeType_CommentB=3;
+  CodeType_ParserParameters=4;
 var
   a1,a2,b1,b2,bx,l,n1,n2,nx,sqd,CodeType,TagInCode:integer;
   Delim:TDelim;
@@ -292,54 +293,88 @@ begin
         TagInCode:=0;
        end;
      end;
-    if Delim<>dNone then
+    if (Delim<>dNone) and (b1<=l) then
      begin
       //open tag found, look for close tag (carefully: check strings and opening/closing braces and things)
       Delim:=dNone;
       sqd:=0;//square bracket depth
       CodeType:=CodeType_Normal;
       n2:=nx;
-      if (b1<=l) and (FData[b1]='*') then ps:=psParserParameter else ps:=psBody;
+      case char(FData[b1]) of
+        '[':
+         begin
+          ps:=psSquareBracketsOpen;
+          if b2-b1=1 then Delim:=dSquareB else Delim:=dNone;
+         end;
+        ']':
+         begin
+          ps:=psSquareBracketsClose;
+          if b2-b1=1 then Delim:=dSquareB else Delim:=dNone;
+         end;
+        '!':ps:=psHeader;
+        '@':ps:=psUses;
+        ':':ps:=psDefinitions;
+        '_':ps:=psFooter;
+        '#':ps:=psSendHTML;
+        '=':ps:=psSend;
+        '?':ps:=psURLEncode;
+        '/':ps:=psComment;
+        '*':
+         begin
+          ps:=psParserParameter;
+          CodeType:=CodeType_ParserParameters;
+         end;
+        '&':ps:=psExtra1;
+        '%':ps:=psExtra2;
+        '.':ps:=psExtra3;
+        ',':ps:=psExtra4;
+        ';':ps:=psExtra5;
+        //'&$%^+|;.,
+        else
+         begin
+          ps:=psBody;
+          dec(bx);
+         end;
+      end;
       while (b2<=l)
         and not((Delim=dSquareB) and (FData[b2]=']'))
         and not((Delim=dAngleB) and (FData[b2]='<')) do
        begin
         Delim:=dNone;
-        if ps=psBody then
-          case CodeType of
-            CodeType_Normal:
-              case char(FData[b2]) of
-                '''':CodeType:=CodeType_String;
-                '[':inc(sqd);
-                ']':if sqd=0 then Delim:=dSquareB else dec(sqd);
-                '{':CodeType:=CodeType_CommentA;
-                //'}'
-                '(':
-                  if (b2<l) and (FData[b2+1]='*') then
-                    CodeType:=CodeType_CommentB;
-                //')'
-                '<':Delim:=dAngleB;
-              end;
-            CodeType_String:
-              if char(FData[b2]) in ['''',#13,#10] then
-                CodeType:=CodeType_Normal;
-            CodeType_CommentA:
-              if char(FData[b2])='}' then
-                CodeType:=CodeType_Normal;
-            CodeType_CommentB:
-              if (char(FData[b2])=')') and (b2>1) and (FData[b2-1]='*') then
-                CodeType:=CodeType_Normal;
-          end
-        else
-          case char(FData[b2]) of
-            '<':Delim:=dAngleB;
-            ']':Delim:=dSquareB;
-          end;
+        case CodeType of
+          CodeType_Normal:
+            case char(FData[b2]) of
+              '''':CodeType:=CodeType_String;
+              '[':inc(sqd);
+              ']':if sqd=0 then Delim:=dSquareB else dec(sqd);
+              '{':CodeType:=CodeType_CommentA;
+              //'}'
+              '(':
+                if (b2<l) and (FData[b2+1]='*') then
+                  CodeType:=CodeType_CommentB;
+              //')'
+              '<':Delim:=dAngleB;
+            end;
+          CodeType_String:
+            if char(FData[b2]) in ['''',#13,#10] then
+              CodeType:=CodeType_Normal;
+          CodeType_CommentA:
+            if char(FData[b2])='}' then
+              CodeType:=CodeType_Normal;
+          CodeType_CommentB:
+            if (char(FData[b2])=')') and (b2>1) and (FData[b2-1]='*') then
+              CodeType:=CodeType_Normal;
+          CodeType_ParserParameters:
+            case char(FData[b2]) of
+              '<':Delim:=dAngleB;
+              ']':Delim:=dSquareB;
+            end;
+        end;
         if char(FData[b2]) in [#13,#10] then
          begin
           inc(nx);
           if (FData[b2]=#13) and (b2<l) and (FData[b2+1]=#10) then inc(b2);
-          if CodeType=CodeType_Normal then
+          if (ps=psBody) and (CodeType=CodeType_Normal) then
            begin
             TagInCode:=LineHasTag(b2,l);
             if TagInCode<>0 then //make loop exit
@@ -364,37 +399,13 @@ begin
          begin
           //close tag found also
           bx:=b1;
-          case char(FData[bx]) of
-            '[':
-             begin
-              ps:=psSquareBracketsOpen;
+          case ps of
+            psSquareBracketsOpen:
               if b2-b1=1 then Delim:=dSquareB else Delim:=dNone;
-             end;
-            ']':
-             begin
-              ps:=psSquareBracketsClose;
+            psSquareBracketsClose:
               if b2-b1=1 then Delim:=dSquareB else Delim:=dNone;
-             end;
-            '!':ps:=psHeader;
-            '@':ps:=psUses;
-            ':':ps:=psDefinitions;
-            '_':ps:=psFooter;
-            '#':ps:=psSendHTML;
-            '=':ps:=psSend;
-            '?':ps:=psURLEncode;
-            '/':ps:=psComment;
-            '*':ps:=psParserParameter;
-            '&':ps:=psExtra1;
-            '%':ps:=psExtra2;
-            '.':ps:=psExtra3;
-            ',':ps:=psExtra4;
-            ';':ps:=psExtra5;
-            //'&$%^+|;.,
-            else
-             begin
-              ps:=psBody;
+            psBody:
               dec(bx);
-             end;
           end;
           if (Delim<>dNone) or (b2>l) then
            begin
