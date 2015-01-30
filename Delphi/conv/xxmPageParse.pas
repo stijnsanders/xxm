@@ -750,7 +750,7 @@ begin
   a1:=x+1;
   while (a1<=l) and (char(FData[a1]) in [#9,' ']) do inc(a1);
   if (a1<l) and (FData[a1]='<')
-    and (char(FData[a1+1]) in ['A'..'Z','a'..'z','!','?']) then
+    and (char(FData[a1+1]) in ['A'..'Z','a'..'z','!','?','/']) then
    begin
     a2:=0;
     a3:=a1+2;
