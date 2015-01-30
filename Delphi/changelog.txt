@@ -1,11 +1,11 @@
 v1.2.2.357
 - error page: back link when referer, refresh link only on GET
-- LoadCopy by library file signature to avoid multiple copies being loaded, retry on access denied
+- LoadCopy by library file signature to avoid multiple copies being loaded, retries on access denied
 - default xxmSession on TStringList (sorted!) instead of TObjectList
-- xxmHttp: support basic authentication (401, "WWW-Authenticate: Basic")
 - parser: in code, treat lines that start with "<" and end with ">" as HTML
-- xxmLocal: custom handling of WWW-Authenticate, when debugging hold 'X' on authenticated page load to clear stored credentials
 - xxmHttp: thread to wait on groups of (slow) connections that have all content in buffer
+- xxmHttp: support basic authentication (401, "WWW-Authenticate: Basic")
+- xxmLocal: custom handling of WWW-Authenticate, when debugging hold 'X' on authenticated page load to clear stored credentials
 
 v1.2.1.337
 - xxmHttp: IPv6 support

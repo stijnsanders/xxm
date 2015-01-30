@@ -29,6 +29,8 @@ uses
   xxmReadHandler in '[[XxmSourcePath]]\http\xxmReadHandler.pas',
   xxmSock in '[[XxmSourcePath]]\http\xxmSock.pas',
   xxmThreadPool in '[[XxmSourcePath]]\common\xxmThreadPool.pas',
+  xxmKeptCon in '[[XxmSourcePath]]\http\xxmKeptCon.pas',
+  xxmSpoolingCon in '[[XxmSourcePath]]\http\xxmSpoolingCon.pas',
   [[@Include]][[IncludeUnit]] in '[[ProjectPath]][[IncludePath]][[IncludeUnit]].pas',
   [[@]][[@Fragment]][[FragmentUnit]] in '[[FragmentPath]][[FragmentUnit]].pas', {[[FragmentAddress]]}
   [[@]][[UsesClause]]
