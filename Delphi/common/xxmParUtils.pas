@@ -143,7 +143,7 @@ function UTF8ToWideString(const s: UTF8String): WideString;
 
 implementation
 
-uses Variants;
+uses Variants, xxmCommonUtils;
 
 procedure SplitHeader(const Value:AnsiString; var Params:TParamIndexes);
 var
@@ -652,8 +652,7 @@ var
   i:integer;
 begin
   for i:=0 to FItemsCount-1 do
-    if FItems[i].SubValues<>nil then
-      (FItems[i].SubValues as IUnknown)._Release;
+    if FItems[i].SubValues<>nil then SafeFree(TInterfacedObject(FItems[i].SubValues));
   SetLength(FItems,0);
   inherited;
 end;

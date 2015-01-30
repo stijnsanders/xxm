@@ -1,4 +1,4 @@
-unit xxmHttpMain;
+  unit xxmHttpMain;
 
 interface
 
@@ -227,7 +227,7 @@ begin
      (setsockopt(FSocket.Handle,SOL_SOCKET,SO_SNDBUF,@i,4)<>0) then
     RaiseLastOSError;
   WasKept:=false;
-  SendDirect:=FSocket.SendBuf;
+  SendDirect:=nil;//see BeginRequest to detect AfterConstruction
 end;
 
 destructor TXxmHttpContext.Destroy;
@@ -240,8 +240,16 @@ procedure TXxmHttpContext.BeginRequest;
 begin
   inherited;
   FReqHeaders:=nil;
-  FResHeaders:=TResponseHeaders.Create;
-  (FResHeaders as IUnknown)._AddRef;
+  if @SendDirect=nil then //detect AfterConstruction
+   begin
+    SendDirect:=FSocket.SendBuf;
+    FResHeaders:=nil;
+   end
+  else
+   begin
+    FResHeaders:=TResponseHeaders.Create;
+    (FResHeaders as IUnknown)._AddRef;
+   end;
   FCookieParsed:=false;
   FQueryStringIndex:=1;
   FSessionID:='';//see GetSessionID
@@ -259,16 +267,8 @@ end;
 procedure TXxmHttpContext.EndRequest;
 begin
   inherited;
-  if FReqHeaders<>nil then
-   begin
-    (FReqHeaders as IUnknown)._Release;
-    FReqHeaders:=nil;
-   end;
-  if FResHeaders<>nil then
-   begin
-    (FResHeaders as IUnknown)._Release;
-    FResHeaders:=nil;
-   end;
+  SafeFree(TInterfacedObject(FReqHeaders));
+  SafeFree(TInterfacedObject(FResHeaders));
 end;
 
 procedure TXxmHttpContext.Execute;
@@ -658,6 +658,7 @@ end;
 
 destructor TXxmHttpServerListener.Destroy;
 begin
+  Terminate;//FTerminated:=true;
   closesocket(FServer.Handle);//forces WaitForConnection to return
   inherited;
 end;

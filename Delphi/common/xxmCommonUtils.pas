@@ -8,6 +8,7 @@ function RFC822DateGMT(dd: TDateTime): string;
 function GetFileModifiedDateTime(const FilePath:AnsiString;
   var FileSize:Int64):TDateTime;
 function GetFileSignature(const Path:AnsiString):AnsiString;
+procedure SafeFree(var Obj:TInterfacedObject);
 
 type
   TOwningHandleStream=class(THandleStream)
@@ -82,6 +83,25 @@ destructor TOwningHandleStream.Destroy;
 begin
   CloseHandle(FHandle);
   inherited;
+end;
+
+procedure SafeFree(var Obj:TInterfacedObject);
+var
+  x:IUnknown;
+begin
+  //Obj.Free; but without raising FRefCount>1
+  if Obj<>nil then
+   begin
+    x:=nil;
+    try
+      x:=Obj as IUnknown;
+      while x._Release<>0 do ;
+    except
+      //silent
+    end;
+    pointer(x):=nil;
+    pointer(Obj):=nil;
+   end;
 end;
 
 end.

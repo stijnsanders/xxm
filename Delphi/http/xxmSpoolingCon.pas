@@ -27,7 +27,7 @@ type
 
 implementation
 
-uses SysUtils, xxmSock, xxmThreadPool;
+uses SysUtils, xxmSock, xxmThreadPool, xxmCommonUtils;
 
 { TXxmSpoolingConnections }
 
@@ -91,13 +91,7 @@ end;
 
 procedure TXxmSpoolingConnections.DropContext(i: integer);
 begin
-  try
-    (FContexts[i].Context as IUnknown)._Release; //FContexts[ii].Free;
-    FContexts[i].Buffer.Free;
-  except
-    //ignore
-  end;
-  FContexts[i].Context:=nil;
+  SafeFree(TInterfacedObject(FContexts[i].Context));
   FContexts[i].Buffer:=nil;
 end;
 
@@ -109,6 +103,7 @@ var
   w,x:TFDSet;
   i,j,k,l:integer;
   t:TTimeVal;
+  h:THandle;
 begin
   inherited;
   i:=0;
@@ -130,9 +125,10 @@ begin
             DropContext(k)
           else
            begin
-            w.fd_array[w.fd_count]:=FContexts[k].Context.Socket.Handle;
+            h:=FContexts[k].Context.Socket.Handle;
+            w.fd_array[w.fd_count]:=h;
             inc(w.fd_count);
-            x.fd_array[x.fd_count]:=FContexts[k].Context.Socket.Handle;
+            x.fd_array[x.fd_count]:=h;
             inc(x.fd_count);
            end;
          end;
@@ -163,27 +159,18 @@ begin
           for k:=0 to x.fd_count-1 do
            begin
             j:=0;
+            h:=x.fd_array[k];
             while (j<FContextIndex) and not((FContexts[j].Context<>nil)
-              and (FContexts[j].Context.Socket.Handle=x.fd_array[k])) do inc(j);
-            if j<FContextIndex then
-             begin
-              try
-                (FContexts[j].Context as IUnknown)._Release; //FContexts[j].Free;
-                FContexts[j].Buffer.Free;
-              except
-                //ignore
-              end;
-              FContexts[j].Context:=nil;
-              FContexts[j].Buffer:=nil;
-             end;
-            //else raise?
+              and (FContexts[j].Context.Socket.Handle=h)) do inc(j);
+            if j<FContextIndex then DropContext(j); //else raise?
            end;
           //writables
           for k:=0 to w.fd_count-1 do
            begin
             j:=0;
+            h:=w.fd_array[k];
             while (j<FContextIndex) and not((FContexts[j].Context<>nil)
-              and (FContexts[j].Context.Socket.Handle=w.fd_array[k])) do inc(j);
+              and (FContexts[j].Context.Socket.Handle=h)) do inc(j);
             if j<FContextIndex then
              begin
               if FContexts[j].DataLeft>dSize then l:=dSize

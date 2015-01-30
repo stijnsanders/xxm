@@ -242,7 +242,7 @@ begin
   inherited Create('');//URL is parsed by Execute
   FSocket:=TTCPBlockSocket.Create;
   FSocket.Socket:=SocketHandle;
-  SendDirect:=SendData;
+  SendDirect:=nil;//see BeginRequest to detect AfterConstruction
   i:=1;
   l:=4;
   setsockopt(FSocket.Socket,IPPROTO_TCP,TCP_NODELAY,@i,l);
@@ -259,8 +259,16 @@ procedure TXxmSynaContext.BeginRequest;
 begin
   inherited;
   FReqHeaders:=nil;
-  FResHeaders:=TResponseHeaders.Create;
-  (FResHeaders as IUnknown)._AddRef;
+  if @SendDirect=nil then
+   begin
+    SendDirect:=SendData;
+    FResHeaders:=nil;
+   end
+  else
+   begin
+    FResHeaders:=TResponseHeaders.Create;
+    (FResHeaders as IUnknown)._AddRef;
+   end;
   FCookieParsed:=false;
   FQueryStringIndex:=1;
   FSessionID:='';//see GetSessionID

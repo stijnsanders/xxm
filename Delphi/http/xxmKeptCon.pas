@@ -22,7 +22,7 @@ type
 
 implementation
 
-uses SysUtils, xxmSock, xxmThreadPool;
+uses SysUtils, xxmSock, xxmThreadPool, xxmCommonUtils;
 
 { TXxmKeptConnections }
 
@@ -47,12 +47,7 @@ begin
   CloseHandle(FQueueEvent);
   DeleteCriticalSection(FLock);
   for i:=0 to FContextIndex-1 do
-    if FContexts[i]<>nil then
-      try
-        (FContexts[i] as IUnknown)._Release;//FContexts[i].Free;
-      except
-        //ignore
-      end;
+    if FContexts[i]<>nil then SafeFree(TInterfacedObject(FContexts[i]));
   inherited;
 end;
 
@@ -92,6 +87,7 @@ var
   r,x:TFDSet;
   i,ii,j,k:integer;
   t:TTimeVal;
+  h:THandle;
 begin
   inherited;
   i:=0;
@@ -110,19 +106,13 @@ begin
           inc(FContexts[ii].KeptCount);
           //timed out? (see also t value below: 300x100ms~=30s)
           if FContexts[ii].KeptCount=300 then
-           begin
-            try
-              (FContexts[ii] as IUnknown)._Release; //FContexts[ii].Free;
-            except
-              //ignore
-            end;
-            FContexts[ii]:=nil;
-           end
+            SafeFree(TInterfacedObject(FContexts[ii]))
           else
            begin
-            r.fd_array[r.fd_count]:=FContexts[ii].Socket.Handle;
+            h:=FContexts[ii].Socket.Handle;
+            r.fd_array[r.fd_count]:=h;
             inc(r.fd_count);
-            x.fd_array[x.fd_count]:=FContexts[ii].Socket.Handle;
+            x.fd_array[x.fd_count]:=h;
             inc(x.fd_count);
            end;
          end;
@@ -153,25 +143,19 @@ begin
           for k:=0 to x.fd_count-1 do
            begin
             j:=0;
+            h:=x.fd_array[k];
             while (j<FContextIndex) and not((FContexts[j]<>nil)
-              and (FContexts[j].Socket.Handle=x.fd_array[k])) do inc(j);
+              and (FContexts[j].Socket.Handle=h)) do inc(j);
             if j<FContextIndex then
-             begin
-              try
-                (FContexts[j] as IUnknown)._Release; //FContexts[j].Free;
-              except
-                //ignore
-              end;
-              FContexts[j]:=nil;
-             end;
-            //else raise?
+              SafeFree(TInterfacedObject(FContexts[j]));//else raise?
            end;
           //readables
           for k:=0 to r.fd_count-1 do
            begin
             j:=0;
+            h:=r.fd_array[k];
             while (j<FContextIndex) and not((FContexts[j]<>nil)
-              and (FContexts[j].Socket.Handle=r.fd_array[k])) do inc(j);
+              and (FContexts[j].Socket.Handle=h)) do inc(j);
             if j<FContextIndex then
              begin
               PageLoaderPool.Queue(FContexts[j]);
