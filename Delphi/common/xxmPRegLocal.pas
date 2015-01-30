@@ -2,7 +2,7 @@ unit xxmPRegLocal;
 
 interface
 
-uses Windows, SysUtils, xxm, xxmPReg;
+uses Windows, SysUtils, xxm, xxmPReg, Registry;
 
 type
   TXxmProjectCacheEntry=class(TXxmProjectEntry)
@@ -13,6 +13,7 @@ type
       Name,Value:WideString;
       //TODO: expiry, domain, path...
     end;
+    procedure OpenReg(r: TRegistry);
     function GetRegisteredPath: WideString;
   protected
     function LoadProject: IXxmProject; override;
@@ -56,8 +57,6 @@ exports
   XxmProjectRegister;
 
 implementation
-
-uses Registry;
 
 procedure XxmProjectRegister(
   hwnd:HWND;        // handle to owner window
@@ -161,23 +160,29 @@ begin
     if Result[i] in ['\','/',':','*','?','"','<','>','|'] then Result[i]:='_';
 end;
 
+procedure TXxmProjectCacheEntry.OpenReg(r:TRegistry);
+var
+  k:string;
+begin
+  k:='\Software\xxm\local\'+string(Name);
+  r.RootKey:=HKEY_CURRENT_USER;
+  if not(r.OpenKey(k,false)) then
+   begin
+    r.RootKey:=HKEY_LOCAL_MACHINE;
+    if not(r.OpenKey(k,false)) then
+      raise EXxmProjectNotFound.Create(StringReplace(
+        SXxmProjectNotFound,'__',Name,[]));
+   end;
+end;
+
 procedure TXxmProjectCacheEntry.SetSignature(const Value: AnsiString);
 var
   r:TRegistry;
-  k:AnsiString;
 begin
   FSignature:=Value;
-  k:='\Software\xxm\local\'+Name;
   r:=TRegistry.Create;
   try
-    r.RootKey:=HKEY_CURRENT_USER;
-    if not(r.OpenKey(k,false)) then
-     begin
-      r.RootKey:=HKEY_LOCAL_MACHINE;
-      if not(r.OpenKey(k,false)) then
-        raise EXxmProjectNotFound.Create(StringReplace(
-          SXxmProjectNotFound,'__',Name,[]));
-     end;
+    OpenReg(r);
     r.WriteString('Signature',FSignature);
   finally
     r.Free;
@@ -187,28 +192,21 @@ end;
 function TXxmProjectCacheEntry.GetRegisteredPath: WideString;
 var
   r:TRegistry;
-  k:AnsiString;
   i:integer;
 begin
-  k:='\Software\xxm\local\'+Name;
   r:=TRegistry.Create;
   try
-    r.RootKey:=HKEY_CURRENT_USER;
-    if r.OpenKeyReadOnly(k) then
+    try
+      OpenReg(r);
       SetFilePath(r.ReadString(''),
         not(r.ValueExists('LoadCopy')) or r.ReadBool('LoadCopy'))
-    else
-     begin
-      r.RootKey:=HKEY_LOCAL_MACHINE;
-      if r.OpenKeyReadOnly(k) then
-        SetFilePath(r.ReadString(''),
-          not(r.ValueExists('LoadCopy')) or r.ReadBool('LoadCopy'))
-      else
+    except
+      on EXxmProjectNotFound do
+       begin
         SetFilePath('',false);
-     end;
-    if FilePath='' then
-      raise EXxmProjectNotFound.Create(StringReplace(
-        SXxmProjectNotFound,'__',Name,[]));
+        raise;
+       end;
+    end;
 
     //TODO: alias? (see xxm.xml)
 
@@ -216,6 +214,9 @@ begin
       FSignature:=r.ReadString('Signature')
     else
       FSignature:='';
+
+    if r.ValueExists('BufferSize') then
+      FBufferSize:=r.ReadInteger('BufferSize');
 
     //TODO: extra flags,settings?
 
@@ -238,20 +239,11 @@ end;
 function TXxmProjectCacheEntry.GetAllowInclude: Boolean;
 var
   r:TRegistry;
-  k:AnsiString;
 begin
   Result:=false;//default
-  k:='\Software\xxm\local\'+Name;
   r:=TRegistry.Create;
   try
-    r.RootKey:=HKEY_CURRENT_USER;
-    if not(r.OpenKeyReadOnly(k)) then
-     begin
-      r.RootKey:=HKEY_LOCAL_MACHINE;
-      if not(r.OpenKeyReadOnly(k)) then
-        raise EXxmProjectNotFound.Create(StringReplace(
-          SXxmProjectNotFound,'__',Name,[]));
-     end;
+    OpenReg(r);
     if r.ValueExists('AllowInclude') then Result:=r.ReadBool('AllowInclude');
   finally
     r.Free;

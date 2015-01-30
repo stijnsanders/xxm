@@ -185,6 +185,46 @@ begin
   Result:=doc.documentElement;
 end;
 
+function BSize(const x:string):integer;
+var
+  i,l:integer;
+begin
+  Result:=0;//default
+  i:=1;
+  l:=Length(x);
+  if l<>0 then
+    case x[1] of
+      '$','#','h','H','x','X':inc(i);//hex
+      '0':if (l>2) and ((x[2]='x') or (x[2]='X')) then inc(i,2);
+    end;
+  if i<>1 then
+    while (i<=l) do
+     begin
+      case x[i] of
+        '0'..'9':
+          Result:=Result*$10+(byte(x[i]) and $F);
+        'A'..'F','a'..'f':
+          Result:=Result*$10+9+(byte(x[i]) and $F);
+        else raise Exception.Create('Invalid hexadecimal value "'+x+'"');
+      end;
+      inc(i);
+     end
+  else
+    while (i<=l) do
+     begin
+      case x[i] of
+        '0'..'9':
+          Result:=Result*10+(byte(x[i]) and $F);
+        'K','k':Result:=Result*$400;//kilobyte
+        'M','m':Result:=Result*$100000;//megabyte
+        //'G','g':Result:=Result*$40000000;//gigabyte
+        'B','I','b','i':;//ignore
+        else raise Exception.Create('Invalid numeric value "'+x+'"');
+      end;
+      inc(i);
+     end;
+end;
+
 procedure TXxmProjectCacheXml.CheckRegistry;
 var
   s:AnsiString;
@@ -265,7 +305,10 @@ begin
                     VarToStr(x.getAttribute('AllowInclude'))<>'0';
                  end;
                end;
-              FProjects[i].Entry.FSignature:=VarToStr(x.getAttribute('Signature'));
+              FProjects[i].Entry.FSignature:=
+                VarToStr(x.getAttribute('Signature'));
+              FProjects[i].Entry.FBufferSize:=
+                BSize(VarToStr(x.getAttribute('BufferSize')));
              end
             else
               FreeAndNil(FProjects[i].Entry);

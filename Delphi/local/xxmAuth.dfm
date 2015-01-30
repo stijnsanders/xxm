@@ -93,8 +93,8 @@ object XxmAuthForm: TXxmAuthForm
     Height = 33
     AutoSize = False
     Caption = 
-      'Hold "X" while loading an authenticated page to clear the creden' +
-      'tials cache.'
+      'Hold "X" while loading an authenticated page to clear stored cre' +
+      'dentials.'
     WordWrap = True
   end
   object txtURL: TEdit

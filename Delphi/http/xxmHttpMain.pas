@@ -222,6 +222,10 @@ begin
   if (setsockopt(FSocket.Handle,SOL_SOCKET,SO_RCVTIMEO,@i,4)<>0) or
      (setsockopt(FSocket.Handle,SOL_SOCKET,SO_SNDTIMEO,@i,4)<>0) then
     RaiseLastOSError;
+  i:=$10000;//TODO: setting
+  if (setsockopt(FSocket.Handle,SOL_SOCKET,SO_RCVBUF,@i,4)<>0) or
+     (setsockopt(FSocket.Handle,SOL_SOCKET,SO_SNDBUF,@i,4)<>0) then
+    RaiseLastOSError;
   WasKept:=false;
   SendDirect:=FSocket.SendBuf;
 end;

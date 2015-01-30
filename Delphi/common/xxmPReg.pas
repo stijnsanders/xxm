@@ -17,6 +17,7 @@ type
     FLoadCopy:boolean;
   protected
     FSignature:AnsiString;
+    FBufferSize:integer;
     function GetProject: IXxmProject;
     function LoadProject: IXxmProject; virtual;
     function GetModulePath:WideString; virtual;
@@ -46,6 +47,7 @@ type
     procedure CloseContext;
     procedure GetFilePath(const Address:WideString;var Path,MimeType:WideString);
     function GetProjectInterface(const IID: TGUID):IUnknown;
+    property BufferSize: integer read FBufferSize;
     property Name: WideString read FName;
     property Project: IXxmProject read GetProject;
   end;
@@ -94,6 +96,7 @@ begin
   FContextCount:=0;
   FProject:=nil;
   FHandle:=0;
+  FBufferSize:=0;
   FFilePath:='';//see SetFilePath
   FLoadPath:='';
   FLoadCopy:=false;
@@ -242,7 +245,7 @@ begin
       else
        begin
         i:=GetLastError;
-        if i=ERROR_FILE_EXISTS then
+        if i=ERROR_FILE_EXISTS then r:=0 else
          begin
           dec(r);
           if (r=0) or (i<>ERROR_ACCESS_DENIED) then

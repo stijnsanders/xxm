@@ -200,7 +200,7 @@ begin
   SettingCookie:=false;
   FProjectName:='';//parsed from URL later
   FFragmentName:='';//parsed from URL later
-  FBufferSize:=0;//TODO: from project settings?
+  FBufferSize:=0;
   SendBuf:=SendDirect;
 end;
 
@@ -246,6 +246,7 @@ begin
       raise EXxmAutoBuildFailed.Create(FProjectName);
      end;
   FProjectEntry.OpenContext;
+  SetBufferSize(FProjectEntry.BufferSize);
   FPage:=GetProjectPage(FFragmentName);
 end;
 
@@ -867,7 +868,7 @@ end;
 
 procedure TXxmGeneralContext.SetBufferSize(ABufferSize: integer);
 const
-  MaxBufferSize=$100000;
+  MaxBufferSize=$10000000;//128MB
 begin
   if (ABufferSize<0) or (ABufferSize>MaxBufferSize) then
     raise EXxmBufferSizeInvalid.Create(SXxmBufferSizeInvalid);
