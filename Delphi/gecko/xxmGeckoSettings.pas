@@ -1,4 +1,4 @@
-unit xxmSettings;
+unit xxmGeckoSettings;
 
 interface
 
