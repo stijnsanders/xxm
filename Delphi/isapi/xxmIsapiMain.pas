@@ -5,18 +5,18 @@ interface
 uses Windows, SysUtils, Classes, ActiveX, isapi4, xxm, xxmContext,
   xxmPReg, xxmPRegXml, xxmParams, xxmParUtils, xxmHeaders;
 
-function GetExtensionVersion(var Ver: THSE_VERSION_INFO): BOOL; stdcall;
+function GetExtensionVersion(var Ver: THSE_VERSION_INFO ): BOOL; stdcall;
 function HttpExtensionProc(PECB: PEXTENSION_CONTROL_BLOCK): DWORD; stdcall;
 function TerminateExtension(dwFlags: DWORD): BOOL; stdcall;
 
 type
   TXxmIsapiContext=class(TXxmGeneralContext, IxxmHttpHeaders)
   private
-    FURI:WideString;
-    FRedirectPrefix,FSessionID:AnsiString;
-    ecb:PEXTENSION_CONTROL_BLOCK;
-    FReqHeaders:TRequestHeaders;
-    FResHeaders:TResponseHeaders;
+    ecb: PEXTENSION_CONTROL_BLOCK;
+    FURI: WideString;
+    FRedirectPrefix, FSessionID: AnsiString;
+    FReqHeaders: TRequestHeaders;
+    FResHeaders: TResponseHeaders;
     FCookieParsed: boolean;
     FCookie: AnsiString;
     FCookieIdx: TParamIndexes;
@@ -30,19 +30,19 @@ type
     procedure Redirect(RedirectURL: WideString; Relative:boolean); override;
     function GetCookie(Name: WideString): WideString; override;
 
-    function GetProjectEntry:TXxmProjectEntry; override;
+    function GetProjectEntry: TXxmProjectEntry; override;
     function GetProjectPage(FragmentName: WideString):IXxmFragment; override;
     procedure SendHeader; override;
     procedure SetStatus(Code: Integer; Text: WideString); override;
     function GetRequestHeader(const Name: WideString): WideString; override;
     procedure AddResponseHeader(const Name, Value: WideString); override;
 
-    function GetRequestHeaders:IxxmDictionaryEx;
-    function GetResponseHeaders:IxxmDictionaryEx;
+    function GetRequestHeaders: IxxmDictionaryEx;
+    function GetResponseHeaders: IxxmDictionaryEx;
   public
     Queue:TXxmIsapiContext;//used by thread pool
 
-    constructor Create(pecb:PEXTENSION_CONTROL_BLOCK);
+    constructor Create(pecb: PEXTENSION_CONTROL_BLOCK);
     destructor Destroy; override;
     procedure Execute;
   end;
@@ -77,7 +77,7 @@ type
   EXxmContextStringUnknown=class(Exception);
 
 const
-  PoolMaxThreads=64;//TODO: from setting?
+  PoolMaxThreads=$200;//TODO: from setting?
 
 var
   IsapiHandlerPool:TXxmIsapiHandlerPool;
@@ -188,6 +188,7 @@ end;
 
 destructor TXxmIsapiContext.Destroy;
 begin
+  BufferStore.AddBuffer(FContentBuffer);
   if FReqHeaders<>nil then
    begin
     (FReqHeaders as IUnknown)._Release;
@@ -244,7 +245,7 @@ begin
     on e:Exception do
       if not HandleException(e) then
        begin
-        ForceStatus(500,'ERROR');
+        ForceStatus(StatusException,'ERROR');
         try
           if Connected then
            begin
@@ -264,7 +265,8 @@ begin
   end;
   ecb.dwHttpStatusCode:=StatusCode;
   //ServerFunction(HSE_REQ_CLOSE_CONNECTION,nil,nil,nil);
-  ServerFunction(HSE_REQ_DONE_WITH_SESSION,nil,nil,nil);
+  i:=HSE_STATUS_SUCCESS_AND_KEEP_CONN;
+  ecb.ServerSupportFunction(ecb.ConnID,HSE_REQ_DONE_WITH_SESSION,@i,nil,nil);
 end;
 
 function TXxmIsapiContext.GetProjectEntry:TXxmProjectEntry;
@@ -526,7 +528,6 @@ begin
      end;
    end;
   CoUninitialize;
-  if ContentBuffer<>nil then ContentBuffer.Free;
 end;
 
 procedure TXxmIsapiHandler.SignalNextJob;
@@ -649,6 +650,9 @@ begin
 end;
 
 initialization
+  StatusException:=500;//TODO: from settings?
+  StatusBuildError:=503;
+  StatusFileNotFound:=404;
   XxmProjectCache:=nil;//TXxmProjectCache.Create;//see Execute above
   IsapiHandlerPool:=TXxmIsapiHandlerPool.Create;
 finalization

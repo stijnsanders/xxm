@@ -233,6 +233,7 @@ end;
 
 destructor TXxmHttpContext.Destroy;
 begin
+  BufferStore.AddBuffer(FContentBuffer);
   FSocket.Free;
   inherited;
 end;
