@@ -436,7 +436,7 @@ begin
     on e:Exception do
       if not HandleException(e) then
        begin
-        ForceStatus(500,'Internal Server Error');
+        ForceStatus(StatusException,'Internal Server Error');
         try
           if FPostData=nil then x:='none' else x:=IntToStr(FPostData.Size)+' bytes';
         except
@@ -635,4 +635,8 @@ begin
   //inheritants can perform pre-page-build logging or checking here
 end;
 
+initialization
+  StatusBuildError:=503;//TODO: from settings
+  StatusException:=500;
+  StatusFileNotFound:=404;
 end.

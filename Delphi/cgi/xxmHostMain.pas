@@ -217,7 +217,7 @@ begin
     on e:Exception do
       if not HandleException(e) then
        begin
-        ForceStatus(500,'Internal Server Error');//TODO:setting?
+        ForceStatus(StatusException,'Internal Server Error');//TODO:setting?
         try
           if FPostData=nil then x:='none' else x:=IntToStr(FPostData.Size)+' bytes';
         except
@@ -438,4 +438,8 @@ begin
   raise Exception.Create('Post data is read-only.');
 end;
 
+initialization
+  StatusBuildError:=503;//TODO: from settings
+  StatusException:=500;
+  StatusFileNotFound:=404;
 end.

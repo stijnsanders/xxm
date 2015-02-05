@@ -45,10 +45,9 @@ begin
     r.RootKey:=HKEY_LOCAL_MACHINE;
     if r.OpenKey('\Software\xxm\local',true) then
      begin
-      //LockingLevel:=ReadInt('LockingLevel',0);
-      StatusException:=200;//ReadInt('StatusException',500);
-      StatusBuildError:=200;//ReadInt('StatusBuildError',503);
-      StatusFileNotFound:=200;//ReadInt('StatusFileNotFound',404);
+      StatusException:=ReadInt('StatusException',200);//500);
+      StatusBuildError:=ReadInt('StatusBuildError',200);//503);
+      StatusFileNotFound:=ReadInt('StatusFileNotFound',200);//404);
       DefaultProjectName:=ReadString('DefaultProject','xxm');
      end;
   finally

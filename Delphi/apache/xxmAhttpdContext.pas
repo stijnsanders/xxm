@@ -258,4 +258,8 @@ begin
       apr_pstrdup(rq.pool,PAnsiChar(AnsiString(Value))));
 end;
 
+initialization
+  StatusBuildError:=503;//TODO: from settings
+  StatusException:=500;
+  StatusFileNotFound:=404;
 end.
