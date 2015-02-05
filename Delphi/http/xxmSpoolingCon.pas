@@ -13,6 +13,7 @@ type
       Context:TXxmHttpContext;
       Buffer:TStream;
       DataLeft:int64;
+      BufferFreeWhenDone:boolean;
     end;
     FContextIndex,FContextSize:integer;
     procedure DropContext(i:integer);
@@ -21,13 +22,14 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-    procedure Add(Context:TXxmHttpContext;Buffer:TStream);
+    procedure Add(Context:TXxmHttpContext;
+      Buffer:TStream;FreeWhenDone:boolean);
   end;
 
 
 implementation
 
-uses SysUtils, xxmSock, xxmThreadPool, xxmCommonUtils;
+uses SysUtils, xxmSock, xxmThreadPool, xxmCommonUtils, xxmContext;
 
 { TXxmSpoolingConnections }
 
@@ -56,7 +58,7 @@ begin
 end;
 
 procedure TXxmSpoolingConnections.Add(Context:TXxmHttpContext;
-  Buffer:TStream);
+  Buffer:TStream;FreeWhenDone:boolean);
 const
   GrowStep=$100;
 var
@@ -78,6 +80,7 @@ begin
     FContexts[i].Context:=Context;
     FContexts[i].Buffer:=Buffer;
     FContexts[i].DataLeft:=Buffer.Position;
+    FContexts[i].BufferFreeWhenDone:=FreeWhenDone;
     Buffer.Position:=0;
     Context.KeptCount:=0;
     //protect from destruction by TXxmPageLoader.Execute:
@@ -92,7 +95,10 @@ end;
 procedure TXxmSpoolingConnections.DropContext(i: integer);
 begin
   SafeFree(TInterfacedObject(FContexts[i].Context));
-  FContexts[i].Buffer:=nil;
+  if FContexts[i].BufferFreeWhenDone then
+    FreeAndNil(FContexts[i].Buffer)
+  else
+    BufferStore.AddBuffer(TMemoryStream(FContexts[i].Buffer));
 end;
 
 procedure TXxmSpoolingConnections.Execute;

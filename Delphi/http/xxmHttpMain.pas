@@ -163,6 +163,7 @@ begin
 
   //
   CoInitialize(nil);
+  SetErrorMode(SEM_FAILCRITICALERRORS);
   XxmProjectCache:=TXxmProjectCacheXml.Create;
   PageLoaderPool:=TXxmPageLoaderPool.Create(Threads);
   Server:=TTcpServer.Create;
@@ -290,12 +291,12 @@ procedure TXxmHttpContext.FlushFinal;
 begin
   //no inherited! override default behaviour:
   if (BufferSize<>0) //and (ContentBuffer.Position<>0) then
-    and (ContentBuffer.Position>SpoolingThreshold) then
+    and (FContentBuffer.Position>SpoolingThreshold) then
    begin
     CheckSendStart(true);
     WasKept:=true;//skip PostExecute in Execute
-    SpoolingConnections.Add(Self,ContentBuffer);
-    ContentBuffer:=nil;//since spooling will free it when done
+    SpoolingConnections.Add(Self,FContentBuffer,false);
+    FContentBuffer:=nil;//since spooling will free it when done
    end
   else
     inherited;//Flush;//assert WasKept=false
@@ -309,7 +310,7 @@ begin
     AData.Seek(0,soFromEnd);//used by SpoolingConnections.Add
     CheckSendStart(true);
     WasKept:=true;//skip PostExecute in Execute
-    SpoolingConnections.Add(Self,AData);
+    SpoolingConnections.Add(Self,AData,true);
    end
   else
     inherited;//assert WasKept=false
@@ -679,4 +680,8 @@ begin
     end;
 end;
 
+initialization
+  StatusBuildError:=503;//TODO: from settings
+  StatusException:=500;
+  StatusFileNotFound:=404;
 end.

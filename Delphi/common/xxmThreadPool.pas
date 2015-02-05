@@ -99,7 +99,6 @@ begin
   inherited;
   CoInitialize(nil);
   SetErrorMode(SEM_FAILCRITICALERRORS);
-  ContentBuffer:=nil;
   while not(Terminated) do
    begin
     Context:=PageLoaderPool.Unqueue;
@@ -123,7 +122,6 @@ begin
      end;
    end;
   //CoUninitialize;//? hangs thread
-  if ContentBuffer<>nil then FreeAndNil(ContentBuffer);
 end;
 
 procedure TXxmPageLoader.SignalNextJob;

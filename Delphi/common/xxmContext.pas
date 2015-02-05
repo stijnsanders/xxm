@@ -30,6 +30,7 @@ type
   protected
     FURL, FContentType, FProjectName, FPageClass, FFragmentName: WideString;
     FAutoEncoding: TXxmAutoEncoding;
+    FContentBuffer: TMemoryStream;
     FPostData: TStream;
     FPostTempFile: AnsiString;
     SendBuf, SendDirect: TXxmSendBufHandler;
@@ -122,6 +123,18 @@ type
     property SingleFileSent:WideString read FSingleFileSent;
   end;
 
+  TXxmBufferStore=class(TObject)
+  private
+    FLock: TRTLCriticalSection;
+    FBuffer: array of TMemoryStream;
+    FBufferSize: integer;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    procedure GetBuffer(var x:TMemoryStream);
+    procedure AddBuffer(var x:TMemoryStream);
+  end;
+
   EXxmTransferError=class(Exception);
   EXxmAutoBuildFailed=class(Exception);
   EXxmDirectInclude=class(Exception);
@@ -133,12 +146,10 @@ type
   EXxmParametersAlreadyParsed=class(Exception);
   EXxmBufferSizeInvalid=class(Exception);
 
-threadvar
-  ContentBuffer:TStream;
-
 var
   //see xxmSettings
   StatusBuildError,StatusException,StatusFileNotFound:integer;
+  BufferStore:TXxmBufferStore;
 
 const
   Utf8ByteOrderMark=#$EF#$BB#$BF;
@@ -163,6 +174,7 @@ constructor TXxmGeneralContext.Create(const URL: WideString);
 begin
   inherited Create;
   FURL:=URL;
+  FContentBuffer:=nil;
   SendDirect:=nil;//TODO: stub raise abstract error?
 end;
 
@@ -223,7 +235,7 @@ begin
     //silent
   end;
   FreeAndNil(FParams);
-  if (FBufferSize<>0) and (ContentBuffer<>nil) then ContentBuffer.Position:=0;
+  BufferStore.AddBuffer(FContentBuffer);
 end;
 
 function TXxmGeneralContext.GetURL: WideString;
@@ -256,7 +268,7 @@ var
   i:int64;
 begin
   //clear buffer just in case
-  if ContentBuffer<>nil then ContentBuffer.Position:=0;
+  if FContentBuffer<>nil then FContentBuffer.Position:=0;
 
   LoadPage;
   if FPage=nil then
@@ -277,7 +289,7 @@ begin
       //any content?
       if FHeaderSent<>XxmHeaderSent then
        begin
-        if FBufferSize=0 then i:=0 else i:=ContentBuffer.Position;
+        if FBufferSize=0 then i:=0 else i:=FContentBuffer.Position;
         if (i=0) and (FStatusCode=200) then
           ForceStatus(204,'No Content');
         if FStatusCode<>304 then
@@ -711,7 +723,7 @@ begin
           raise EXxmTransferError.Create(SysErrorMessage(GetLastError));
        end;
     end;
-    if (FBufferSize<>0) and (ContentBuffer.Position>=FBufferSize) then Flush;
+    if (FBufferSize<>0) and (FContentBuffer.Position>=FBufferSize) then Flush;
    end;
 end;
 
@@ -869,6 +881,7 @@ end;
 procedure TXxmGeneralContext.SetBufferSize(ABufferSize: integer);
 const
   MaxBufferSize=$10000000;//128MB
+  BufferSizeStep=$10000;//64KB
 begin
   if (ABufferSize<0) or (ABufferSize>MaxBufferSize) then
     raise EXxmBufferSizeInvalid.Create(SXxmBufferSizeInvalid);
@@ -876,21 +889,21 @@ begin
   FBufferSize:=ABufferSize;
   if FBufferSize=0 then SendBuf:=SendDirect else
    begin
-    if ContentBuffer=nil then
-      ContentBuffer:=TMemoryStream.Create;//TODO: tmp file when large buffer
-    if ContentBuffer.Position>ABufferSize then Flush;
-    if ContentBuffer.Size<ABufferSize then ContentBuffer.Size:=ABufferSize;
-    SendBuf:=ContentBuffer.Write;
+    BufferStore.GetBuffer(FContentBuffer);
+    if FContentBuffer.Position>ABufferSize then Flush;
+    if FContentBuffer.Size<ABufferSize then
+     begin
+      if (ABufferSize and (BufferSizeStep-1))<>0 then
+        ABufferSize:=((ABufferSize div BufferSizeStep)+1)*BufferSizeStep;
+      FContentBuffer.Size:=ABufferSize;
+     end;
+    SendBuf:=FContentBuffer.Write;
    end;
 end;
 
 procedure TXxmGeneralContext.Flush;
-const
-  dSize=$10000;
 var
   i:int64;
-  d:array[0..dSize-1] of byte;
-  l:integer;
 begin
   if FHeaderSent=XxmHeaderOnNextFlush then
    begin
@@ -899,31 +912,12 @@ begin
    end;
   if FBufferSize<>0 then
    begin
-    i:=ContentBuffer.Position;
+    i:=FContentBuffer.Position;
     if i<>0 then
      begin
-      if ContentBuffer is TMemoryStream then
-       begin
-        if SendDirect((ContentBuffer as TMemoryStream).Memory^,i)<>i then
-          raise EXxmTransferError.Create(SysErrorMessage(GetLastError));
-       end
-      else
-       begin
-        ContentBuffer.Position:=0;
-        repeat
-          if i>dSize then l:=dSize else l:=i;
-          l:=ContentBuffer.Read(d[0],l);
-          if l<>0 then
-           begin
-            if SendDirect(d[0],l)<>l then
-              raise EXxmTransferError.Create(SysErrorMessage(GetLastError));
-            i:=i-l;
-           end
-          else
-            i:=0;//raise?
-        until i=0;
-       end;
-      ContentBuffer.Position:=0;
+      if SendDirect(FContentBuffer.Memory^,i)<>i then
+        raise EXxmTransferError.Create(SysErrorMessage(GetLastError));
+      FContentBuffer.Position:=0;
      end;
    end;
 end;
@@ -1110,4 +1104,80 @@ begin
   Next:=ANext;
 end;
 
+{ TXxmBufferStore }
+
+constructor TXxmBufferStore.Create;
+begin
+  inherited Create;
+  FBufferSize:=0;
+  InitializeCriticalSection(FLock);
+end;
+
+destructor TXxmBufferStore.Destroy;
+var
+  i:integer;
+begin
+  for i:=0 to FBufferSize-1 do //downto?
+    try
+      FreeAndNil(FBuffer[i]);
+    except
+      //silent
+    end;
+  DeleteCriticalSection(FLock);
+  inherited;
+end;
+
+procedure TXxmBufferStore.AddBuffer(var x:TMemoryStream);
+var
+  i:integer;
+begin
+  if x<>nil then
+   begin
+    EnterCriticalSection(FLock);
+    try
+      i:=0;
+      while (i<FBufferSize) and (FBuffer[i]<>nil) do inc(i);
+      if i=FBufferSize then
+       begin
+        inc(FBufferSize,$400);//grow
+        SetLength(FBuffer,FBufferSize);
+       end;
+      FBuffer[i]:=x;
+      x.Position:=0;
+    finally
+      LeaveCriticalSection(FLock);
+      x:=nil;
+    end;
+   end;
+end;
+
+procedure TXxmBufferStore.GetBuffer(var x:TMemoryStream);
+var
+  i:integer;
+begin
+  if x=nil then
+   begin
+    EnterCriticalSection(FLock);
+    try
+      i:=0;
+      while (i<FBufferSize) and (FBuffer[i]=nil) do inc(i);
+      if i=FBufferSize then
+       begin
+        x:=TMemoryStream.Create;//TODO: tmp file when large buffer
+       end
+      else
+       begin
+        x:=FBuffer[i];
+        FBuffer[i]:=nil;
+       end;
+    finally
+      LeaveCriticalSection(FLock);
+    end;
+   end;
+end;
+
+initialization
+  BufferStore:=TXxmBufferStore.Create;
+finalization
+  BufferStore.Free;
 end.
