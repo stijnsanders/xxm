@@ -285,14 +285,13 @@ begin
     b1:=a2+1;
     b2:=b1;
     if Delim=dAngleB then
-     begin
-      a2:=b1;//inc(a2);
-      if TagInCode<>0 then
+      if TagInCode=a2 then
        begin
-        inc(a2);
+        inc(a2,2);
         TagInCode:=0;
-       end;
-     end;
+       end
+      else
+        a2:=b1;//inc(a2);
     if (Delim<>dNone) and (b1<=l) then
      begin
       //open tag found, look for close tag (carefully: check strings and opening/closing braces and things)

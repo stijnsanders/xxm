@@ -1,0 +1,10 @@
+<XxmWebProject>
+	<ProjectName>listprojects</ProjectName>
+	<CompileCommand>dcc32 -U[[HandlerPath]]public -Q [[ProjectName]].dpr</CompileCommand>
+	<LastModified>2015-02-06T22:42:39</LastModified>
+	<Files>
+		<Unit UnitName="MSXML2_TLB"/>
+		<File ID="default_xxm" UnitName="default_xxm1" UnitPath=""><Path>Default.xxm</Path></File>
+	</Files>
+	<UUID>{B9DC538D-D879-42CA-9C71-C00BECBA8E5F}</UUID>
+</XxmWebProject>

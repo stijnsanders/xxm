@@ -1,0 +1,17 @@
+<h3>xxm Demo Projects - listprojects</h3>
+<p>This is a demo project listing the projects from a <code>xxm.xml</code> file.</p>
+<dl>
+<dt>Web.xxmp</dt>
+<dd>The project file. Use xxmProject.exe to edit and manage project settings.</dd>
+<dt>xxmp.pas</dt>
+<dd>The project's main unit. When this file is missing form the project, xxm creates one for you.</dd>
+<dt>MSXML2_TLB.pas</dt>
+<dd>The wrapper unit for the Microsoft XML library, used to read the <code>xxm.xml</code> file.</dd>
+<dt>Default.xxm</dt>
+<dd>The website's default page. It searches the directory <code>listprojects.xxl</code> is in, and the directories above it, for the <code>xxm.xml</code> file.
+Loads it, and lists the <code>&lt;Project&gt;</code> tags by name (skipping any alias definitions and "<code>xxm</code>").</dd>
+</dl>
+<p>By default, a request for the root page on an xxm handler will forward to "<code>/xxm/</code>"
+(unless a <code>SingleProject</code> is configured in the project registry).
+Register this project as <code>ProjectName="xxm"</code> to offer a list of available projects.</p>
+<p style="background-color:gold;"><b>Important:</b> Use this for development servers or environments where it's safe to publish the full list of available projects on the host.</p>
