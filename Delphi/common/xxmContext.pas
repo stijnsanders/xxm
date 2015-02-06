@@ -110,7 +110,8 @@ type
     procedure EndRequest; virtual;
 
     property ProjectEntry: TXxmProjectEntry read FProjectEntry;
-    property BufferSize: integer read GetBufferSize;//write? only for IXxmContext consumers!
+    property BufferSize: integer read FBufferSize;
+    //see also GetBufferSize,SetBufferSize, only here for inheriters
   public
     //abstract! constructor only here for private variable init
     constructor Create(const URL:WideString);
@@ -366,6 +367,7 @@ begin
       SendError('fnf','','');
      end
     else
+     begin
       try
         FPageClass:=FPage.ClassNameEx;
         FBuilding:=FPage;
@@ -376,7 +378,8 @@ begin
         FProjectEntry.Project.UnloadFragment(FPage);
         FPage:=nil;
       end;
-    if FBufferSize<>0 then Flush;
+      if FBufferSize<>0 then FlushFinal;
+     end;
    end;
 end;
 
@@ -532,7 +535,7 @@ begin
        end;
      end;
     SendStr(WideString(tt));
-    if FBufferSize<>0 then Flush;
+    if FBufferSize<>0 then FlushFinal;
    end;
 end;
 

@@ -5,7 +5,7 @@ interface
 uses Windows, SysUtils, Classes, ActiveX, isapi4, xxm, xxmContext,
   xxmPReg, xxmPRegXml, xxmParams, xxmParUtils, xxmHeaders;
 
-function GetExtensionVersion(var Ver: THSE_VERSION_INFO ): BOOL; stdcall;
+function GetExtensionVersion(var Ver: THSE_VERSION_INFO): BOOL; stdcall;
 function HttpExtensionProc(PECB: PEXTENSION_CONTROL_BLOCK): DWORD; stdcall;
 function TerminateExtension(dwFlags: DWORD): BOOL; stdcall;
 
@@ -13,6 +13,8 @@ type
   TXxmIsapiContext=class(TXxmGeneralContext, IxxmHttpHeaders)
   private
     ecb: PEXTENSION_CONTROL_BLOCK;
+    FIOState: integer;
+    FIOStream: TStream;
     FURI: WideString;
     FRedirectPrefix, FSessionID: AnsiString;
     FReqHeaders: TRequestHeaders;
@@ -20,7 +22,10 @@ type
     FCookieParsed: boolean;
     FCookie: AnsiString;
     FCookieIdx: TParamIndexes;
-    procedure ServerFunction(HSERRequest: DWORD; Buffer: Pointer; Size, DataType: LPDWORD);
+    procedure ServerFunction(HSERRequest: DWORD; Buffer: Pointer;
+      Size, DataType: LPDWORD);
+    procedure FlushNext;
+    procedure EndSession;
   protected
     function GetSessionID: WideString; override;
     procedure DispositionAttach(FileName: WideString); override;
@@ -39,6 +44,10 @@ type
 
     function GetRequestHeaders: IxxmDictionaryEx;
     function GetResponseHeaders: IxxmDictionaryEx;
+
+    procedure FlushFinal; override;
+    procedure FlushStream(AData: TStream; ADataSize: Int64); override;
+
   public
     Queue:TXxmIsapiContext;//used by thread pool
 
@@ -78,6 +87,7 @@ type
 
 const
   PoolMaxThreads=$200;//TODO: from setting?
+  SpoolingThreshold=$10000;//64KiB
 
 var
   IsapiHandlerPool:TXxmIsapiHandlerPool;
@@ -142,14 +152,50 @@ begin
   Result:=true;
 end;
 
-{
+const
+  IOState_Normal  =0;//lowest bit 0 for 'sync' states
+  IOState_Error   =4;
+  IOState_Pending =1;//lowest bit 1 for 'async' states
+  IOState_Final   =3;
+  IOState_Stream  =5;
+
 procedure ContextIOCompletion(var ECB: TEXTENSION_CONTROL_BLOCK;
-  pContext: Pointer; cbIO, dwError: DWORD) stdcall;
+  pContext: TXxmIsapiContext; cbIO, dwError: DWORD) stdcall;
 begin
-  //assert TXxmIsapiContext(pContext).ecb=ECB
-  TXxmIsapiContext(pContext).ReportComplete(cbIO,dwError);
+  //assert pContext.ecb=ECB
+  try
+    //TODO: if dwError<>0 then EndSession!
+    case pContext.FIOState of
+      IOState_Pending:
+       begin
+        BufferStore.AddBuffer(TMemoryStream(pContext.FIOStream));
+        if dwError=0 then
+          pContext.FIOState:=IOState_Normal
+        else
+         begin
+          DWORD(pContext.FIOStream):=dwError;
+          pContext.FIOState:=IOState_Error;
+         end;
+       end;
+      IOState_Final:
+       begin
+        BufferStore.AddBuffer(TMemoryStream(pContext.FIOStream));
+        pContext.EndSession;
+        pContext._Release;//pContext.Free;
+       end;
+      IOState_Stream:
+        if dwError=0 then
+          IsapiHandlerPool.Queue(pContext)
+        else
+         begin
+          pContext.FIOStream.Free;
+          pContext._Release;//pContext.Free;
+         end;
+    end;
+  except
+    //silent (log?)
+  end;
 end;
-}
 
 { TXxmIsapiContext }
 
@@ -181,6 +227,8 @@ begin
   FURI:=uri;
   FCookieParsed:=false;
   FSessionID:='';//see GetSessionID
+  FIOState:=IOState_Normal;
+  FIOStream:=nil;
   FReqHeaders:=nil;
   FResHeaders:=TResponseHeaders.Create;
   (FResHeaders as IUnknown)._AddRef;
@@ -207,7 +255,7 @@ var
   x,y:AnsiString;
   i:integer;
 begin
-  //ServerFunction(HSE_REQ_IO_COMPLETION,@ContextIOCompletion,nil,PDWORD(Self));
+  ServerFunction(HSE_REQ_IO_COMPLETION,@ContextIOCompletion,nil,PDWORD(Self));
   try
     //parse url
     x:=FURI;//GetVar(ecb,'HTTP_URL');
@@ -247,7 +295,7 @@ begin
        begin
         ForceStatus(StatusException,'ERROR');
         try
-          if Connected then
+          if not(e is EXxmTransferError) and Connected then
            begin
             //TODO: consider HSE_REQ_SEND_CUSTOM_ERROR?
             try
@@ -263,6 +311,13 @@ begin
         //TODO:ServerFunction(HSE_REQ_ABORTIVE_CLOSE,nil,nil,nil);?
        end;
   end;
+  if (FIOState and 1)=0 then EndSession;
+end;
+
+procedure TXxmIsapiContext.EndSession;
+var
+  i:DWORD;
+begin
   ecb.dwHttpStatusCode:=StatusCode;
   //ServerFunction(HSE_REQ_CLOSE_CONNECTION,nil,nil,nil);
   i:=HSE_STATUS_SUCCESS_AND_KEEP_CONN;
@@ -345,9 +400,28 @@ function TXxmIsapiContext.SendData(const Buffer; Count: LongInt): LongInt;
 begin
   if Count=0 then Result:=0 else
    begin
+    while (FIOState and 1)<>0 do Sleep(1);
+    if FIOState=IOState_Error then
+      raise EXxmTransferError.Create(SysErrorMessage(DWORD(FIOStream)));
     Result:=Count;
-    if not(ecb.WriteClient(ecb.ConnID,@Buffer,cardinal(Result),HSE_IO_SYNC)) then
-      raise EXxmTransferError.Create(SysErrorMessage(GetLastError));
+    if (BufferSize<>0) and (Count>SpoolingThreshold)
+      and (@Buffer=FContentBuffer.Memory) then
+     begin
+      //async
+      FIOState:=IOState_Pending;
+      FIOStream:=FContentBuffer;
+      if not(ecb.WriteClient(ecb.ConnID,@Buffer,cardinal(Result),HSE_IO_ASYNC)) then
+        raise EXxmTransferError.Create(SysErrorMessage(GetLastError));
+      //continue with another content buffer
+      FContentBuffer:=nil;
+      SetBufferSize(BufferSize);
+     end
+    else
+     begin
+      //sync
+      if not(ecb.WriteClient(ecb.ConnID,@Buffer,cardinal(Result),HSE_IO_SYNC)) then
+        raise EXxmTransferError.Create(SysErrorMessage(GetLastError));
+     end;
    end;
 end;
 
@@ -489,6 +563,71 @@ begin
     FResHeaders[Name]:=Value;
 end;
 
+procedure TXxmIsapiContext.FlushFinal;
+var
+  l:cardinal;
+begin
+  //no inherited! override default behaviour:
+  if (BufferSize<>0) and (FContentBuffer.Position>SpoolingThreshold) then
+   begin
+    while (FIOState and 1)<>0 do Sleep(1);
+    if FIOState=IOState_Error then
+      raise EXxmTransferError.Create(SysErrorMessage(DWORD(FIOStream)));
+    CheckSendStart(true);
+    //async
+    _AddRef;//_Release of either TXxmIsapiHandler or ContextIOCompletion will be destroying
+    FIOState:=IOState_Final;
+    FIOStream:=FContentBuffer;
+    l:=FContentBuffer.Position;
+    if not(ecb.WriteClient(ecb.ConnID,FContentBuffer.Memory,cardinal(l),HSE_IO_ASYNC)) then
+      raise EXxmTransferError.Create(SysErrorMessage(GetLastError));
+    FContentBuffer:=nil;
+   end
+  else
+    inherited;//Flush;
+end;
+
+procedure TXxmIsapiContext.FlushStream(AData: TStream; ADataSize: Int64);
+begin
+  //no inherited! override default behaviour:
+  if (BufferSize<>0) and (ADataSize>SpoolingThreshold) then
+   begin
+    //assert AData.Size=ADataSize
+    while (FIOState and 1)<>0 do Sleep(1);
+    if FIOState=IOState_Error then
+      raise EXxmTransferError.Create(SysErrorMessage(DWORD(FIOStream)));
+    CheckSendStart(true);
+    //async
+    _AddRef;//_Release of either TXxmIsapiHandler or ContextIOCompletion will be destroying
+    FIOState:=IOState_Stream;
+    FIOStream:=AData;
+    FIOStream.Position:=0;
+    FlushNext;
+   end
+  else
+    inherited;//assert WasKept=false
+end;
+
+procedure TXxmIsapiContext.FlushNext;
+var
+  l:integer;
+begin
+  l:=FIOStream.Read(FContentBuffer.Memory^,BufferSize);
+  if l=0 then
+   begin
+    FIOState:=IOState_Normal;
+    FreeAndNil(FIOStream);
+    EndSession;
+    _Release;
+   end
+  else
+   begin
+    //FIOState:=IOState_Stream;//assert already set
+    if not(ecb.WriteClient(ecb.ConnID,FContentBuffer.Memory,cardinal(l),HSE_IO_ASYNC)) then
+      raise EXxmTransferError.Create(SysErrorMessage(GetLastError));
+   end;
+end;
+
 { TXxmIsapiHandler }
 
 constructor TXxmIsapiHandler.Create;
@@ -523,8 +662,11 @@ begin
      end
     else
      begin
-      Context.Execute;//assert all exceptions handled!
-      Context._Release;
+      if Context.FIOState=IOState_Stream then
+        Context.FlushNext
+      else
+        Context.Execute;//assert all exceptions handled!
+      Context._Release;//paired with _AddRef by TXxmIsapiHandlerPool.Queue
      end;
    end;
   CoUninitialize;
@@ -602,7 +744,7 @@ begin
   EnterCriticalSection(FLock);
   try
     //add to queue
-    Context._AddRef;
+    Context._AddRef;//paired with _Release by TXxmIsapiHandler.Execute
     if FQueue=nil then FQueue:=Context else
      begin
       c:=FQueue;

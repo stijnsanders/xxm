@@ -6,6 +6,7 @@ v1.2.2.357
 - recycle allocated memory buffers
 - xxmHttp: thread to wait on groups of (slow) connections that have all content in buffer
 - xxmHttp: support basic authentication (401, "WWW-Authenticate: Basic")
+- xxmIsapi: asynchronous sending on more than 64KiB in buffer (project should set Context.ContentBuffer!)
 - xxmLocal: custom handling of WWW-Authenticate, when debugging hold 'X' on authenticated page load to clear stored credentials
 
 v1.2.1.337
