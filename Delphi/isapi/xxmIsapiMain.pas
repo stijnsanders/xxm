@@ -381,7 +381,16 @@ begin
     csLanguage:          Result:=GetVar(ecb,'HTTP_ACCEPT_LANGUAGE');
     csRemoteAddress:     Result:=GetVar(ecb,'REMOTE_ADDR');
     csRemoteHost:        Result:=GetVar(ecb,'REMOTE_HOST');
-    csAuthUser,csAuthPassword:Result:=AuthValue(cs);
+    csAuthUser://TODO: setting?
+     begin
+      Result:=GetVar('AUTH_USER');
+      if Result='' then Result:=AuthValue(cs);
+     end;
+    csAuthPassword:
+      if GetVar('AUTH_USER')='' then
+        Result:=AuthValue(cs)
+      else
+        Result:=GetVar('AUTH_PASSWORD');
     else
       raise EXxmContextStringUnknown.Create(StringReplace(
         SXxmContextStringUnknown,'__',IntToHex(integer(cs),8),[]));

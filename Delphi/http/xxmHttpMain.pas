@@ -129,7 +129,7 @@ begin
   //default values
   Port:=80;
   StartURL:='';
-  Threads:=64;
+  Threads:=$200;
 
   //process command line parameters
   for i:=1 to ParamCount do
