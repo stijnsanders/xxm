@@ -67,6 +67,9 @@ type
 
 implementation
 
+uses
+  xxmCommonUtils;
+
 const
   ProtoParseTag:array[TXxmProtoParseTag] of AnsiString=(
     'ProjectName',
@@ -132,7 +135,7 @@ var
 begin
   FData:=Data;
   FreeAndNil(FOutput);
-  FOutput:=TMemoryStream.Create;
+  FOutput:=THeapStream.Create;
   FIndex:=0;
   StackSize:=0;
   StackPosition:=0;

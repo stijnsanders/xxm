@@ -333,7 +333,7 @@ begin
    begin
     Lock;
     try
-      if OutputData=nil then OutputData:=TMemoryStream.Create;
+      if OutputData=nil then OutputData:=THeapStream.Create;
       OutputData.Position:=OutputSize;
       Result:=OutputData.Write(Buffer,Count);
       OutputSize:=OutputSize+Result; //OutputSize:=OutputData.Position;
@@ -485,7 +485,7 @@ begin
      begin
       p:=GlobalLock(stgmed.hGlobal);
       l:=GlobalSize(stgmed.hGlobal);
-      m:=TMemoryStream.Create;
+      m:=THeapStream.Create;
       m.Write(p^,l);
       m.Position:=0;
       GlobalUnlock(stgmed.hGlobal);
@@ -495,7 +495,7 @@ begin
       Result:=TFileStream.Create(stgmed.lpszFileName,fmOpenRead or fmShareDenyNone);
     TYMED_ISTREAM:
      begin
-      m:=TMemoryStream.Create;
+      m:=THeapStream.Create;
       try
         l:=StreamThreshold;
         m.SetSize(l);

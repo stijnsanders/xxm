@@ -16,6 +16,15 @@ type
     destructor Destroy; override;
   end;
 
+  THeapStream=class(TMemoryStream)
+  private
+    FHeap:THandle;
+  protected
+    function Realloc(var NewCapacity: Integer): Pointer; override;
+  public
+    procedure AfterConstruction; override;
+  end;
+
 implementation
 
 uses Windows;
@@ -101,6 +110,39 @@ begin
     end;
     pointer(x):=nil;
     pointer(Obj):=nil;
+   end;
+end;
+
+{ THeapStream }
+
+procedure THeapStream.AfterConstruction;
+begin
+  inherited;
+  FHeap:=GetProcessHeap;
+end;
+
+function THeapStream.Realloc(var NewCapacity: Integer): Pointer;
+const
+  BlockSize=$10000;
+begin
+  if (NewCapacity>0) and (NewCapacity<>Size) then
+    NewCapacity:=(NewCapacity+(BlockSize-1)) and not(BlockSize-1);
+  Result:=Memory;
+  if NewCapacity<>Capacity then
+   begin
+    if NewCapacity=0 then
+     begin
+      HeapFree(FHeap,0,Memory);
+      Result:=nil;
+     end
+    else
+     begin
+      if Capacity=0 then
+        Result:=HeapAlloc(FHeap,0,NewCapacity)
+      else
+        Result:=HeapReAlloc(FHeap,0,Memory,NewCapacity);
+      if Result=nil then EStreamError.Create('HeapAlloc failed');
+    end;
    end;
 end;
 

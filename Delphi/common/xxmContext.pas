@@ -1166,7 +1166,7 @@ begin
       while (i<FBufferSize) and (FBuffer[i]=nil) do inc(i);
       if i=FBufferSize then
        begin
-        x:=TMemoryStream.Create;//TODO: tmp file when large buffer
+        x:=THeapStream.Create;//TODO: tmp file when large buffer
        end
       else
        begin

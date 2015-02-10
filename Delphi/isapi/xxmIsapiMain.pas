@@ -339,7 +339,7 @@ begin
        begin
         if ecb.cbAvailable=ecb.cbTotalBytes then
          begin
-          FPostData:=TMemoryStream.Create;
+          FPostData:=THeapStream.Create;
           FPostData.Write(ecb.lpbData^,ecb.cbAvailable);
          end
         else

@@ -422,7 +422,7 @@ begin
      begin
       si:=StrToInt(y);
       if si<PostDataThreshold then
-        s:=TMemoryStream.Create
+        s:=THeapStream.Create
       else
        begin
         SetLength(FPostTempFile,$400);
