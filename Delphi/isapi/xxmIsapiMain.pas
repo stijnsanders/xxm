@@ -100,29 +100,25 @@ resourcestring
   SXxmContextStringUnknown='Unknown ContextString __';
 
 function GetExtensionVersion(var Ver: THSE_VERSION_INFO): BOOL; stdcall;
+const
+  dSize=$1000;
 var
+  d:array[0..dSize-1] of byte;
   verblock:PVSFIXEDFILEINFO;
   verlen:cardinal;
   r:TResourceStream;
-  m:TMemoryStream;
   p:PAnsiChar;
 begin
-  m:=TMemoryStream.Create;
+  r:=TResourceStream.CreateFromID(HInstance,1,RT_VERSION);
   try
-    r:=TResourceStream.CreateFromID(HInstance,1,RT_VERSION);
-    try
-      r.SaveToStream(m);
-    finally
-      r.Free;
-    end;
-    m.Position:=0;
-    if VerQueryValueA(m.Memory,'\',pointer(verblock),verlen) then
-      Ver.dwExtensionVersion:=verblock.dwFileVersionMS;
-    if VerQueryValueA(m.Memory,'\StringFileInfo\040904E4\FileDescription',pointer(p),verlen) then
-      Move(p^,Ver.lpszExtensionDesc[0],verlen);
+    r.Read(d[0],dSize);
   finally
-    m.Free;
+    r.Free;
   end;
+  if VerQueryValueA(@d[0],'\',pointer(verblock),verlen) then
+    Ver.dwExtensionVersion:=verblock.dwFileVersionMS;
+  if VerQueryValueA(@d[0],'\StringFileInfo\040904E4\FileDescription',pointer(p),verlen) then
+    Move(p^,Ver.lpszExtensionDesc[0],verlen);
   Result:=true;
   //IsapiHandlerPool:=TXxmIsapiHandlerPool.Create;?
 end;
@@ -383,14 +379,14 @@ begin
     csRemoteHost:        Result:=GetVar(ecb,'REMOTE_HOST');
     csAuthUser://TODO: setting?
      begin
-      Result:=GetVar('AUTH_USER');
+      Result:=GetVar(ecb,'AUTH_USER');
       if Result='' then Result:=AuthValue(cs);
      end;
     csAuthPassword:
-      if GetVar('AUTH_USER')='' then
+      if GetVar(ecb,'AUTH_USER')='' then
         Result:=AuthValue(cs)
       else
-        Result:=GetVar('AUTH_PASSWORD');
+        Result:=GetVar(ecb,'AUTH_PASSWORD');
     else
       raise EXxmContextStringUnknown.Create(StringReplace(
         SXxmContextStringUnknown,'__',IntToHex(integer(cs),8),[]));

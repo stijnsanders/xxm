@@ -11,37 +11,33 @@ implementation
 uses Windows, SysUtils, Classes, Registry, xxmUtilities, xxmWebProject;
 
 procedure WelcomeMessage;
+const
+  dSize=$1000;
 var
+  d:array[0..dSize-1] of byte;
   verblock:PVSFIXEDFILEINFO;
   verlen:cardinal;
   p:PAnsiChar;
   r:TResourceStream;
-  m:TMemoryStream;
   s:AnsiString;
 begin
-  m:=TMemoryStream.Create;
+  r:=TResourceStream.CreateFromID(HInstance,1,RT_VERSION);
   try
-    r:=TResourceStream.CreateFromID(HInstance,1,RT_VERSION);
-    try
-      m.CopyFrom(r,r.Size);
-    finally
-      r.Free;
-    end;
-    m.Position:=0;
-    if VerQueryValueA(m.Memory,'\',pointer(verblock),verlen) then
-      s:=
-        IntToStr(HiWord(verblock.dwFileVersionMS))+'.'+
-        IntToStr(LoWord(verblock.dwFileVersionMS))+'.'+
-        IntToStr(HiWord(verblock.dwFileVersionLS))+'.'+
-        IntToStr(LoWord(verblock.dwFileVersionLS))
-    else
-      s:='v???';
-    if VerQueryValueA(m.Memory,'\StringFileInfo\040904E4\FileDescription',pointer(p),verlen) then
-      s:=p+' '+s;
-    Writeln(s);
+    r.Read(d[0],dSize);
   finally
-    m.Free;
+    r.Free;
   end;
+  if VerQueryValueA(@d[0],'\',pointer(verblock),verlen) then
+    s:=
+      IntToStr(HiWord(verblock.dwFileVersionMS))+'.'+
+      IntToStr(LoWord(verblock.dwFileVersionMS))+'.'+
+      IntToStr(HiWord(verblock.dwFileVersionLS))+'.'+
+      IntToStr(LoWord(verblock.dwFileVersionLS))
+  else
+    s:='v???';
+  if VerQueryValueA(@d[0],'\StringFileInfo\040904E4\FileDescription',pointer(p),verlen) then
+    s:=p+' '+s;
+  Writeln(s);
 end;
 
 procedure RegisterCompileOption;

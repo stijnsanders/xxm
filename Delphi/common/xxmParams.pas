@@ -94,36 +94,32 @@ const //resourcestring??
   SXxmUnknownPostMime='Unsupported Post Mime type "__"';
 
 procedure GetSelfVersion;
+const
+  dSize=$1000;
 var
+  d:array[0..dSize-1] of byte;
   verblock:PVSFIXEDFILEINFO;
   verlen:cardinal;
   p:PAnsiChar;
   r:TResourceStream;
-  m:TMemoryStream;
 begin
-  m:=TMemoryStream.Create;
+  //odd, a copy is required to avoid access violation in version.dll<
+  r:=TResourceStream.CreateFromID(HInstance,1,RT_VERSION);
   try
-    //odd, a copy is required to avoid access violation in version.dll<
-    r:=TResourceStream.CreateFromID(HInstance,1,RT_VERSION);
-    try
-      r.SaveToStream(m);
-    finally
-      r.Free;
-    end;
-    m.Position:=0;
-    if VerQueryValueA(m.Memory,'\',pointer(verblock),verlen) then
-      SelfVersion:=
-        IntToStr(HiWord(verblock.dwFileVersionMS))+'.'+
-        IntToStr(LoWord(verblock.dwFileVersionMS))+'.'+
-        IntToStr(HiWord(verblock.dwFileVersionLS))+'.'+
-        IntToStr(LoWord(verblock.dwFileVersionLS))
-    else
-      SelfVersion:='v???';
-    if VerQueryValueA(m.Memory,'\StringFileInfo\040904E4\FileDescription',pointer(p),verlen) then
-      SelfVersion:=p+' '+SelfVersion;
+    r.Read(d[0],dSize);
   finally
-    m.Free;
+    r.Free;
   end;
+  if VerQueryValueA(@d[0],'\',pointer(verblock),verlen) then
+    SelfVersion:=
+      IntToStr(HiWord(verblock.dwFileVersionMS))+'.'+
+      IntToStr(LoWord(verblock.dwFileVersionMS))+'.'+
+      IntToStr(HiWord(verblock.dwFileVersionLS))+'.'+
+      IntToStr(LoWord(verblock.dwFileVersionLS))
+  else
+    SelfVersion:='v???';
+  if VerQueryValueA(@d[0],'\StringFileInfo\040904E4\FileDescription',pointer(p),verlen) then
+    SelfVersion:=p+' '+SelfVersion;
 end;
 
 { TXxmReqPars }
