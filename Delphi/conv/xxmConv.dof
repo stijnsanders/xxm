@@ -100,7 +100,7 @@ Conditionals=
 DebugSourceDirs=
 UsePackages=0
 [Parameters]
-RunParams=..\tx\txSQLite
+RunParams=/nocompile /proto ..\conv\proto_http /src ..\conv\tx /x:XxmSourcePath D:\Data\xxm\Delphi "..\tx\txSQLite
 HostApplication=
 Launcher=
 UseLauncher=0

@@ -18,6 +18,8 @@ uses
   MSXML2_TLB in '..\common\MSXML2_TLB.pas',
   xxmSock in 'xxmSock.pas',
   xxmThreadPool in '..\common\xxmThreadPool.pas',
+  xxmKeptCon in 'xxmKeptCon.pas',
+  xxmSpoolingCon in 'xxmSpoolingCon.pas',
   xxmAutoUpdate in '..\common\xxmAutoUpdate.pas',
   xxmUtilities in '..\conv\xxmUtilities.pas',
   xxmAutoBuild in '..\common\xxmAutoBuild.pas',

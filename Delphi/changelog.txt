@@ -3,7 +3,7 @@ v1.2.2.357
 - LoadCopy by library file signature to avoid multiple copies being loaded, retries on access denied
 - default xxmSession on TStringList (sorted!) instead of TObjectList
 - parser: in code, treat lines that start with "<" and end with ">" as HTML
-- recycle allocated memory buffers
+- recycle allocated memory buffers, use HeapAlloc instead of GlobalAlloc
 - xxmHttp: thread to wait on groups of (slow) connections that have all content in buffer
 - xxmHttp: support basic authentication (401, "WWW-Authenticate: Basic")
 - xxmIsapi: asynchronous sending on more than 64KiB in buffer (project should set Context.ContentBuffer!)

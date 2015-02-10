@@ -25,8 +25,6 @@ type
 
     function ReadString(const FilePath:AnsiString):AnsiString;
     procedure BuildOutput(const Msg:AnsiString);
-
-    function CheckTrailingComma(const x:AnsiString):AnsiString;
   public
 
     constructor Create(const SourcePath:AnsiString;
@@ -371,7 +369,7 @@ begin
                 ptFragmentID:p.Output(cid);
                 ptFragmentUnit:p.Output(uname);
                 ptFragmentAddress:p.Output(fnu);
-                ptUsesClause:p.Output(CheckTrailingComma(q.AllSections(psUses,m)));
+                ptUsesClause:p.Output(q.AllSectionsCheckComma(psUses,m));
                 ptFragmentDefinitions:p.Output(q.AllSections(psDefinitions,m));
                 ptFragmentHeader:p.Output(q.AllSections(psHeader,m));
                 ptFragmentBody:p.Output(q.BuildBody(m));
@@ -903,15 +901,6 @@ begin
     sl_out.Free;
     map.Free;
   end;
-end;
-
-function TXxmWebProject.CheckTrailingComma(const x: AnsiString): AnsiString;
-var
-  i:integer;
-begin
-  i:=Length(x);
-  while (i<>0) and (x[i]<=' ') do dec(i);
-  if (i<>0) and (x[i]<>',') then Result:=x+',' else Result:=x;
 end;
 
 end.

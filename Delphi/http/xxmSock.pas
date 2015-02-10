@@ -250,10 +250,11 @@ function TTcpSocket.ReceiveBuf(var Buf; BufSize: Integer): Integer;
 begin
   Result:=recv(FSocket,Buf,BufSize,0);
   if Result=SOCKET_ERROR then
-   begin
-    Disconnect;
-    RaiseLastWSAError;
-   end;
+    try
+      RaiseLastWSAError;
+    finally
+      Disconnect;
+    end;
 end;
 
 function TTcpSocket.SendBuf(const Buffer; Count: LongInt): LongInt;
@@ -263,10 +264,11 @@ begin
   p:=@Buffer;
   Result:=send(FSocket,p^,Count,0);
   if Result=SOCKET_ERROR then
-   begin
-    Disconnect;
-    RaiseLastWSAError;
-   end;
+    try
+      RaiseLastWSAError;
+    finally
+      Disconnect;
+    end;
 end;
 
 { TTcpServer }

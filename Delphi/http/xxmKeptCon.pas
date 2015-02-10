@@ -34,7 +34,7 @@ begin
   FContextSize:=0;
   InitializeCriticalSection(FLock);
   FQueueEvent:=CreateEventA(nil,true,false,
-    PAnsiChar('xxmHttp:KeepConnection:'+IntToHex(GetCurrentThreadId,8)));
+    PAnsiChar('xxmHttp:KeepConnection:'+IntToHex(ThreadID,8)));
 end;
 
 destructor TXxmKeptConnections.Destroy;

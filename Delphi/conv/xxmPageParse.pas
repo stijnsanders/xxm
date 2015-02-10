@@ -86,6 +86,8 @@ type
     //function GetNext:;
     //function Done:boolean;
     function AllSections(ps:TXxmPageSection;map:TXxmLineNumbersMap):AnsiString;
+    function AllSectionsCheckComma(ps:TXxmPageSection;
+      map:TXxmLineNumbersMap):AnsiString;
     function BuildBody(map:TXxmLineNumbersMap):AnsiString;
   end;
 
@@ -765,6 +767,37 @@ begin
       x:=a1;
      end;
    end;
+end;
+
+function TXxmPageParser.AllSectionsCheckComma(ps: TXxmPageSection;
+  map: TXxmLineNumbersMap): AnsiString;
+var
+  i,j,k,l:integer;
+begin
+  //get total length first
+  l:=0;
+  for i:=0 to SectionsCount-1 do
+    if Sections[i].SectionType=ps then inc(l,Sections[i].Length+1);
+  //allocate all memory needed in one go
+  SetLength(Result,l);
+  //and fill it
+  j:=1;
+  for i:=0 to SectionsCount-1 do
+    if Sections[i].SectionType=ps then
+     begin
+      Move(PAnsiChar(@FData[Sections[i].Index])^,PAnsiChar(@Result[j])^,Sections[i].Length);
+      inc(j,Sections[i].Length);
+      map.MapLine(EOLs(i),Sections[i].LineNr);
+      //check comma
+      k:=j;
+      while (k<>0) and (Result[k]<=' ') do dec(k);
+      if (k<>0) and (Result[k]<>',') then
+       begin
+        Result[j]:=',';
+        inc(j);
+       end;
+     end;
+  SetLength(Result,j-1);
 end;
 
 end.

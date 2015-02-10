@@ -13,6 +13,7 @@ general
 - registration editor
 - response timeout (how to halt a running thread?)
 - document.browser
+- content buffers: huge page support (Vista+)
 
 - some good solution for common xxm.pas and xxmFReg.pas units
 

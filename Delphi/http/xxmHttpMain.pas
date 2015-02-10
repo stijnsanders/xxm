@@ -673,7 +673,7 @@ begin
     try
       FServer.WaitForConnection;
       if not Terminated then
-        KeptConnections.Queue( //PageLoaderPool.Queue(
+        PageLoaderPool.Queue( //KeptConnections.Queue(?
           TXxmHttpContext.Create(
             FServer.Accept));
     except

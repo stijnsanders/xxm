@@ -100,7 +100,7 @@ begin
                 WebProject.Update;
                 wsig:=GetFileSignature(WebProject.RootFolder+WebProject.ProjectFile);
                 Entry.Signature:=wsig;
-                Entry.LastCheck:=GetTickCount;
+                //Entry.LastCheck:=GetTickCount;//moved to finally
                end
               else
                begin
@@ -108,14 +108,13 @@ begin
                 Context.SendHTML(BuildError('bfail','',''));
                 //TODO: rig lastcheck to fail waiting threads?
                end;
-             end
-            else
-              Entry.LastCheck:=GetTickCount;
+             end;
           finally
             WebProject.Free;
           end;
         finally
           BuildOutput.Free;
+          Entry.LastCheck:=GetTickCount;
         end;
       except
         on e:EXxmWebProjectNotFound do Result:=true;//assert xxl only

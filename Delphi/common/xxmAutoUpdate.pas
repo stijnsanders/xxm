@@ -32,7 +32,6 @@ begin
           //check again for threads that were waiting for lock
           if cardinal(GetTickCount-Entry.LastCheck)>NoNextUpdateAfter then
            begin
-            Entry.LastCheck:=GetTickCount;
             Entry.Release;
             if GetFileSignature(fn1)<>'' then
              begin
@@ -44,6 +43,7 @@ begin
              end;
            end;
         finally
+          Entry.LastCheck:=GetTickCount;
           Entry.Unlock;
         end;
        end;

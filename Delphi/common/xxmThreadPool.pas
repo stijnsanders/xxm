@@ -82,7 +82,7 @@ begin
   inherited Create(false);
   //FInUse:=false;
   FNextJobEvent:=CreateEventA(nil,true,false,
-    PAnsiChar('xxm:PageLoader:NextJob:'+IntToHex(GetCurrentThreadId,8)));
+    PAnsiChar('xxm:PageLoader:NextJob:'+IntToHex(ThreadID,8)));
 end;
 
 destructor TXxmPageLoader.Destroy;
@@ -220,21 +220,22 @@ begin
         FQueueIn.QueueOut:=Context;
         FQueueIn:=Context;
        end;
+
+      //fire thread
+      //TODO: see if a rotary index matters in any way
+      i:=0;
+      while (i<FLoaderSize) and (FLoaders[i]<>nil) and FLoaders[i].InUse do inc(i);
+      if i<>FLoaderSize then
+        if FLoaders[i]=nil then
+          FLoaders[i]:=TXxmPageLoader.Create //start thread
+        else
+          FLoaders[i].SignalNextJob; //so it calls Unqueue
+      //TODO: expire unused threads on low load
+
     finally
       LeaveCriticalSection(FLock);
     end;
    end;
-
-  //fire thread
-  //TODO: see if a rotary index matters in any way
-  i:=0;
-  while (i<FLoaderSize) and (FLoaders[i]<>nil) and FLoaders[i].InUse do inc(i);
-  if i<>FLoaderSize then
-    if FLoaders[i]=nil then
-      FLoaders[i]:=TXxmPageLoader.Create //start thread
-    else
-      FLoaders[i].SignalNextJob; //so it calls Unqueue
-  //TODO: expire unused threads on low load
 end;
 
 function TXxmPageLoaderPool.Unqueue:TXxmQueueContext;
