@@ -94,7 +94,6 @@ end;
 procedure TXxmPageLoader.Execute;
 var
   Context:TXxmQueueContext;
-  ContextI:IXxmContext;
 begin
   inherited;
   CoInitialize(nil);
@@ -112,12 +111,12 @@ begin
      end
     else
      begin
-      ContextI:=Context;//keep refcount up for premature terminate
+      Context._AddRef;
       try
         //SetThreadName('xxm:'+Context.FURL);
         Context.Execute;//assert all exceptions handled!
       finally
-        ContextI:=nil;
+        Context._Release;
       end;
      end;
    end;

@@ -219,7 +219,6 @@ end;
 
 procedure TXxmGeneralContext.EndRequest;
 begin
-  //is called from destructor (also) so prepare for sequential calls without BeginRequest calls inbetween
   if FProjectEntry<>nil then
    begin
     FProjectEntry.CloseContext;
@@ -738,6 +737,7 @@ var
   l:integer;
 begin
   CheckSendStart(true);
+  Flush;
   repeat
     l:=dSize;
     OleCheck(s.Read(@d[0],dSize,@l));

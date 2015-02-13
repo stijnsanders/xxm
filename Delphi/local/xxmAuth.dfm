@@ -137,8 +137,8 @@ object XxmAuthForm: TXxmAuthForm
     Height = 25
     Caption = 'OK'
     Default = True
-    ModalResult = 1
     TabOrder = 2
+    OnClick = btnOKClick
   end
   object btnCancel: TButton
     Left = 168

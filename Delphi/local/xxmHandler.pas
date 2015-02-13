@@ -4,13 +4,13 @@ unit xxmHandler;
 
 interface
 
-//ms-help://MS.MSDNQTR.2003FEB.1033/networking/workshop/networking/pluggable/pluggable.htm
+//https://msdn.microsoft.com/en-us/library/aa767743.aspx
 
 uses
   Windows, SysUtils, ActiveX, Classes, ComObj, UrlMon, xxm, xxmLoader;
 
 type
-  //odd, old UrlMon.pas has an errorin ParseUrl?
+  //odd, old UrlMon.pas has an error in ParseUrl?
   IInternetProtocolInfoX = interface
     ['{79eac9ec-baf9-11ce-8c82-00aa004ba90b}']
     function ParseUrl(pwzUrl: LPCWSTR; ParseAction: TParseAction; dwParseFlags: DWORD;
@@ -24,12 +24,10 @@ type
       pBuffer: Pointer; cbBuffer: DWORD; var cbBuf: DWORD; dwReserved: DWORD): HResult; stdcall;
   end;
 
-
   TXxmLocalHandler=class(TComObject, IInternetProtocol, IWinInetHttpInfo, IInternetProtocolInfoX)
   private
     FDataPos: Int64;
     FContext: TXxmLocalContext;
-    FContextI: IXxmContext;
     FTerminateTC: cardinal;
   protected
     { IInternetProtocolRoot }
@@ -92,14 +90,17 @@ procedure TXxmLocalHandler.Initialize;
 begin
   inherited;
   FContext:=nil;
-  FContextI:=nil;
   FDataPos:=0;
   FTerminateTC:=0;
 end;
 
 destructor TXxmLocalHandler.Destroy;
 begin
-  FContextI:=nil;//FreeAndNil(FContext);
+  try
+    if FContext<>nil then IUnknown(FContext)._Release;
+  except
+    //silent
+  end;
   FContext:=nil;
   inherited;
 end;
@@ -111,7 +112,7 @@ function TXxmLocalHandler.Start(szUrl: PWideChar;
   dwReserved: Cardinal): HRESULT;
 begin
   FContext:=TXxmLocalContext.Create(szUrl,OIProtSink,OIBindInfo);
-  FContextI:=FContext;//use refcount to clean with later
+  IUnknown(FContext)._AddRef;//see TXxmLocalHandler.Destroy
   if PageLoaderPool=nil then PageLoaderPool:=TXxmPageLoaderPool.Create($10);
   SetThreadName('xxmLocalHandler:'+szUrl);
   PageLoaderPool.Queue(FContext);
@@ -137,15 +138,19 @@ end;
 
 function TXxmLocalHandler.Abort(hrReason: HRESULT; dwOptions: Cardinal): HRESULT;
 begin
-  FContext.Aborted:=true;
+  FContext.Next:=ntAborted;
   Result:=S_OK;
 end;
 
 function TXxmLocalHandler.Terminate(dwOptions: Cardinal): HRESULT;
 begin
-  //while not(FContext.PageComplete) do Sleep(5);
+  //while not(FContext.FNext=nDone) do Sleep(5);
   SetThreadName('(xxmLocalHandler)');
-  FContextI:=nil;//FreeAndNil(FContext);
+  try
+    if FContext<>nil then IUnknown(FContext)._Release;
+  except
+    //silent
+  end;
   FContext:=nil;
   Result:=S_OK;
 end;
@@ -202,9 +207,9 @@ begin
 
     if ReadSize=0 then
      begin
-      if FContext.PageComplete then
+      if FContext.Next=ntComplete then
        begin
-        //if FContext.Redirected then Result:=INET_E_USE_DEFAULT_PROTOCOLHANDLER else
+        //if FContext.Next=ntRedirected then Result:=INET_E_USE_DEFAULT_PROTOCOLHANDLER else
         Result:=S_FALSE;
        end
       else
@@ -224,7 +229,7 @@ begin
     //INET_E_DATA_NOT_AVAILABLE //all read but more data was expected
     //except Result:=INET_E_DOWNLOAD_FAILURE?
   finally
-    FContext.DataReported:=false;
+    FContext.DataRead:=true;
     FContext.Unlock;
   end;
 end;

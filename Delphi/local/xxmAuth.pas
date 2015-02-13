@@ -19,6 +19,7 @@ type
     btnOK: TButton;
     btnCancel: TButton;
     lblHoldXToClear: TLabel;
+    procedure btnOKClick(Sender: TObject);
   protected
     procedure CreateParams(var Params: TCreateParams); override;
   end;
@@ -106,6 +107,17 @@ begin
   inherited Create('xxm User Authentication');
   UserName:=AUSerName;
   Password:=APassword;
+end;
+
+procedure TXxmAuthForm.btnOKClick(Sender: TObject);
+begin
+  if txtUserName.Text='' then
+   begin
+    txtUserName.SetFocus;
+    txtUserName.Color:=$00CCFF;
+   end
+  else
+    ModalResult:=mrOk;
 end;
 
 end.

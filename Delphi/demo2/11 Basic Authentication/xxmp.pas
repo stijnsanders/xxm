@@ -36,7 +36,7 @@ begin
   
   if Context.ContextString(csAuthUser)='' then
    begin
-    Context.SetStatus(401,'AUTHENTICATION REQUIRED');
+    Context.SetStatus(401,'Authentication Required');
 	(Context as IxxmHttpHeaders).ResponseHeaders['WWW-Authenticate']:='Basic realm="demo"';
 	Result:=XxmFragmentRegistry.GetFragment(Self,'AuthReqMsg.xxm','');
    end
