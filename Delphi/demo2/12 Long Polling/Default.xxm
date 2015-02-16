@@ -1,0 +1,7 @@
+<h1>Long Polling Demo</h1>
+<p>Showing maximum 10 lines when the time reaches a value where <i>hours+minutes+seconds</i> is a prime number:</p>
+[[
+
+(Context as IXxmContextSuspend).Suspend('demo11',250,1000,'Next.xxmi',1,'Drop.xxmi',1);
+
+]]

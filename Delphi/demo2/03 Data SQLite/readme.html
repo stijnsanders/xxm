@@ -1,8 +1,9 @@
+<link rel="stylesheet" type="text/css" href="http://xxm.sourceforge.net/xxm.css" />
 <h3>xxm Demo Projects - 03 Data SQLite</h3>
 <p>This is a demo project showing how to set up a database connection in an xxm project, using SQLite3.dll.</p>
 <p>Download SQLite3.dll from <a href="http://www.sqlite.org/download.html">www.sqlite.org</a>.</p>
 <p>Download SQLite.pas and SQLiteData.pas from <a href="https://github.com/stijnsanders/TSQLite">github.com/stijnsanders/TSQLite</a>.</p>
-<p style="background-color:gold;"><b>Important:</b> Some website-platforms use multiple processes to host a website.
+<p style="background-color:gold;padding:0.4em;"><b>Important:</b> Some website-platforms use multiple processes to host a website.
 Since this demonstration project uses a single TStringList object to store session data under the sorted SessionID's,
 the processes won't be able to access eachother's session data in this case, which results in unexpected behavior.<br />
 For advanced projects it is strongly advised to use a central session object store (e.g.: a database, COM or COM+ server),

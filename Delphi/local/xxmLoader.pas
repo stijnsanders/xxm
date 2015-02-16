@@ -8,22 +8,27 @@ uses Windows, SysUtils, ActiveX, UrlMon, Classes, xxm, xxmContext,
 type
   TXxmNextTask=(
     ntStart,
+    ntResume,
+    ntResumeDrop,
     ntBuildPage,
     ntResponding,
     ntDone,
     ntRedirected,
+    ntSuspend,
     ntComplete,
     ntAborted
   );
 
-  TXxmLocalContext=class(TXxmQueueContext, IxxmHttpHeaders)
+  TXxmLocalContext=class(TXxmQueueContext,
+    IXxmHttpHeaders,
+    IXxmContextSuspend)
   private
     ProtSink:IInternetProtocolSink;
     BindInfo:IInternetBindInfo;
-    PrPos,PrMax:Integer;
+    FTotalSize:cardinal;
     FVerb,FExtraInfo,FQueryString,FAuthUsr,FAuthPwd:WideString;
     FLock:TRTLCriticalSection;
-    FFirstData,FGotSessionID:boolean;
+    FGotSessionID:boolean;
     FReqHeaders: TRequestHeaders;
     FResHeaders: TResponseHeaders;
     FHttpNegotiate: IHttpNegotiate;
@@ -46,10 +51,17 @@ type
       Comment,Domain,Path:WideString; Secure,HttpOnly:boolean); overload; override;
     function GetProjectEntry:TXxmProjectEntry; override;
     function GetProjectPage(FragmentName: WideString):IXxmFragment; override;
-    function GetRequestHeaders:IxxmDictionaryEx;
-    function GetResponseHeaders:IxxmDictionaryEx;
     function GetRequestHeader(const Name: WideString): WideString; override;
     procedure AddResponseHeader(const Name, Value: WideString); override;
+    { IXxmHttpHeaders }
+    function GetRequestHeaders:IxxmDictionaryEx;
+    function GetResponseHeaders:IxxmDictionaryEx;
+    { IXxmContextSuspend }
+    procedure Suspend(const EventKey: WideString;
+      CheckIntervalMS, MaxWaitTimeSec: cardinal;
+      const ResumeFragment: WideString; ResumeValue: OleVariant;
+      const DropFragment: WideString; DropValue: OleVariant);
+    procedure Resume(ToDrop: Boolean); override;
   public
     OutputData:TStream;
     OutputSize:Int64;
@@ -72,6 +84,7 @@ type
   EXxmContextStringUnknown=class(Exception);
   EXxmUnknownPostDataTymed=class(Exception);
   EXxmPageLoadAborted=class(Exception);
+  EXxmContextAlreadySuspended=class(Exception);
 
 var
   //see xxmSettings
@@ -84,6 +97,7 @@ uses Variants, ComObj, AxCtrls, xxmCommonUtils, xxmAuth;
 const //resourcestring?
   SXxmContextStringUnknown='Unknown ContextString __';
   SXxmPageLoadAborted='Page Load Aborted';
+  SXxmContextAlreadySuspended='Context has already been suspended';
 
 { TXxmLocalContext }
 
@@ -100,9 +114,7 @@ begin
 
   BindInfo:=OIBindInfo;
   ProtSink:=OIProtSink;
-  PrPos:=0;
-  PrMax:=1;
-  FFirstData:=true;
+  FTotalSize:=0;
   FReqHeaders:=nil;
   FResHeaders:=TResponseHeaders.Create;
   (FResHeaders as IUnknown)._AddRef;
@@ -272,6 +284,38 @@ begin
              end;
           end;
 
+        ntResume:
+         begin
+          Next:=ntDone;
+          if FResumeFragment<>'' then
+           begin
+            case VarType(FResumeValue) of
+              varNull,varEmpty:
+                Include(FResumeFragment);
+              varArray or varVariant:
+                Include(FResumeFragment,FResumeValue);
+              else
+                Include(FResumeFragment,[FResumeValue]);
+            end;
+           end;
+         end;
+
+        ntResumeDrop:
+         begin
+          Next:=ntDone;
+          if FDropFragment<>'' then
+           begin
+            case VarType(FDropValue) of
+              varNull,varEmpty:
+                Include(FDropFragment);
+              varArray or varVariant:
+                Include(FDropFragment,FDropValue);
+              else
+                Include(FDropFragment,[FDropValue]);
+            end;
+           end;
+         end;
+
       end;
 
   except
@@ -305,14 +349,11 @@ begin
     else
      begin
       Next:=ntComplete;
-      //OleCheck?
-      //PrPos:=PrMax;
-      ProtSink.ReportData(BSCF_LASTDATANOTIFICATION or BSCF_DATAFULLYAVAILABLE,PrPos,PrMax);
+      ProtSink.ReportData(BSCF_LASTDATANOTIFICATION or BSCF_DATAFULLYAVAILABLE,FTotalSize,0);
       if StatusCode=200 then
         ProtSink.ReportResult(S_OK,StatusCode,nil)
       else
-        ProtSink.ReportResult(S_OK,StatusCode,PWideChar(StatusText))
-      //TODO: find out why iexplore keeps counting up progress sometimes (even after terminate+unlock)
+        ProtSink.ReportResult(S_OK,StatusCode,PWideChar(StatusText));
      end;
   end;
 end;
@@ -361,19 +402,20 @@ begin
     end;
 
     //BSCF_AVAILABLEDATASIZEUNKNOWN?
-    if FFirstData then
+    if FTotalSize=0 then
      begin
-      OleCheck(ProtSink.ReportData(BSCF_FIRSTDATANOTIFICATION,PrPos,PrMax));
-      FFirstData:=false;
+      FTotalSize:=Count;
+      OleCheck(ProtSink.ReportData(BSCF_FIRSTDATANOTIFICATION,FTotalSize,0));
      end
     else
+     begin
+      inc(FTotalSize,Count);
       if DataRead then
        begin
         DataRead:=false;
-        inc(PrPos);//needs to change for IE to react
-        if PrPos>PrMax then PrMax:=PrMax*10;
-        OleCheck(ProtSink.ReportData(BSCF_INTERMEDIATEDATANOTIFICATION,PrPos,PrMax));
+        OleCheck(ProtSink.ReportData(BSCF_INTERMEDIATEDATANOTIFICATION,FTotalSize,0));
        end;
+     end;
     //if Next=ntAborted then raise?
 
    end;
@@ -800,6 +842,29 @@ end;
 procedure TXxmLocalContext.AddResponseHeader(const Name, Value: WideString);
 begin
   FResHeaders.Add(Name,Value);
+end;
+
+procedure TXxmLocalContext.Suspend(const EventKey: WideString;
+  CheckIntervalMS, MaxWaitTimeSec: cardinal;
+  const ResumeFragment: WideString; ResumeValue: OleVariant;
+  const DropFragment: WideString; DropValue: OleVariant);
+begin
+  if Next=ntSuspend then
+    raise EXxmContextAlreadySuspended.Create(SXxmContextAlreadySuspended);
+  Next:=ntSuspend;
+  FResumeFragment:=ResumeFragment;
+  FResumeValue:=ResumeValue;
+  FDropFragment:=DropFragment;
+  FDropValue:=DropValue;
+  PageLoaderPool.EventsController.SuspendContext(Self,EventKey,
+    CheckIntervalMS,MaxWaitTimeSec);
+end;
+
+procedure TXxmLocalContext.Resume(ToDrop: Boolean);
+begin
+  //before above because inherited does PageLoaderPool.Queue!
+  if ToDrop then Next:=ntResumeDrop else Next:=ntResume;
+  inherited;
 end;
 
 end.

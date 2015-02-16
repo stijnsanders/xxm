@@ -1,0 +1,10 @@
+<XxmWebProject>
+	<ProjectName>demo</ProjectName>
+	<CompileCommand>dcc32 -U[[HandlerPath]]public -Q [[ProjectName]].dpr</CompileCommand>
+	<UUID>{80F0BF6A-1D93-49DE-BFDE-8DDDC9D6C4EA}</UUID>
+	<Files>
+		<File ID="default_xxm" UnitName="default_xxm1" UnitPath=""><Path>Default.xxm</Path></File>
+		<File ID="drop_xxmi" UnitName="drop_xxmi1" UnitPath=""><Path>Drop.xxmi</Path></File>
+		<File ID="next_xxmi" UnitName="next_xxmi1" UnitPath=""><Path>Next.xxmi</Path></File>
+	</Files>
+</XxmWebProject>

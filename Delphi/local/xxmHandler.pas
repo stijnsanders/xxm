@@ -114,7 +114,7 @@ begin
   FContext:=TXxmLocalContext.Create(szUrl,OIProtSink,OIBindInfo);
   IUnknown(FContext)._AddRef;//see TXxmLocalHandler.Destroy
   if PageLoaderPool=nil then PageLoaderPool:=TXxmPageLoaderPool.Create($10);
-  SetThreadName('xxmLocalHandler:'+szUrl);
+  //SetThreadName('xxmLocalHandler:'+szUrl);
   PageLoaderPool.Queue(FContext);
   Result:=HResult(E_PENDING);
 end;
@@ -145,7 +145,7 @@ end;
 function TXxmLocalHandler.Terminate(dwOptions: Cardinal): HRESULT;
 begin
   //while not(FContext.FNext=nDone) do Sleep(5);
-  SetThreadName('(xxmLocalHandler)');
+  //SetThreadName('(xxmLocalHandler)');
   try
     if FContext<>nil then IUnknown(FContext)._Release;
   except
