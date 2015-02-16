@@ -34,7 +34,7 @@ type
     FPostData: TStream;
     FPostTempFile: AnsiString;
     SendBuf, SendDirect: TXxmSendBufHandler;
-    SettingCookie: boolean;
+    SettingCookie, BuildPageLeaveOpen: boolean;
 
     { IXxmContext }
     function GetURL: WideString;
@@ -214,11 +214,23 @@ begin
   FProjectName:='';//parsed from URL later
   FFragmentName:='';//parsed from URL later
   FBufferSize:=0;
+  BuildPageLeaveOpen:=false;
   SendBuf:=SendDirect;
 end;
 
 procedure TXxmGeneralContext.EndRequest;
 begin
+  FBuilding:=nil;
+  if FPage<>nil then
+   begin
+    try
+      //let project decide to free or not
+      FProjectEntry.Project.UnloadFragment(FPage);
+    except
+      //silent (log?HandleException?)
+    end;
+    FPage:=nil;
+   end;
   if FProjectEntry<>nil then
    begin
     FProjectEntry.CloseContext;
@@ -270,23 +282,29 @@ begin
   //clear buffer just in case
   if FContentBuffer<>nil then FContentBuffer.Position:=0;
 
+  BuildPageLeaveOpen:=false;
   LoadPage;
   if FPage=nil then
     SingleFile
   else
-    try
-      FPageClass:=FPage.ClassNameEx;
-      //mime type moved to CheckSendStart;
+   begin
+    FPageClass:=FPage.ClassNameEx;
+    //mime type moved to CheckSendStart;
 
-      if FPage.QueryInterface(IID_IXxmPage,p)<>S_OK then
-        raise EXxmDirectInclude.Create(SXxmDirectInclude);
-      p:=nil;
+    if FPage.QueryInterface(IID_IXxmPage,p)<>S_OK then
+      raise EXxmDirectInclude.Create(SXxmDirectInclude);
+    p:=nil;
 
-      //build page
-      FBuilding:=FPage;
-      FPage.Build(Self,nil,[],[]);//any parameters?
+    //build page
+    FBuilding:=FPage;
+    FPage.Build(Self,nil,[],[]);//any parameters?
 
-      //any content?
+    //any content?
+    if BuildPageLeaveOpen then
+     begin
+     end
+    else
+     begin
       if FHeaderSent<>XxmHeaderSent then
        begin
         if FBufferSize=0 then i:=0 else i:=FContentBuffer.Position;
@@ -297,13 +315,8 @@ begin
         if i=0 then SendHeader;
        end;
       FlushFinal;
-
-    finally
-      FBuilding:=nil;
-      //let project decide to free or not
-      FProjectEntry.Project.UnloadFragment(FPage);
-      FPage:=nil;
-    end;
+     end;
+   end;
 end;
 
 procedure TXxmGeneralContext.SingleFile;
@@ -367,16 +380,9 @@ begin
      end
     else
      begin
-      try
-        FPageClass:=FPage.ClassNameEx;
-        FBuilding:=FPage;
-        FPage.Build(Self,nil,[FFragmentName,FSingleFileSent,x],[]);//any parameters?
-      finally
-        FBuilding:=nil;
-        //let project free, cache or recycle
-        FProjectEntry.Project.UnloadFragment(FPage);
-        FPage:=nil;
-      end;
+      FPageClass:=FPage.ClassNameEx;
+      FBuilding:=FPage;
+      FPage.Build(Self,nil,[FFragmentName,FSingleFileSent,x],[]);//any parameters?
       if FBufferSize<>0 then FlushFinal;
      end;
    end;

@@ -22,16 +22,17 @@
 <li><a href="#embedhtml">Embed HTML</a>  <span class="newver">1.1.1</span></li>
 <li><a href="#proto">Proto</a></li>
 <li><a href="#interface">Interface</a></li>
-<li><a href="#xxmproject">TxxmProject</a></li>
-<li><a href="#xxmfragment">TxxmFragment, TxxmPage, TxxmInclude</a></li>
-<li><a href="#xxmcontext">IxxmContext</a></li>
-<li><a href="#xxmparameter">IxxmParameter</a></li>
+<li><a href="#xxmproject">TXxmProject</a></li>
+<li><a href="#xxmfragment">TXxmFragment, TXxmPage, TXxmInclude</a></li>
+<li><a href="#xxmcontext">IXxmContext</a></li>
+<li><a href="#xxmparameter">IXxmParameter</a></li>
 <li><a href="#xxmversion">XxmVersion</a></li>
 <li><a href="#htmlencode">HTMLEncode</a></li>
 <li><a href="#headers">Headers</a> <span class="newver">1.1.0</span></li>
 <li><a href="#parservalues">Override parser values</a> <span class="newver">1.1.3</span></li>
 <li><a href="#projectintf">Optional project interfaces</a></li>
 <li><a href="#uploadprogress">Upload progress</a> <span class="newver">1.1.4</span></li>
+<li><a href="#lpsupport">Long polling support</a> <span class="newver">1.2.2</span></li>
 </ul>
 
 <p class="title"><a name="intro"></a>Introduction</p>
@@ -64,23 +65,33 @@
 
 <p class="title">Fragment</p>
 
-<p>The URL of a request to an xxm website is first parsed to determine which xxm project to send the request to. (Each handler has its specific project registry.) The project (IXxmProject) is loaded if not loaded already, and asked to provide a page object to handle the request (IXxmPage). A page can include fragments to help construct the response (IXxmInclude). Both pages and includes are fragments (IXxmFragment) provided by the project's fragment registry. Because an xxm project has to provide a fragment registry, it has freedom of how to construct portion of the URL it processes. A <i>stock-</i>implementation of a fragment registry is available by default for new xxm projects (xxmFReg.pas).</p>
+<p>The URL of a request to an xxm website is first parsed to determine which xxm project to send the request to. (Each handler has its specific project registry.)
+The project (IXxmProject) is loaded if not loaded already, and asked to provide a page object to handle the request (IXxmPage).
+A page can include fragments to help construct the response (IXxmInclude).
+Both pages and includes are fragments (IXxmFragment) provided by the project's fragment registry.
+Because an xxm project has to provide a fragment registry, it has freedom of how to construct portion of the URL it processes.
+A <i>stock-</i>implementation of a fragment registry is available by default for new xxm projects (xxmFReg.pas).</p>
 
 <p class="title"><a name="syntax"></a>Syntax</p>
 
-<p>xxm and xxmi contain both HTML and Delphi source code. Delphi code is enclosed in double square brackets ("<code>[[ ]]</code>"). A code section may have an alternate destination by starting with one of these characters:</p>
+<p>xxm and xxmi contain both HTML and Delphi source code. Delphi code is enclosed in double square brackets ("<code>[[ ]]</code>").
+A code section may have an alternate destination by starting with one of these characters:</p>
 
 <dl>
 <dt><code>[[=i]]</code></dt><dd><b>send:</b> the expression is evaluated and sent to the context.</dd>
-<dt><code>[[#x]]</code></dt><dd><b>send HTML:</b> the expression is evaluated and sent to the context, without converting the text into HTML (i.e.: replacing angled brackets and ampersands into HTML code)
+<dt><code>[[#x]]</code></dt><dd><b>send HTML:</b> the expression is evaluated and sent to the context,
+without converting the text into HTML (i.e.: replacing angled brackets and ampersands into HTML code)
 <br />
 <b style="color:red;">!!!:</b> to prevent script injection, it is important
 that any variable data is properly encoded. Use the <a href="#htmlencode"><code>HTMLEncode</code></a> function.
 Read more <a href="http://xxm.sourceforge.net/sec.html">here</a>.
 </dd>
 <dt><code>[[?'x',1,'y',2]]</code></dt><dd><b>URL encode:</b> encodes key-value pairs into a query string, see also <a href="#urlencode"><code>URLEncode</code></a> <span class="newver">1.2.0</span></dd>
-<dt><code>[[@Variants,]]</code></dt><dd><b>uses clause:</b> adds units to the uses clause. Separate unit names with comma. It's advised to follow the last unit name with a comma as well, as required by Delphi syntaxis, (but the parser detects when the trailing comma is missing and adds it <span class="newver">1.0.3</span>).</dd>
-<dt><code>[[!var i:integer;]]</code></dt><dd><b>header:</b> adds code in front of 'begin' of the fragment's Build method implementation, use this to declare local variables and constants,
+<dt><code>[[@Variants,]]</code></dt><dd><b>uses clause:</b> adds units to the uses clause. Separate unit names with comma.
+It's advised to follow the last unit name with a comma as well, as required by Delphi syntaxis,
+(but the parser detects when the trailing comma is missing and adds it <span class="newver">1.0.3</span>).</dd>
+<dt><code>[[!var i:integer;]]</code></dt><dd><b>header:</b> adds code in front of 'begin' of the fragment's Build method implementation,
+use this to declare local variables and constants,
 	<br /><b style="color:red;">*:</b> read below remarks for proper use</dd>
 <dt><code>[[/ ]]</code></dt><dd><b>comment:</b> excludes a section of the xxm code</dd>
 <dt><code>[[:resourcestring SHelloWorld='Hello world!';]]</code></dt><dd><b>definitions:</b> adds code in front of the fragment's Build method implementation,
@@ -94,14 +105,19 @@ Read more <a href="http://xxm.sourceforge.net/sec.html">here</a>.
 <dd>non-pre-defined section types for use with <a href="#extrasections">parser values</a> <span class="newver">1.2.0</span></dd>
 </dl>
 
-<p><b>Attention<span style="color:red;">*:</span></b> you can declare (nested) procedures and functions in header, footer and definition blocks, but you can't use the <code>[[= ]]</code> and <code>[[# ]]</code> syntax and embedded HTML since this will break the <code>[[ ]]</code>-block the declaration is in.
+<p><b>Attention<span style="color:red;">*:</span></b> you can declare (nested) procedures and functions in header, footer and definition blocks,
+but you can't use the <code>[[= ]]</code> and <code>[[# ]]</code> syntax and embedded HTML since this will break the <code>[[ ]]</code>-block the declaration is in.
 It is advised to use include fragments with <code>Context.Include</code> instead.</p>
 
-<p>Within a Delphi code block (including comment blocks), the number of opening and closing brackets and braces is counted (disregarding those in strings), this enables code like this: <code style="background-color:#FFFFFF;"><span style="background-color:#CCFFCC">[[</span>Context.Send('<span style="background-color:#FFCCCC;">]]</span>');<span style="background-color:#CCFFCC">]]</span></code> and <code><span style="background-color:#CCFFCC">[[</span>=MyArray[x<span style="background-color:#FFCCCC">]</span><span style="background-color:#FFFFCC">]</span><span style="background-color:#CCFFCC">]</span></code>, but also enables a comment block to 'comment out' a full block of both HTML and code blocks.</p>
+<p>Within a Delphi code block (including comment blocks), the number of opening and closing brackets and braces is counted (disregarding those in strings),
+this enables code like this: <code style="background-color:#FFFFFF;"><span style="background-color:#CCFFCC">[[</span>Context.Send('<span style="background-color:#FFCCCC;">]]</span>');<span style="background-color:#CCFFCC">]]</span></code> and <code><span style="background-color:#CCFFCC">[[</span>=MyArray[x<span style="background-color:#FFCCCC">]</span><span style="background-color:#FFFFCC">]</span><span style="background-color:#CCFFCC">]</span></code>, but also enables a comment block to 'comment out' a full block of both HTML and code blocks.</p>
 
-<p>Each xxm and xxmi source file is converted into a pas file, using a prototype file. By default the prototype files are used from the "proto" directory provided with the xxm installation, but an xxm project can provide custom prototype files.</p>
+<p>Each xxm and xxmi source file is converted into a pas file, using a prototype file.
+By default the prototype files are used from the "proto" directory provided with the xxm installation, but an xxm project can provide custom prototype files.</p>
 
-<p>When the default prototype files are used, each resulting pas file declares a descendant TXxmFragment class (either TXxmPage or TXxmInclude). The Delphi code blocks are duplicated in the predesignated spot, and all HTML is converted into calls to <code>Context.SendHTML();</code> inside of the Build method implementation.</p>
+<p>When the default prototype files are used, each resulting pas file declares a descendant TXxmFragment class (either TXxmPage or TXxmInclude).
+The Delphi code blocks are duplicated in the predesignated spot, and all HTML is converted into calls to <code>Context.SendHTML();</code>
+inside of the Build method implementation.</p>
 
 <p><b>Attention:</b> longer portions of HTML may be split into several <code>Context.SendHTML();</code> calls, so be carefull whith code like this:</p>
 <p><code>if MyBoolean then ]]&lt;b&gt;priority:[[=PriorityLevel]]&lt;/b&gt;[[</code></p>
@@ -137,7 +153,8 @@ This allows to add used units or declarations ready for use in all pages and inc
 
 <p class="title"><a name="interface"></a>Interface</p>
 
-<p>An xxm project uses the xxm.pas file that declares classes, interfaces and types required for the xxm interface. Your xxm installation should provide a recent copy of the xxm.pas file in the "public" folder.</p>
+<p>An xxm project uses the xxm.pas file that declares classes, interfaces and types required for the xxm interface.
+Your xxm installation should provide a recent copy of the xxm.pas file in the "public" folder.</p>
 
 <p><code>TXxmProjectLoadProc = function(AProjectName:WideString): IXxmProject; stdcall;</code></p>
 <p>Each xxm project must export a function named "XxmProjectLoad", that creates an instance of the project. (by default provided in the xxmp.pas file)</p>
@@ -147,7 +164,8 @@ This allows to add used units or declarations ready for use in all pages and inc
 <dd>An xxm project implements the IXxmProject. (by default provided in the xxmp.pas file)</dd>
 
 <dt><code>function LoadPage(Context:IXxmContext;Address:WideString):IXxmFragment;</code></dt>
-<dd>The project's LoadPage function is called to provide a page to process an incoming request, e.g. to link it to a session (use <a href="#SessionID">Context.SessionID</a> for this).</dd>
+<dd>The project's LoadPage function is called to provide a page to process an incoming request,
+e.g. to link it to a session (use <a href="#SessionID">Context.SessionID</a> for this).</dd>
 
 <dt><code>function LoadFragment(Context:IXxmContext;Address,RelativeTo:WideString):IXxmFragment;</code></dt>
 <dd>The project's LoadFragment function is called to provide a fragement, resolve RelativeTo to allow relative calls to Context.Include</dd>
@@ -201,7 +219,8 @@ property ParameterCount:integer</code></dt>
 <dd>the parameters provided in the request, see below for more about IXxmParameter and its descendants</dd>
 
 <dt><a name="SessionID"></a><code>property SessionID:WideString</code></dt>
-<dd>read-only, a unique string constructed with random data, included in the response as a cookie, to identify following requests as requests from the same browser session. A project may use this property to perform session management.</dd>
+<dd>read-only, a unique string constructed with random data, included in the response as a cookie,
+to identify following requests as requests from the same browser session. A project may use this property to perform session management.</dd>
 
 <dt><code>procedure Send(Data: OleVariant);</code></dt>
 <dd>sends data to the response</dd>
@@ -210,10 +229,12 @@ property ParameterCount:integer</code></dt>
 <dd>sends data to the response without HTMLEncode</dd>
 
 <dt><code>procedure SendFile(FilePath: WideString);</code></dt>
-<dd>sends the contents of the file to the response. If the response has not started sending data, the <a href="#ContentType">ContentType</a> is set to the MIME-type string found in the Windows registry by the file extention (HKEY_CLASSES_ROOT)</dd>
+<dd>sends the contents of the file to the response. If the response has not started sending data,
+the <a href="#ContentType">ContentType</a> is set to the MIME-type string found in the Windows registry by the file extention (HKEY_CLASSES_ROOT)</dd>
 
 <dt><code>procedure SendStream(s:IStream);</code></dt>
-<dd>sends the contents of the stream to the response (use <code>TStreamAdapter</code> from the Classes unit to provide an <code>IStream</code> interface on a <code>TStream</code> object)</dd>
+<dd>sends the contents of the stream to the response (use <code>TStreamAdapter</code> from the Classes unit
+to provide an <code>IStream</code> interface on a <code>TStream</code> object)</dd>
 
 <dt><code>
     procedure Include(Address: WideString); overload;<br />
@@ -223,10 +244,14 @@ property ParameterCount:integer</code></dt>
     &nbsp;  const Values: array of OleVariant;<br />
     &nbsp;  const Objects: array of TObject); overload;<br />
 </code></dt>
-<dd><p>load an include fragment and call the Build method with provided Values and Objects. Use Context.Include in favor of creating an instance of the fragment class directly, to enable xxm's built-in exception handling and to enable performance enhancements provided by the fragment registry.</p>
+<dd><p>load an include fragment and call the Build method with provided Values and Objects.
+Use <code>Context.Include</code> in favor of creating an instance of the fragment class directly,
+to enable xxm's built-in exception handling and to enable performance enhancements provided by the fragment registry.</p>
 
-<p><span class="newver">1.1.3</span> To load a fragment from another project, prefix the fragment address with <code>xxm://project2/</code> where <code>project2</code> is the name of the other project.
-<b>Attention:</b> this is disallowed by default, to enable this add <code>AllowInclude="1"</code> to the xxm handler's project registry (Windows registry or <code>xxm.xml</code>).</p>
+<p><span class="newver">1.1.3</span> To load a fragment from another project,
+prefix the fragment address with <code>xxm://project2/</code> where <code>project2</code> is the name of the other project.
+<b>Attention:</b> this is disallowed by default, to enable this add <code>AllowInclude="1"</code> to the xxm handler's project registry
+(Windows registry or <code>xxm.xml</code>).</p>
 </dd>
 
 <dt><a name="ContextString"></a><code>function ContextString(cs:TXxmContextString):WideString;</code></dt>
@@ -263,7 +288,9 @@ provides information about the incoming request
 <dd>sets the HTTP response code and text to respond with, by default set to 200,'OK'</dd>
 
 <dt><code>procedure Redirect(RedirectURL:WideString; Relative:boolean);</code></dt>
-<dd>redirects the browser to a different URL. Pass Relative as false when redirecting to a URL within the same project to optimally use resources.</dd>
+<dd>redirects the browser to a different URL. Pass Relative as false when redirecting to a URL within the same project to optimally use resources.
+<b>Attention:</b> a call to Redirect throws an <code>EXxmPageRedirected</code> exception to halt execution of the current page.
+If you catch exceptions, re-raise these to make sure the redirect is correctly handled.</dd>
 
 <dt><code>property Cookie[Name:WideString]:WideString</code></dt>
 <dd>reads a cookie from the request</dd>
@@ -271,18 +298,29 @@ provides information about the incoming request
 <dt><code>procedure SetCookie(Name,Value:WideString); overload;<br />
     procedure SetCookie(Name,Value:WideString; KeepSeconds:cardinal;<br />
 &nbsp;      Comment,Domain,Path:WideString; Secure,HttpOnly:boolean); overload;</code></dt>
-<dd>includes a cookie in the response, <b>Attention:</b> calling Cookie[] with the same Name as SetCookie has been called, will not return the same Value in the same request as SetCookie has been called.</dd>
+<dd>includes a cookie in the response, <b>Attention:</b> calling Cookie[] with the same Name as SetCookie has been called,
+will not return the same Value in the same request as SetCookie has been called.</dd>
 
 <dt><code>procedure DispositionAttach(FileName: WideString);</code></dt>
 <dd>notifies the browser to show a 'save as' dialog to store the contents of the response</dd>
 
-<dt><code>property BufferSize: integer;</code> <span class="newver">1.1.4</span></dt>
-<dd>set a buffer size to store sent data before actually transmitting. When the buffer is full, data is transmitted. It's not guaranteed that the size of sent chunks will be of the exact number of bytes as defined. Set buffer size to 0 to disable buffering and send everything rightaway. (This will perform less than optimal onder load). It's highly recommended to set a buffer size, for example <code>Context.BufferSize=$100000;</code>, for example from the LoadPage method in <code>xxmp.pas</code>. This improves performance on projects that call the Send methods many times with small bits if data, but could be confusing when debugging a project. (default value: 0)<br />
-It is allowed to set BufferSize to a new value while data is already sent, but whether any data still in the output buffer will get flushed or not depends on the implementation of the xxm handler.<br />
-<span class="newver">1.2.2</span> Optionally override the default value by adding <code>BufferSize="<i>&lt;new default value&gt;</i>"</code> to the xxm handler's project registry (Windows registry or <code>xxm.xml</code>).</dd>
+<dt><a name="buffersize"></a><code>property BufferSize: integer;</code> <span class="newver">1.1.4</span></dt>
+<dd>set a buffer size to store sent data before actually transmitting. When the buffer is full, data is transmitted.
+It's not guaranteed that the size of sent chunks will be of the exact number of bytes as defined.
+Set buffer size to 0 to disable buffering and send everything rightaway. (This will perform less than optimal onder load).
+It's highly recommended to set a buffer size, for example <code>Context.BufferSize=$100000;</code>,
+for example from the LoadPage method in <code>xxmp.pas</code>.
+This improves performance on projects that call the Send methods many times with small bits if data,
+but could be confusing when debugging a project. (default value: 0)<br />
+It is allowed to set BufferSize to a new value while data is already sent,
+but whether any data still in the output buffer will get flushed or not depends on the implementation of the xxm handler.<br />
+<span class="newver">1.2.2</span> Optionally override the default value by adding
+<code>BufferSize="<i>&lt;new default value&gt;</i>"</code> to the xxm handler's project registry (Windows registry or <code>xxm.xml</code>).</dd>
 
 <dt><code>procedure Flush;</code> <span class="newver">1.1.4</span></dt>
-<dd>write any data waiting in the output buffer rightaway. Call this right before any operation that could take some time server-side, to be sure any progress display HTML is actually transmitted to the browser.</dd>
+<dd>write any data waiting in the output buffer rightaway.
+Call this right before any operation that could take some time server-side,
+to be sure any progress display HTML is actually transmitted to the browser.</dd>
 
 <dt class="title"><code><a name="xxmparameter"></a>IXxmParameter = interface</code></dt>
 <dd>all parameters inherit from IXxmParameter</dd>
@@ -302,10 +340,10 @@ It is allowed to set BufferSize to a new value while data is already sent, but w
 <dt class="title"><code>IXxmParameterGet = interface(IXxmParameter)</code></dt>
 <dd>a parameter provided in the QueryString URL</dd>
 
-<dt class="title"><code>IxxmParameterPost = interface(IXxmParameter)</code></dt>
+<dt class="title"><code>IXxmParameterPost = interface(IXxmParameter)</code></dt>
 <dd>a parameter provided in posted data</dd>
 
-<dt class="title"><code>IxxmParameterPostFile = interface(IxxmParameterPost)</code></dt>
+<dt class="title"><code>IXxmParameterPostFile = interface(IXxmParameterPost)</code></dt>
 <dd>a file uploaded in posted data</dd>
 
 <dt><code>property Size:integer</code></dt>
@@ -318,7 +356,8 @@ It is allowed to set BufferSize to a new value while data is already sent, but w
 <dd>saves the uploaded file</dd>
 
 <dt><code>function SaveToStream(Stream:IStream):integer;</code></dt>
-<dd>saves the uploaded content to a stream  (use <code>TStreamAdapter</code> from the Classes unit to provide an <code>IStream</code> interface on a <code>TStream</code> object)</dd>
+<dd>saves the uploaded content to a stream  (use <code>TStreamAdapter</code> from the Classes unit
+to provide an <code>IStream</code> interface on a <code>TStream</code> object)</dd>
 
 <dt class="title"><a name="xxmversion"></a><code>function XxmVersion:TXxmVersion;<br />
   TXxmVersion = record Major,Minor,Release,Build:integer; end;
@@ -340,16 +379,17 @@ function URLEncode(const KeyValuePairs:array of OleVariant):AnsiString; overload
 
 <p class="title"><a name="headers"></a>Headers <span class="newver">1.1.0</span></p>
 
-<p>The xxm context objects provide separate interfaces to allow access to request and response HTTP headers and parameters. Include the <code>xxmHeaders.pas</code> and query the Context object for an IxxmHttpHeaders or IxxmParameterCollection interface pointer.</p>
+<p>The xxm context objects provide separate interfaces to allow access to request and response HTTP headers and parameters.
+Include the <code>xxmHeaders.pas</code> and query the Context object for an IXxmHttpHeaders or IXxmParameterCollection interface pointer.</p>
 
 <dl>
-<dt class="title"><code>IxxmHttpHeaders = interface</code></dt>
+<dt class="title"><code>IXxmHttpHeaders = interface</code></dt>
 <dd>an interface provided by the context object to allow access to request and response HTTP headers.</dd>
-<dt><code>property RequestHeaders:IxxmDictionaryEx</code></dt>
+<dt><code>property RequestHeaders:IXxmDictionaryEx</code></dt>
 <dd>a read-only dictionary of name-value pairs of the request HTTP header</dd>
-<dt><code>property ResponseHeaders:IxxmDictionaryEx</code></dt>
+<dt><code>property ResponseHeaders:IXxmDictionaryEx</code></dt>
 <dd>a dictionary of name-value pairs of the response HTTP header</dd>
-<dt class="title"><code>IxxmDictionary = interface</code></dt>
+<dt class="title"><code>IXxmDictionary = interface</code></dt>
 <dd>a dictionary contains name-value pairs</dd>
 <dt><code>property Item[Name:OleVariant]:WideString default;</code></dt>
 <dd>gets or sets the value for the name-value pair</dd>
@@ -357,17 +397,17 @@ function URLEncode(const KeyValuePairs:array of OleVariant):AnsiString; overload
 <dd>read-only, the number of name-value pair in the dictionary</dd>
 <dt><code>property Name[Idx:integer]:WideString</code></dt>
 <dd>gets or sets the name for the name-value pair</dd>
-<dt class="title"><code>IxxmDictionaryEx = interface(IxxmDictionary)</code></dt>
-<dd>extends IxxmDictionary with support for complex entries with sub-values, e.g.:<br />
+<dt class="title"><code>IXxmDictionaryEx = interface(IXxmDictionary)</code></dt>
+<dd>extends IXxmDictionary with support for complex entries with sub-values, e.g.:<br />
 <code>Content-Type: text/plain; charset="iso-8859-15"<br />Content-Disposition: inline; name="file1"; filename="somefile.txt"</code></dd>
-<dt><code>function Complex(Name:OleVariant;out Items:IxxmDictionary):WideString;</code></dt>
+<dt><code>function Complex(Name:OleVariant;out Items:IXxmDictionary):WideString;</code></dt>
 <dd>returns opening value and sets Items to a dictionary containing further name-value pairs</dd>
 </dl>
 
-<p>Example:</p><p><code>(Context as IxxmHttpHeaders).ResponseHeaders['X-Something']:='Hello world!';</code></p>
+<p>Example:</p><p><code>(Context as IXxmHttpHeaders).ResponseHeaders['X-Something']:='Hello world!';</code></p>
 
 <dl>
-<dt class="title"><code>IxxmParameterCollection</code></dt>
+<dt class="title"><code>IXxmParameterCollection</code></dt>
 <dd>an interface provided by the context object that enables adding extra parameters, e.g. from the project's LoadPage method.</dd>
 <dt><code>procedure AddParameter(Param: IXxmParameter);</code></dt>
 <dd>adds an object to the parameter collection that implements the IXxmParameter interface.</dd>
@@ -423,10 +463,12 @@ Use <code>[[*]]</code> to reset all parser values to the default values.</p>
 
 <dl>
 <dt class="title"><code>IXxmProjectEvents = interface</code> <span class="newver">1.1.4</span></dt>
-<dd>The project object can optionally expose this interface. If it does, the xxm handler will call its methods in certain events:</dd>
+<dd>the project object can optionally expose this interface.
+(The project object is typically defined in the <code>xxmp.pas</code> unit.)
+If it does, the xxm handler will call its methods in certain events:</dd>
 
-<dt><code>function HandleException(Context:IxxmContext;PageClass:WideString;Ex:Exception):boolean;</code> <span class="newver">1.1.4</span></dt>
-<dd>An exception occurred while building a page
+<dt><code>function HandleException(Context:IXxmContext;PageClass:WideString;Ex:Exception):boolean;</code> <span class="newver">1.1.4</span></dt>
+<dd>when an exception occurred while building a page
 <ul>
 <li>Context: the IXxmContext the page was being built with</li>
 <li>PageClass: an informational display of which fragment the exception occurred in, may contain a path of fragments that included eachother</li>
@@ -436,10 +478,12 @@ Return whether the exception was handled. Return false to have the xxm handler s
 </dd>
 
 <dt class="title"><code>IXxmProjectEvents1 = interface</code> <span class="newver">1.1.8</span></dt>
-<dd>The project object can optionally export this interface. If it does, the xxm handler will call its methods in certain events:</dd>
+<dd>the project object can optionally export this interface.
+(The project object is typically defined in the <code>xxmp.pas</code> unit.)
+If it does, the xxm handler will call its methods in certain events:</dd>
 
 <dt><code>function HandleException(Context:IXxmContext;PageClass,ExceptionClass,ExceptionMessage:WideString):boolean;</code></dt>
-<dd>An exception occured while building a page (and the project doesn't implement IXxmProjectEvents)<br />
+<dd>when an exception occured while building a page (and the project doesn't implement IXxmProjectEvents)<br />
 Use this interface if a Delphi version conflict occurs using <code>IXxmProjectEvents.HandleException</code></dd>
 <ul>
 <li>Context: the IXxmContext the page was being built with</li>
@@ -450,28 +494,29 @@ Use this interface if a Delphi version conflict occurs using <code>IXxmProjectEv
 Return whether the exception was handled. Return false to have the xxm handler send the default exception message.
 </dd>
 <dt><code>procedure ReleasingContexts;</code></dt>
-<dd>When the xxm handler is about to unload the project (due to a shutdown or an auto-update or auto-build event),
+<dd>when the xxm handler is about to unload the project (due to a shutdown or an auto-update or auto-build event),
 it calls <code>ReleasingContexts</code> before it waits for all current page requests to complete.</dd>
 <dt><code>procedure ReleasingProject;</code></dt>
-<dd>When the xxm handler is about to unload the project,
+<dd>when the xxm handler is about to unload the project,
 it calls <code>ReleasingProject</code> after it waited for all current page requests to complete.</dd>
 </dl>
 
 <p class="title"><a name="uploadprogress"></a>Upload progress <span class="newver">1.1.4</span></p>
 
-<p>To display the progress of uploading a large file, you need to attach an upload progress agent to the context <b>before</b> any context parameter is accessed. The request data is parsed when <code>Context.Parameter</code> is first accessed.</p>
+<p>To display the progress of uploading a large file, you need to attach an upload progress agent to the context <b>before</b>
+any context parameter is accessed. The request data is parsed when <code>Context.Parameter</code> is first accessed.</p>
 
 <dl>
-<dt class="title"><code>IxxmUploadProgressService = interface</code></dt>
+<dt class="title"><code>IXxmUploadProgressService = interface</code></dt>
 <dd>an interface provided by the context object that enables attaching an upload progress agent.</dd>
-<dt><code>procedure AttachAgent(Agent: IxxmUploadProgressAgent; Flags, Step: integer);</code></dt>
+<dt><code>procedure AttachAgent(Agent: IXxmUploadProgressAgent; Flags, Step: integer);</code></dt>
 <dd>attaches an upload progress agent to the context. Attach any agents before calling <code>Context.Parameter</code>.
 <ul>
 <li>Flags=<code>xxmUploadProgressAttach_PostData</code>: report progress parsing the entire request data (<i>Step</i> value ignored)</li>
 <li>Flags=<code>xxmUploadProgressAttach_FileFields</code>: report progress parsing each file, report progress every <i>Step</i> bytes</li>
 </ul>
 </dd>
-<dt><code>IxxmUploadProgressAgent = interface</code></dt>
+<dt><code>IXxmUploadProgressAgent = interface</code></dt>
 <dd>implement this interface on an object to use it as an upload progress agent</dd>
 <dt><code>procedure ReportProgress(FieldName, FileName: AnsiString; Position: integer);</code></dt>
 <dd>
@@ -480,6 +525,53 @@ it calls <code>ReleasingProject</code> after it waited for all current page requ
 <li><code>xxmUploadProgressAttach_FileFields</code>: FieldName, FileName of post form field being parsed; Position into file data</li>
 </ul>
 </dd>
+</dl>
+
+<p class="title"><a name="lpsupport"></a>Long polling support <span class="newver">1.2.2</span></p>
+
+<p>If you want to implement a <a href="https://en.wikipedia.org/wiki/Long_polling">Long polling</a> scenario,
+it might be tempting to write something like this:</p>
+
+<p><code><b>while</b> Context.Connected <b>do</b> <br />
+<b>begin</b><br />
+&nbsp;&nbsp;<b>while</b> <b>not</b> NewDataIsAvailable <b>do</b> Sleep(500);<br />
+&nbsp;&nbsp;Context.SendHTML(GetDataAsHTML);<br />
+&nbsp;&nbsp;Context.Flush; <i>//for in case <a href="#buffersize">Context.BufferSize</a> is set</i><br />
+<b>end</b>;<br />
+</code></p>
+
+<p>This will keep the worker thread occupied for the duration of the connection,
+and the number of worker threads is limited by the thread pool size configuration.
+This method doesn't adapt to situations where the server has to handle more requests, or is asked to shut down cleanly.
+If you want to use long polling requests, use these interfaces:</p>
+
+<dl>
+<dt class="title"><code>IXxmContextSuspend = interface</code></dt>
+<dd>an interface provided by the context object that has long polling support.</dd>
+<dt><code>procedure Suspend(const EventKey: WideString; CheckIntervalMS, MaxWaitTimeSec: cardinal;
+const ResumeFragment: WideString; ResumeValue: OleVariant;
+const DropFragment: WideString; DropValue: OleVariant);</code></dt>
+<dd>register this context to keep the connection open after this <code>Build</code> call completes.
+Then check for an event approximately every <code>CheckIntervalMS</code> milliseconds.
+When <code>IXxmProjectEvents2.CheckEvent(EventKey)</code> returns true, resume the context and call <code>Context.Include</code>
+with <code>ResumeFragment</code> and <code>ResumeValue</code>. If it doesn't by <code>MaxWaitTimeSec</code>,
+resume the context and call <code>Context.Include</code> with <code>DropFragment</code> and <code>DropValue</code> if <code>DropFragment&lt;&gt;''</code>.<br />
+If <code>ResumeValue</code> or <code>DropValue</code> is an array of variants,
+it is passed to <code>Context.Include</code> as the <code>Values</code> parameter; else it's available as <code>Values[0]</code>; use <code>Null</code> to not pass any value.<br />
+<b>Attention:</b> the timing values may not be strictly adhered to. Event checking is performed separate from the worker threads and the sequence
+and priority of events may cause intervals to be longer or suspended contexts to be dropped sooner.
+</dd>
+<dt class="title"><code>IXxmProjectEvents2 = interface</code></dt>
+<dd>implement this interface on the project object. 
+(The project object is typically defined in the <code>xxmp.pas</code> unit.)</dd>
+<dt><code>function CheckEvent(const EventKey:WideString; var CheckIntervalMS: cardinal):boolean;</code></dt>
+<dd>called periodically as configured by <code>IXxmContextSuspend.Suspend</code>. Return true to resume suspended context(s).
+When <code>IXxmContextSuspend.Suspend</code> is called with several <code>CheckIntervalMS</code> values, the smaller value takes precedence.
+Modify its value to control the timing of the next call.
+<b>Attention:</b> the timing values may not be strictly adhered to. Event checking is performed separate from the worker threads and the sequence
+and priority of events may cause intervals to be longer.
+<br />
+<b>Attention:</b> keep the work done by this call as light and performant as possible, optionally checking values set by a separate thread managed by the xxm project.</dd>
 </dl>
 
 </body>
