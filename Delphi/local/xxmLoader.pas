@@ -288,7 +288,6 @@ begin
          begin
           Next:=ntDone;
           if FResumeFragment<>'' then
-           begin
             case VarType(FResumeValue) of
               varNull,varEmpty:
                 Include(FResumeFragment);
@@ -297,14 +296,13 @@ begin
               else
                 Include(FResumeFragment,[FResumeValue]);
             end;
-           end;
+          if not BuildPageLeaveOpen then ClosePage;
          end;
 
         ntResumeDrop:
          begin
           Next:=ntDone;
           if FDropFragment<>'' then
-           begin
             case VarType(FDropValue) of
               varNull,varEmpty:
                 Include(FDropFragment);
@@ -313,7 +311,7 @@ begin
               else
                 Include(FDropFragment,[FDropValue]);
             end;
-           end;
+          if not BuildPageLeaveOpen then ClosePage;
          end;
 
       end;
@@ -851,13 +849,14 @@ procedure TXxmLocalContext.Suspend(const EventKey: WideString;
 begin
   if Next=ntSuspend then
     raise EXxmContextAlreadySuspended.Create(SXxmContextAlreadySuspended);
-  Next:=ntSuspend;
+  PageLoaderPool.EventsController.SuspendContext(Self,EventKey,
+    CheckIntervalMS,MaxWaitTimeSec);
   FResumeFragment:=ResumeFragment;
   FResumeValue:=ResumeValue;
   FDropFragment:=DropFragment;
   FDropValue:=DropValue;
-  PageLoaderPool.EventsController.SuspendContext(Self,EventKey,
-    CheckIntervalMS,MaxWaitTimeSec);
+  Next:=ntSuspend;
+  BuildPageLeaveOpen:=true;
 end;
 
 procedure TXxmLocalContext.Resume(ToDrop: Boolean);

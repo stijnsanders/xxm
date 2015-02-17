@@ -789,7 +789,7 @@ begin
       inc(j,Sections[i].Length);
       map.MapLine(EOLs(i),Sections[i].LineNr);
       //check comma
-      k:=j;
+      k:=j-1;
       while (k<>0) and (Result[k]<=' ') do dec(k);
       if (k<>0) and (Result[k]<>',') then
        begin

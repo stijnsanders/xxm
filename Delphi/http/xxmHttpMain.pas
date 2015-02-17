@@ -17,7 +17,19 @@ type
     destructor Destroy; override;
   end;
 
-  TXxmHttpContext=class(TXxmQueueContext, IxxmHttpHeaders)
+  TXxmNextTask=(
+    ntNormal,
+    ntHeaderOnly,
+    ntKeep,
+    ntSuspend,
+    ntResume,
+    ntResumeDrop,
+    ntWasKept
+  );
+
+  TXxmHttpContext=class(TXxmQueueContext,
+    IXxmHttpHeaders,
+    IXxmContextSuspend)
   private
     FSocket:TTcpSocket;
     FReqHeaders:TRequestHeaders;
@@ -27,7 +39,8 @@ type
     FCookie: AnsiString;
     FCookieIdx: TParamIndexes;
     FQueryStringIndex:integer;
-    FKeepConnection, FHeaderOnly:boolean;
+    FResumeFragment,FDropFragment:WideString;
+    FResumeValue,FDropValue:OleVariant;
     procedure HandleRequest;
   protected
     function GetSessionID: WideString; override;
@@ -47,8 +60,16 @@ type
     procedure FlushFinal; override;
     procedure FlushStream(AData:TStream;ADataSize:int64); override;
 
+    { IXxmHttpHeaders }
     function GetRequestHeaders:IxxmDictionaryEx;
     function GetResponseHeaders:IxxmDictionaryEx;
+
+    { IXxmContextSuspend }
+    procedure Suspend(const EventKey: WideString;
+      CheckIntervalMS, MaxWaitTimeSec: cardinal;
+      const ResumeFragment: WideString; ResumeValue: OleVariant;
+      const DropFragment: WideString; DropValue: OleVariant);
+    procedure Resume(ToDrop: Boolean); override;
 
     function GetProjectPage(FragmentName: WideString):IXxmFragment; override;
 
@@ -61,7 +82,7 @@ type
     property ReqHeaders:TRequestHeaders read FReqHeaders;
     property ResHeaders:TResponseHeaders read FResHeaders;
   public
-    WasKept:boolean;
+    Next:TXxmNextTask;
     KeptCount:cardinal;
     constructor Create(Socket:TTcpSocket);
     destructor Destroy; override;
@@ -73,6 +94,7 @@ type
   EXxmMaximumHeaderLines=class(Exception);
   EXxmContextStringUnknown=class(Exception);
   EXxmUnknownPostDataTymed=class(Exception);
+  EXxmContextAlreadySuspended=class(Exception);
 
   TXxmHttpRunParameters=(
     rpPort,
@@ -92,6 +114,7 @@ uses Variants, ComObj, xxmCommonUtils, xxmReadHandler, ShellApi,
 resourcestring
   SXxmMaximumHeaderLines='Maximum header lines exceeded.';
   SXxmContextStringUnknown='Unknown ContextString __';
+  SXxmContextAlreadySuspended='Context has already been suspended';
 
 const
   HTTPMaxHeaderLines=$400;//1KiB
@@ -227,7 +250,7 @@ begin
   if (setsockopt(FSocket.Handle,SOL_SOCKET,SO_RCVBUF,@i,4)<>0) or
      (setsockopt(FSocket.Handle,SOL_SOCKET,SO_SNDBUF,@i,4)<>0) then
     RaiseLastOSError;
-  WasKept:=false;
+  Next:=ntNormal;
   SendDirect:=nil;//see BeginRequest to detect AfterConstruction
 end;
 
@@ -257,13 +280,8 @@ begin
   FSessionID:='';//see GetSessionID
   FURI:='';//see Execute
   FRedirectPrefix:='';
-  FHeaderOnly:=false;
-  FKeepConnection:=false;
-  if WasKept then
-   begin
-    WasKept:=false;
-    _Release;
-   end;
+  if Next=ntWasKept then _Release;
+  Next:=ntNormal;
 end;
 
 procedure TXxmHttpContext.EndRequest;
@@ -276,16 +294,45 @@ end;
 procedure TXxmHttpContext.Execute;
 begin
   //while here now done by KeptConnections
-  BeginRequest;
   try
-    HandleRequest;
+    case Next of
+      ntResume:
+       begin
+        Next:=ntNormal;
+        if FResumeFragment<>'' then
+          case VarType(FResumeValue) of
+            varNull,varEmpty:
+              Include(FResumeFragment);
+            varArray or varVariant:
+              Include(FResumeFragment,FResumeValue);
+            else
+              Include(FResumeFragment,[FResumeValue]);
+          end;
+       end;
+      ntResumeDrop:
+       begin
+        Next:=ntNormal;
+        if FDropFragment<>'' then
+          case VarType(FDropValue) of
+            varNull,varEmpty:
+              Include(FDropFragment);
+            varArray or varVariant:
+              Include(FDropFragment,FDropValue);
+            else
+              Include(FDropFragment,[FDropValue]);
+          end;
+       end;
+      else
+       begin
+        BeginRequest;
+        HandleRequest;
+       end;
+    end;
+    if not BuildPageLeaveOpen then PostProcessRequest;
   finally
-    EndRequest;
+    if not BuildPageLeaveOpen then EndRequest;
   end;
-  if WasKept then
-    WasKept:=false //FlushFinal did SpoolingConnections.Add
-  else
-    PostExecute;
+  PostExecute;
 end;
 
 procedure TXxmHttpContext.FlushFinal;
@@ -295,12 +342,11 @@ begin
     and (FContentBuffer.Position>SpoolingThreshold) then
    begin
     CheckSendStart(true);
-    WasKept:=true;//skip PostExecute in Execute
     SpoolingConnections.Add(Self,FContentBuffer,false);
     FContentBuffer:=nil;//since spooling will free it when done
    end
   else
-    inherited;//Flush;//assert WasKept=false
+    inherited;//Flush;
 end;
 
 procedure TXxmHttpContext.FlushStream(AData: TStream; ADataSize: int64);
@@ -310,19 +356,20 @@ begin
    begin
     AData.Seek(0,soFromEnd);//used by SpoolingConnections.Add
     CheckSendStart(true);
-    WasKept:=true;//skip PostExecute in Execute
     SpoolingConnections.Add(Self,AData,true);
    end
   else
-    inherited;//assert WasKept=false
+    inherited;
 end;
 
 procedure TXxmHttpContext.PostExecute;
 begin
-  if FKeepConnection then
-    KeptConnections.Queue(Self)
-  else
-    FSocket.Disconnect;
+  case Next of
+    ntNormal:
+      FSocket.Disconnect;
+    ntKeep,ntResume,ntResumeDrop:
+      KeptConnections.Queue(Self);
+  end;
 end;
 
 procedure TXxmHttpContext.HandleRequest;
@@ -438,7 +485,7 @@ begin
 
     if FVerb='OPTIONS' then
      begin
-      FHeaderOnly:=true;
+      Next:=ntHeaderOnly;
       FAutoEncoding:=aeContentDefined;//prevent Content-Type
       AddResponseHeader('Allow','OPTIONS, GET, HEAD, POST');
       AddResponseHeader('Public','OPTIONS, GET, HEAD, POST');
@@ -454,7 +501,11 @@ begin
      end
     else
      begin
-      if FVerb='HEAD' then FHeaderOnly:=true;//see SendHeader
+      if FVerb='HEAD' then
+       begin
+        Next:=ntHeaderOnly;//see SendHeader
+        AddResponseHeader('Content-Length','0');
+       end;
       BuildPage;
      end;
 
@@ -469,7 +520,6 @@ begin
         SendError('error',e.ClassName,e.Message);
        end;
   end;
-  PostProcessRequest;
 end;
 
 function TXxmHttpContext.GetProjectEntry:TXxmProjectEntry;
@@ -583,9 +633,14 @@ begin
   l:=Length(x);
   if FSocket.SendBuf(x[1],l)<>l then
     raise EXxmTransferError.Create(SysErrorMessage(GetLastError));
-  if FResHeaders['Content-Length']<>'' then FKeepConnection:=true;
   //TODO: transfer encoding chunked
-  if FHeaderOnly then raise EXxmPageRedirected.Create(FVerb);
+  if Next=ntHeaderOnly then
+   begin
+    Next:=ntKeep;//assert FResHeaders['Content-Length']='0'
+    raise EXxmPageRedirected.Create(FVerb);
+   end
+  else
+    if FResHeaders['Content-Length']<>'' then Next:=ntKeep;
 end;
 
 function TXxmHttpContext.GetRequestHeader(const Name: WideString): WideString;
@@ -647,6 +702,29 @@ begin
   //ATTENTION: (v1.2.2) when Context.BufferSize is set,
   //this may get called with data on the buffer not sent yet
   //  see also TXxmSpoolingConnections
+end;
+
+procedure TXxmHttpContext.Suspend(const EventKey: WideString;
+  CheckIntervalMS, MaxWaitTimeSec: cardinal;
+  const ResumeFragment: WideString; ResumeValue: OleVariant;
+  const DropFragment: WideString; DropValue: OleVariant);
+begin
+  if Next=ntSuspend then
+    raise EXxmContextAlreadySuspended.Create(SXxmContextAlreadySuspended);
+  PageLoaderPool.EventsController.SuspendContext(Self,
+    EventKey,CheckIntervalMS,MaxWaitTimeSec);
+  FResumeFragment:=ResumeFragment;
+  FResumeValue:=ResumeValue;
+  FDropFragment:=DropFragment;
+  FDropValue:=DropValue;
+  Next:=ntSuspend;
+  BuildPageLeaveOpen:=true; 
+end;
+
+procedure TXxmHttpContext.Resume(ToDrop: Boolean);
+begin
+  if ToDrop then Next:=ntResumeDrop else Next:=ntResume;
+  inherited;
 end;
 
 { TXxmHttpServerListener }

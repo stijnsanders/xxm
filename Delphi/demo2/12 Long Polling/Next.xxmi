@@ -5,7 +5,7 @@ th,tm,ts,tz:word;
 
 DecodeTime(Now,th,tm,ts,tz);
 
-<p>>=[FormatDateTime('hh:nn:ss',Now),': ',th+tm+ts]<</p>
+<p>>=[FormatDateTime('hh:nn:ss',Now),', ',th,'+',tm,'+',ts,' = ',th+tm+ts]<</p>
 
 
 i:=Values[0]+1;

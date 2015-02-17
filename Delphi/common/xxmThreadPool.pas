@@ -52,7 +52,7 @@ type
       Key:WideString;
       ProjectEntry:TXxmProjectEntry;
       Queue:TXxmQueueContext;
-      CheckInterval,CheckNext:cardinal;
+      CheckInterval,CheckLast:cardinal;
     end;
     FEventsIndex,FEventsSize:cardinal;
   protected
@@ -341,7 +341,7 @@ begin
         FEvents[i].ProjectEntry:=pe;
         FEvents[i].Queue:=Context;
         FEvents[i].CheckInterval:=CheckIntervalMS;
-        FEvents[i].CheckNext:=tc+CheckIntervalMS;
+        FEvents[i].CheckLast:=tc;
         inc(FEventsIndex);
         Context.QueueIn:=nil;
        end;
@@ -350,13 +350,13 @@ begin
      begin
       if CheckIntervalMS<FEvents[i].CheckInterval then
         FEvents[i].CheckInterval:=CheckIntervalMS;
-      if cardinal(tc-FEvents[i].CheckNext)>FEvents[i].CheckInterval then
-        FEvents[i].CheckNext:=tc+FEvents[i].CheckInterval;
+      if cardinal(tc-FEvents[i].CheckLast)>FEvents[i].CheckInterval then
+        FEvents[i].CheckLast:=tc;
       //insert sorted by SuspendMax (zeroes on tail)
       c1:=nil;
       c:=FEvents[i].Queue;
       while (c<>nil) and (((Context.SuspendMax=0) and (c.SuspendMax<>0)) or
-        (integer(c.SuspendMax-Context.SuspendMax)<=0)) do
+        (integer(c.SuspendMax)-integer(Context.SuspendMax)<=0)) do
        begin
         c1:=c;
         c:=Context.QueueIn;
@@ -378,12 +378,11 @@ end;
 
 procedure TXxmEventsController.Execute;
 var
-  i,j,k,x,tc:cardinal;
+  i,j,x,y,z,tc:cardinal;
   pe:IXxmProjectEvents2;
   c,c1:TXxmQueueContext;
 begin
   x:=0;
-  i:=0;
   while not Terminated do
    begin
     if x<>0 then Sleep(x);
@@ -393,14 +392,27 @@ begin
       EnterCriticalSection(FLock);
       try
         tc:=GetTickCount;
+        i:=0;
         j:=FEventsIndex;
-        k:=0;
-        while (k<FEventsIndex) and (j=FEventsIndex) do
+        z:=0;
+        while i<FEventsIndex do
          begin
-          j:=(i+k) mod FEventsIndex;
-          if (FEvents[j].Queue=nil) or (integer(tc-
-            FEvents[(i+j) mod FEventsIndex].CheckNext)<0) then j:=FEventsIndex;
-          inc(k);
+          if FEvents[i].Queue<>nil then
+           begin
+            y:=cardinal(tc-FEvents[i].CheckLast);
+            if y>FEvents[i].CheckInterval then
+             begin
+              if (y>z) or (j=FEventsIndex) then
+               begin
+                z:=y;
+                j:=i;
+                if FEvents[i].CheckInterval<x then x:=FEvents[i].CheckInterval;
+               end;
+             end
+            else
+              if y<x then x:=y;
+           end;
+          inc(i);
          end;
         if j<>FEventsIndex then
          begin
@@ -425,7 +437,7 @@ begin
               c1:=nil;
               while c<>nil do
                 if not(c.Connected) or
-                  ((c.SuspendMax<>0) and ((integer(tc-c.SuspendMax)>0))) then
+                  ((c.SuspendMax<>0) and ((integer(tc)-integer(c.SuspendMax)>0))) then
                  begin
                   if c1=nil then FEvents[j].Queue:=c.QueueIn else c1.QueueIn:=c.QueueIn;
                   c.Resume(true);
@@ -454,15 +466,12 @@ begin
             pointer(pe):=nil;//silent
           end;
           if FEvents[j].Queue<>nil then
-            FEvents[j].CheckNext:=GetTickCount+FEvents[j].CheckInterval;
+            FEvents[j].CheckLast:=GetTickCount;
          end;
-        if i>=FEventsIndex then i:=0 else inc(i);
       finally
         LeaveCriticalSection(FLock);
       end;
      end;
-
-    //x:=PageLoaderPool.CheckNextEvent;
    end;
 end;
 

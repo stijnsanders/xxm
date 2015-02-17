@@ -106,6 +106,7 @@ type
     procedure BeginRequest; virtual;
     procedure LoadPage;
     procedure BuildPage;
+    procedure ClosePage;
     procedure SingleFile;
     procedure EndRequest; virtual;
 
@@ -277,7 +278,6 @@ end;
 procedure TXxmGeneralContext.BuildPage;
 var
   p:IXxmPage;
-  i:int64;
 begin
   //clear buffer just in case
   if FContentBuffer<>nil then FContentBuffer.Position:=0;
@@ -299,24 +299,25 @@ begin
     FBuilding:=FPage;
     FPage.Build(Self,nil,[],[]);//any parameters?
 
-    //any content?
-    if BuildPageLeaveOpen then
-     begin
-     end
-    else
-     begin
-      if FHeaderSent<>XxmHeaderSent then
-       begin
-        if FBufferSize=0 then i:=0 else i:=FContentBuffer.Position;
-        if (i=0) and (FStatusCode=200) then
-          ForceStatus(204,'No Content');
-        if FStatusCode<>304 then
-          AddResponseHeader('Content-Length',IntToStr(i));
-        if i=0 then SendHeader;
-       end;
-      FlushFinal;
-     end;
+    if not BuildPageLeaveOpen then ClosePage;
    end;
+end;
+
+procedure TXxmGeneralContext.ClosePage;
+var
+  i:int64;
+begin
+  //any content?
+  if FHeaderSent<>XxmHeaderSent then
+   begin
+    if FBufferSize=0 then i:=0 else i:=FContentBuffer.Position;
+    if (i=0) and (FStatusCode=200) then
+      ForceStatus(204,'No Content');
+    if FStatusCode<>304 then
+      AddResponseHeader('Content-Length',IntToStr(i));
+    if i=0 then SendHeader;
+   end;
+  FlushFinal;
 end;
 
 procedure TXxmGeneralContext.SingleFile;

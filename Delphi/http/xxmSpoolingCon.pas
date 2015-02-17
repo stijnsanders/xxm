@@ -16,7 +16,7 @@ type
       BufferFreeWhenDone:boolean;
     end;
     FContextIndex,FContextSize:integer;
-    procedure DropContext(i:integer);
+    procedure DropContext(force:boolean;i:integer);
   protected
     procedure Execute; override;
   public
@@ -53,7 +53,7 @@ begin
   WaitFor;
   CloseHandle(FAddEvent);
   DeleteCriticalSection(FLock);
-  for i:=0 to FContextIndex-1 do DropContext(i);
+  for i:=0 to FContextIndex-1 do DropContext(true,i);
   inherited;
 end;
 
@@ -84,7 +84,7 @@ begin
     Buffer.Position:=0;
     Context.KeptCount:=0;
     //protect from destruction by TXxmPageLoader.Execute:
-    Context.WasKept:=true;
+    Context.Next:=ntWasKept;
     (Context as IUnknown)._AddRef;
     SetEvent(FAddEvent);
   finally
@@ -92,9 +92,12 @@ begin
   end;
 end;
 
-procedure TXxmSpoolingConnections.DropContext(i: integer);
+procedure TXxmSpoolingConnections.DropContext(force:boolean;i:integer);
 begin
-  SafeFree(TInterfacedObject(FContexts[i].Context));
+  if force then
+    SafeFree(TInterfacedObject(FContexts[i].Context))
+  else
+    (FContexts[i].Context as IUnknown)._Release;
   if FContexts[i].BufferFreeWhenDone then
     FreeAndNil(FContexts[i].Buffer)
   else
@@ -128,7 +131,7 @@ begin
           inc(FContexts[k].Context.KeptCount);
           //timed out? (see also t value below: 300x100ms~=30s)
           if FContexts[k].Context.KeptCount=300 then
-            DropContext(k)
+            DropContext(true,k)
           else
            begin
             h:=FContexts[k].Context.Socket.Handle;
@@ -168,7 +171,7 @@ begin
             h:=x.fd_array[k];
             while (j<FContextIndex) and not((FContexts[j].Context<>nil)
               and (FContexts[j].Context.Socket.Handle=h)) do inc(j);
-            if j<FContextIndex then DropContext(j); //else raise?
+            if j<FContextIndex then DropContext(true,j); //else raise?
            end;
           //writables
           for k:=0 to w.fd_count-1 do
@@ -183,16 +186,17 @@ begin
                 else l:=FContexts[j].DataLeft;
               if l<>0 then l:=FContexts[j].Buffer.Read(d[0],l);
               if (l=0) or (FContexts[j].Context.Socket.SendBuf(d[0],l)<>l) then
-                DropContext(j);//raise?
+                DropContext(true,j);//raise?
               dec(FContexts[j].DataLeft,l);
               if FContexts[j].DataLeft=0 then //done
                begin
                 try
+                  FContexts[j].Context.Next:=ntNormal;
                   FContexts[j].Context.PostExecute;
                 except
                   //silent
                 end;
-                DropContext(j);
+                DropContext(false,j);
                end;
              end;
             //else raise?

@@ -19,7 +19,6 @@ type
     procedure Queue(Context:TXxmHttpContext);
   end;
 
-
 implementation
 
 uses SysUtils, xxmSock, xxmThreadPool, xxmCommonUtils;
@@ -74,7 +73,7 @@ begin
     FContexts[i]:=Context;
     Context.KeptCount:=0;
     //protect from destruction by TXxmPageLoader.Execute:
-    Context.WasKept:=true;
+    Context.Next:=ntWasKept;
     (Context as IUnknown)._AddRef;
     SetEvent(FQueueEvent);
   finally
