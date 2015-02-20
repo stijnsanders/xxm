@@ -19,8 +19,18 @@ type
     procedure SetSize(NewSize: Integer); override;
   end;
 
-  TXxmHostedContext=class(TXxmQueueContext, IxxmHttpHeaders)
+  TXxmNextTask=(
+    ntNormal,
+    ntSuspend,
+    ntResume,
+    ntResumeDrop
+  );
+
+  TXxmHostedContext=class(TXxmQueueContext,
+    IXxmHttpHeaders,
+    IXxmContextSuspend)
   private
+    Next:TXxmNextTask;
     FPipeIn,FPipeOut:THandle;
     FCGIValues:array of record
       Name,Value:AnsiString;
@@ -34,6 +44,8 @@ type
     FCookie: AnsiString;
     FCookieIdx: TParamIndexes;
     FQueryStringIndex:integer;
+    FResumeFragment,FDropFragment:WideString;
+    FResumeValue,FDropValue:OleVariant;
     function GetCGIValue(Name:AnsiString):AnsiString;
   protected
     function SendData(const Buffer; Count: LongInt): LongInt;
@@ -49,8 +61,15 @@ type
     function GetRequestHeader(const Name: WideString): WideString; override;
     procedure AddResponseHeader(const Name, Value: WideString); override;
 
+    { IXxmHttpHeaders }
     function GetRequestHeaders:IxxmDictionaryEx;
     function GetResponseHeaders:IxxmDictionaryEx;
+    { IXxmContextSuspend }
+    procedure Suspend(const EventKey: WideString;
+      CheckIntervalMS, MaxWaitTimeSec: cardinal;
+      const ResumeFragment: WideString; ResumeValue: OleVariant;
+      const DropFragment: WideString; DropValue: OleVariant);
+    procedure Resume(ToDrop: boolean); override;
   public
     Queue:TXxmHostedContext;
 
@@ -63,6 +82,7 @@ type
   EXxmMaximumHeaderLines=class(Exception);
   EXxmContextStringUnknown=class(Exception);
   EXxmUnknownPostDataTymed=class(Exception);
+  EXxmContextAlreadySuspended=class(Exception);
 
 implementation
 
@@ -71,6 +91,7 @@ uses Windows, Variants, ComObj, xxmCommonUtils;
 resourcestring
   SXxmMaximumHeaderLines='Maximum header lines exceeded.';
   SXxmContextStringUnknown='Unknown ContextString __';
+  SXxmContextAlreadySuspended='Context has already been suspended';
 
 const
   HTTPMaxHeaderLines=$400;
@@ -81,6 +102,7 @@ constructor TXxmHostedContext.Create(PipeIn,PipeOut:THandle);
 begin
   inherited Create('');//empty here, see Execute
   Queue:=nil;//used by thread pool
+  Next:=ntNormal;
   FPipeIn:=PipeIn;
   FPipeOut:=PipeOut;
   SendDirect:=SendData;
@@ -124,90 +146,99 @@ const
   CGIValuesGrowStep=$100;
 begin
   try
-    //read CGI values
-    if not(ReadFile(FPipeIn,l,4,l1,nil)) then RaiseLastOSError;
-    SetLength(x,l);
-    if not(ReadFile(FPipeIn,x[1],l,l1,nil)) then RaiseLastOSError;
-    //process values
-    i:=1;
-    m:=0;
-    while (i<l) do
-     begin
-      j:=i;
-      while (j<=l) and (x[j]<>'=') do inc(j);
-      k:=j+1;
-      while (k<=l) and (x[k]<>#0) do inc(k);
-      if (j-i>4) and (Copy(x,i,5)='HTTP_') then
+    case Next of
+      ntNormal:
        begin
-        y:=y+x[i+5]+LowerCase(StringReplace(Copy(x,i+6,j-i-6),'_','-',[rfReplaceAll]))+': '+Copy(x,j+1,k-j-1)+#13#10;
-       end
-      else
-        if j<=l then
+        //read CGI values
+        if not(ReadFile(FPipeIn,l,4,l1,nil)) then RaiseLastOSError;
+        SetLength(x,l);
+        if not(ReadFile(FPipeIn,x[1],l,l1,nil)) then RaiseLastOSError;
+        //process values
+        i:=1;
+        m:=0;
+        while (i<l) do
          begin
-          if FCGIValuesCount=FCGIValuesSize then
+          j:=i;
+          while (j<=l) and (x[j]<>'=') do inc(j);
+          k:=j+1;
+          while (k<=l) and (x[k]<>#0) do inc(k);
+          if (j-i>4) and (Copy(x,i,5)='HTTP_') then
            begin
-            inc(FCGIValuesSize,CGIValuesGrowStep);
-            SetLength(FCGIValues,FCGIValuesSize);
-           end;
-          FCGIValues[FCGIValuesCount].Name:=Copy(x,i,j-i);
-          FCGIValues[FCGIValuesCount].Value:=Copy(x,j+1,k-j-1);
-          inc(FCGIValuesCount);
+            y:=y+x[i+5]+LowerCase(StringReplace(Copy(x,i+6,j-i-6),'_','-',[rfReplaceAll]))+': '+Copy(x,j+1,k-j-1)+#13#10;
+           end
+          else
+            if j<=l then
+             begin
+              if FCGIValuesCount=FCGIValuesSize then
+               begin
+                inc(FCGIValuesSize,CGIValuesGrowStep);
+                SetLength(FCGIValues,FCGIValuesSize);
+               end;
+              FCGIValues[FCGIValuesCount].Name:=Copy(x,i,j-i);
+              FCGIValues[FCGIValuesCount].Value:=Copy(x,j+1,k-j-1);
+              inc(FCGIValuesCount);
+             end;
+          i:=k+1;
+          inc(m);
+          if m=HTTPMaxHeaderLines then
+            raise EXxmMaximumHeaderLines.Create(SXxmMaximumHeaderLines);
          end;
-      i:=k+1;
-      inc(m);
-      if m=HTTPMaxHeaderLines then
-        raise EXxmMaximumHeaderLines.Create(SXxmMaximumHeaderLines);
-     end;
-    y:=y+#13#10;
+        y:=y+#13#10;
 
-    FReqHeaders:=TRequestHeaders.Create(y);
-    (FReqHeaders as IUnknown)._AddRef;
+        FReqHeaders:=TRequestHeaders.Create(y);
+        (FReqHeaders as IUnknown)._AddRef;
 
-    x:=GetCGIValue('SERVER_PROTOCOL');//http or https
-    i:=1;
-    l:=Length(x);
-    while (i<=l) and (x[i]<>'/') do inc(i);
-    y:=FReqHeaders['Host'];
-    if y='' then y:='localhost';//if not port=80 then +':'+?
-    FRedirectPrefix:=LowerCase(Copy(x,1,i-1))+'://'+y;
+        x:=GetCGIValue('SERVER_PROTOCOL');//http or https
+        i:=1;
+        l:=Length(x);
+        while (i<=l) and (x[i]<>'/') do inc(i);
+        y:=FReqHeaders['Host'];
+        if y='' then y:='localhost';//if not port=80 then +':'+?
+        FRedirectPrefix:=LowerCase(Copy(x,1,i-1))+'://'+y;
 
-    x:=GetCGIValue('SCRIPT_NAME');
-    y:=GetCGIValue('REQUEST_URI');
-    l:=Length(x);
-    if x=Copy(y,1,l) then
-     begin
-      FURI:=Copy(y,l+1,Length(y)-l);
-      FRedirectPrefix:=FRedirectPrefix+x;
-     end
-    else
-     begin
-      FURI:=y;
-      //FURLPrefix:= should be ok
-     end;
+        x:=GetCGIValue('SCRIPT_NAME');
+        y:=GetCGIValue('REQUEST_URI');
+        l:=Length(x);
+        if x=Copy(y,1,l) then
+         begin
+          FURI:=Copy(y,l+1,Length(y)-l);
+          FRedirectPrefix:=FRedirectPrefix+x;
+         end
+        else
+         begin
+          FURI:=y;
+          //FURLPrefix:= should be ok
+         end;
 
-    FURL:=FRedirectPrefix+FURI;
+        FURL:=FRedirectPrefix+FURI;
      
-    //'Authorization' ?
-    //'If-Modified-Since' ? 304
-    //'Connection: Keep-alive' ? with sent Content-Length
+        //'Authorization' ?
+        //'If-Modified-Since' ? 304
+        //'Connection: Keep-alive' ? with sent Content-Length
 
-    FResHeaders['X-Powered-By']:=SelfVersion;
-    //if XxmProjectCache=nil then XxmProjectCache:=TXxmProjectCacheXml.Create;
+        FResHeaders['X-Powered-By']:=SelfVersion;
+        //if XxmProjectCache=nil then XxmProjectCache:=TXxmProjectCacheXml.Create;
 
-    FQueryStringIndex:=2;
-    if XxmProjectCache.ProjectFromURI(Self,
-      FURI,FQueryStringIndex,FProjectName,FFragmentName) then
-      FRedirectPrefix:=FRedirectPrefix+'/'+FProjectName;
-    FPageClass:='['+FProjectName+']';
+        FQueryStringIndex:=2;
+        if XxmProjectCache.ProjectFromURI(Self,
+          FURI,FQueryStringIndex,FProjectName,FFragmentName) then
+          FRedirectPrefix:=FRedirectPrefix+'/'+FProjectName;
+        FPageClass:='['+FProjectName+']';
 
-    //assert headers read and parsed
-    //TODO: HTTP/1.1 100 Continue?
+        //assert headers read and parsed
+        //TODO: HTTP/1.1 100 Continue?
 
-    //if Verb<>'GET' then?
-    x:=GetCGIValue('CONTENT_LENGTH');
-    if x<>'' then FPostData:=TXxmPostDataStream.Create(FPipeIn,StrToInt(x));
+        //if Verb<>'GET' then?
+        x:=GetCGIValue('CONTENT_LENGTH');
+        if x<>'' then FPostData:=TXxmPostDataStream.Create(FPipeIn,StrToInt(x));
 
-    BuildPage;
+        BuildPage;
+       end;
+      ntResume:
+        IncludeX(FResumeFragment,FResumeValue);
+      ntResumeDrop:
+        IncludeX(FDropFragment,FDropValue);
+    end;
 
   except
     on EXxmPageRedirected do
@@ -388,6 +419,28 @@ begin
    end
   else
     FResHeaders[Name]:=Value;
+end;
+
+procedure TXxmHostedContext.Suspend(const EventKey: WideString;
+  CheckIntervalMS, MaxWaitTimeSec: cardinal;
+  const ResumeFragment: WideString; ResumeValue: OleVariant;
+  const DropFragment: WideString; DropValue: OleVariant);
+begin
+  if Next=ntSuspend then
+    raise EXxmContextAlreadySuspended.Create(SXxmContextAlreadySuspended);
+  PageLoaderPool.EventsController.SuspendContext(Self,EventKey,
+    CheckIntervalMS,MaxWaitTimeSec);
+  FResumeFragment:=ResumeFragment;
+  FResumeValue:=ResumeValue;
+  FDropFragment:=DropFragment;
+  FDropValue:=DropValue;
+  Next:=ntSuspend;
+end;
+
+procedure TXxmHostedContext.Resume(ToDrop: boolean);
+begin
+  if ToDrop then Next:=ntResumeDrop else Next:=ntResume;
+  inherited;
 end;
 
 { TXxmPostDataStream }

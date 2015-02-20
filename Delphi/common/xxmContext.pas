@@ -98,6 +98,7 @@ type
     procedure CheckHeaderNotSent;
     function CheckSendStart(NoOnNextFlush:boolean):boolean;
     function AuthValue(cs:TXxmContextString):AnsiString;
+    procedure IncludeX(const Fragment:WideString; Value:OleVariant);
 
     procedure SendError(const res,val1,val2:string);
     procedure ForceStatus(Code: Integer; Text: WideString);
@@ -1102,6 +1103,29 @@ begin
   //ATTENTION: TStreamAdapter will free AData when done
   SendStream(TStreamAdapter.Create(AData,soOwned));
   if FBufferSize<>0 then Flush;
+end;
+
+procedure TXxmGeneralContext.IncludeX(const Fragment: WideString;
+  Value: OleVariant);
+var
+  i,j,k:integer;
+  x:array of OleVariant;
+begin
+  if Fragment<>'' then
+    case VarType(Value) of
+      varNull,varEmpty:
+        Include(Fragment);
+      varArray or varVariant:
+       begin
+        j:=VarArrayLowBound(Value,1);
+        k:=VarArrayHighBound(Value,1);
+        SetLength(x,k-j+1);
+        for i:=0 to k-j do x[i]:=Value[j+i];
+        Include(Fragment,x);
+       end;
+      else
+        Include(Fragment,[Value]);
+    end;
 end;
 
 { TXxmCrossProjectIncludeCheck }

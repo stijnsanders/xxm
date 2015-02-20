@@ -1,4 +1,4 @@
-  unit xxmHttpMain;
+unit xxmHttpMain;
 
 interface
 
@@ -299,28 +299,12 @@ begin
       ntResume:
        begin
         Next:=ntNormal;
-        if FResumeFragment<>'' then
-          case VarType(FResumeValue) of
-            varNull,varEmpty:
-              Include(FResumeFragment);
-            varArray or varVariant:
-              Include(FResumeFragment,FResumeValue);
-            else
-              Include(FResumeFragment,[FResumeValue]);
-          end;
+        IncludeX(FResumeFragment,FResumeValue);
        end;
       ntResumeDrop:
        begin
         Next:=ntNormal;
-        if FDropFragment<>'' then
-          case VarType(FDropValue) of
-            varNull,varEmpty:
-              Include(FDropFragment);
-            varArray or varVariant:
-              Include(FDropFragment,FDropValue);
-            else
-              Include(FDropFragment,[FDropValue]);
-          end;
+        IncludeX(FDropFragment,FDropValue);
        end;
       else
        begin

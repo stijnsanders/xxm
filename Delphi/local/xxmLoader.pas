@@ -287,30 +287,13 @@ begin
         ntResume:
          begin
           Next:=ntDone;
-          if FResumeFragment<>'' then
-            case VarType(FResumeValue) of
-              varNull,varEmpty:
-                Include(FResumeFragment);
-              varArray or varVariant:
-                Include(FResumeFragment,FResumeValue);
-              else
-                Include(FResumeFragment,[FResumeValue]);
-            end;
+          IncludeX(FResumeFragment,FResumeValue);
           if not BuildPageLeaveOpen then ClosePage;
          end;
-
         ntResumeDrop:
          begin
           Next:=ntDone;
-          if FDropFragment<>'' then
-            case VarType(FDropValue) of
-              varNull,varEmpty:
-                Include(FDropFragment);
-              varArray or varVariant:
-                Include(FDropFragment,FDropValue);
-              else
-                Include(FDropFragment,[FDropValue]);
-            end;
+          IncludeX(FDropFragment,FDropValue);
           if not BuildPageLeaveOpen then ClosePage;
          end;
 
