@@ -21,7 +21,9 @@ uses
   xxmWebProject in '..\conv\xxmWebProject.pas',
   xxmUtilities in '..\conv\xxmUtilities.pas',
   xxmPageParse in '..\conv\xxmPageParse.pas',
-  xxmProtoParse in '..\conv\xxmProtoParse.pas';
+  xxmProtoParse in '..\conv\xxmProtoParse.pas',
+  xxmSynaKept in 'xxmSynaKept.pas',
+  xxmSynaSpool in 'xxmSynaSpool.pas';
 
 {$R *.res}
 

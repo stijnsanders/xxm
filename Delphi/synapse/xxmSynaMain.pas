@@ -12,15 +12,27 @@ type
     FPort:integer;
     FListening:boolean;
     FSocket:TTCPBlockSocket;
+  protected
+    procedure Execute; override;
   public
     constructor Create(Port:integer);
     destructor Destroy; override;
-    procedure Execute; override;
     function Listening:boolean;
   end;
 
-type
-  TXxmSynaContext=class(TXxmQueueContext, IxxmHttpHeaders)
+  TXxmNextTask=(
+    ntNormal,
+    ntHeaderOnly,
+    ntKeep,
+    ntSuspend,
+    ntResume,
+    ntResumeDrop,
+    ntWasKept
+  );
+
+  TXxmSynaContext=class(TXxmQueueContext,
+    IXxmHttpHeaders,
+    IXxmContextSuspend)
   private
     FSocket:TTCPBlockSocket;
     FReqHeaders:TRequestHeaders;
@@ -30,7 +42,8 @@ type
     FCookie: AnsiString;
     FCookieIdx: TParamIndexes;
     FQueryStringIndex:integer;
-    FKeepConnection:boolean;
+    FResumeFragment,FDropFragment:WideString;
+    FResumeValue,FDropValue:OleVariant;
     procedure HandleRequest;
   protected
 
@@ -49,9 +62,18 @@ type
 
     procedure BeginRequest; override;
     procedure EndRequest; override;
+    procedure FlushFinal; override;
+    procedure FlushStream(AData:TStream;ADataSize:int64); override;
 
+    { IXxmHttpHeaders }
     function GetRequestHeaders:IxxmDictionaryEx;
     function GetResponseHeaders:IxxmDictionaryEx;
+    { IXxmContextSuspend }
+    procedure Suspend(const EventKey: WideString;
+      CheckIntervalMS, MaxWaitTimeSec: cardinal;
+      const ResumeFragment: WideString; ResumeValue: OleVariant;
+      const DropFragment: WideString; DropValue: OleVariant);
+    procedure Resume(ToDrop:boolean); override;
 
     function GetProjectPage(FragmentName: WideString):IXxmFragment; override;
 
@@ -64,15 +86,21 @@ type
     property ReqHeaders:TRequestHeaders read FReqHeaders;
     property ResHeaders:TResponseHeaders read FResHeaders;
   public
+    Next:TXxmNextTask;
+    KeptCount:cardinal;
+
     constructor Create(SocketHandle:THandle);
     destructor Destroy; override;
 
     procedure Execute; override;
+    procedure PostExecute;
+    property Socket:TTCPBlockSocket read FSocket;
   end;
 
   EXxmMaximumHeaderLines=class(Exception);
   EXxmContextStringUnknown=class(Exception);
   EXxmUnknownPostDataTymed=class(Exception);
+  EXxmContextAlreadySuspended=class(Exception);
 
   TXxmSynaRunParameters=(
     rpPort,
@@ -87,20 +115,25 @@ procedure XxmRunServer;
 
 implementation
 
-uses Windows, Variants, ComObj, AxCtrls, WinSock,
-  xxmCommonUtils, xxmReadHandler, ShellApi;
+uses Windows, Variants, ComObj, AxCtrls, WinSock, ShellApi,
+  xxmCommonUtils, xxmReadHandler, xxmSynaKept, xxmSynaSpool;
 
 resourcestring
   SXxmMaximumHeaderLines='Maximum header lines exceeded.';
   SXxmContextStringUnknown='Unknown ContextString __';
+  SXxmContextAlreadySuspended='Context has already been suspended';
 
 const
-  HTTPMaxHeaderLines=$400;
-  PostDataThreshold=$100000;
+  HTTPMaxHeaderLines=$400;//1KiB
+  HTTPMaxHeaderParseTimeMS=10000;
+  PostDataThreshold=$100000;//1MiB
+  SpoolingThreshold=$10000;//64KiB
   DefaultRecvTimeout=250;//ms
 
 var
   HttpSelfVersion:AnsiString;
+  KeptConnections:TXxmKeptConnections;
+  SpoolingConnections:TXxmSpoolingConnections;
 
 procedure XxmRunServer;
 const
@@ -121,9 +154,9 @@ var
   Msg:TMsg;
   par:TXxmSynaRunParameters;
 begin
-  //defualt values
+  //default values
   Port:=80;
-  Threads:=$100;
+  Threads:=$200;
   Silent:=false;
   StartURL:='';
 
@@ -161,9 +194,12 @@ begin
 
   //
   CoInitialize(nil);
+  SetErrorMode(SEM_FAILCRITICALERRORS);
   XxmProjectCache:=TXxmProjectCacheXml.Create;
   PageLoaderPool:=TXxmPageLoaderPool.Create(Threads);
   Server:=TxxmSynaServer.Create(Port);
+  KeptConnections:=TXxmKeptConnections.Create;
+  SpoolingConnections:=TXxmSpoolingConnections.Create;
   try
     //TODO: listen on multiple ports
 
@@ -185,6 +221,8 @@ begin
 
   finally
     Server.Free;
+    KeptConnections.Free;
+    SpoolingConnections.Free;
   end;
 end;
 
@@ -220,7 +258,8 @@ begin
      begin
       ch:=FSocket.Accept;
       if FSocket.LastError=0 then
-        PageLoaderPool.Queue(TXxmSynaContext.Create(ch));
+        PageLoaderPool.Queue( //KeptConnections.Queue(?
+          TXxmSynaContext.Create(ch));
       //TODO else raise?
      end;
    end;
@@ -242,6 +281,7 @@ begin
   inherited Create('');//URL is parsed by Execute
   FSocket:=TTCPBlockSocket.Create;
   FSocket.Socket:=SocketHandle;
+  Next:=ntNormal;
   SendDirect:=nil;//see BeginRequest to detect AfterConstruction
   i:=1;
   l:=4;
@@ -251,6 +291,7 @@ end;
 destructor TXxmSynaContext.Destroy;
 begin
   //see also EndRequest
+  BufferStore.AddBuffer(FContentBuffer);
   FSocket.Free;
   inherited;
 end;
@@ -274,33 +315,37 @@ begin
   FSessionID:='';//see GetSessionID
   FURI:='';//see Execute
   FRedirectPrefix:='';
+  if Next=ntWasKept then _Release;
+  Next:=ntNormal;
 end;
 
 procedure TXxmSynaContext.EndRequest;
 begin
   inherited;
-  if FReqHeaders<>nil then
-   begin
-    (FReqHeaders as IUnknown)._Release;
-    FReqHeaders:=nil;
-   end;
-  if FResHeaders<>nil then
-   begin
-    (FResHeaders as IUnknown)._Release;
-    FResHeaders:=nil;
-   end;
+  SafeFree(TInterfacedObject(FReqHeaders));
+  SafeFree(TInterfacedObject(FResHeaders));
 end;
 
 procedure TXxmSynaContext.Execute;
 begin
-  FKeepConnection:=true;
-  while FKeepConnection do
-   begin
-    FKeepConnection:=false;
-    BeginRequest;
-    try
-      //TODO if secure then
-      {
+  //while here now done by KeptConnections
+  try
+    case Next of
+      ntResume:
+       begin
+        Next:=ntNormal;
+        IncludeX(FResumeFragment,FResumeValue);
+       end;
+      ntResumeDrop:
+       begin
+        Next:=ntNormal;
+        IncludeX(FDropFragment,FDropValue);
+       end;
+      else
+       begin
+        BeginRequest;
+        //TODO if secure then
+        {
   Sock.SSL.CertCAFile := ExtractFilePath(ParamStr(0)) + 's_cabundle.pem';
   Sock.SSL.CertificateFile := ExtractFilePath(ParamStr(0)) + 's_cacert.pem';
   Sock.SSL.PrivateKeyFile := ExtractFilePath(ParamStr(0)) + 's_cakey.pem';
@@ -319,11 +364,51 @@ begin
     Exit;
   end;
         }
-      HandleRequest;
-    finally
-      EndRequest;
+        HandleRequest;
+       end;
     end;
-   end;
+    if not BuildPageLeaveOpen then PostProcessRequest;
+  finally
+    if not BuildPageLeaveOpen then EndRequest;
+  end;
+  PostExecute;
+end;
+
+procedure TXxmSynaContext.FlushFinal;
+begin
+  //no inherited! override default behaviour:
+  if (BufferSize<>0) //and (ContentBuffer.Position<>0) then
+    and (FContentBuffer.Position>SpoolingThreshold) then
+   begin
+    CheckSendStart(true);
+    SpoolingConnections.Add(Self,FContentBuffer,false);
+    FContentBuffer:=nil;//since spooling will free it when done
+   end
+  else
+    inherited;//Flush;
+end;
+
+procedure TXxmSynaContext.FlushStream(AData: TStream; ADataSize: int64);
+begin
+  //no inherited! override default behaviour:
+  if ADataSize>SpoolingThreshold then
+   begin
+    AData.Seek(0,soFromEnd);//used by SpoolingConnections.Add
+    CheckSendStart(true);
+    SpoolingConnections.Add(Self,AData,true);
+   end
+  else
+    inherited;
+end;
+
+procedure TXxmSynaContext.PostExecute;
+begin
+  case Next of
+    ntNormal:
+      FSocket.CloseSocket;//Disconnect
+    ntKeep,ntResume,ntResumeDrop:
+      KeptConnections.Queue(Self);
+  end;
 end;
 
 procedure TXxmSynaContext.HandleRequest;
@@ -332,10 +417,11 @@ var
   x,y:AnsiString;
   s:TStream;
   si:int64;
+  tc:cardinal;
 begin
   try
     //command line and headers
-    //command line and headers
+    tc:=GetTickCount;
     x:=FSocket.RecvPacket(DefaultRecvTimeout);
     y:='';
     l:=Length(x);
@@ -349,6 +435,8 @@ begin
          begin
           x:=x+FSocket.RecvPacket(DefaultRecvTimeout);
           l:=Length(x);
+          if cardinal(GetTickCount-tc)>HTTPMaxHeaderParseTimeMS then
+            raise EXxmTransferError.Create('Header Parse Timeout');
          end;
         inc(xi);
        end;
@@ -389,11 +477,10 @@ begin
 
     if (FURI<>'') and (FURI[1]='/') then
      begin
-      i:=2;
-      if XxmProjectCache.ProjectFromURI(Self,FURI,i,FProjectName,FFragmentName) then
+      FQueryStringIndex:=2;
+      if XxmProjectCache.ProjectFromURI(Self,FURI,FQueryStringIndex,FProjectName,FFragmentName) then
         FRedirectPrefix:='/'+FProjectName;
       FPageClass:='['+FProjectName+']';
-      FQueryStringIndex:=i;
      end
     else
      begin
@@ -425,27 +512,47 @@ begin
         s:=TFileStream.Create(FPostTempFile,fmCreate);
        end;
       s.Size:=si;
+      s.Position:=0;
       FPostData:=THandlerReadStreamAdapter.Create(FSocket,si,s,x);
      end;
 
-    BuildPage;
+    if FVerb='OPTIONS' then
+     begin
+      Next:=ntHeaderOnly;
+      FAutoEncoding:=aeContentDefined;//prevent Content-Type
+      AddResponseHeader('Allow','OPTIONS, GET, HEAD, POST');
+      AddResponseHeader('Public','OPTIONS, GET, HEAD, POST');
+      AddResponseHeader('Content-Length','0');
+      LoadPage;//IXxmProject.LoadPage without IXxmPage.Build
+      CheckSendStart(true);
+     end
+    else if FVerb='TRACE' then
+     begin
+      SetStatus(501,'Not Implemented');
+      SendStr('<h1>Not Implemented</h1>');
+      Flush;
+     end
+    else
+     begin
+      if FVerb='HEAD' then
+       begin
+        Next:=ntHeaderOnly;//see SendHeader
+        AddResponseHeader('Content-Length','0');
+       end;
+      BuildPage;
+     end;
 
   except
     on EXxmPageRedirected do Flush;
     on EXxmAutoBuildFailed do ;//assert output done
+    //TODO: on EXxmConnectionLost do ;
     on e:Exception do
       if not HandleException(e) then
        begin
         ForceStatus(StatusException,'Internal Server Error');
-        try
-          if FPostData=nil then x:='none' else x:=IntToStr(FPostData.Size)+' bytes';
-        except
-          x:='unknown';
-        end;
         SendError('error',e.ClassName,e.Message);
        end;
   end;
-  PostProcessRequest;
 end;
 
 function TXxmSynaContext.GetProjectEntry:TXxmProjectEntry;
@@ -538,7 +645,6 @@ begin
     aeIso8859:FResHeaders['Content-Length']:=IntToStr(Length(AnsiString(RedirBody)));
   end;
   SendStr(RedirBody);
-  if BufferSize<>0 then Flush;
   raise EXxmPageRedirected.Create(RedirectURL);
 end;
 
@@ -569,13 +675,19 @@ begin
   SetLength(d,l);
   Move(x[1],d[0],l);
   FSocket.SendBuffer(@d[0],l);
-  if FResHeaders['Content-Length']<>'' then FKeepConnection:=true;
   //TODO: transfer encoding chunked
+  if Next=ntHeaderOnly then
+   begin
+    Next:=ntKeep;//assert FResHeaders['Content-Length']='0'
+    raise EXxmPageRedirected.Create(FVerb);
+   end
+  else
+    if FResHeaders['Content-Length']<>'' then Next:=ntKeep;
 end;
 
 function TXxmSynaContext.GetRequestHeader(const Name: WideString): WideString;
 begin
-  Result:=FReqHeaders.Item[Name];
+  Result:=FReqHeaders[Name];
 end;
 
 procedure TXxmSynaContext.AddResponseHeader(const Name, Value: WideString);
@@ -617,7 +729,7 @@ begin
     if p<>80 then FURL:=FURL+':'+IntToStr(p);
    end;
   FURL:='http://'+FURL+FURI;//TODO: 'https' if SSL?
-  SetThreadName('xxm:'+FURL);
+  //SetThreadName('xxm:'+FURL);
 end;
 
 procedure TXxmSynaContext.PreProcessRequest;
@@ -633,6 +745,32 @@ end;
 procedure TXxmSynaContext.PostProcessRequest;
 begin
   //inheritants can perform pre-page-build logging or checking here
+  //ATTENTION: (v1.2.2) when Context.BufferSize is set,
+  //this may get called with data on the buffer not sent yet
+  //  see also TXxmSpoolingConnections
+end;
+
+procedure TXxmSynaContext.Suspend(const EventKey: WideString;
+  CheckIntervalMS, MaxWaitTimeSec: cardinal;
+  const ResumeFragment: WideString; ResumeValue: OleVariant;
+  const DropFragment: WideString; DropValue: OleVariant);
+begin
+  if Next=ntSuspend then
+    raise EXxmContextAlreadySuspended.Create(SXxmContextAlreadySuspended);
+  PageLoaderPool.EventsController.SuspendContext(Self,
+    EventKey,CheckIntervalMS,MaxWaitTimeSec);
+  FResumeFragment:=ResumeFragment;
+  FResumeValue:=ResumeValue;
+  FDropFragment:=DropFragment;
+  FDropValue:=DropValue;
+  Next:=ntSuspend;
+  BuildPageLeaveOpen:=true;
+end;
+
+procedure TXxmSynaContext.Resume(ToDrop: boolean);
+begin
+  if ToDrop then Next:=ntResumeDrop else Next:=ntResume;
+  inherited;
 end;
 
 initialization
