@@ -133,16 +133,8 @@ begin
   FHttpNegotiate:=nil;
   BindInfo:=nil;
   ProtSink:=nil;
-  if FReqHeaders<>nil then
-   begin
-    (FReqHeaders as IUnknown)._Release;
-    FReqHeaders:=nil;
-   end;
-  if FResHeaders<>nil then
-   begin
-    (FResHeaders as IUnknown)._Release;
-    FResHeaders:=nil;
-   end;
+  SafeFree(TInterfacedObject(FReqHeaders));
+  SafeFree(TInterfacedObject(FResHeaders));
   FreeAndNil(OutputData);
   DeleteCriticalSection(FLock);
   inherited;

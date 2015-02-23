@@ -500,7 +500,7 @@ begin
     on e:Exception do
       if not HandleException(e) then
        begin
-        ForceStatus(500,'Internal Server Error');
+        ForceStatus(StatusException,'Internal Server Error');
         SendError('error',e.ClassName,e.Message);
        end;
   end;

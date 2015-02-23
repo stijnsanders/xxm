@@ -25,10 +25,20 @@ type
     procedure SetSize(NewSize: Integer); override;
   end;
 
-  TXxmHSysContext=class(TXxmQueueContext, IxxmHttpHeaders)
+  TXxmNextTask=(
+    ntNormal,
+    ntSuspend,
+    ntResume,
+    ntResumeDrop
+  );
+
+  TXxmHSysContext=class(TXxmQueueContext,
+    IXxmHttpHeaders,
+    IXxmContextSuspend)
   private
     FData:array[0..XxmHSysContextDataSize-1] of byte;
     FHSysQueue:THandle;
+    Next:TXxmNextTask;
     FReq:PHTTP_REQUEST;
     FRes:THTTP_RESPONSE;
     FUnknownHeaders: array of THTTP_UNKNOWN_HEADER;
@@ -39,6 +49,8 @@ type
     FCookie: AnsiString;
     FCookieIdx: TParamIndexes;
     FQueryStringIndex:integer;
+    FResumeFragment,FDropFragment:WideString;
+    FResumeValue,FDropValue:OleVariant;
     procedure SetResponseHeader(id:THTTP_HEADER_ID;const Value:AnsiString);
     procedure CacheString(const x: AnsiString; var xLen: USHORT; var xPtr: PCSTR);
     function GetResponseHeader(const Name:WideString):WideString;
@@ -60,8 +72,15 @@ type
     function GetRequestHeader(const Name: WideString): WideString; override;
     procedure AddResponseHeader(const Name, Value: WideString); override;
 
+    { IXxmHttpHeaders }
     function GetRequestHeaders:IxxmDictionaryEx;
     function GetResponseHeaders:IxxmDictionaryEx;
+    { IXxmContextSuspend }
+    procedure Suspend(const EventKey: WideString;
+      CheckIntervalMS, MaxWaitTimeSec: cardinal;
+      const ResumeFragment: WideString; ResumeValue: OleVariant;
+      const DropFragment: WideString; DropValue: OleVariant);
+    procedure Resume(ToDrop: boolean); override;
   public
     Queue:TXxmHSysContext;
 
@@ -74,6 +93,7 @@ type
   EXxmMaximumHeaderLines=class(Exception);
   EXxmContextStringUnknown=class(Exception);
   EXxmUnknownPostDataTymed=class(Exception);
+  EXxmContextAlreadySuspended=class(Exception);
 
 implementation
 
@@ -82,6 +102,7 @@ uses Windows, Variants, ComObj, xxmCommonUtils, xxmHSysHeaders, WinSock;
 resourcestring
   SXxmMaximumHeaderLines='Maximum header lines exceeded.';
   SXxmContextStringUnknown='Unknown ContextString __';
+  SXxmContextAlreadySuspended='Context has already been suspended';
 
 const
   StringCacheGrowStep=$20;
@@ -95,6 +116,7 @@ begin
   inherited Create('');//empty here, see Execute
   Queue:=nil;//used by thread pool
 
+  Next:=ntNormal;
   SendDirect:=SendData;
   FHSysQueue:=HSysQueue;
   FReq:=PHTTP_REQUEST(@FData[0]);
@@ -129,25 +151,34 @@ var
   x:AnsiString;
 begin
   try
-    FURL:=FReq.CookedUrl.pFullUrl;
-    FURI:=FReq.pRawUrl;
+    case Next of
+      ntNormal:
+       begin
+        FURL:=FReq.CookedUrl.pFullUrl;
+        FURI:=FReq.pRawUrl;
 
-    AddResponseHeader('X-Powered-By',SelfVersion);
+        AddResponseHeader('X-Powered-By',SelfVersion);
 
-    i:=2;
-    if XxmProjectCache.ProjectFromURI(Self,FURI,i,FProjectName,FFragmentName) then
-      FRedirectPrefix:='/'+FProjectName;
-    FPageClass:='['+FProjectName+']';
-    FQueryStringIndex:=i;
+        i:=2;
+        if XxmProjectCache.ProjectFromURI(Self,FURI,i,FProjectName,FFragmentName) then
+          FRedirectPrefix:='/'+FProjectName;
+        FPageClass:='['+FProjectName+']';
+        FQueryStringIndex:=i;
 
-    //assert headers read and parsed
-    //TODO: HTTP/1.1 100 Continue?
+        //assert headers read and parsed
+        //TODO: HTTP/1.1 100 Continue?
 
-    if FReq.Headers.KnownHeaders[HttpHeaderContentLength].RawValueLength<>0 then
-      FPostData:=TXxmPostDataStream.Create(FHSysQueue,FReq.RequestId,
-        StrToInt(FReq.Headers.KnownHeaders[HttpHeaderContentLength].pRawValue));
+        if FReq.Headers.KnownHeaders[HttpHeaderContentLength].RawValueLength<>0 then
+          FPostData:=TXxmPostDataStream.Create(FHSysQueue,FReq.RequestId,
+            StrToInt(FReq.Headers.KnownHeaders[HttpHeaderContentLength].pRawValue));
 
-    BuildPage;
+        BuildPage;
+       end;
+      ntResume:
+        IncludeX(FResumeFragment,FResumeValue);
+      ntResumeDrop:
+        IncludeX(FDropFragment,FDropValue);
+    end;
 
   except
     on EXxmPageRedirected do Flush;
@@ -164,11 +195,14 @@ begin
         SendError('error',e.ClassName,e.Message);
        end;
   end;
-  //assert HttpSendHttpResponse done
-  //HttpCheck(
-  HttpSendResponseEntityBody(FHSysQueue,FReq.RequestId,
-    HTTP_SEND_RESPONSE_FLAG_DISCONNECT,//if keep-alive?
-    0,nil,cardinal(nil^),nil,0,nil,nil);
+  if Next<>ntSuspend then
+   begin
+    //assert HttpSendHttpResponse done
+    //HttpCheck(
+    HttpSendResponseEntityBody(FHSysQueue,FReq.RequestId,
+      HTTP_SEND_RESPONSE_FLAG_DISCONNECT,//if keep-alive?
+      0,nil,cardinal(nil^),nil,0,nil,nil);
+   end;
 end;
 
 function TXxmHSysContext.GetProjectEntry: TXxmProjectEntry;
@@ -488,6 +522,29 @@ begin
         FUnknownHeaders[Idx-integer(HttpHeaderResponseMaximum)-1].pRawValue)
     else
       raise ERangeError.Create('SetResponseHeaderIndex: Out of range');
+end;
+
+procedure TXxmHSysContext.Suspend(const EventKey: WideString;
+  CheckIntervalMS, MaxWaitTimeSec: cardinal;
+  const ResumeFragment: WideString; ResumeValue: OleVariant;
+  const DropFragment: WideString; DropValue: OleVariant);
+begin
+  if Next=ntSuspend then
+    raise EXxmContextAlreadySuspended.Create(SXxmContextAlreadySuspended);
+  PageLoaderPool.EventsController.SuspendContext(Self,
+    EventKey,CheckIntervalMS,MaxWaitTimeSec);
+  FResumeFragment:=ResumeFragment;
+  FResumeValue:=ResumeValue;
+  FDropFragment:=DropFragment;
+  FDropValue:=DropValue;
+  Next:=ntSuspend;
+  BuildPageLeaveOpen:=true;
+end;
+
+procedure TXxmHSysContext.Resume(ToDrop: boolean);
+begin
+  if ToDrop then Next:=ntResumeDrop else Next:=ntResume;
+  inherited;
 end;
 
 { TXxmPostDataStream }

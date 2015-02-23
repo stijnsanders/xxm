@@ -123,16 +123,8 @@ begin
   FlushFileBuffers(FPipeOut);
   CloseHandle(FPipeIn);
   CloseHandle(FPipeOut);
-  if FReqHeaders<>nil then
-   begin
-    (FReqHeaders as IUnknown)._Release;
-    FReqHeaders:=nil;
-   end;
-  if FResHeaders<>nil then
-   begin
-    (FResHeaders as IUnknown)._Release;
-    FResHeaders:=nil;
-   end;
+  SafeFree(TInterfacedObject(FReqHeaders));
+  SafeFree(TInterfacedObject(FResHeaders));
   SetLength(FCGIValues,0);
   inherited;
 end;

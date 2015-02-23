@@ -8,7 +8,7 @@ uses
 {$APPTYPE CONSOLE}
 
 const
-  WM_QUIT             = $0012;
+  WM_QUIT = $0012;
 
 var
   hIn,hPipe,hOut,hSPRoc,hReq,hRes:THandle;
