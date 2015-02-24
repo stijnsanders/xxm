@@ -359,7 +359,7 @@ begin
         (integer(c.SuspendMax)-integer(Context.SuspendMax)<=0)) do
        begin
         c1:=c;
-        c:=Context.QueueIn;
+        c:=c.QueueIn;
        end;
       Context.QueueIn:=c;
       if c1=nil then FEvents[i].Queue:=Context else c1.QueueIn:=Context;
@@ -481,6 +481,7 @@ procedure TXxmQueueContext.Resume(ToDrop:boolean);
 begin
   //if ToDrop then Next:=ntResumeDrop else Next:=ntResume;
   PageLoaderPool.Queue(Self);
+  BuildPageLeaveOpen:=false;
   _Release;//see _Addref by TXxmEventsController.SuspendContext
 end;
 

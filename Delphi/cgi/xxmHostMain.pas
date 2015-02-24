@@ -427,6 +427,7 @@ begin
   FDropFragment:=DropFragment;
   FDropValue:=DropValue;
   Next:=ntSuspend;
+  BuildPageLeaveOpen:=true;
 end;
 
 procedure TXxmHostedContext.Resume(ToDrop: boolean);
