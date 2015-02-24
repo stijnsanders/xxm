@@ -112,7 +112,7 @@ var
   w,x:TFDSet;
   i,j,k,l:integer;
   t:TTimeVal;
-  h:THandle;
+  h:TSocket;
 begin
   inherited;
   i:=0;

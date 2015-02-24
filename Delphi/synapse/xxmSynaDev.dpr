@@ -17,13 +17,13 @@ uses
   xxmReadHandler in 'xxmReadHandler.pas',
   MSXML2_TLB in '..\common\MSXML2_TLB.pas',
   xxmThreadPool in '..\common\xxmThreadPool.pas',
+  xxmSynaKept in 'xxmSynaKept.pas',
+  xxmSynaSpool in 'xxmSynaSpool.pas',
   xxmAutoBuild in '..\common\xxmAutoBuild.pas',
   xxmWebProject in '..\conv\xxmWebProject.pas',
   xxmUtilities in '..\conv\xxmUtilities.pas',
   xxmPageParse in '..\conv\xxmPageParse.pas',
-  xxmProtoParse in '..\conv\xxmProtoParse.pas',
-  xxmSynaKept in 'xxmSynaKept.pas',
-  xxmSynaSpool in 'xxmSynaSpool.pas';
+  xxmProtoParse in '..\conv\xxmProtoParse.pas';
 
 {$R *.res}
 

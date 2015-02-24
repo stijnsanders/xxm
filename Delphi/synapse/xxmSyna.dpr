@@ -15,7 +15,9 @@ uses
   xxmContext in '..\common\xxmContext.pas',
   xxmReadHandler in 'xxmReadHandler.pas',
   MSXML2_TLB in '..\common\MSXML2_TLB.pas',
-  xxmThreadPool in '..\common\xxmThreadPool.pas';
+  xxmThreadPool in '..\common\xxmThreadPool.pas',
+  xxmSynaKept in 'xxmSynaKept.pas',
+  xxmSynaSpool in 'xxmSynaSpool.pas';
 
 {$R *.res}
 

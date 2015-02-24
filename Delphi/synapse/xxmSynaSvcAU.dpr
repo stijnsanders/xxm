@@ -17,6 +17,8 @@ uses
   xxmReadHandler in 'xxmReadHandler.pas',
   MSXML2_TLB in '..\common\MSXML2_TLB.pas',
   xxmThreadPool in '..\common\xxmThreadPool.pas',
+  xxmSynaKept in 'xxmSynaKept.pas',
+  xxmSynaSpool in 'xxmSynaSpool.pas',
   xxmAutoUpdate in '..\common\xxmAutoUpdate.pas';
 
 {$R *.res}
