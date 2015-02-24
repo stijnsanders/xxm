@@ -14,6 +14,7 @@ uses
   xxmParams in '..\common\xxmParams.pas',
   xxmParUtils in '..\common\xxmParUtils.pas',
   xxmHeaders in '..\bin\public\xxmHeaders.pas',
+  xxmThreadPool in '..\common\xxmThreadPool.pas',
   xxmCommonUtils in '..\common\xxmCommonUtils.pas',
   xxmContext in '..\common\xxmContext.pas',
   xxmIsapiStream in 'xxmIsapiStream.pas',

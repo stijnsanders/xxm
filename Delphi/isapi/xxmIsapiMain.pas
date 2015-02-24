@@ -3,14 +3,16 @@ unit xxmIsapiMain;
 interface
 
 uses Windows, SysUtils, Classes, ActiveX, isapi4, xxm, xxmContext,
-  xxmPReg, xxmPRegXml, xxmParams, xxmParUtils, xxmHeaders;
+  xxmPReg, xxmPRegXml, xxmParams, xxmParUtils, xxmHeaders, xxmThreadPool;
 
 function GetExtensionVersion(var Ver: THSE_VERSION_INFO): BOOL; stdcall;
 function HttpExtensionProc(PECB: PEXTENSION_CONTROL_BLOCK): DWORD; stdcall;
 function TerminateExtension(dwFlags: DWORD): BOOL; stdcall;
 
 type
-  TXxmIsapiContext=class(TXxmGeneralContext, IxxmHttpHeaders)
+  TXxmIsapiContext=class(TXxmQueueContext,
+    IXxmHttpHeaders,
+    IXxmContextSuspend)
   private
     ecb: PEXTENSION_CONTROL_BLOCK;
     FIOState: integer;
@@ -22,6 +24,8 @@ type
     FCookieParsed: boolean;
     FCookie: AnsiString;
     FCookieIdx: TParamIndexes;
+    FResumeFragment,FDropFragment:WideString;
+    FResumeValue,FDropValue:OleVariant;
     procedure ServerFunction(HSERRequest: DWORD; Buffer: Pointer;
       Size, DataType: LPDWORD);
     procedure FlushNext;
@@ -42,55 +46,31 @@ type
     function GetRequestHeader(const Name: WideString): WideString; override;
     procedure AddResponseHeader(const Name, Value: WideString); override;
 
+    { IxxmHttpHeaders }
     function GetRequestHeaders: IxxmDictionaryEx;
     function GetResponseHeaders: IxxmDictionaryEx;
+    { IXxmContextSuspend }
+    procedure Suspend(const EventKey: WideString;
+      CheckIntervalMS, MaxWaitTimeSec: cardinal;
+      const ResumeFragment: WideString; ResumeValue: OleVariant;
+      const DropFragment: WideString; DropValue: OleVariant);
+    procedure Resume(ToDrop:boolean); override;
 
     procedure FlushFinal; override;
     procedure FlushStream(AData: TStream; ADataSize: Int64); override;
 
   public
-    Queue:TXxmIsapiContext;//used by thread pool
-
     constructor Create(pecb: PEXTENSION_CONTROL_BLOCK);
     destructor Destroy; override;
-    procedure Execute;
-  end;
-
-  TXxmIsapiHandler=class(TThread)
-  private
-    FInUse:boolean;
-    FNextJobEvent:THandle;
-  protected
     procedure Execute; override;
-  public
-    constructor Create;
-    destructor Destroy; override;
-    procedure SignalNextJob;
-    property InUse:boolean read FInUse;
-  end;
-
-  TXxmIsapiHandlerPool=class(TObject)
-  private
-    FHandlers:array of TXxmIsapiHandler;
-    FHandlerSize:integer;
-    FLock:TRTLCriticalSection;
-    FQueue:TXxmIsapiContext;
-    procedure SetSize(x:integer);
-  public
-    constructor Create;
-    destructor Destroy; override;
-    procedure Queue(Context:TXxmIsapiContext);//called from handler
-    function Unqueue:TXxmIsapiContext;//called from threads
   end;
 
   EXxmContextStringUnknown=class(Exception);
+  EXxmContextAlreadySuspended=class(Exception);
 
 const
   PoolMaxThreads=$200;//TODO: from setting?
   SpoolingThreshold=$10000;//64KiB
-
-var
-  IsapiHandlerPool:TXxmIsapiHandlerPool;
 
 implementation
 
@@ -98,6 +78,7 @@ uses Variants, ComObj, xxmCommonUtils, xxmIsapiStream;
 
 resourcestring
   SXxmContextStringUnknown='Unknown ContextString __';
+  SXxmContextAlreadySuspended='Context has already been suspended';
 
 function GetExtensionVersion(var Ver: THSE_VERSION_INFO): BOOL; stdcall;
 const
@@ -120,13 +101,16 @@ begin
   if VerQueryValueA(@d[0],'\StringFileInfo\040904E4\FileDescription',pointer(p),verlen) then
     Move(p^,Ver.lpszExtensionDesc[0],verlen);
   Result:=true;
-  //IsapiHandlerPool:=TXxmIsapiHandlerPool.Create;?
+  if PageLoaderPool=nil then
+    PageLoaderPool:=TXxmPageLoaderPool.Create(PoolMaxThreads);
+  if XxmProjectCache=nil then
+    XxmProjectCache:=TXxmProjectCacheXml.Create;
 end;
 
 function HttpExtensionProc(PECB: PEXTENSION_CONTROL_BLOCK): DWORD; stdcall;
 begin
   try
-    IsapiHandlerPool.Queue(TXxmIsapiContext.Create(PECB));
+    PageLoaderPool.Queue(TXxmIsapiContext.Create(PECB));
     Result:=HSE_STATUS_PENDING; //HSE_STATUS_SUCCESS
   except
     Result:=HSE_STATUS_ERROR;
@@ -136,7 +120,7 @@ end;
 function TerminateExtension(dwFlags: DWORD): BOOL; stdcall;
 begin
   try
-    FreeAndNil(IsapiHandlerPool);
+    FreeAndNil(PageLoaderPool);
   except
     //silent (log?)
   end;
@@ -150,7 +134,10 @@ end;
 
 const
   IOState_Normal  =0;//lowest bit 0 for 'sync' states
+  IOState_Suspend =2;
   IOState_Error   =4;
+  IOState_Resume  =6;
+  IOState_ResDrop =8;
   IOState_Pending =1;//lowest bit 1 for 'async' states
   IOState_Final   =3;
   IOState_Stream  =5;
@@ -181,7 +168,7 @@ begin
        end;
       IOState_Stream:
         if dwError=0 then
-          IsapiHandlerPool.Queue(pContext)
+          PageLoaderPool.Queue(pContext)
         else
          begin
           pContext.FIOStream.Free;
@@ -243,37 +230,51 @@ var
   x,y:AnsiString;
   i:integer;
 begin
-  ServerFunction(HSE_REQ_IO_COMPLETION,@ContextIOCompletion,nil,PDWORD(Self));
   try
-    //parse url
-    x:=FURI;//GetVar(ecb,'HTTP_URL');
-    y:=GetVar(ecb,'SCRIPT_NAME');
-    if y=ecb.lpszPathInfo then
-     begin
-      //called mapped
-      FRedirectPrefix:='';
-     end
-    else
-     begin
-      //called directly
-      FRedirectPrefix:=y;
-      x:=Copy(x,Length(y)+1,Length(x)-Length(y));
-     end;
+    case FIOState of
 
-    FResHeaders['X-Powered-By']:=SelfVersion;
-    if XxmProjectCache=nil then XxmProjectCache:=TXxmProjectCacheXml.Create;
+      IOState_Normal:
+       begin
+        ServerFunction(HSE_REQ_IO_COMPLETION,@ContextIOCompletion,nil,PDWORD(Self));
+        //parse url
+        x:=FURI;//GetVar(ecb,'HTTP_URL');
+        y:=GetVar(ecb,'SCRIPT_NAME');
+        if y=ecb.lpszPathInfo then
+         begin
+          //called mapped
+          FRedirectPrefix:='';
+         end
+        else
+         begin
+          //called directly
+          FRedirectPrefix:=y;
+          x:=Copy(x,Length(y)+1,Length(x)-Length(y));
+         end;
 
-    //project name
-    i:=1;
-    if i>Length(x) then Redirect('/',true) else
-      if x[i]<>'/' then Redirect('/'+Copy(x,i,Length(x)-i+1),true);
-    //redirect raises EXxmPageRedirected
-    inc(i);
-    if XxmProjectCache.ProjectFromURI(Self,x,i,FProjectName,FFragmentName) then
-      FRedirectPrefix:=FRedirectPrefix+'/'+FProjectName;
-    FPageClass:='['+FProjectName+']';
+        FResHeaders['X-Powered-By']:=SelfVersion;
 
-    BuildPage;
+        //project name
+        i:=1;
+        if i>Length(x) then Redirect('/',true) else
+          if x[i]<>'/' then Redirect('/'+Copy(x,i,Length(x)-i+1),true);
+        //redirect raises EXxmPageRedirected
+        inc(i);
+        if XxmProjectCache.ProjectFromURI(Self,x,i,FProjectName,FFragmentName) then
+          FRedirectPrefix:=FRedirectPrefix+'/'+FProjectName;
+        FPageClass:='['+FProjectName+']';
+
+        BuildPage;
+       end;
+
+      IOState_Stream:
+        FlushNext;
+        
+      IOState_Resume:
+        IncludeX(FResumeFragment,FResumeValue);
+      IOState_ResDrop:
+        IncludeX(FDropFragment,FDropValue);
+
+    end;
 
   except
     on EXxmPageRedirected do Flush;
@@ -299,7 +300,7 @@ begin
         //TODO:ServerFunction(HSE_REQ_ABORTIVE_CLOSE,nil,nil,nil);?
        end;
   end;
-  if (FIOState and 1)=0 then EndSession;
+  if not(BuildPageLeaveOpen) and ((FIOState and 1)=0) then EndSession;
 end;
 
 procedure TXxmIsapiContext.EndSession;
@@ -326,7 +327,6 @@ begin
    begin
     if Result.QueryInterface(IID_IXxmPage,p)=S_OK then
      begin
-
       if ecb.cbTotalBytes<>0 then
        begin
         if ecb.cbAvailable=ecb.cbTotalBytes then
@@ -343,7 +343,6 @@ begin
          end;
         FPostData.Seek(0,soFromBeginning);
        end;
-
      end;
     //else raise EXxmDirectInclude.Create(SXxmDirectInclude);//see BuildPage
     p:=nil;
@@ -625,167 +624,31 @@ begin
    end;
 end;
 
-{ TXxmIsapiHandler }
-
-constructor TXxmIsapiHandler.Create;
+procedure TXxmIsapiContext.Suspend(const EventKey: WideString;
+  CheckIntervalMS, MaxWaitTimeSec: cardinal;
+  const ResumeFragment: WideString; ResumeValue: OleVariant;
+  const DropFragment: WideString; DropValue: OleVariant);
 begin
-  inherited Create(false);
-  //FInUse:=false;
-  FNextJobEvent:=CreateEventA(nil,true,false,
-    PAnsiChar('xxmIsapi:Handler:NextJob:'+IntToHex(GetCurrentThreadId,8)));
+  if FIOState=IOState_Suspend then
+    raise EXxmContextAlreadySuspended.Create(SXxmContextAlreadySuspended);
+  while (FIOState and 1)<>0 do Sleep(1);
+  if FIOState=IOState_Error then
+    raise EXxmTransferError.Create(SysErrorMessage(DWORD(FIOStream)));
+  PageLoaderPool.EventsController.SuspendContext(Self,EventKey,
+    CheckIntervalMS,MaxWaitTimeSec);
+  FResumeFragment:=ResumeFragment;
+  FResumeValue:=ResumeValue;
+  FDropFragment:=DropFragment;
+  FDropValue:=DropValue;
+  FIOState:=IOState_Suspend;
+  BuildPageLeaveOpen:=true;
 end;
 
-destructor TXxmIsapiHandler.Destroy;
+procedure TXxmIsapiContext.Resume(ToDrop: boolean);
 begin
-  CloseHandle(FNextJobEvent);
+  BuildPageLeaveOpen:=false;
+  if ToDrop then FIOState:=IOState_ResDrop else FIOState:=IOState_Resume;
   inherited;
-end;
-
-procedure TXxmIsapiHandler.Execute;
-var
-  Context:TXxmIsapiContext;
-begin
-  CoInitialize(nil);
-  SetErrorMode(SEM_FAILCRITICALERRORS);
-  while not(Terminated) do
-   begin
-    Context:=IsapiHandlerPool.Unqueue;
-    if Context=nil then
-     begin
-      FInUse:=false;//used by PageLoaderPool.Queue
-      ResetEvent(FNextJobEvent);
-      WaitForSingleObject(FNextJobEvent,INFINITE);
-      FInUse:=true;
-     end
-    else
-     begin
-      if Context.FIOState=IOState_Stream then
-        Context.FlushNext
-      else
-        Context.Execute;//assert all exceptions handled!
-      Context._Release;//paired with _AddRef by TXxmIsapiHandlerPool.Queue
-     end;
-   end;
-  CoUninitialize;
-end;
-
-procedure TXxmIsapiHandler.SignalNextJob;
-begin
-  //assert thread waiting on FNextJobEvent
-  SetEvent(FNextJobEvent);
-end;
-
-{ TXxmIsapiHandlerPool }
-
-constructor TXxmIsapiHandlerPool.Create;
-begin
-  inherited Create;
-  FHandlerSize:=0;
-  FQueue:=nil;
-  InitializeCriticalSection(FLock);
-  SetSize(PoolMaxThreads);//TODO: setting
-  //TODO: setting no pool
-end;
-
-destructor TXxmIsapiHandlerPool.Destroy;
-begin
-  SetSize(0);
-  DeleteCriticalSection(FLock);
-  inherited;
-end;
-
-procedure TXxmIsapiHandlerPool.SetSize(x: integer);
-begin
-  EnterCriticalSection(FLock);
-  try
-    if FHandlerSize<x then
-     begin
-      SetLength(FHandlers,x);
-      while FHandlerSize<>x do
-       begin
-        FHandlers[FHandlerSize]:=nil;
-        inc(FHandlerSize);
-       end;
-     end
-    else
-     begin
-      while FHandlerSize<>x do
-       begin
-        dec(FHandlerSize);
-        //FreeAndNil(FHandlers[FHandlerSize]);
-        if FHandlers[FHandlerSize]<>nil then
-         begin
-          try
-            FHandlers[FHandlerSize].Terminate;
-            FHandlers[FHandlerSize].SignalNextJob;
-            FHandlers[FHandlerSize].Free;
-          except
-            //silent
-          end;
-          FHandlers[FHandlerSize]:=nil;
-         end;
-       end;
-      SetLength(FHandlers,x);
-     end;
-    //if FLoaderIndex>=FLoaderSize then FLoaderIndex:=0;
-  finally
-    LeaveCriticalSection(FLock);
-  end;
-end;
-
-procedure TXxmIsapiHandlerPool.Queue(Context: TXxmIsapiContext);
-var
-  c:TXxmIsapiContext;
-  i:integer;
-begin
-  EnterCriticalSection(FLock);
-  try
-    //add to queue
-    Context._AddRef;//paired with _Release by TXxmIsapiHandler.Execute
-    if FQueue=nil then FQueue:=Context else
-     begin
-      c:=FQueue;
-      while c.Queue<>nil do c:=c.Queue;
-      c.Queue:=Context;
-     end;
-  finally
-    LeaveCriticalSection(FLock);
-  end;
-
-  //fire thread
-  //TODO: see if a rotary index matters in any way
-  i:=0;
-  while (i<FHandlerSize) and (FHandlers[i]<>nil) and FHandlers[i].InUse do inc(i);
-  if i=FHandlerSize then
-   begin
-    //pool full, leave on queue
-   end
-  else
-   begin
-    if FHandlers[i]=nil then
-      FHandlers[i]:=TXxmIsapiHandler.Create //start thread
-    else
-      FHandlers[i].SignalNextJob; //resume on waiting unqueues
-    //TODO: expire unused threads on low load
-   end;
-end;
-
-function TXxmIsapiHandlerPool.Unqueue: TXxmIsapiContext;
-begin
-  if FQueue=nil then Result:=nil else
-   begin
-    EnterCriticalSection(FLock);
-    try
-      Result:=FQueue;
-      if Result<>nil then
-       begin
-        FQueue:=FQueue.Queue;
-        Result.Queue:=nil;
-       end;
-    finally
-      LeaveCriticalSection(FLock);
-    end;
-   end;
 end;
 
 initialization
@@ -793,9 +656,7 @@ initialization
   StatusBuildError:=503;
   StatusFileNotFound:=404;
   XxmProjectCache:=nil;//TXxmProjectCache.Create;//see Execute above
-  IsapiHandlerPool:=TXxmIsapiHandlerPool.Create;
 finalization
-  //assert IsapiHandlerPool=nil by TerminateExtension
-  FreeAndNil(IsapiHandlerPool);
+  //assert PageLoaderPool=nil by TerminateExtension
 end.
 
