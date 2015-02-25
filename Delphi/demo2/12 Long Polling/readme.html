@@ -21,15 +21,13 @@ and implement <code>IXxmProjectEvents2</code> to get <code>CheckEvent</code> cal
 <dt>Web.xxmp</dt>
 <dd>The project file, contains an internal list of the files of the project, and other data about the project.<br />
 Use xxmProject.exe to edit and manage project settings.</dd>
-<dt>Default.xxm</dt>
-<dd>The website's default page.</dd>
-<dt>Poll.xxm</dt>
-<dd>xxxxxx</dd>
-<dt>Resume.xxmi</dt>
-<dd>xxxxxx</dd>
-<dt>Drop.xxmi</dt>
-<dd>xxxxxx</dd>
 <dt>xxmp.pas</dt>
 <dd>The project's main unit. When this file is missing form the project, xxm creates one for you.<br />
 Here, <code>TXxmdemo</code> implements <code>IXxmProjectEvents2</code> to perform the checks when to resume suspended contexts.</dd>
+<dt>Default.xxm</dt>
+<dd>The website's default page. Shows introductory information, then suspends the context.</dd>
+<dt>Next.xxmi</dt>
+<dd>Is used by the suspend call to include when <code>CheckEvent</code> returns true. Shows information about the event and suspends the context again, up till the tenth call.</dd>
+<dt>Drop.xxmi</dt>
+<dd>Is included when the context was suspended for longer than the specified maximum interval without <code>CheckEvent</code> returning true.</dd>
 </dl>
