@@ -631,7 +631,7 @@ begin
         if (i<=l) and (Address[i]='/') then inc(i);
         if (i<=l) and (Address[i]='/') then inc(i);
         j:=i;
-        while (j<=l) and not(char(Address[j]) in ['/','?','&','$','#']) do inc(j);
+        while (j<=l) and not(AnsiChar(Address[j]) in ['/','?','&','$','#']) do inc(j);
         FProjectName:=Copy(Address,i,j-i);
         if (j<=l) and (Address[j]='/') then inc(j);
         FProjectEntry:=GetProjectEntry;

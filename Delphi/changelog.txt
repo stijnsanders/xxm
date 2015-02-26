@@ -1,14 +1,15 @@
-v1.2.2.357
+v1.2.2.369
 - error page: back link when referer, refresh link only on GET
 - LoadCopy by library file signature to avoid multiple copies being loaded, retries on access denied
 - default xxmSession on TStringList (sorted!) instead of TObjectList
-- parser: in code, treat lines that start with "<" and end with ">" as HTML
+- parser: in code, treat lines that start with "<" and end with ">" as HTML, allow [[#]] section on one line in a code section
 - recycle allocated memory buffers, use HeapAlloc instead of GlobalAlloc
 - long polling support (IXxmContextSuspend, IXxmProjectEvents2)
 - xxmHttp: thread to wait on groups of (slow) connections that have all content in buffer
 - xxmHttp: support basic authentication (401, "WWW-Authenticate: Basic")
 - xxmIsapi: asynchronous sending on more than 64KiB in buffer (project should set Context.ContentBuffer!)
 - xxmLocal: custom handling of WWW-Authenticate, when debugging hold 'X' on authenticated page load to clear stored credentials
+- xxmConv: /noupdate switch
 
 v1.2.1.337
 - xxmHttp: IPv6 support
@@ -60,7 +61,7 @@ v1.1.7.292
 v1.1.6.288
 - security: EOL's in added header fields are disallowed
 - fixed issue with URLEncoded and UTF8 encoded characters
-- fixed issue when setting BufferSize from non-zero to zero	
+- fixed issue when setting BufferSize from non-zero to zero
 - renamed xxmApache to xxmAhttpd, Apache httpd license states non-ASF projects may not use the Apache name
 - xxmProject: register with xxm.xml
 - xxmIsapi: override default buffering of IIS7 (remember to set Context.BufferSize!)
@@ -99,7 +100,7 @@ v1.1.1.277
 - 'embed HTML syntax': use "<<html>>" instead of "]]<html>[["
 - Web.xxmp: multiple <PreCompileCommand>,<CompileCommand>,<PostCompileCommand> allowed
 - added files from module resources demo
-- Web.xxmp,xxmProject: add <Resource> files to check for changes to force auto-build 
+- Web.xxmp,xxmProject: add <Resource> files to check for changes to force auto-build
 - xxmHttp,xxmIsapi: fixed bug with saving uploaded files
 - xxmIsapi: post data not all read up front, post data reads read from connection as needed
 - xxmLocal: fixed bug with javascript authorization (document.domain)
@@ -143,4 +144,3 @@ v1.0.2.262
 - a more performant HTMLEncode
 - fixed issue with xxmStream.pas' TxxmOutputStream
 - xxmHttp provides virtual methods for new project that inherit from it
-

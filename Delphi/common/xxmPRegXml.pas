@@ -415,7 +415,7 @@ begin
   l:=Length(URI);
   if FSingleProject='' then
    begin
-    while (i<=l) and not(char(URI[i]) in ['/','?','&','$','#']) do inc(i);
+    while (i<=l) and not(URI[i] in ['/','?','&','$','#']) do inc(i);
     ProjectName:=Copy(URI,2,i-2);
     if ProjectName='' then
      begin
@@ -432,7 +432,7 @@ begin
     Result:=false;
    end;
   j:=i;
-  while (i<=l) and not(char(URI[i]) in ['?','&','$','#']) do inc(i);
+  while (i<=l) and not(URI[i] in ['?','&','$','#']) do inc(i);
   FragmentName:=URLDecode(Copy(URI,j,i-j));
   if (i<=l) then inc(i);
 end;

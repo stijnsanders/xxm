@@ -41,6 +41,7 @@ type
     FQueryStringIndex:integer;
     FResumeFragment,FDropFragment:WideString;
     FResumeValue,FDropValue:OleVariant;
+    function Accept(Socket:TTcpSocket):TXxmHttpContext;
     procedure HandleRequest;
   protected
     function GetSessionID: WideString; override;
@@ -84,7 +85,7 @@ type
   public
     Next:TXxmNextTask;
     KeptCount:cardinal;
-    constructor Create(Socket:TTcpSocket);
+    constructor Create;
     destructor Destroy; override;
     procedure Execute; override;
     procedure PostExecute;
@@ -236,22 +237,29 @@ end;
 
 { TXxmHttpContext }
 
-constructor TXxmHttpContext.Create(Socket:TTcpSocket);
+constructor TXxmHttpContext.Create;//(Socket:TTcpSocket);
+begin
+  inherited Create('');//URL is parsed by Execute
+  //FSocket:=Socket;//see TXxmHttpServerListener
+  Next:=ntNormal;
+  SendDirect:=nil;//see BeginRequest to detect AfterConstruction
+end;
+
+function TXxmHttpContext.Accept(Socket: TTcpSocket): TXxmHttpContext;
 var
   i:integer;
 begin
-  inherited Create('');//URL is parsed by Execute
   FSocket:=Socket;
+  SendDirect:=FSocket.SendBuf;
   i:=30000;//TODO: setting
   if (setsockopt(FSocket.Handle,SOL_SOCKET,SO_RCVTIMEO,@i,4)<>0) or
      (setsockopt(FSocket.Handle,SOL_SOCKET,SO_SNDTIMEO,@i,4)<>0) then
-    RaiseLastOSError;
+    ;//RaiseLastOSError;
   i:=$10000;//TODO: setting
   if (setsockopt(FSocket.Handle,SOL_SOCKET,SO_RCVBUF,@i,4)<>0) or
      (setsockopt(FSocket.Handle,SOL_SOCKET,SO_SNDBUF,@i,4)<>0) then
-    RaiseLastOSError;
-  Next:=ntNormal;
-  SendDirect:=nil;//see BeginRequest to detect AfterConstruction
+    ;//RaiseLastOSError;
+  Result:=Self;
 end;
 
 destructor TXxmHttpContext.Destroy;
@@ -265,12 +273,7 @@ procedure TXxmHttpContext.BeginRequest;
 begin
   inherited;
   FReqHeaders:=nil;
-  if @SendDirect=nil then //detect AfterConstruction
-   begin
-    SendDirect:=FSocket.SendBuf;
-    FResHeaders:=nil;
-   end
-  else
+  if FResHeaders=nil then
    begin
     FResHeaders:=TResponseHeaders.Create;
     (FResHeaders as IUnknown)._AddRef;
@@ -728,16 +731,19 @@ begin
 end;
 
 procedure TXxmHttpServerListener.Execute;
+var
+  c:TXxmHttpContext;
 begin
   //inherited;
   //assert FServer.Bind called
   while not Terminated do
     try
+      c:=TXxmHttpContext.Create;//TODO: from pool?
       FServer.WaitForConnection;
-      if not Terminated then
-        PageLoaderPool.Queue( //KeptConnections.Queue(?
-          TXxmHttpContext.Create(
-            FServer.Accept));
+      if Terminated then
+        c.Free
+      else
+        PageLoaderPool.Queue(c.Accept(FServer.Accept)); //KeptConnections.Queue(?
     except
       //TODO: log? display?
     end;

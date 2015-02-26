@@ -7,23 +7,22 @@ uses Classes;
 type
   TXxmPageSection=(
     psHTML,
-    psUses,               // [[@
-    psDefinitions,        // [[:
-    psHeader,             // [[!
-    psBody,               // [[
-    psFooter,             // [[_
-    psSend,               // [[=
-    psSendHTML,           // [[#
-    psURLEncode,          // [[?
-    psComment,            // [[/
-    psParserParameter,    // [[*
-    psExtra1,             // [[&
-    psExtra2,             // [[%
-    psExtra3,             // [[.
-    psExtra4,             // [[,
-    psExtra5,             // [[;
-    psSquareBracketsOpen, // [[[]]
-    psSquareBracketsClose // [[]]]
+    psUses,            // [[@
+    psDefinitions,     // [[:
+    psHeader,          // [[!
+    psFooter,          // [[_
+    psSend,            // [[=
+    psSendHTML,        // [[#
+    psURLEncode,       // [[?
+    psComment,         // [[/
+    psParserParameter, // [[*
+    psExtra1,          // [[&
+    psExtra2,          // [[%
+    psExtra3,          // [[.
+    psExtra4,          // [[,
+    psExtra5,          // [[;
+    psSquareBracketsOpen,psSquareBracketsClose, // [[[]],[[]]]
+    psBody             // [[
   );
 
 //TODO: dynamic chars for use with AllSections
@@ -78,7 +77,7 @@ type
     FDefaultParserValues,FParserValues:TXxmPageParserValueList;
     procedure AddSection(Index,Length,LineNr:integer;ps:TXxmPageSection);
     function EOLs(Index: integer): integer;
-    function LineHasTag(var x:integer;l:integer):integer;
+    procedure CheckLineHasSpecial(l:integer;var x,y,d:integer);
   public
     constructor Create(const ParserValues:TXxmPageParserValueList);
     destructor Destroy; override;
@@ -92,12 +91,31 @@ type
   end;
 
 const
+  SectionGlyph:array[TXxmPageSection] of AnsiChar=(
+    #0, //psHTML,
+    '@',//psUses,
+    ':',//psDefinitions,     
+    '!',//psHeader,          
+    '_',//psFooter,          
+    '=',//psSend,            
+    '#',//psSendHTML,        
+    '?',//psURLEncode,       
+    '/',//psComment,         
+    '*',//psParserParameter, 
+    '&',//psExtra1,          
+    '%',//psExtra2,          
+    '.',//psExtra3,          
+    ',',//psExtra4,          
+    ';',//psExtra5,
+    '[',//psSquareBracketsOpen,
+    ']',//psSquareBracketsClose,
+    #0  //psBody       
+  );
   SectionParserValue:array[TXxmPageSection] of TXxmPageParserValues=(
     pv_Unknown,  //psHTML,
     pv_Unknown,  //psUses,
     pv_Unknown,  //psDefinitions,
     pv_Unknown,  //psHeader,
-    pv_Unknown,  //psBody,
     pv_Unknown,  //psFooter,
     pvSend,      //psSend
     pvSendHTML,  //psSendHTML
@@ -109,7 +127,8 @@ const
     pvExtra3,    //psExtra3
     pvExtra4,    //psExtra4
     pvExtra5,    //psExtra5
-    pv_Unknown,pv_Unknown //psSquareBrackets* etc
+    pv_Unknown,pv_Unknown, //psSquareBrackets*
+    pv_Unknown   //psBody
   );
 
 implementation
@@ -230,18 +249,20 @@ begin
   inherited;
 end;
 
-procedure TXxmPageParser.Parse(Data: AnsiString);
-type
-  TDelim=(dNone,dSquareB,dAngleB);
 const
+  Delim_None=0;
+  Delim_SquareB=1;
+  Delim_AngleB=2;
+  Delim_Stray=3;
   CodeType_Normal=0;
   CodeType_String=1;
   CodeType_CommentA=2;
   CodeType_CommentB=3;
   CodeType_ParserParameters=4;
+
+procedure TXxmPageParser.Parse(Data: AnsiString);
 var
-  a1,a2,b1,b2,bx,l,n1,n2,nx,sqd,CodeType,TagInCode:integer;
-  Delim:TDelim;
+  a1,a2,b1,b2,l,n1,n2,nx,sqd,Delim,CodeType,TagInCode:integer;
   ps:TXxmPageSection;
 begin
   SectionsCount:=0;
@@ -259,34 +280,46 @@ begin
    begin
     //search for an open tag
     n1:=nx;
-    a1:=a2;
-    Delim:=dNone;
-    while (a2<=l)
-      and not((Delim=dSquareB) and (FData[a2]='['))
-      and not((Delim=dAngleB) and (FData[a2]='>')) do
+    a2:=a1;
+    if a1=TagInCode then
      begin
-      case char(FData[a2]) of
-        '[':Delim:=dSquareB;
-        '>':Delim:=dAngleB;
-        #13,#10:
-         begin
-          inc(nx);
-          if (FData[a2]=#13) and (a2<l) and (FData[a2+1]=#10) then inc(a2);
-          if TagInCode=0 then
-            Delim:=dNone
-          else
-           begin //make loop exit
-            Delim:=dAngleB;
-            a2:=TagInCode-1;
+      TagInCode:=0;
+      Delim:=Delim_Stray;
+     end
+    else
+     begin
+      Delim:=Delim_None;
+      while (a2<=l)
+        and not((Delim=Delim_SquareB) and (FData[a2]='['))
+        and not((Delim=Delim_AngleB) and (FData[a2]='>'))
+        //and not(Delim=Delim_Stray)
+        do
+       begin
+        case FData[a2] of
+          '[':Delim:=Delim_SquareB;
+          '>':Delim:=Delim_AngleB;
+          #13,#10:
+           begin
+            if (FData[a2]=#13) and (a2<l) and (FData[a2+1]=#10) then inc(a2);
+            if TagInCode=0 then
+             begin
+              Delim:=Delim_None;
+              inc(nx);
+             end
+            else
+             begin //make loop exit
+              Delim:=Delim_AngleB;
+              a2:=TagInCode-1;
+             end;
            end;
-         end;
-        else Delim:=dNone;
-      end;
-      inc(a2);
+          else Delim:=Delim_None;
+        end;
+        inc(a2);
+       end;
      end;
     b1:=a2+1;
     b2:=b1;
-    if Delim=dAngleB then
+    if Delim=Delim_AngleB then
       if TagInCode=a2 then
        begin
         inc(a2,2);
@@ -294,132 +327,124 @@ begin
        end
       else
         a2:=b1;//inc(a2);
-    if (Delim<>dNone) and (b1<=l) then
+    if (Delim<>Delim_None) and (b1<=l) then
      begin
       //open tag found, look for close tag (carefully: check strings and opening/closing braces and things)
-      Delim:=dNone;
+      Delim:=Delim_None;
       sqd:=0;//square bracket depth
       CodeType:=CodeType_Normal;
       n2:=nx;
-      case char(FData[b1]) of
-        '[':ps:=psSquareBracketsOpen;
-        ']':ps:=psSquareBracketsClose;
-        '!':ps:=psHeader;
-        '@':ps:=psUses;
-        ':':ps:=psDefinitions;
-        '_':ps:=psFooter;
-        '#':ps:=psSendHTML;
-        '=':ps:=psSend;
-        '?':ps:=psURLEncode;
-        '/':ps:=psComment;
-        '*':
-         begin
-          ps:=psParserParameter;
-          CodeType:=CodeType_ParserParameters;
-         end;
-        '&':ps:=psExtra1;
-        '%':ps:=psExtra2;
-        '.':ps:=psExtra3;
-        ',':ps:=psExtra4;
-        ';':ps:=psExtra5;
-        //'&$%^+|;.,
-        else ps:=psBody;
-      end;
+      repeat
+        ps:=psUses;
+        while (ps<>psBody) and (FData[b1]<>SectionGlyph[ps]) do inc(ps);
+        case ps of
+          psParserParameter:CodeType:=CodeType_ParserParameters;
+          psSquareBracketsOpen,psSquareBracketsClose:
+           begin
+            if not((b1+1<l) and (FData[b1+1]=']') and (FData[b2+2]=']')) then
+             begin
+              ps:=psHTML;//make loop skip
+              inc(b1);
+              inc(a2);
+             end;
+           end;
+        end;
+      until ps<>psHTML;
       while (b2<=l)
-        and not((Delim=dSquareB) and (FData[b2]=']'))
-        and not((Delim=dAngleB) and (FData[b2]='<')) do
+        and not((Delim=Delim_SquareB) and (FData[b2]=']'))
+        and not((Delim=Delim_AngleB) and (FData[b2]='<'))
+        and not(Delim=Delim_Stray)
+      do
        begin
-        Delim:=dNone;
+        Delim:=Delim_None;
         case CodeType of
           CodeType_Normal:
-            case char(FData[b2]) of
+            case FData[b2] of
               '''':CodeType:=CodeType_String;
               '[':inc(sqd);
-              ']':if sqd=0 then Delim:=dSquareB else dec(sqd);
+              ']':if sqd=0 then Delim:=Delim_SquareB else dec(sqd);
               '{':CodeType:=CodeType_CommentA;
               //'}'
               '(':
                 if (b2<l) and (FData[b2+1]='*') then
                   CodeType:=CodeType_CommentB;
               //')'
-              '<':Delim:=dAngleB;
+              '<':Delim:=Delim_AngleB;
             end;
           CodeType_String:
-            if char(FData[b2]) in ['''',#13,#10] then
+            if FData[b2] in ['''',#13,#10] then
               CodeType:=CodeType_Normal;
           CodeType_CommentA:
-            if char(FData[b2])='}' then
+            if FData[b2]='}' then
               CodeType:=CodeType_Normal;
           CodeType_CommentB:
-            if (char(FData[b2])=')') and (b2>1) and (FData[b2-1]='*') then
+            if (FData[b2]=')') and (b2>1) and (FData[b2-1]='*') then
               CodeType:=CodeType_Normal;
           CodeType_ParserParameters:
-            case char(FData[b2]) of
-              '<':Delim:=dAngleB;
-              ']':Delim:=dSquareB;
+            case FData[b2] of
+              '<':Delim:=Delim_AngleB;
+              ']':Delim:=Delim_SquareB;
             end;
         end;
-        if char(FData[b2]) in [#13,#10] then
+        if FData[b2] in [#13,#10] then
          begin
           inc(nx);
           if (FData[b2]=#13) and (b2<l) and (FData[b2+1]=#10) then inc(b2);
           if (ps=psBody) and (CodeType=CodeType_Normal) then
-           begin
-            TagInCode:=LineHasTag(b2,l);
-            if TagInCode<>0 then //make loop exit
-             begin
-              Delim:=dAngleB;
-              dec(b2);
-             end;
-           end;
+            CheckLineHasSpecial(l,b2,TagInCode,Delim);
          end;
         inc(b2);
        end;
       if b2>l then
        begin
-        //end reached
+        //end of file reached
         AddSection(a1,a2-a1-1,n1,psHTML);
         AddSection(b1,b2-b1,n2,psBody);
         a1:=b2;
         a2:=b2;
        end
       else
-        if ((Delim<>dNone) and (a2<l)) or (b2>l) then
+        if ((Delim<>Delim_None) and (a2<l)) or (b2>l) then
          begin
           //close tag found also
-          bx:=b1;
           case ps of
             psSquareBracketsOpen:
-              if b2-b1=1 then Delim:=dSquareB else Delim:=dNone;
+              if b2-b1=1 then Delim:=Delim_SquareB else Delim:=Delim_None;
             psSquareBracketsClose:
-              if b2-b1=1 then Delim:=dSquareB else Delim:=dNone;
+              if b2-b1=1 then Delim:=Delim_SquareB else Delim:=Delim_None;
             psBody:
-              dec(bx);
+              dec(b1);
           end;
-          if (Delim<>dNone) or (b2>l) then
+          if (Delim<>Delim_None) or (b2>l) then
            begin
             AddSection(a1,a2-a1-1,n1,psHTML);
+            inc(b1);
             case Delim of
-              dSquareB:
+              Delim_SquareB:
                begin
-                AddSection(bx+1,b2-bx-2,n2,ps);
-                a2:=b2+1;
+                AddSection(b1,b2-b1-1,n2,ps);
+                a1:=b2+1;
                end;
-              dAngleB:
+              Delim_AngleB:
                begin
-                inc(bx);
-                AddSection(bx,b2-bx-1,n2,ps);
-                a2:=b2;
+                AddSection(b1,b2-b1-1,n2,ps);
+                a1:=b2;
+               end;
+              Delim_Stray:
+               begin
+                AddSection(b1,b2-b1-2,n2,ps);
+                a1:=b2-2;
                end;
             end;
            end
           else
             AddSection(a1,a2-a1,n1,psHTML);
-          a1:=a2;
          end
         else
-          a2:=l+1;
-     end;
+          a1:=l+1;
+     end
+    else
+      a1:=a2;
    end;
   AddSection(a1,l-a1+1,n1,psHTML);
   TotalLines:=nx;
@@ -530,36 +555,28 @@ var
 
   procedure ParseParserValue(const Code: string);
   var
+    ps:TXxmPageSection;
     pv:TXxmPageParserValues;
   begin
     if Code='' then
       FParserValues:=FDefaultParserValues
     else
      begin
-      pv:=pv_Unknown;
-      case Code[1] of
-        '=':pv:=pvSend;
-        '#':pv:=pvSendHTML;
-        '?':pv:=pvURLEncode;
-        '&':pv:=pvExtra1;
-        '%':pv:=pvExtra2;
-        '.':pv:=pvExtra3;
-        ',':pv:=pvExtra4;
-        ';':pv:=pvExtra5;
-        //else //TODO: parse parameter name
-      end;
+      ps:=psUses;
+      while (ps<>psBody) and (Code[1]<>SectionGlyph[ps]) do inc(ps);
+      pv:=SectionParserValue[ps];
       if pv=pv_Unknown then raise Exception.Create('Unknown parse parameter');
       if Length(Code)=1 then
        begin
         FParserValues[pv]:=FDefaultParserValues[pv];
-        pv:=Succ(pv);
+        inc(pv);//pv:=Succ(pv);
         FParserValues[pv]:=FDefaultParserValues[pv];//close
        end
       else
        begin
         case Code[2] of
           '(':;
-          ')':pv:=Succ(pv);//close
+          ')':inc(pv);//pv:=Succ(pv);//close
           else raise Exception.Create('Use "(" or ")" to define opening and closing code');
         end;
         FParserValues[pv].Code:=StringReplace(StringReplace(
@@ -632,7 +649,7 @@ begin
                 l:=0;
                 map.MapLine(1,0);
                end;
-              case char(FData[p]) of
+              case FData[p] of
                 #0..#31:
                  begin
                   CloseString;
@@ -713,7 +730,7 @@ begin
           psParserParameter:
            begin
             CloseSend(Sections[Section].LineNr);
-            if (Sections[Section].Length>2) and (char(FData[Sections[Section].Index]) in [#13,#10,' ',#9]) then
+            if (Sections[Section].Length>2) and (FData[Sections[Section].Index] in [#13,#10,' ',#9]) then
               ParseParserValuesMultiLine(Section)
             else
               ParseParserValue(Copy(FData,Sections[Section].Index,Sections[Section].Length));
@@ -743,19 +760,20 @@ begin
     Result:=Sections[Index+1].LineNr-Sections[Index].LineNr;
 end;
 
-function TXxmPageParser.LineHasTag(var x:integer;l:integer):integer;
+procedure TXxmPageParser.CheckLineHasSpecial(l:integer;var x,y,d:integer);
 var
   a1,a2,a3:integer;
+  ps:TXxmPageSection;
 begin
-  Result:=0;//default
+  y:=0;//default
   a1:=x+1;
-  while (a1<=l) and (char(FData[a1]) in [#9,' ']) do inc(a1);
+  while (a1<=l) and (FData[a1] in [#9,' ']) do inc(a1);
   if (a1<l) and (FData[a1]='<')
-    and (char(FData[a1+1]) in ['A'..'Z','a'..'z','!','?','/']) then
+    and (FData[a1+1] in ['A'..'Z','a'..'z','!','?','/']) then
    begin
     a2:=0;
     a3:=a1+2;
-    while (a3<=l) and not(char(FData[a3]) in [#13,#10]) do
+    while (a3<=l) and not(FData[a3] in [#13,#10]) do
      begin
       if FData[a3]='>' then a2:=a3 else
         if (a2<>0) and not(FData[a3] in [#9,' ']) then a2:=0;
@@ -763,8 +781,33 @@ begin
      end;
     if (a2>a1) and (FData[a2-1]<>'>') then
      begin
-      Result:=a2;
-      x:=a1;
+      x:=a1-1;
+      y:=a2;
+      d:=Delim_AngleB;//make loop exit
+     end;
+   end
+  else
+  if (a1+1<l) and (FData[a1]='[') and (FData[a1+1]='[') then
+   begin
+    inc(a1,2);
+    ps:=psUses;
+    while (ps<>psBody) and (FData[a1]<>SectionGlyph[ps]) do inc(ps);
+    if ps<>psBody then
+     begin
+      a2:=a1;
+      a3:=a2+1;
+      while (a3<=l) and not(FData[a3] in [#13,#10]) do
+       begin
+        if FData[a3]=']' then a2:=a3 else
+          if (a2<>0) and not(FData[a3] in [#9,' ']) then a2:=0;
+        inc(a3);
+       end;
+      if (a2>a1) and (FData[a2-1]=']') then
+       begin
+        x:=a1-1;
+        y:=a2+1;
+        d:=Delim_Stray;//make loop exit
+       end;
      end;
    end;
 end;

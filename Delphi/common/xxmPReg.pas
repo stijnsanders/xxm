@@ -122,7 +122,7 @@ begin
       mn:=Copy(mn,1,120)+'('+IntToStr(l-240)+')'+Copy(mn,l-119,120);
       l:=Length(mn);
      end;
-    for i:=1 to l do if char(mn[i]) in ['\',':','/',' ','.'] then mn[i]:='|';
+    for i:=1 to l do if mn[i] in ['\',':','/',' ','.'] then mn[i]:='|';
     mn:='Global\'+mn;
     //get mutex
     FCheckMutex:=CreateMutexA(nil,false,PAnsiChar(mn));
@@ -295,7 +295,7 @@ begin
   while (i<=l) do
    begin
     j:=i;
-    while (j<=l) and not(char(Address[j]) in ['/','\']) do inc(j);
+    while (j<=l) and not(AnsiChar(Address[j]) in ['/','\']) do inc(j);
     s:=Copy(Address,i,j-i);
     if (s='') or (s='.') then
       //nothing
@@ -309,7 +309,7 @@ begin
      end
     else
       sf:=sf+s;//DirectoryExists()??
-    if (j<=l) and (char(Address[j]) in ['/','\']) then sf:=sf+PathDelim;
+    if (j<=l) and (AnsiChar(Address[j]) in ['/','\']) then sf:=sf+PathDelim;
     i:=j+1;
    end;
   Path:=rf+sf;

@@ -125,7 +125,7 @@ begin
   {$IFDEF IgnoreProjectNameInURL}
   if true then //hsys loads 'http://+:80/Something/'
    begin
-    while (i<=l) and not(char(URI[i]) in ['/','?','&','$','#']) do inc(i);
+    while (i<=l) and not(URI[i] in ['/','?','&','$','#']) do inc(i);
     ProjectName:=Copy(URI,2,i-2);
     if ProjectName='' then
      begin
@@ -143,7 +143,7 @@ begin
     Result:=false;
    end;
   j:=i;
-  while (i<=l) and not(char(URI[i]) in ['?','&','$','#']) do inc(i);
+  while (i<=l) and not(URI[i] in ['?','&','$','#']) do inc(i);
   FragmentName:=Copy(URI,j,i-j);
   if (i<=l) then inc(i);
 end;

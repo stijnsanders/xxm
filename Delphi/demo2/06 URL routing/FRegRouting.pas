@@ -97,7 +97,7 @@ begin
       while (i<=l) and (Address[i]<>'/') do inc(i);
       s:=Copy(Address,j,i-j);
       //detect specific forms
-      if (s<>'') and (char(s[1]) in ['0'..'9']) then
+      if (s<>'') and (AnsiChar(s[1]) in ['0'..'9']) then
        begin
         //it's a number
         pc.AddParameter(TParameterFromPath.Create('number',s) as IXxmParameter);

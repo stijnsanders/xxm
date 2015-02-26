@@ -168,7 +168,7 @@ begin
     if q-p<>2 then
      begin
       r:=p;
-      while (r<=q) and (char(Value[r]) in [#1..#32]) do inc(r);
+      while (r<=q) and (Value[r] in [#1..#32]) do inc(r);
       if r=p then
        begin
         if i=pl then
@@ -181,7 +181,7 @@ begin
         while (r<=q) and (Value[r]<>':') do inc(r);
         Params[i].NameLength:=r-p;
         inc(r);
-        while (r<=q) and (char(Value[r]) in [#1..#32]) do inc(r);
+        while (r<=q) and (Value[r] in [#1..#32]) do inc(r);
         Params[i].ValueStart:=r;
         Params[i].ValueLength:=q-r-2;//2 from Length(EOL)
         inc(i);
@@ -218,7 +218,7 @@ begin
         SetLength(Params,pl);
        end;
       inc(i);
-      while (i<=l) and (char(Value[i]) in [#1..#32]) do inc(i);
+      while (i<=l) and (Value[i] in [#1..#32]) do inc(i);
       Params[q].NameStart:=i;
       j:=i;
       while (j<=l) and (Value[j]<>'=') do inc(j);
@@ -266,7 +266,7 @@ procedure HeaderCheckName(const Name: WideString);
 var
   i:integer;
 begin
-  for i:=1 to Length(Name) do if char(Name[i]) in [#0..' ',
+  for i:=1 to Length(Name) do if AnsiChar(Name[i]) in [#0..' ',
     '(',')','<','>','@',',',';',':','\','"','/',
     '[',']','?','=','{','}',#127..#255] then
     raise EXxmResponseHeaderInvalidChar.Create(SXxmResponseHeaderInvalidChar);
@@ -276,7 +276,7 @@ procedure HeaderCheckValue(const Value: WideString);
 var
   i:integer;
 begin
-  for i:=1 to Length(Value) do if char(Value[i]) in [#0,#10,#13] then //more?
+  for i:=1 to Length(Value) do if AnsiChar(Value[i]) in [#0,#10,#13] then //more?
     raise EXxmResponseHeaderInvalidChar.Create(SXxmResponseHeaderInvalidChar);
 end;
 
@@ -354,7 +354,7 @@ end;
 procedure TStreamNozzle.SkipWhiteSpace;
 begin
   //if '--' then multipart done?
-  while Ensure(1) and (char(Data[Index]) in [#0..#31]) do inc(Index);
+  while Ensure(1) and (Data[Index] in [#0..#31]) do inc(Index);
 end;
 
 procedure TStreamNozzle.CheckBoundary(var Boundary: AnsiString);
@@ -418,7 +418,7 @@ begin
       while (r<=q) and (Result[r]<>':') do inc(r);
       Params[i].NameLength:=r-p;
       inc(r);
-      while (r<=q) and (char(Result[r]) in [#1..#32]) do inc(r);
+      while (r<=q) and (Result[r] in [#1..#32]) do inc(r);
       Params[i].ValueStart:=r;
       Params[i].ValueLength:=q-r-2;//2 from Length(EOL)
       inc(i);

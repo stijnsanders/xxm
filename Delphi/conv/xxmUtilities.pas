@@ -216,7 +216,7 @@ begin
         Result:=Result+'x'+Hex[byte(FileName[i]) shr 4]+Hex[byte(FileName[i]) and $F];
     end;
   //assert CID<>''
-  if not(char(Result[1]) in ['A'..'Z','a'..'z']) then Result:='x'+Result;
+  if not(Result[1] in ['A'..'Z','a'..'z']) then Result:='x'+Result;
   if IsReservedWord(Result) then
     if LowerCase(Result)='or' then
       Result:='x_'+Result

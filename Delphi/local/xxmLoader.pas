@@ -80,7 +80,7 @@ type
 
     property Verb: WideString read FVerb;
   end;
-  
+
   EXxmContextStringUnknown=class(Exception);
   EXxmUnknownPostDataTymed=class(Exception);
   EXxmPageLoadAborted=class(Exception);
@@ -164,7 +164,7 @@ begin
   try
     while Next<ntDone do
       case Next of
-      
+
         ntStart:
          begin
           Next:=ntBuildPage;
@@ -234,7 +234,7 @@ begin
              end;
            end;
           j:=i;
-          while (i<=l) and not(char(FURL[i]) in ['/','?','&','$','#']) do inc(i);
+          while (i<=l) and not(AnsiChar(FURL[i]) in ['/','?','&','$','#']) do inc(i);
           //if server then remote?
           FProjectName:=Copy(FURL,j,i-j);
           if FProjectName='' then
@@ -253,7 +253,7 @@ begin
           if (FURL[i]='/') then inc(i);
 
           j:=i;
-          while (i<=l) and not(char(FURL[i]) in ['?','&','$','#']) do inc(i);
+          while (i<=l) and not(AnsiChar(FURL[i]) in ['?','&','$','#']) do inc(i);
           FFragmentName:=Copy(FURL,j,i-j);
           if (FURL[i]='?') then inc(i);
           j:=i;
@@ -639,12 +639,12 @@ var
   function next:integer;
   begin
     Result:=0;
-    while (i<=l) and (char(s[i]) in ['0'..'9']) do
+    while (i<=l) and (s[i] in ['0'..'9']) do
      begin
       Result:=Result*10+byte(s[i])-48;
       inc(i);
      end;
-    while (i<=l) and not(char(s[i]) in ['0'..'9']) do inc(i);
+    while (i<=l) and not(s[i] in ['0'..'9']) do inc(i);
   end;
 begin
   i:=1;

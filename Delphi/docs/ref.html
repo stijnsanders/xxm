@@ -74,7 +74,7 @@ A <i>stock-</i>implementation of a fragment registry is available by default for
 
 <p class="title"><a name="syntax"></a>Syntax</p>
 
-<p>xxm and xxmi contain both HTML and Delphi source code. Delphi code is enclosed in double square brackets ("<code>[[ ]]</code>").
+<p>xxm and xxmi files contain both HTML and Delphi source code. Delphi code is enclosed in double square brackets ("<code>[[ ]]</code>").<br />
 A code section may have an alternate destination by starting with one of these characters:</p>
 
 <dl>
@@ -86,10 +86,9 @@ without converting the text into HTML (i.e.: replacing angled brackets and amper
 that any variable data is properly encoded. Use the <a href="#htmlencode"><code>HTMLEncode</code></a> function.
 Read more <a href="http://xxm.sourceforge.net/sec.html">here</a>.
 </dd>
-<dt><code>[[?'x',1,'y',2]]</code></dt><dd><b>URL encode:</b> encodes key-value pairs into a query string, see also <a href="#urlencode"><code>URLEncode</code></a> <span class="newver">1.2.0</span></dd>
+<dt><code>[[?'x',1,'y',2]]</code></dt><dd><b>URL encode:</b> encodes key-value pairs into a query string, see also <a href="#urlencode"><code>URLEncode([])</code></a> <span class="newver">1.2.0</span></dd>
 <dt><code>[[@Variants,]]</code></dt><dd><b>uses clause:</b> adds units to the uses clause. Separate unit names with comma.
-It's advised to follow the last unit name with a comma as well, as required by Delphi syntaxis,
-(but the parser detects when the trailing comma is missing and adds it <span class="newver">1.0.3</span>).</dd>
+(<span class="newver">1.0.3</span> A trailing comma is not required).</dd>
 <dt><code>[[!var i:integer;]]</code></dt><dd><b>header:</b> adds code in front of 'begin' of the fragment's Build method implementation,
 use this to declare local variables and constants,
 	<br /><b style="color:red;">*:</b> read below remarks for proper use</dd>
@@ -141,7 +140,11 @@ Context.SendHTML('&lt;/b&gt;');</code></p>
 <p><span class="newver">1.1.7</span> Blocks enclosed this way also support the alternate destination prefixes:</p>
 <p><code>&lt;&lt;p&gt;Message: &lt;b&gt;&gt;=Message&lt;&lt;/p&gt;&gt;</code></p>
 
-<p><span class="newver">1.2.2</span> If a line in code only contains a HTML tag, the extra opening and closing angled brackets ("<code>&lt;&gt;</code>") are not required.
+<p><span class="newver">1.2.2</span> If a line in a code section only contains a HTML tag, the extra opening and closing angled brackets ("<code>&lt;&gt;</code>") are not required.<br />
+Please note that consecutive lines like this will have the end-of-line and surrounding whitespace converted to the module code and not the HTML output,
+which in some cases might slightly alter the layout.</p>
+
+<p><span class="newver">1.2.2</span> If a line in a code section only contains another section with a destination prefix (e.g. "<code>[[# ]]</code>"), it's not required to close the current code section ("<code>]]</code>") and open a new one right after ("<code>[[</code>").<br />
 Please note that consecutive lines like this will have the end-of-line and surrounding whitespace converted to the module code and not the HTML output,
 which in some cases might slightly alter the layout.</p>
 
@@ -562,7 +565,7 @@ it is passed to <code>Context.Include</code> as the <code>Values</code> paramete
 and priority of events may cause intervals to be longer or suspended contexts to be dropped sooner.
 </dd>
 <dt class="title"><code>IXxmProjectEvents2 = interface</code></dt>
-<dd>implement this interface on the project object. 
+<dd>implement this interface on the project object.
 (The project object is typically defined in the <code>xxmp.pas</code> unit.)</dd>
 <dt><code>function CheckEvent(const EventKey:WideString; var CheckIntervalMS: cardinal):boolean;</code></dt>
 <dd>called periodically as configured by <code>IXxmContextSuspend.Suspend</code>. Return true to resume suspended context(s).

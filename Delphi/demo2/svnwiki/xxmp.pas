@@ -30,10 +30,10 @@ begin
   inherited;
   //SetSession(Context);
   //Result:=LoadFragment(Address);
-  if Address='svnwiki.css' then 
+  if Address='svnwiki.css' then
     Result:=nil //return nil here and default to file-search
   else
-    if (Address<>'') and (char(Address[1]) in ['~','+']) then
+    if (Address<>'') and (AnsiChar(Address[1]) in ['~','+']) then
 	  Result:=XxmFragmentRegistry.GetFragment(Self,'BackLinks.xxm','')
 	else
 	  if Context.ContextString(csQueryString)='' then

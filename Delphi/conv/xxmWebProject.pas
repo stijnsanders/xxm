@@ -324,7 +324,7 @@ begin
          begin
           //unique counter for project
           uname:=Copy(cid,cPathIndex,Length(cid)-cPathIndex+1);
-          if not(char(uname[1]) in ['A'..'Z','a'..'z']) then uname:='x'+uname;
+          if not(uname[1] in ['A'..'Z','a'..'z']) then uname:='x'+uname;
           i:=0;
           repeat
             inc(i);

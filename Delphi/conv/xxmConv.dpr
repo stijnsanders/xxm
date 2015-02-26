@@ -19,7 +19,7 @@ uses
 var
   i:integer;
   s,protodir,srcdir:string;
-  wait,rebuild,docompile,dolinemaps:boolean;
+  wait,rebuild,docompile,dolinemaps,doupdate:boolean;
   extra:TStringList;
 begin
   CoInitialize(nil);
@@ -28,6 +28,7 @@ begin
   rebuild:=false;
   docompile:=true;
   dolinemaps:=true;
+  doupdate:=true;
   protodir:='';
   srcdir:='';
   extra:=TStringList.Create;
@@ -35,15 +36,16 @@ begin
   if (ParamCount=0) or ((ParamCount=1) and (ParamStr(1)='/?')) then
    begin
     Writeln('Usage: ');
-    Writeln('  xxmConv [/wait] [/rebuild] [/nocompile] [/proto <proto dir>] <file or dir>...');
+    Writeln('  xxmConv [<options>...] <file or dir>...');
     Writeln('    parses and compiles one or more xxm projects');
-    Writeln('    /wait       end with "Press enter to continue" message');
-    Writeln('    /rebuild    force processing of all files');
-    Writeln('    /nocompile  process files only, don''t compile');
-    Writeln('    /proto      use an alternative unit templates folder');
-    Writeln('    /src        use an alternative source output folder');
-    Writeln('    /x:XXX      define template value XXX');
-    Writeln('    /nolinemaps don''t generate line map files');
+    Writeln('    /wait         end with "Press enter to continue" message');
+    Writeln('    /rebuild      force processing of all files');
+    Writeln('    /nocompile    process files only, don''t compile');
+    Writeln('    /nolinemaps   don''t generate line map files');
+    Writeln('    /noupdate     don''t update files modified data');
+    Writeln('    /proto <dir>  use an alternative unit templates folder');
+    Writeln('    /src <dir>    use an alternative source output folder');
+    Writeln('    /x:XXX        define template value XXX');
     Writeln('  xxmConv /install');
     Writeln('    registers a context-menu compile option on xxmp file type');
    end;
@@ -67,6 +69,7 @@ begin
         if s='/rebuild' then rebuild:=true else
         if s='/nocompile' then docompile:=false else
         if s='/nolinemaps' then dolinemaps:=false else
+        if s='/noupdate' then doupdate:=false else
         if s='/proto' then
          begin
           inc(i);
@@ -104,7 +107,7 @@ begin
             if docompile then
              begin
               Compile;
-              if not rebuild then Update;
+              if not(rebuild) and doupdate then Update;
              end;
           finally
             Free;

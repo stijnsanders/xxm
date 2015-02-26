@@ -396,7 +396,7 @@ begin
       else
        begin
         j:=i;
-        while (i<=Length(FURL)) and not(char(FURL[i]) in ['/','?','&','$','#']) do inc(i);
+        while (i<=Length(FURL)) and not(AnsiChar(FURL[i]) in ['/','?','&','$','#']) do inc(i);
         w:=Copy(FURL,j,i-j);
        end;
       wr:=true;

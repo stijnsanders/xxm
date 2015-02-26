@@ -33,7 +33,7 @@ begin
     for i:=0 to sl.Count-1 do
      begin
       s:=sl[i];
-      if (s<>'') and not(char(s[1]) in [';','#']) then
+      if (s<>'') and not(s[1] in [';','#']) then
        begin
         SetLength(Actions,j+1);
         case char(s[1]) of

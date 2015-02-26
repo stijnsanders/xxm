@@ -155,7 +155,7 @@ begin
     while (i<=l) and not(b and (FData[i]='[')) do
      begin
       b:=FData[i]='[';
-      if char(FData[i]) in [#13,#10] then
+      if FData[i] in [#13,#10] then
        begin
         inc(nx);
         if (FData[i]=#13) and (i<l) and (FData[i+1]=#10) then inc(i);

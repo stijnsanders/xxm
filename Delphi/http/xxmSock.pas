@@ -146,7 +146,7 @@ begin
   addr.port:=htons(port);
   for i:=0 to 11 do addr.data[i]:=0;
   if host<>'' then
-    if char(host[1]) in ['0'..'9'] then
+    if host[1] in ['0'..'9'] then
       addr.data[0]:=inet_addr(PAnsiChar(host))
     else
      begin
