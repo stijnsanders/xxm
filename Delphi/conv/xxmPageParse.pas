@@ -345,6 +345,7 @@ begin
              begin
               ps:=psHTML;//make loop skip
               inc(b1);
+              inc(b2);
               inc(a2);
              end;
            end;

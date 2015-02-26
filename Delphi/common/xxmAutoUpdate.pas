@@ -21,6 +21,7 @@ begin
   try
     if cardinal(GetTickCount-Entry.LastCheck)>NoNextUpdateAfter then
      begin
+      Entry.LastCheck:=GetTickCount;
       fn:=Entry.ModulePath;//force get from registry outside of lock
       i:=Length(fn);
       while (i<>0) and (fn[i]<>'.') do dec(i);
@@ -43,7 +44,6 @@ begin
              end;
            end;
         finally
-          Entry.LastCheck:=GetTickCount;
           Entry.Unlock;
         end;
        end;

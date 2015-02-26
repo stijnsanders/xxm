@@ -68,7 +68,6 @@ const
      end;
   end;
 
-
 begin
   Result:=true;//default;
   if (GetTickCount-Entry.LastCheck)>NoNextBuildAfter then
@@ -87,9 +86,12 @@ begin
           WebProject:=TXxmWebProject.Create(fn,DoBuildOutput,false);
           try
             b:=WebProject.CheckFiles(false,nil);
-            wsig:=GetFileSignature(WebProject.RootFolder+WebProject.ProjectFile);
-            if not(b) and (Entry.Signature<>wsig) then
-              b:=WebProject.GenerateProjectFiles(false,nil);
+            if not(b) then
+             begin
+              wsig:=GetFileSignature(WebProject.RootFolder+WebProject.ProjectFile);
+              if Entry.Signature<>wsig then
+                b:=WebProject.GenerateProjectFiles(false,nil);
+             end;
             if b or not(FileExists(fn)) then
              begin
               Entry.Release;
@@ -100,7 +102,7 @@ begin
                 WebProject.Update;
                 wsig:=GetFileSignature(WebProject.RootFolder+WebProject.ProjectFile);
                 Entry.Signature:=wsig;
-                //Entry.LastCheck:=GetTickCount;//moved to finally
+                Entry.LastCheck:=GetTickCount;
                end
               else
                begin
@@ -108,13 +110,14 @@ begin
                 Context.SendHTML(BuildError('bfail','',''));
                 //TODO: rig lastcheck to fail waiting threads?
                end;
-             end;
+             end
+            else
+              Entry.LastCheck:=GetTickCount;
           finally
             WebProject.Free;
           end;
         finally
           BuildOutput.Free;
-          Entry.LastCheck:=GetTickCount;
         end;
       except
         on e:EXxmWebProjectNotFound do Result:=true;//assert xxl only
