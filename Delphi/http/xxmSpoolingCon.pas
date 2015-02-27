@@ -97,7 +97,11 @@ begin
   if force then
     SafeFree(TInterfacedObject(FContexts[i].Context))
   else
-    (FContexts[i].Context as IUnknown)._Release;
+    try
+      (FContexts[i].Context as IUnknown)._Release;
+    finally
+      FContexts[i].Context:=nil;
+    end;
   if FContexts[i].BufferFreeWhenDone then
     FreeAndNil(FContexts[i].Buffer)
   else
@@ -197,7 +201,9 @@ begin
                   //silent
                 end;
                 DropContext(false,j);
-               end;
+               end
+              else
+                FContexts[j].Context.KeptCount:=0;
              end;
             //else raise?
            end;

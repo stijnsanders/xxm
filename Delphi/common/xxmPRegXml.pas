@@ -89,7 +89,10 @@ end;
 
 function TXxmProjectCacheEntry.GetExtensionMimeType(const x: AnsiString): AnsiString;
 begin
-  if (x='.xxl') or (x='.xxu') or (x='.exe') or (x='.dll') or (x='.xxmp') or (x='.udl') then //more? settings?
+  if (x='.xxl') or (x='.xxu') or (x='.xxmp') or (x='.xxlc')
+    or (x='.exe') or (x='.dll') or (x='.udl') //or (x='.pas')?
+    //more? settings?
+  then
     raise EXxmFileTypeAccessDenied.Create(SXxmFileTypeAccessDenied);
   Result:=inherited GetExtensionMimeType(x);
 end;
