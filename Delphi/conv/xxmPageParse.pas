@@ -272,7 +272,7 @@ begin
   FIndex:=0;
   TagInCode:=0;
   l:=Length(FData);
-  a1:=1;//counter warning
+  a1:=1;
   a2:=1;
   n1:=1;
   nx:=1;
@@ -280,7 +280,7 @@ begin
    begin
     //search for an open tag
     n1:=nx;
-    a2:=a1;
+    a1:=a2;
     if a1=TagInCode then
      begin
       TagInCode:=0;
@@ -317,6 +317,7 @@ begin
         inc(a2);
        end;
      end;
+    //open tag found, now look for a closing tag
     b1:=a2+1;
     b2:=b1;
     if Delim=Delim_AngleB then
@@ -329,11 +330,11 @@ begin
         a2:=b1;//inc(a2);
     if (Delim<>Delim_None) and (b1<=l) then
      begin
-      //open tag found, look for close tag (carefully: check strings and opening/closing braces and things)
       Delim:=Delim_None;
       sqd:=0;//square bracket depth
       CodeType:=CodeType_Normal;
       n2:=nx;
+      //detect '[[[]]' or '[[]]]' else ignore one '[' and retry
       repeat
         ps:=psUses;
         while (ps<>psBody) and (FData[b1]<>SectionGlyph[ps]) do inc(ps);
@@ -351,6 +352,7 @@ begin
            end;
         end;
       until ps<>psHTML;
+      //look for close tag (carefully: check strings and opening/closing braces and things)
       while (b2<=l)
         and not((Delim=Delim_SquareB) and (FData[b2]=']'))
         and not((Delim=Delim_AngleB) and (FData[b2]='<'))
@@ -396,6 +398,7 @@ begin
          end;
         inc(b2);
        end;
+      //found or at end of file?
       if b2>l then
        begin
         //end of file reached
@@ -405,7 +408,7 @@ begin
         a2:=b2;
        end
       else
-        if ((Delim<>Delim_None) and (a2<l)) or (b2>l) then
+        if (Delim<>Delim_None) and (a2<l) then
          begin
           //close tag found also
           case ps of
@@ -416,7 +419,7 @@ begin
             psBody:
               dec(b1);
           end;
-          if (Delim<>Delim_None) or (b2>l) then
+          if Delim<>Delim_None then
            begin
             AddSection(a1,a2-a1-1,n1,psHTML);
             inc(b1);
@@ -424,29 +427,32 @@ begin
               Delim_SquareB:
                begin
                 AddSection(b1,b2-b1-1,n2,ps);
-                a1:=b2+1;
+                a2:=b2+1;
                end;
               Delim_AngleB:
                begin
                 AddSection(b1,b2-b1-1,n2,ps);
-                a1:=b2;
+                a2:=b2;
                end;
               Delim_Stray:
                begin
                 AddSection(b1,b2-b1-2,n2,ps);
-                a1:=b2-2;
+                a2:=b2-2;
                end;
             end;
            end
           else
             AddSection(a1,a2-a1,n1,psHTML);
+          a1:=a2;
          end
         else
-          a1:=l+1;
-     end
-    else
-      a1:=a2;
+         begin
+          //no closing tag, but end of file reached, so no more sections to add
+          a2:=l+1;
+         end;
+     end;
    end;
+  //add trailing bit of HTML (if a1<l)
   AddSection(a1,l-a1+1,n1,psHTML);
   TotalLines:=nx;
 end;
