@@ -12,10 +12,10 @@ uses Windows, SysUtils, xxmCommonUtils;
 
 function AutoUpdate(Entry: TXxmProjectEntry; Context: IXxmContext; ProjectName: WideString): boolean;
 var
-  fn,fn1:AnsiString;
-  i:integer;
+  fn,fn1,s,s1:AnsiString;
+  i,lc:integer;
 const
-  NoNextUpdateAfter=1000;//TODO: setting!
+  NoNextUpdateAfter=5000;//TODO: setting!
 begin
   //fn:='['+ProjectName+']';
   try
@@ -23,15 +23,18 @@ begin
      begin
       Entry.LastCheck:=GetTickCount;
       fn:=Entry.ModulePath;//force get from registry outside of lock
+      s:=GetFileSignature(fn);
       i:=Length(fn);
       while (i<>0) and (fn[i]<>'.') do dec(i);
       fn1:=Copy(fn,1,i-1)+'.xxu';
-      if (GetFileSignature(fn)<>Entry.LoadSignature) or (GetFileSignature(fn1)<>'') then
+      s1:=GetFileSignature(fn1);
+      if (s<>Entry.LoadSignature) or (s1<>'') then
        begin
+        lc:=Entry.LoadCount;
         Entry.Lock;
         try
-          //check again for threads that were waiting for lock
-          if cardinal(GetTickCount-Entry.LastCheck)>NoNextUpdateAfter then
+          //check for multiple threads that were waiting for lock
+          if Entry.LoadCount=lc then
            begin
             Entry.Release;
             if GetFileSignature(fn1)<>'' then

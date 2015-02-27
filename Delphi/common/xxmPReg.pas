@@ -9,7 +9,7 @@ type
   private
     FName:WideString;
     FProject:IXxmProject;
-    FContextCount:integer;
+    FContextCount,FLoadCount:integer;
     FHandle:THandle;
     FLoadSignature:AnsiString;
     FCheckMutex:THandle;
@@ -40,6 +40,7 @@ type
     property ModulePath:WideString read GetModulePath;
     property Signature:AnsiString read FSignature write SetSignature;
     property LoadSignature:AnsiString read FLoadSignature;
+    property LoadCount:integer read FLoadCount;
     property AllowInclude:boolean read GetAllowInclude;
 
     //used by xxmContext
@@ -94,6 +95,7 @@ begin
   inherited Create;
   FName:=Name;
   FContextCount:=0;
+  FLoadCount:=0;
   FProject:=nil;
   FHandle:=0;
   FBufferSize:=0;
@@ -223,6 +225,8 @@ var
   lp:TXxmProjectLoadProc;
   i,r:DWORD;
 begin
+  //assert within Lock/Unlock
+  inc(FLoadCount);
   FLoadSignature:=GetFileSignature(FFilePath);
   if FLoadSignature='' then //if not(FileExists(FFilePath)) then
     raise EXxmModuleNotFound.Create(StringReplace(
