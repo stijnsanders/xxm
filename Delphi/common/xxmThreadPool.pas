@@ -19,14 +19,13 @@ type
 
   TXxmPageLoader=class(TThread)
   protected
-    FInUse:boolean;
     FNextJobEvent:THandle;
     procedure Execute; override;
   public
     constructor Create;
     destructor Destroy; override;
+    function InUse:boolean;
     procedure SignalNextJob;
-    property InUse:boolean read FInUse;
   end;
 
   TXxmPageLoaderPool=class(TObject)
@@ -128,11 +127,9 @@ begin
     Context:=PageLoaderPool.Unqueue;
     if Context=nil then
      begin
-      FInUse:=false;//used by PageLoaderPool.Queue
       //SetThreadName('(xxm)');
       ResetEvent(FNextJobEvent);
       WaitForSingleObject(FNextJobEvent,INFINITE);
-      FInUse:=true;
      end
     else
      begin
@@ -147,6 +144,12 @@ begin
      end;
    end;
   //CoUninitialize;//? hangs thread
+end;
+
+function TXxmPageLoader.InUse: boolean;
+begin
+  //thread is not in use when event non-signaled (and thread is waiting)
+  Result:=WaitForSingleObject(FNextJobEvent,0)=WAIT_OBJECT_0;
 end;
 
 procedure TXxmPageLoader.SignalNextJob;
