@@ -31,7 +31,7 @@ type
   TXxmPageLoaderPool=class(TObject)
   private
     FLoaders:array of TXxmPageLoader;
-    FLoaderSize:integer;
+    FLoaderSize,FLoaderCount:integer;
     FLock:TRTLCriticalSection;
     FQueueIn,FQueueOut:TXxmQueueContext;
     FEventsCtrl:TXxmEventsController;
@@ -136,7 +136,6 @@ begin
       //Context._AddRef;//_AddRef moved to TXxmPageLoaderPool.Queue
       try
         //SetThreadName('xxm:'+Context.FURL);
-        //TODO: if cardinal(GetTickCount-Context.Context.QueueSince)>?
         Context.Execute;//assert all exceptions handled!
       finally
         Context._Release;
@@ -164,6 +163,7 @@ constructor TXxmPageLoaderPool.Create(PoolMaxThreads:integer);
 begin
   inherited Create;
   FLoaderSize:=0;
+  FLoaderCount:=0;
   FQueueIn:=nil;
   FQueueOut:=nil;
   FEventsCtrl:=nil;
@@ -217,6 +217,7 @@ begin
           FLoaders[FLoaderSize].SignalNextJob;
           ThreadsClosed:=true;
           FLoaders[FLoaderSize]:=nil;
+          dec(FLoaderCount);
          end;
        end;
       SetLength(FLoaders,x);
@@ -230,9 +231,10 @@ end;
 
 procedure TXxmPageLoaderPool.Queue(Context:TXxmQueueContext);
 var
-  i:integer;
+  i,j:integer;
 begin
   //TODO: max on queue, fire 'server busy' when full?
+  i:=0;
   if Context<>nil then
    begin
     EnterCriticalSection(FLock);
@@ -253,17 +255,26 @@ begin
         FQueueIn:=Context;
        end;
 
-      //fire thread
-      //TODO: see if a rotary index matters in any way
-      i:=0;
-      while (i<FLoaderSize) and (FLoaders[i]<>nil) and FLoaders[i].InUse do inc(i);
-      if i<>FLoaderSize then
-        if FLoaders[i]=nil then
-          FLoaders[i]:=TXxmPageLoader.Create //start thread
-        else
-          FLoaders[i].SignalNextJob; //so it calls Unqueue
+      //find or fire thread
+      if FLoaderCount=0 then i:=0 else
+       begin
+        if i=0 then j:=FLoaderCount-1 else j:=i-1;
+        while (i<>j) and (FLoaders[i]<>nil)
+          and FLoaders[i].InUse do
+         begin
+          inc(i);
+          if i=FLoaderCount then i:=0;
+         end;
+        if (i=j) and (FLoaderCount<FLoaderSize) then i:=FLoaderCount;
+       end;
+      if FLoaders[i]=nil then
+       begin
+        FLoaders[i]:=TXxmPageLoader.Create; //start thread
+        inc(FLoaderCount);
+       end
+      else
+        FLoaders[i].SignalNextJob; //so it calls Unqueue
       //TODO: expire unused threads on low load
-
     finally
       LeaveCriticalSection(FLock);
     end;
