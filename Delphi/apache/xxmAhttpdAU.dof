@@ -121,7 +121,7 @@ Locale=1033
 CodePage=1252
 [Version Info Keys]
 CompanyName=
-FileDescription=xxm Apache 2.2 Module (AutoUpdate)
+FileDescription=xxm Apache httpd 2.2 Module (AutoUpdate)
 FileVersion=1.2.2.369
 InternalName=xxmApache
 LegalCopyright=

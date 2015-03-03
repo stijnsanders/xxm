@@ -311,7 +311,7 @@ begin
   r.fd_array[0]:=FSocket;
   x.fd_count:=1;
   x.fd_array[0]:=FSocket;
-  if select(FSocket+1,@r,nil,@x,nil)=SOCKET_ERROR then RaiseLastWSAError;
+  if select(FSocket,@r,nil,@x,nil)=SOCKET_ERROR then RaiseLastWSAError;
   if x.fd_count=1 then //if __WSAFDIsSet(FSocket,x) then
     raise ETcpSocketError.Create('Socket in error state');//?
   if r.fd_count=0 then //if not __WSAFDIsSet(FSocket,r) then
