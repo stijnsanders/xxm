@@ -350,10 +350,19 @@ begin
 end;
 
 procedure TXxmHttpContext.PostExecute;
+var
+  i:integer;
 begin
   case Next of
     ntNormal:
+     begin
+      //if (StatusCode<400) and (FHeaderSent=XxmHeaderSent) then?
+       begin
+        i:=1;
+        setsockopt(FSocket.Handle,SOL_SOCKET,SO_REUSEADDR,@i,4)
+       end;
       FSocket.Disconnect;
+     end;
     ntKeep,ntResume,ntResumeDrop:
       KeptConnections.Queue(Self);
   end;
