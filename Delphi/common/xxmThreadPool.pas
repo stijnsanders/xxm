@@ -123,25 +123,27 @@ begin
   CoInitialize(nil);
   SetErrorMode(SEM_FAILCRITICALERRORS);
   while not(Terminated) do
-   begin
-    Context:=PageLoaderPool.Unqueue;
-    if Context=nil then
-     begin
-      //SetThreadName('(xxm)');
-      ResetEvent(FNextJobEvent);
-      WaitForSingleObject(FNextJobEvent,INFINITE);
-     end
-    else
-     begin
-      //Context._AddRef;//_AddRef moved to TXxmPageLoaderPool.Queue
-      try
-        //SetThreadName('xxm:'+Context.FURL);
-        Context.Execute;//assert all exceptions handled!
-      finally
-        Context._Release;
-      end;
-     end;
-   end;
+    try
+      Context:=PageLoaderPool.Unqueue;
+      if Context=nil then
+       begin
+        //SetThreadName('(xxm)');
+        ResetEvent(FNextJobEvent);
+        WaitForSingleObject(FNextJobEvent,INFINITE);
+       end
+      else
+       begin
+        //Context._AddRef;//_AddRef moved to TXxmPageLoaderPool.Queue
+        try
+          //SetThreadName('xxm:'+Context.FURL);
+          Context.Execute;//assert all exceptions handled!
+        finally
+          Context._Release;
+        end;
+       end;
+    finally
+      //silent (log?)
+    end;
   //CoUninitialize;//? hangs thread
 end;
 
@@ -398,95 +400,97 @@ var
 begin
   x:=0;
   while not Terminated do
-   begin
-    if x<>0 then Sleep(x);
-    x:=250;//default
-    if FEventsIndex<>0 then
-     begin
-      EnterCriticalSection(FLock);
-      try
-        tc:=GetTickCount;
-        i:=0;
-        j:=FEventsIndex;
-        z:=0;
-        while i<FEventsIndex do
-         begin
-          if FEvents[i].Queue<>nil then
+    try
+      if x<>0 then Sleep(x);
+      x:=250;//default
+      if FEventsIndex<>0 then
+       begin
+        EnterCriticalSection(FLock);
+        try
+          tc:=GetTickCount;
+          i:=0;
+          j:=FEventsIndex;
+          z:=0;
+          while i<FEventsIndex do
            begin
-            y:=cardinal(tc-FEvents[i].CheckLast);
-            if y>FEvents[i].CheckInterval then
+            if FEvents[i].Queue<>nil then
              begin
-              if (y>z) or (j=FEventsIndex) then
+              y:=cardinal(tc-FEvents[i].CheckLast);
+              if y>FEvents[i].CheckInterval then
                begin
-                z:=y;
-                j:=i;
-                if FEvents[i].CheckInterval<x then x:=FEvents[i].CheckInterval;
-               end;
-             end
-            else
-              if y<x then x:=y;
+                if (y>z) or (j=FEventsIndex) then
+                 begin
+                  z:=y;
+                  j:=i;
+                  if FEvents[i].CheckInterval<x then x:=FEvents[i].CheckInterval;
+                 end;
+               end
+              else
+                if y<x then x:=y;
+             end;
+            inc(i);
            end;
-          inc(i);
-         end;
-        if j<>FEventsIndex then
-         begin
-          c:=FEvents[j].Queue;
-          try
-            //check event
-            pe:=FEvents[j].ProjectEntry.Project as IXxmProjectEvents2;
-            if pe.CheckEvent(FEvents[j].Key,FEvents[j].CheckInterval) then
-             begin
-              //resume
+          if j<>FEventsIndex then
+           begin
+            c:=FEvents[j].Queue;
+            try
+              //check event
+              pe:=FEvents[j].ProjectEntry.Project as IXxmProjectEvents2;
+              if pe.CheckEvent(FEvents[j].Key,FEvents[j].CheckInterval) then
+               begin
+                //resume
+                FEvents[j].Queue:=nil;
+                while c<>nil do
+                 begin
+                  c1:=c;
+                  c:=c.QueueIn;
+                  c1.Resume(false);
+                 end;
+               end
+              else
+               begin
+                //drop any past SuspendMax or that lost connection
+                c1:=nil;
+                while c<>nil do
+                  if not(c.Connected) or
+                    ((c.SuspendMax<>0) and ((integer(tc)-integer(c.SuspendMax)>0))) then
+                   begin
+                    if c1=nil then FEvents[j].Queue:=c.QueueIn else c1.QueueIn:=c.QueueIn;
+                    c.Resume(true);
+                    if c1=nil then c:=FEvents[j].Queue else c:=c1.QueueIn;
+                   end
+                  else
+                   begin
+                    c1:=c;
+                    c:=c.QueueIn;
+                   end;
+               end;
+            except
+              //TODO: HandleException(?
+              //drop all
               FEvents[j].Queue:=nil;
               while c<>nil do
                begin
                 c1:=c;
                 c:=c.QueueIn;
-                c1.Resume(false);
+                c1.Resume(true);
                end;
-             end
-            else
-             begin
-              //drop any past SuspendMax or that lost connection
-              c1:=nil;
-              while c<>nil do
-                if not(c.Connected) or
-                  ((c.SuspendMax<>0) and ((integer(tc)-integer(c.SuspendMax)>0))) then
-                 begin
-                  if c1=nil then FEvents[j].Queue:=c.QueueIn else c1.QueueIn:=c.QueueIn;
-                  c.Resume(true);
-                  if c1=nil then c:=FEvents[j].Queue else c:=c1.QueueIn;
-                 end
-                else
-                 begin
-                  c1:=c;
-                  c:=c.QueueIn;
-                 end;
-             end;
-          except
-            //TODO: HandleException(?
-            //drop all
-            FEvents[j].Queue:=nil;
-            while c<>nil do
-             begin
-              c1:=c;
-              c:=c.QueueIn;
-              c1.Resume(true);
-             end;
-          end;
-          try
-            pe:=nil;
-          except
-            pointer(pe):=nil;//silent
-          end;
-          if FEvents[j].Queue<>nil then
-            FEvents[j].CheckLast:=GetTickCount;
-         end;
-      finally
-        LeaveCriticalSection(FLock);
-      end;
-     end;
-   end;
+            end;
+            try
+              pe:=nil;
+            except
+              pointer(pe):=nil;//silent
+            end;
+            if FEvents[j].Queue<>nil then
+              FEvents[j].CheckLast:=GetTickCount;
+           end;
+        finally
+          LeaveCriticalSection(FLock);
+        end;
+       end;
+    finally
+      //silent (log?)
+    end;
 end;
 
 { TXxmQueueContext }
