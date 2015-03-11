@@ -189,7 +189,13 @@ begin
                 if FContexts[j].DataLeft>dSize then l:=dSize
                   else l:=FContexts[j].DataLeft;
                 if l<>0 then l:=FContexts[j].Buffer.Read(d[0],l);
-                if (l=0) or (FContexts[j].Context.Socket.SendBuf(d[0],l)<>l) then
+                if l<>0 then
+                  try
+                    if FContexts[j].Context.Socket.SendBuf(d[0],l)<>l then l:=0;
+                  except
+                    on ETcpSocketError do l:=0;
+                  end;
+                if l=0 then
                   DropContext(true,j)//raise?
                 else
                  begin

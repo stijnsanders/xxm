@@ -28,11 +28,13 @@ type
     end;
     FRegFilePath,FRegSignature,FDefaultProject,FSingleProject:AnsiString;
     FRegLastCheckTC:cardinal;
+    FFavIcon:OleVariant;
     function FindProject(const Name:WideString):integer;
     function GetRegistrySignature: AnsiString;
     function GetRegistryXML: IXMLDOMElement;
     procedure SetSignature(const Name: WideString;
       const Value: AnsiString);
+    procedure LoadFavIcon(const FilePath: string);
   public
     constructor Create;
     destructor Destroy; override;
@@ -53,7 +55,7 @@ var
 
 implementation
 
-uses Registry, Variants;
+uses Registry, Variants, Classes, xxmHeaders, xxmContext;
 
 resourcestring
   SXxmProjectRegistryError='Could not open project registry "__"';
@@ -62,6 +64,7 @@ resourcestring
 
 const
   XxmRegFileName='xxm.xml';
+  XxmFavIconFileName='favicon.ico';//'xxm.ico'?
   XxmRegCheckIntervalMS=1000;
 
 {
@@ -114,6 +117,9 @@ end;
 constructor TXxmProjectCacheXml.Create;
 var
   i:integer;
+  r:TResourceStream;
+const
+  RT_HTML = MakeIntResource(23);
 begin
   inherited;
   //assert coinitialize called?
@@ -132,6 +138,16 @@ begin
   //settings?
 
   CheckRegistry;
+
+  r:=TResourceStream.Create(HInstance,'favicon',RT_HTML);
+  try
+    i:=r.Size;
+    FFavIcon:=VarArrayCreate([0,i-1],varByte);
+    r.Read(VarArrayLock(FFavIcon)^,i);
+    VarArrayUnlock(FFavIcon);
+  finally
+    r.Free;
+  end;
 end;
 
 destructor TXxmProjectCacheXml.Destroy;
@@ -326,6 +342,7 @@ begin
               FProjects[i].Alias:='';
               FreeAndNil(FProjects[i].Entry);
              end;
+          LoadFavIcon(VarToStr(y.getAttribute('SingleProject')));
          end;
       end;
     finally
@@ -425,7 +442,18 @@ begin
       if (i<=l) and (URI[i]='/') then x:='' else x:='/';
       Context.Redirect('/'+FDefaultProject+x+Copy(URI,i,l-i+1),true);
      end;
-    if (i>l) and (l>1) then Context.Redirect(URI+'/',true) else
+    if (i>l) and (l>1) then
+      if URI='/favicon.ico' then
+       begin
+        Context.ContentType:='image/x-icon';
+        (Context as IxxmHttpHeaders).ResponseHeaders['Content-Length']:=
+          IntToStr(VarArrayHighBound(FFavIcon,1)+1);
+        Context.SendHTML(FFavIcon);
+        raise EXxmPageRedirected.Create(URI);
+       end
+      else
+        Context.Redirect(URI+'/',true)
+    else
       if (URI[i]='/') then inc(i);
     Result:=true;
    end
@@ -438,6 +466,25 @@ begin
   while (i<=l) and not(URI[i] in ['?','&','$','#']) do inc(i);
   FragmentName:=URLDecode(Copy(URI,j,i-j));
   if (i<=l) then inc(i);
+end;
+
+procedure TXxmProjectCacheXml.LoadFavIcon(const FilePath:string);
+var
+  f:TFileStream;
+  i:integer;
+begin
+  if FilePath<>'' then
+   begin
+    f:=TFileStream.Create(FilePath,fmOpenRead or fmShareDenyWrite);
+    try
+      i:=f.Size;
+      FFavIcon:=VarArrayCreate([0,i-1],varByte);
+      f.Read(VarArrayLock(FFavIcon)^,i);
+      VarArrayUnlock(FFavIcon);
+    finally
+      f.Free;
+    end;
+   end;
 end;
 
 initialization
