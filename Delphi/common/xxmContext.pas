@@ -356,6 +356,7 @@ begin
       //TODO: Cache-Control max-age (and others?), other 'If-'s?
       if (y<>'') and (GetRequestHeader('If-Modified-Since')=y) then
        begin
+        CloseHandle(fh);
         ForceStatus(304,'Not Modified');
         //AddResponseHeader('Content-Length',?
         SendHeader;
