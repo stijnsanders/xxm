@@ -222,6 +222,7 @@ end;
 
 function TXxmProjectEntry.LoadProject: IXxmProject;
 var
+  fn,d:WideString;
   lp:TXxmProjectLoadProc;
   i,r:DWORD;
 begin
@@ -232,7 +233,7 @@ begin
     raise EXxmModuleNotFound.Create(StringReplace(
       SXxmModuleNotFound,'__',FFilePath,[]));
   if not(FLoadCopy and GlobalAllowLoadCopy) then
-    FHandle:=LoadLibraryW(PWideChar(FFilePath))
+    fn:=FFilePath
   else
    begin
     FLoadPath:=Copy(FFilePath,1,Length(FFilePath)-4)+
@@ -261,7 +262,19 @@ begin
         //else assert files are equal
        end;
      end;
-    FHandle:=LoadLibraryW(PWideChar(FLoadPath));
+    fn:=FLoadPath;
+   end;
+  FHandle:=LoadLibraryW(PWideChar(fn));
+  if (FHandle=0) and (GetLastError=ERROR_MOD_NOT_FOUND) then
+   begin
+    //tried SetDllDirectory, doesn't work...
+    SetLength(d,MAX_PATH);
+    SetLength(d,GetCurrentDirectoryW(MAX_PATH,PWideChar(d)));
+    i:=Length(fn);
+    while (i<>0) and (fn[i]<>'\') do dec(i);
+    SetCurrentDirectoryW(PWideChar(Copy(fn,1,i-1)));
+    FHandle:=LoadLibraryW(PWideChar(fn));
+    SetCurrentDirectoryW(PWideChar(d));
    end;
   if FHandle=0 then
     raise EXxmProjectLoadFailed.Create(SXxmLoadProjectLoadFailed+
