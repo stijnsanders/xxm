@@ -52,15 +52,15 @@
 <p>When the project is built into a library, following files are created:</p>
 <ul>
 <li>a directory "src", containing a .pas file for every .xxm and .xxmi file, and the Delphi project files (.dpr, .dof, .cfg)</li>
-<li>a project class definition unit, typically named "xxmp.pas"</li>
+<li>a project class definition unit (typically named "xxmp.pas")</li>
 <li>a compiled xxm library ".xxl"</li>
 </ul>
 
 <p>To transport a website into a live environment, copy only these files:</p>
 <ul>
 <li>the xxm library ".xxl" (AutoUpdate implementations check the existance of a ".xxu" file to update the live ".xxl" with between requests)</li>
-<li>any files the library needs: configuration files, database or datalink files, ...</li>
-<li>any statis files the website requires: css, graphics, client-side script, downloads...</li>
+<li>any files the library needs: configuration files, database or datalink files, DLLs, ...</li>
+<li>any static files the website requires: css, graphics, client-side script, downloads...</li>
 </ul>
 
 <p class="title">Fragment</p>
@@ -80,7 +80,7 @@ A code section may have an alternate destination by starting with one of these c
 <dl>
 <dt><code>[[=i]]</code></dt><dd><b>send:</b> the expression is evaluated and sent to the context.</dd>
 <dt><code>[[#x]]</code></dt><dd><b>send HTML:</b> the expression is evaluated and sent to the context,
-without converting the text into HTML (i.e.: replacing angled brackets and ampersands into HTML code)
+without converting the text into HTML (i.e.: without replacing angled brackets "<code>&lt; &gt;</code>" and ampersands into HTML code)
 <br />
 <b style="color:red;">!!!:</b> to prevent script injection, it is important
 that any variable data is properly encoded. Use the <a href="#htmlencode"><code>HTMLEncode</code></a> function.
