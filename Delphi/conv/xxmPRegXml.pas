@@ -20,7 +20,7 @@ type
     function GetExtensionMimeType(const x: AnsiString): AnsiString; override;
     function GetAllowInclude: boolean; override;
     function LoadProject: IXxmProject; override;
-  published
+  public
     constructor Create(const Name: WideString);
     destructor Destroy; override;
   end;

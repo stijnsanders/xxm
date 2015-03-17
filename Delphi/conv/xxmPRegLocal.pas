@@ -27,9 +27,8 @@ type
     function GetAllowInclude: Boolean; override;
     procedure SetSignature(const Value: String); override;
     function LoadProject: IXxmProject; override;
-  published
-    constructor Create(const Name:WideString);
   public
+    constructor Create(const Name:WideString);
     function GetSessionCookie(const Name: WideString): WideString; virtual;
     procedure SetSessionCookie(const Name, Value: WideString);
     function CookieFile(const Name:AnsiString):AnsiString;

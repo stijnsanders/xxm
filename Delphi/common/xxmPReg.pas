@@ -27,12 +27,13 @@ type
     function GetExtensionMimeType(const x:AnsiString): AnsiString; virtual;
     function GetAllowInclude:boolean; virtual; abstract;
     property FilePath: WideString read FFilePath;
-  published
-    constructor Create(const Name: WideString);
-    destructor Destroy; override;
   public
     //used by auto-build/auto-update
     LastCheck:cardinal;
+
+    constructor Create(const Name: WideString);
+    destructor Destroy; override;
+
     procedure Lock; //used by auto-build/auto-update
     procedure Unlock; //used by auto-build/auto-update
     procedure Release; //virtual;?

@@ -12,7 +12,7 @@ type
     procedure SetSignature(const Value: AnsiString); override;
     function GetExtensionMimeType(const x: AnsiString): AnsiString; override;
     function GetAllowInclude: boolean; override;
-  published
+  public
     constructor Create(const Name, FilePath: WideString;
       LoadCopy, AllowInclude: boolean);
     destructor Destroy; override;
