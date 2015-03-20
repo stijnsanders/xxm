@@ -551,7 +551,7 @@ var
      end;
   end;
 
-  function CountEOLs(s:AnsiString):integer;
+  function CountEOLs(const s:AnsiString):integer;
   var
     i,l:integer;
   begin
@@ -560,7 +560,7 @@ var
     for i:=1 to l-1 do if (s[i]=#13) and (s[i+1]=#10) then inc(Result);
   end;
 
-  procedure ParseParserValue(const Code: string);
+  procedure ParseParserValue(const Code: AnsiString);
   var
     ps:TXxmPageSection;
     pv:TXxmPageParserValues;
@@ -586,10 +586,10 @@ var
           ')':inc(pv);//pv:=Succ(pv);//close
           else raise Exception.Create('Use "(" or ")" to define opening and closing code');
         end;
-        FParserValues[pv].Code:=StringReplace(StringReplace(
-          Copy(Code,3,Length(Code)-2),
+        FParserValues[pv].Code:=AnsiString(StringReplace(StringReplace(
+          string(Copy(Code,3,Length(Code)-2)),
           '$v',FParserValues[pv].Code,[rfReplaceAll]),
-          '$d',FDefaultParserValues[pv].Code,[rfReplaceAll]);
+          '$d',FDefaultParserValues[pv].Code,[rfReplaceAll]));
         FParserValues[pv].EOLs:=CountEOLs(FParserValues[pv].Code);
        end;
      end;

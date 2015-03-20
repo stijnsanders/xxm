@@ -1021,7 +1021,7 @@ begin
       SetLength(t,l div 2);
       while i<=l do
        begin
-        case char(s[i]) of
+        case s[i] of
           'A'..'Z':a:=byte(s[i])-65;
           'a'..'z':a:=byte(s[i])-71;
           '0'..'9':a:=byte(s[i])+4;
@@ -1033,7 +1033,7 @@ begin
         inc(i);
         if i<=l then
          begin
-          case char(s[i]) of
+          case s[i] of
             'A'..'Z':b:=byte(s[i])-65;
             'a'..'z':b:=byte(s[i])-71;
             '0'..'9':b:=byte(s[i])+4;
@@ -1050,7 +1050,7 @@ begin
           b:=0;//counter warning
         if i<=l then
          begin
-          case char(s[i]) of
+          case s[i] of
             'A'..'Z':a:=byte(s[i])-65;
             'a'..'z':a:=byte(s[i])-71;
             '0'..'9':a:=byte(s[i])+4;
@@ -1068,7 +1068,7 @@ begin
          end;
         if i<=l then
          begin
-          case char(s[i]) of
+          case s[i] of
             'A'..'Z':b:=byte(s[i])-65;
             'a'..'z':b:=byte(s[i])-71;
             '0'..'9':b:=byte(s[i])+4;

@@ -24,7 +24,7 @@ var
   wsig,fn:AnsiString;
   b:boolean;
 const
-  RT_HTML=PAnsiChar(23);//MakeIntResource(23);
+  RT_HTML=PChar(23);//MakeIntResource(23);
   NoNextBuildAfter=5000;//TODO: setting!
 
   function BuildError(const res, val1, val2: AnsiString): AnsiString;
@@ -53,7 +53,7 @@ const
       if j<l then
        begin
         inc(j);
-        case char(s[j]) of
+        case s[j] of
           '1':Result:=Result+HTMLEncode(val1);
           '2':Result:=Result+HTMLEncode(val2);
           'L':Result:=Result+WebProject.ResolveErrorLines(BuildOutput.DataString);

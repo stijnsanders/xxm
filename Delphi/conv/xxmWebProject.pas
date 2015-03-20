@@ -712,7 +712,7 @@ var
   h1,h2:THandle;
   sa:TSecurityAttributes;
   f:TFileStream;
-  d:array[0..$FFF] of char;
+  d:array[0..$FFF] of AnsiChar;
   procedure GetNodesText(element: IXMLDOMElement; xpath, prefix: AnsiString);
   var
     xl:IXMLDOMNodeList;
