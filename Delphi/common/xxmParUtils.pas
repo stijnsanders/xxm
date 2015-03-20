@@ -106,13 +106,14 @@ type
     procedure Flush;
     procedure SkipWhiteSpace;
   public
-    constructor Create(Source: TStream; DataProgressAgent, FileProgressAgent: IxxmUploadProgressAgent;
-      FileProgressStep: integer);
+    constructor Create(Source: TStream; DataProgressAgent,
+      FileProgressAgent: IxxmUploadProgressAgent; FileProgressStep: integer);
     destructor Destroy; override;
     procedure CheckBoundary(var Boundary: AnsiString);
     function GetHeader(var Params: TParamIndexes): AnsiString;
-    function GetString(Boundary: AnsiString): AnsiString;
-    procedure GetData(Boundary, FieldName, FileName: AnsiString; var Pos: integer;var Len: integer);
+    function GetString(const Boundary: AnsiString): AnsiString;
+    procedure GetData(const Boundary, FieldName, FileName: AnsiString;
+      var Pos: integer; var Len: integer);
     function MultiPartDone: boolean;
   end;
 
@@ -429,7 +430,7 @@ begin
   Flush;
 end;
 
-function TStreamNozzle.GetString(Boundary: AnsiString): AnsiString;
+function TStreamNozzle.GetString(const Boundary: AnsiString): AnsiString;
 var
   l,p,q:integer;
 begin
@@ -449,7 +450,8 @@ begin
   Flush;
 end;
 
-procedure TStreamNozzle.GetData(Boundary, FieldName, FileName: AnsiString; var Pos: integer; var Len: integer);
+procedure TStreamNozzle.GetData(const Boundary, FieldName, FileName: AnsiString;
+  var Pos: integer; var Len: integer);
 var
   l,p,x,s:integer;
 begin

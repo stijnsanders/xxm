@@ -55,8 +55,8 @@ type
     function GetSize: Integer;
     function GetMimeType: WideString;
   public
-    constructor Create(Owner:TXxmReqPars;const Name:WideString;
-      const Origin,MimeType:AnsiString; Stream:TStream;Pos,Len:integer);
+    constructor Create(Owner: TXxmReqPars; const Name, Origin: WideString;
+      const MimeType: AnsiString; Stream: TStream; Pos, Len: integer);
     property Size:integer read GetSize;
     property MimeType:WideString read GetMimeType;
     procedure SaveToFile(FilePath: AnsiString);
@@ -256,7 +256,9 @@ begin
           if pm='' then Add(TXxmReqParPost.Create(Self,px,sn.GetString(pb))) else
            begin
             sn.GetData(pb,px,pf,p,q);
-            Add(TXxmReqParPostFile.Create(Self,px,pf,pm,ps,p,q));
+            Add(TXxmReqParPostFile.Create(Self,px,
+              UTF8ToWideString(pf),//TODO: encoding from header?
+              pm,ps,p,q));
            end;
 
          end;
@@ -368,8 +370,9 @@ end;
 
 { TXxmReqParPostFile }
 
-constructor TXxmReqParPostFile.Create(Owner: TXxmReqPars; const Name: WideString;
-  const Origin, MimeType: AnsiString; Stream: TStream; Pos, Len: integer);
+constructor TXxmReqParPostFile.Create(Owner: TXxmReqPars;
+  const Name, Origin: WideString; const MimeType: AnsiString;
+  Stream: TStream; Pos, Len: integer);
 begin
   inherited Create(Owner,Name,Origin);
   FMimeType:=MimeType;
