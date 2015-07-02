@@ -148,7 +148,7 @@ begin
   for i:=0 to 11 do addr.data[i]:=0;
   if host<>'' then
     if host[1] in ['0'..'9'] then
-      addr.data[0]:=inet_addr(PAnsiChar(host))
+      PCardinal(@addr.data[0])^:=inet_addr(PAnsiChar(host))
     else
      begin
       //TODO: getaddrinfo
@@ -217,7 +217,7 @@ end;
 
 function TTcpSocket.GetAddress: string;
 begin
-  Result:=inet_ntoa(FAddr.data[0]);
+  Result:=inet_ntoa(PCardinal(@FAddr.data[0])^);
 end;
 
 function TTcpSocket.GetHostName: string;
@@ -242,7 +242,7 @@ begin
        end;
      end
     else
-      Result:=inet_ntoa(FAddr.data[0])
+      Result:=inet_ntoa(PCardinal(@FAddr.data[0])^)
   else
     Result:=e.h_name;
 end;
