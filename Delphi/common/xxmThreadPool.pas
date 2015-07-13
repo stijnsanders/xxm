@@ -105,8 +105,7 @@ constructor TXxmPageLoader.Create;
 begin
   inherited Create(false);
   //FInUse:=false;
-  FNextJobEvent:=CreateEventA(nil,true,false,
-    PAnsiChar('xxm:PageLoader:NextJob:'+IntToHex(ThreadID,8)));
+  FNextJobEvent:=CreateEvent(nil,true,false,nil);
 end;
 
 destructor TXxmPageLoader.Destroy;

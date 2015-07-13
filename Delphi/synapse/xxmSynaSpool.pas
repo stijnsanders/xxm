@@ -40,8 +40,7 @@ begin
   FContextIndex:=0;
   FContextSize:=0;
   InitializeCriticalSection(FLock);
-  FAddEvent:=CreateEventA(nil,true,false,
-    PAnsiChar('xxmHttp:SpoolingConnection:'+IntToHex(ThreadID,8)));
+  FAddEvent:=CreateEvent(nil,true,false,nil);
 end;
 
 destructor TXxmSpoolingConnections.Destroy;

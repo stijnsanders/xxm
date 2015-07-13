@@ -5,13 +5,14 @@ interface
 uses SysUtils, Classes;
 
 {$D-}
+{$L-}
 
 type
   PSocketAddress=^TSocketAddress;
   TSocketAddress=record
     family: word;
     port: word;
-    data: array[0..11] of word;
+    data1,data2,data3,data4:cardinal;
   end;
 
   THostEntry=record
@@ -141,21 +142,23 @@ procedure PrepareSockAddr(var addr: TSocketAddress; family, port: word;
   const host: AnsiString);
 var
   e:PHostEntry;
-  i:integer;
 begin
   addr.family:=family;//AF_INET
   addr.port:=htons(port);
-  for i:=0 to 11 do addr.data[i]:=0;
+  addr.data1:=0;
+  addr.data2:=0;
+  addr.data3:=0;
+  addr.data4:=0;
   if host<>'' then
     if host[1] in ['0'..'9'] then
-      PCardinal(@addr.data[0])^:=inet_addr(PAnsiChar(host))
+      addr.data1:=inet_addr(PAnsiChar(host))
     else
      begin
       //TODO: getaddrinfo
       e:=gethostbyname(PAnsiChar(host));
       if e=nil then RaiseLastWSAError;
       addr.family:=e.h_addrtype;
-      Move(e.h_addr^[0],addr.data[0],e.h_length);
+      Move(e.h_addr^[0],addr.data1,e.h_length);
      end;
 end;
 
@@ -217,32 +220,37 @@ end;
 
 function TTcpSocket.GetAddress: string;
 begin
-  Result:=inet_ntoa(PCardinal(@FAddr.data[0])^);
+  Result:=inet_ntoa(FAddr.data1);
 end;
 
 function TTcpSocket.GetHostName: string;
+type
+  TWArr=array[0..7] of word;
+  PWArr=^TWArr;
 var
   e:PHostEntry;
   i:integer;
+  x:PWArr;
 begin
-  e:=gethostbyaddr(@FAddr.data[0],SizeOf(TSocketAddress),FAddr.family);
+  e:=gethostbyaddr(@FAddr.data1,SizeOf(TSocketAddress),FAddr.family);
   if e=nil then
     //inet_ntop?
     if FAddr.family=AF_INET6 then
      begin
-      i:=3;
-      if FAddr.data[i]=0 then Result:=':' else
-        Result:=Result+IntToHex(FAddr.data[i],4)+':';
-      while (i<10) do
+      x:=PWArr(@FAddr.data1);
+      if x[0]=0 then Result:=':' else
+        Result:=Result+IntToHex(x[0],4)+':';
+      i:=1;
+      while (i<8) do
        begin
-        while (i<10) and (FAddr.data[i]=0) do inc(i);
-        if i=10 then Result:=Result+':' else
-          Result:=Result+':'+IntToHex(FAddr.data[i],4);
+        while (i<8) and (x[i]=0) do inc(i);
+        if i=8 then Result:=Result+':' else
+          Result:=Result+':'+IntToHex(x[i],4);
         inc(i);
        end;
      end
     else
-      Result:=inet_ntoa(PCardinal(@FAddr.data[0])^)
+      Result:=inet_ntoa(FAddr.data1)
   else
     Result:=e.h_name;
 end;

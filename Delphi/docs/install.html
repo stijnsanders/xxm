@@ -29,6 +29,7 @@ Depending on what you require some library or executable may be better than the 
 <li><a href="#httpapi">xxmHSys1</a>: HTTPAPI v1 <span class="newver">1.1.5</span></li>
 <li><a href="#httpapi">xxmHSys2</a>: HTTPAPI v2 <span class="newver">1.1.7</span></li>
 <li><a href="#cgi">xxmCGI</a>: CGI with Apache httpd, IIS, ...</li>
+<li><a href="#scgi">xxmSCGI</a>: SCGI with nginx, Lighttpd, ... <span class="newver">1.2.3	</span></li>
 <li><a href="#http">xxmHttp</a>: stand-alone</li>
 </ul>
 <p><b>tools:</b></p>
@@ -245,6 +246,56 @@ xxmHSys2 (HTTPAPI v2) <span class="newver">1.1.7</span>
 <p>*: assuming the computer has a user logged on to the console by default.</p>
 <p>if <code>xxmCGI.exe</code> can't connect to a running xxmHost process, it responds to all requests with this message:</p>
 <pre>Error connecting to xxm request handler process</pre>
+
+<p class="title"><a name="scgi"></a>xxmSCGI (SCGI with nginx, Lighttpd, ...) <span class="newver">1.2.3</span></p>
+<p>xxmSCGI handlers accept incoming <a href="http://www.python.ca/scgi/">SCGI</a> connections to serve dynamic HTTP requests over.</p>
+
+<dl>
+<dt>xxmSCGI.exe</dt>
+<dd>responds to requests over SCGI on a local post, project libraries loaded can keep session data in memory</dd>
+<dt>xxmSCGIDev.exe</dt>
+<dd>xxmSCGIDev checks the project's xxmp file if any files have changed. If so, it unloads the project, generates source code where needed, compiles the project and reloads it. If files were added or removed, they are added to the xxmp file.<br />
+<b>Please don't use <code>xxmSCGIDev.exe</code> in a live environment.</b></dd>
+<dt>xxmSCGIAU.exe</dt>
+<dd>xxmSCGIAU checks if there is a .xxu file in the directory of the .xxl file, and if so, unloads the project, replaces the xxl file and reloads the project (auto-update).</dd>
+</dl>
+
+<p>xxmSCGI resolves projects by name using the projects definition file <code>xxm.xml</code>, in the same directory as the xxmSCGI executable. An example <code>xxm.xml</code> with a single project definition may look like this:<br />
+</p><pre>&lt;ProjectRegistry&gt;
+  &lt;Project Name=&quot;demo&quot;&gt;
+    &lt;ModulePath&gt;C:\xxm\demo\demo.xxl&lt;/ModulePath&gt;
+  &lt;/Project&gt;
+&lt;/ProjectRegistry&gt;
+</pre>
+<p>A project entry may have an <code>Alias</code> attribute to have a project name map to the same library as another project:</p>
+<pre>  &lt;Project Name=&quot;otherdemo&quot; Alias=&quot;demo&quot;&gt;&lt;/Project&gt;</pre>
+<p>To disable creating a copy of the <code>.xxl</code> file to load, add attribute <code>LoadCopy="0"</code> to the project entry.</p>
+<p>If you want to host only one single xxm project, add a <code>SingleProject</code> attribute to the ProjectRegistry document element, to refer to a project definition.</p>
+
+<p><b>follow these instructions to install <code>xxmSCGI.exe</code>:</b></p>
+<p class="title2">nginx <a href="http://nginx.org/en/docs/http/ngx_http_scgi_module.html">...</a></p>
+
+<p>Configure certain requests to be handled by the SCGI module, by adding code like this to <code>nginx.conf</code>:</p>
+<pre>
+location /test/ {
+    include   scgi_params;
+    scgi_pass localhost:4000;
+}
+</pre>
+<p>Be sure to start an xxmSCGI handler, optionally with a <code>Port=</code> parameter (default 4000).</p>
+
+<p class="title2">Lighttpd <a href="http://redmine.lighttpd.net/projects/lighttpd/wiki/Docs_ModSCGI">...</a></p>
+
+<p>Configure certain requests to be handled by the SCGI module, by adding code like this to <code>lighttpd.conf</code>:</p>
+<pre>
+scgi.server = ( "/test/" =>
+      (( "host" => "127.0.0.1",
+         "port" => 4000,
+         "check-local" => "disable"
+      ))
+    )
+</pre>
+<p>Be sure to start an xxmSCGI handler, optionally with a <code>Port=</code> parameter (default 4000).</p>
 
 <p class="title"><a name="http"></a>xxmHttp (stand-alone)</p>
 <p>Use one of the xxmHttp installations to run xxm projects from a process that handles HTTP requests directly</p>

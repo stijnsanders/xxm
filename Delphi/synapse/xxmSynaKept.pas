@@ -30,8 +30,7 @@ begin
   Priority:=tpLower;//?
   FContexts:=TList.Create;
   InitializeCriticalSection(FLock);
-  FQueueEvent:=CreateEventA(nil,true,false,
-    PAnsiChar('xxmHttp:KeepConnection:'+IntToHex(ThreadID,8)));
+  FQueueEvent:=CreateEvent(nil,true,false,nil);
 end;
 
 destructor TXxmKeptConnections.Destroy;

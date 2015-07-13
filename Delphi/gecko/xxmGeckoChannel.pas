@@ -503,8 +503,7 @@ constructor TXxmGeckoLoader.Create;
 begin
   inherited Create(false);
   //FInUse:=false;
-  FNextJobEvent:=CreateEventA(nil,true,false,
-    PAnsiChar('xxmGecko:NextJob:'+IntToHex(GetCurrentThreadId,8)));
+  FNextJobEvent:=CreateEvent(nil,true,false,nil);
 end;
 
 destructor TXxmGeckoLoader.Destroy;

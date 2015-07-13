@@ -370,7 +370,7 @@ end;
 procedure TXxmSCGIContext.HandleRequest;
 var
   i,j,k,l,m,n,o:integer;
-  x,y:AnsiString;
+  x,y,z:AnsiString;
   s:TStream;
   si:int64;
   tc:cardinal;
@@ -457,7 +457,7 @@ begin
        end;
     until m=-1;
 
-    x:=Copy(x,j,l-j+1);
+    z:=Copy(x,j,l-j+1);
     FReqHeaders:=TRequestHeaders.Create(y);
     (FReqHeaders as IUnknown)._AddRef;
 
@@ -469,7 +469,7 @@ begin
     if y='' then y:='localhost';//if not port=80 then +':'+?
     FRedirectPrefix:=LowerCase(Copy(x,1,i-1))+'://'+y;
 
-    x:=GetCGIValue('SCRIPT_NAME');
+    x:='';//GetCGIValue('SCRIPT_NAME');
     y:=GetCGIValue('REQUEST_URI');
     l:=Length(x);
     if x=Copy(y,1,l) then
@@ -526,7 +526,7 @@ begin
        end;
       s.Size:=si;
       s.Position:=0;
-      FPostData:=THandlerReadStreamAdapter.Create(FSocket,si,s,x);
+      FPostData:=THandlerReadStreamAdapter.Create(FSocket,si,s,z);
      end;
 
     if FVerb='OPTIONS' then

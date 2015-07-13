@@ -46,7 +46,7 @@ type
     FQueryStringIndex:integer;
     FResumeFragment,FDropFragment:WideString;
     FResumeValue,FDropValue:OleVariant;
-    function GetCGIValue(Name:AnsiString):AnsiString;
+    function GetCGIValue(const Name:AnsiString):AnsiString;
   protected
     function SendData(const Buffer; Count: LongInt): LongInt;
     procedure DispositionAttach(FileName: WideString); override;
@@ -387,7 +387,7 @@ begin
   Result:=FResHeaders;
 end;
 
-function TXxmHostedContext.GetCGIValue(Name: AnsiString): AnsiString;
+function TXxmHostedContext.GetCGIValue(const Name: AnsiString): AnsiString;
 var
   i:integer;
 begin

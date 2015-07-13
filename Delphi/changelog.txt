@@ -1,11 +1,13 @@
 v1.2.3.400?
 - (//TODO: HTTP2)
 - (//TODO: WebSockets)
+- SCGI handler: xxmSCGI*
 - serve handler's icon for "/favicon.ico" (project registry override)
 - fixed file handle leak on serving 304 responses on static files
 - fixed issue with XXL's that require DLL's in same folder
 - fixed issue with non-latin encoded compiler error messages
 - fixed issue with non-latin encoded uploaded file name
+- fixed issue with IP-addresses
 
 v1.2.2.369
 - error page: back link when referer, refresh link only on GET
