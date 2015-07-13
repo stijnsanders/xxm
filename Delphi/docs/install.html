@@ -103,7 +103,7 @@ IIS configuration allows to route files of a certain file-extension to an ISAPI 
 <p>IIS 7 requires ISAPI dll's to be added to the list of accepted plugins in the security administration</p>
 <p>IIS 7.5 offers to add the dll to the allowed modules when you create a wildcard application mapping. On 64-bit machines, set the 'enable 32-bit applications' option in the application pool advanced settings. Also the folder containing the xxl module file(s) may need a security setting for <code>IIS APPPOOL\DefaultAppPool</code> or the approriate application pool (Don't look it up in the objects list, type it manually in the names box.)</p>
 <p>IIS 7.5 shows its own error pages when xxm wants to report an error. Navigate the Server Manager to "Error Pages" and edit the feature settings to display 'Detailed pages' instead of the default 'Custom error pages' to show xxm's error page content in case of an error.</p>
-<p>xxm ISAPI extensions resolve projects by name using the projects definition file <code>xxm.xml</code>, in the same directory as the xxm ISAPI extension library. An example <code>xxm.xml</code> with a single project definition may look like this:<br />
+<p><a name="xxmxml"></a>xxm ISAPI extensions resolve projects by name using the projects definition file <code>xxm.xml</code>, in the same directory as the xxm ISAPI extension library. An example <code>xxm.xml</code> with a single project definition may look like this:<br />
 </p><pre>&lt;ProjectRegistry&gt;
   &lt;Project Name=&quot;demo&quot;&gt;
     &lt;ModulePath&gt;C:\xxm\demo\demo.xxl&lt;/ModulePath&gt;
