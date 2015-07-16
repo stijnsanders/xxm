@@ -311,11 +311,7 @@ begin
     BuildPage;
 
   except
-    on EXxmPageRedirected do
-     begin
-      ForceStatus(301,'Moved Permanently');
-      //SendRaw('Redirected to <a href=""></a>')?
-     end;
+    on EXxmPageRedirected do Flush;
 
     on EXxmAutoBuildFailed do
      begin
@@ -458,6 +454,8 @@ begin
     FlagMsg('rdl'+UTF8Encode(RedirectURL))
   else
     FlagMsg('rdr'+UTF8Encode(RedirectURL));
+  ForceStatus(301,'Moved Permanently');
+  //SendRaw('Redirected to <a href=""></a>')?
   raise EXxmPageRedirected.Create(RedirectURL);
 end;
 
