@@ -259,8 +259,12 @@ var
 begin
   l:=Length(Params);
   i:=0;
-  while (i<l) and (CompareText(Copy(Data,Params[i].NameStart,Params[i].NameLength),Name)<>0) do inc(i);
-  if (i<l) then Result:=Copy(Data,Params[i].ValueStart,Params[i].ValueLength) else Result:='';
+  while (i<l) and (CompareText(
+    Copy(Data,Params[i].NameStart,Params[i].NameLength),Name)<>0) do inc(i);
+  if i<l then
+    Result:=Copy(Data,Params[i].ValueStart,Params[i].ValueLength)
+  else
+    Result:='';
 end;
 
 procedure HeaderCheckName(const Name: WideString);
@@ -277,8 +281,9 @@ procedure HeaderCheckValue(const Value: WideString);
 var
   i:integer;
 begin
-  for i:=1 to Length(Value) do if AnsiChar(Value[i]) in [#0,#10,#13] then //more?
-    raise EXxmResponseHeaderInvalidChar.Create(SXxmResponseHeaderInvalidChar);
+  for i:=1 to Length(Value) do
+    if AnsiChar(Value[i]) in [#0,#10,#13] then //more?
+      raise EXxmResponseHeaderInvalidChar.Create(SXxmResponseHeaderInvalidChar);
 end;
 
 {$IFDEF NOT_DECLARED_UTF8ToWideString}
@@ -555,10 +560,12 @@ begin
   if VarIsNumeric(Name) then i:=integer(Name) else
    begin
     i:=0;
-    while (i<l) and (CompareText(Copy(FData,FIdx[i].NameStart,FIdx[i].NameLength),Name)<>0) do inc(i);//lower?
+    while (i<l) and (CompareText(Copy(
+      FData,FIdx[i].NameStart,FIdx[i].NameLength),Name)<>0) do inc(i);//lower?
    end;
   if (i>=0) and (i<l) then
-    sv:=TRequestSubValues.Create(FData,FIdx[i].ValueStart,FIdx[i].ValueLength,Result)
+    sv:=TRequestSubValues.Create(FData,
+      FIdx[i].ValueStart,FIdx[i].ValueLength,Result)
   else
     sv:=TRequestSubValues.Create('',1,0,Result);//raise?
   if @Items=nil then sv.Free else Items:=sv;
@@ -654,7 +661,8 @@ var
   i:integer;
 begin
   for i:=0 to FItemsCount-1 do
-    if FItems[i].SubValues<>nil then SafeFree(TInterfacedObject(FItems[i].SubValues));
+    if FItems[i].SubValues<>nil then
+      SafeFree(TInterfacedObject(FItems[i].SubValues));
   SetLength(FItems,0);
   inherited;
 end;
@@ -836,7 +844,8 @@ end;
 
 procedure TResponseHeaders.SetName(Idx: integer; Value: WideString);
 begin
-  if FBuilt then raise EXxmResponseHeaderAlreadySent.Create(SXxmResponseHeaderAlreadySent);
+  if FBuilt then
+    raise EXxmResponseHeaderAlreadySent.Create(SXxmResponseHeaderAlreadySent);
   HeaderCheckName(Value);
   if (Idx>=0) and (Idx<Length(FItems)) then
     FItems[Idx].Name:=Value
@@ -892,7 +901,8 @@ procedure TResponseSubValues.SetItem(Name: OleVariant; const Value: WideString);
 var
   i:integer;
 begin
-  if FBuilt then raise EXxmResponseHeaderAlreadySent.Create(SXxmResponseHeaderAlreadySent);
+  if FBuilt then
+    raise EXxmResponseHeaderAlreadySent.Create(SXxmResponseHeaderAlreadySent);
   HeaderCheckValue(Value);
   if VarIsNumeric(Name) then i:=integer(Name) else
    begin
@@ -936,7 +946,8 @@ end;
 
 procedure TResponseSubValues.SetName(Idx: integer; Value: WideString);
 begin
-  if FBuilt then raise EXxmResponseHeaderAlreadySent.Create(SXxmResponseHeaderAlreadySent);
+  if FBuilt then
+    raise EXxmResponseHeaderAlreadySent.Create(SXxmResponseHeaderAlreadySent);
   HeaderCheckName(Value);
   if (Idx>=0) and (Idx<Length(FItems)) then
     FItems[Idx].Name:=Value

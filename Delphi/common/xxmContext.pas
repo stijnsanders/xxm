@@ -81,6 +81,7 @@ type
     procedure Flush;
     procedure FlushFinal; virtual;
     procedure FlushStream(AData:TStream;ADataSize:int64); virtual;
+    function GetRawSocket: IStream; virtual;
 
     { IxxmParameterCollection }
     procedure AddParameter(Param: IUnknown);//IxxmParameter
@@ -832,8 +833,19 @@ end;
 
 function TXxmGeneralContext.PostData: IStream;
 begin
-  if FPostData=nil then Result:=nil else
+  if FPostData=nil then
+    Result:=GetRawSocket
+  else
     Result:=TStreamAdapter.Create(FPostData,soReference);
+end;
+
+function TXxmGeneralContext.GetRawSocket: IStream;
+begin
+  //TODO: if Request['Upgrade']<>'' here?
+  //IMPORTANT: inheritants must call, if IXxmRawSocket is available:
+  //  CheckSendStart(false);
+  //  SetBufferSize(0);
+  Result:=nil;
 end;
 
 function TXxmGeneralContext.GetParameter(Key: OleVariant): IXxmParameter;

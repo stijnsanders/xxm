@@ -100,7 +100,7 @@ Conditionals=
 DebugSourceDirs=
 UsePackages=0
 [Parameters]
-RunParams=Port=8080
+RunParams=
 HostApplication=
 Launcher=
 UseLauncher=0
@@ -110,8 +110,8 @@ IncludeVerInfo=1
 AutoIncBuild=0
 MajorVer=1
 MinorVer=2
-Release=2
-Build=369
+Release=3
+Build=400
 Debug=0
 PreRelease=0
 Special=0
@@ -122,7 +122,7 @@ CodePage=1252
 [Version Info Keys]
 CompanyName=
 FileDescription=xxm Http Server (AutoUpdate)
-FileVersion=1.2.2.369
+FileVersion=1.2.3.400
 InternalName=
 LegalCopyright=
 LegalTrademarks=

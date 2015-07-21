@@ -173,6 +173,12 @@ type
       var CheckIntervalMS: cardinal): boolean;
   end;
 
+  IXxmRawSocket = interface(ISequentialStream)
+    ['{78786D00-0000-0017-C000-000000000017}']
+    function DataReady(TimeoutMS: cardinal): boolean;
+    procedure Disconnect;
+  end;
+
 const
   IID_IXxmProject: TGUID = '{78786D00-0000-0002-C000-000000000002}';
   IID_IXxmContext: TGUID = '{78786D00-0000-0003-C000-000000000003}';
@@ -187,6 +193,7 @@ const
   IID_IXxmProjectEvents1: TGUID = '{78786D00-0000-0014-C000-000000000014}';
   IID_IXxmContextSuspend: TGUID = '{78786D00-0000-0015-C000-000000000015}';
   IID_IXxmProjectEvents2: TGUID = '{78786D00-0000-0016-C000-000000000016}';
+  IID_IXxmRawSocket: TGUID = '{78786D00-0000-0017-C000-000000000017}';
 
 const
   //TXxmContextString enumeration values

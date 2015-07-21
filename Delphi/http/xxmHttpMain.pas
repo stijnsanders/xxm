@@ -60,6 +60,7 @@ type
     procedure EndRequest; override;
     procedure FlushFinal; override;
     procedure FlushStream(AData:TStream;ADataSize:int64); override;
+    function GetRawSocket: IStream; override;
 
     { IXxmHttpHeaders }
     function GetRequestHeaders:IxxmDictionaryEx;
@@ -359,7 +360,7 @@ begin
       //if (StatusCode<400) and (FHeaderSent=XxmHeaderSent) then?
        begin
         i:=1;
-        setsockopt(FSocket.Handle,SOL_SOCKET,SO_REUSEADDR,@i,4)
+        setsockopt(FSocket.Handle,SOL_SOCKET,SO_REUSEADDR,@i,4);
        end;
       FSocket.Disconnect;
      end;
@@ -721,6 +722,16 @@ procedure TXxmHttpContext.Resume(ToDrop: Boolean);
 begin
   if ToDrop then Next:=ntResumeDrop else Next:=ntResume;
   inherited;
+end;
+
+function TXxmHttpContext.GetRawSocket: IStream;
+begin
+  if FReqHeaders['Upgrade']='' then Result:=nil else
+   begin
+    CheckSendStart(false);
+    SetBufferSize(0);//!
+    Result:=TRawSocketData.Create(FSocket);
+   end;
 end;
 
 { TXxmHttpServerListener }
