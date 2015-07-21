@@ -81,9 +81,9 @@ begin
       inc(i);Result[i]:='=';
      end
     else
-	 begin
-	  d2:=p^;inc(p);
-	  if p=pl then
+     begin
+      d2:=p^;inc(p);
+      if p=pl then
        begin
         inc(i);Result[i]:=Base64Codes[  d1 shr  2];
         inc(i);Result[i]:=Base64Codes[((d1 and $3) shl 4) or (d2 shr 4)];
@@ -91,14 +91,14 @@ begin
         inc(i);Result[i]:='=';
        end
       else
-	   begin
-	    d3:=p^;inc(p);
+       begin
+        d3:=p^;inc(p);
         inc(i);Result[i]:=Base64Codes[  d1 shr  2];
         inc(i);Result[i]:=Base64Codes[((d1 and $3) shl 4) or (d2 shr 4)];
         inc(i);Result[i]:=Base64Codes[((d2 and $F) shl 2) or (d3 shr 6)];
         inc(i);Result[i]:=Base64Codes[  d3 and $3F];
-	   end;
-	  //if ((cardinal(p)-cardinal(@Data)) mod 57)=0 then Result:=Result+#13#10;
+       end;
+      //if ((cardinal(p)-cardinal(@Data)) mod 57)=0 then Result:=Result+#13#10;
      end;
    end;
 end;

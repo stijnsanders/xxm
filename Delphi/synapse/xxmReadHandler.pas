@@ -2,7 +2,7 @@ unit xxmReadHandler;
 
 interface
 
-uses Classes, blcksock;
+uses Classes, blcksock, xxm, ActiveX;
 
 type
   THandlerReadStreamAdapter=class(TStream)
@@ -22,6 +22,37 @@ type
     function Read(var Buffer; Count: Longint): Longint; override;
     function Write(const Buffer; Count: Longint): Longint; override;
     function Seek(const Offset: Int64; Origin: TSeekOrigin): Int64; overload; override;
+  end;
+
+  TRawSocketData=class(TInterfacedObject, IStream, IXxmRawSocket)
+  private
+    FSocket:TTCPBlockSocket;
+  public
+    constructor Create(Socket:TTCPBlockSocket);
+    destructor Destroy; override;
+    { IStream }
+    function Seek(dlibMove: Largeint; dwOrigin: Longint;
+      out libNewPosition: Largeint): HResult; stdcall;
+    function SetSize(libNewSize: Largeint): HResult; stdcall;
+    function CopyTo(stm: IStream; cb: Largeint; out cbRead: Largeint;
+      out cbWritten: Largeint): HResult; stdcall;
+    function Commit(grfCommitFlags: Longint): HResult; stdcall;
+    function Revert: HResult; stdcall;
+    function LockRegion(libOffset: Largeint; cb: Largeint;
+      dwLockType: Longint): HResult; stdcall;
+    function UnlockRegion(libOffset: Largeint; cb: Largeint;
+      dwLockType: Longint): HResult; stdcall;
+    function Stat(out statstg: TStatStg; grfStatFlag: Longint): HResult;
+      stdcall;
+    function Clone(out stm: IStream): HResult; stdcall;
+    { ISequentialStream }
+    function Read(pv: Pointer; cb: Longint; pcbRead: PLongint): HResult;
+      stdcall;
+    function Write(pv: Pointer; cb: Longint; pcbWritten: PLongint): HResult;
+      stdcall;
+    { IXxmRawSocket }
+    function DataReady(TimeoutMS: cardinal): boolean;
+    procedure Disconnect;
   end;
 
 implementation
@@ -127,6 +158,100 @@ destructor THandlerReadStreamAdapter.Destroy;
 begin
   FStore.Free;
   inherited;
+end;
+
+{ TRawSocketData }
+
+constructor TRawSocketData.Create(Socket:TTCPBlockSocket);
+begin
+  inherited Create;
+  FSocket:=Socket;
+end;
+
+destructor TRawSocketData.Destroy;
+begin
+  FSocket:=nil;
+  inherited;
+end;
+
+function TRawSocketData.Clone(out stm: IStream): HResult;
+begin
+  raise Exception.Create('TRawSocketData.Clone not supported');
+end;
+
+function TRawSocketData.Commit(grfCommitFlags: Integer): HResult;
+begin
+  raise Exception.Create('TRawSocketData.Commit not supported');
+end;
+
+function TRawSocketData.CopyTo(stm: IStream; cb: Largeint; out cbRead,
+  cbWritten: Largeint): HResult;
+begin
+  raise Exception.Create('TRawSocketData.CopyTo not supported');
+end;
+
+function TRawSocketData.LockRegion(libOffset, cb: Largeint;
+  dwLockType: Integer): HResult;
+begin
+  raise Exception.Create('TRawSocketData.LockRegion not supported');
+end;
+
+function TRawSocketData.Revert: HResult;
+begin
+  raise Exception.Create('TRawSocketData.Revert not supported');
+end;
+
+function TRawSocketData.Seek(dlibMove: Largeint; dwOrigin: Integer;
+  out libNewPosition: Largeint): HResult;
+begin
+  raise Exception.Create('TRawSocketData.Seek not supported');
+end;
+
+function TRawSocketData.SetSize(libNewSize: Largeint): HResult;
+begin
+  raise Exception.Create('TRawSocketData.SetSize not supported');
+end;
+
+function TRawSocketData.Stat(out statstg: TStatStg;
+  grfStatFlag: Integer): HResult;
+begin
+  raise Exception.Create('TRawSocketData.Stat not supported');
+end;
+
+function TRawSocketData.UnlockRegion(libOffset, cb: Largeint;
+  dwLockType: Integer): HResult;
+begin
+  raise Exception.Create('TRawSocketData.UnlockRegion not supported');
+end;
+
+function TRawSocketData.Read(pv: Pointer; cb: Integer;
+  pcbRead: PLongint): HResult;
+var
+  l:integer;
+begin
+  l:=FSocket.RecvBuffer(pv,cb);
+  if pcbRead<>nil then pcbRead^:=l;
+  Result:=S_OK;
+end;
+
+function TRawSocketData.Write(pv: Pointer; cb: Integer;
+  pcbWritten: PLongint): HResult;
+var
+  l:integer;
+begin
+  l:=FSocket.SendBuffer(pv,cb);
+  if pcbWritten<>nil then pcbWritten^:=l;
+  Result:=S_OK;
+end;
+
+function TRawSocketData.DataReady(TimeoutMS: cardinal): boolean;
+begin
+  Result:=FSocket.CanRead(TimeoutMS)
+end;
+
+procedure TRawSocketData.Disconnect;
+begin
+  FSocket.CloseSocket;
 end;
 
 end.
