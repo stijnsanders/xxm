@@ -18,7 +18,8 @@ type
     FRequestID:THTTP_REQUEST_ID;
     FInputRead,FInputSize:cardinal;
   public
-    constructor Create(HSysQueue:THandle;RequestID:THTTP_REQUEST_ID;InputSize:cardinal);
+    constructor Create(HSysQueue:THandle;RequestID:THTTP_REQUEST_ID;
+      InputSize:cardinal);
     destructor Destroy; override;
     function Write(const Buffer; Count: Integer): Integer; override;
     function Read(var Buffer; Count: Integer): Integer; override;
@@ -273,7 +274,8 @@ end;
 
 procedure TXxmHSysContext.DispositionAttach(FileName: WideString);
 begin
-  AddResponseHeader('Content-disposition','attachment; filename="'+FileName+'"');
+  AddResponseHeader('Content-disposition',
+    'attachment; filename="'+FileName+'"');
 end;
 
 function TXxmHSysContext.GetCookie(Name: WideString): WideString;
@@ -312,13 +314,18 @@ begin
   SetStatus(301,'Moved Permanently');//does CheckHeaderNotSent;
   //TODO: move this to execute's except?
   NewURL:=RedirectURL;
-  if Relative and (NewURL<>'') and (NewURL[1]='/') then NewURL:=FRedirectPrefix+NewURL;
-  RedirBody:='<a href="'+HTMLEncode(NewURL)+'">'+HTMLEncode(NewURL)+'</a>'#13#10;
+  if Relative and (NewURL<>'') and (NewURL[1]='/') then
+    NewURL:=FRedirectPrefix+NewURL;
+  RedirBody:='<a href="'+HTMLEncode(NewURL)+'">'
+    +HTMLEncode(NewURL)+'</a>'#13#10;
   SetResponseHeader(HttpHeaderLocation,NewURL);
   case FAutoEncoding of
-    aeUtf8:SetResponseHeader(HttpHeaderContentLength,IntToStr(Length(UTF8Encode(RedirBody))+3));
-    aeUtf16:SetResponseHeader(HttpHeaderContentLength,IntToStr(Length(RedirBody)*2+2));
-    aeIso8859:SetResponseHeader(HttpHeaderContentLength,IntToStr(Length(AnsiString(RedirBody))));
+    aeUtf8:SetResponseHeader(HttpHeaderContentLength,
+      IntToStr(Length(UTF8Encode(RedirBody))+3));
+    aeUtf16:SetResponseHeader(HttpHeaderContentLength,
+      IntToStr(Length(RedirBody)*2+2));
+    aeIso8859:SetResponseHeader(HttpHeaderContentLength,
+      IntToStr(Length(AnsiString(RedirBody))));
   end;
   SendStr(RedirBody);
   if BufferSize<>0 then Flush;  
@@ -384,7 +391,8 @@ begin
   s:='';
   for x:=HttpHeaderStart to HttpHeaderMaximum do
     if FReq.Headers.KnownHeaders[x].RawValueLength<>0 then
-      s:=s+HttpRequestHeaderName[x]+': '+FReq.Headers.KnownHeaders[x].pRawValue+#13#10;
+      s:=s+HttpRequestHeaderName[x]+': '
+        +FReq.Headers.KnownHeaders[x].pRawValue+#13#10;
   for i:=0 to FReq.Headers.UnknownHeaderCount-1 do
     s:=s+PHTTP_UNKNOWN_HEADER_ARRAY(FReq.Headers.pUnknownHeaders)[i].pName+': '+
       PHTTP_UNKNOWN_HEADER_ARRAY(FReq.Headers.pUnknownHeaders)[i].pRawValue+#13#10;
@@ -407,12 +415,15 @@ begin
   inherited;
   //TODO: encode when non-UTF7 characters?
   x:=HttpHeaderStart;
-  while (x<=HttpHeaderResponseMaximum) and (CompareText(HttpResponseHeaderName[x],Name)<>0) do inc(x);
+  while (x<=HttpHeaderResponseMaximum)
+    and (CompareText(HttpResponseHeaderName[x],Name)<>0) do inc(x);
   if x>HttpHeaderResponseMaximum then
    begin
     i:=0;
-    while (i<Length(FUnknownHeaders)) and (CompareText(FUnknownHeaders[i].pName,Name)<>0) do inc(i);
-    if i=Length(FUnknownHeaders) then Result:='' else Result:=FUnknownHeaders[i].pRawValue;
+    while (i<Length(FUnknownHeaders))
+      and (CompareText(FUnknownHeaders[i].pName,Name)<>0) do inc(i);
+    if i=Length(FUnknownHeaders) then Result:=''
+      else Result:=FUnknownHeaders[i].pRawValue;
    end
   else
     Result:=FRes.Headers.KnownHeaders[x].pRawValue;
@@ -425,6 +436,7 @@ begin
   //TODO: more? (see also TxxmHSysResponseHeaders, here internal use only)
   if Name='If-Modified-Since' then i:=HttpHeaderIfModifiedSince else
   if Name='Authorization' then i:=HttpHeaderAuthorization else
+  if Name='Upgrade' then i:=HttpHeaderUpgrade else
     i:=THTTP_HEADER_ID(-1);
   if i=THTTP_HEADER_ID(-1) then Result:='' else
     Result:=WideString(FReq.Headers.KnownHeaders[i].pRawValue);
@@ -440,20 +452,25 @@ begin
   HeaderCheckValue(Value);
   //TODO: encode when non-UTF7 characters?
   x:=HttpHeaderStart;
-  while (x<=HttpHeaderResponseMaximum) and (CompareText(HttpResponseHeaderName[x],Name)<>0) do inc(x);
+  while (x<=HttpHeaderResponseMaximum)
+    and (CompareText(HttpResponseHeaderName[x],Name)<>0) do inc(x);
   if x>HttpHeaderResponseMaximum then
    begin
     i:=0;
-    while (i<Length(FUnknownHeaders)) and (CompareText(FUnknownHeaders[i].pName,Name)<>0) do inc(i);
+    while (i<Length(FUnknownHeaders))
+      and (CompareText(FUnknownHeaders[i].pName,Name)<>0) do inc(i);
     if i=Length(FUnknownHeaders) then
      begin
       SetLength(FUnknownHeaders,i+1);
-      CacheString(Name,FUnknownHeaders[i].NameLength,FUnknownHeaders[i].pName);
+      CacheString(Name,FUnknownHeaders[i].NameLength,
+        FUnknownHeaders[i].pName);
      end;
-    CacheString(Value,FUnknownHeaders[i].RawValueLength,FUnknownHeaders[i].pRawValue);
+    CacheString(Value,FUnknownHeaders[i].RawValueLength,
+      FUnknownHeaders[i].pRawValue);
    end
   else
-    CacheString(Value,FRes.Headers.KnownHeaders[x].RawValueLength,FRes.Headers.KnownHeaders[x].pRawValue);
+    CacheString(Value,FRes.Headers.KnownHeaders[x].RawValueLength,
+      FRes.Headers.KnownHeaders[x].pRawValue);
 end;
 
 procedure TXxmHSysContext.SetResponseHeader(id: THTTP_HEADER_ID;
@@ -549,7 +566,8 @@ end;
 
 { TXxmPostDataStream }
 
-constructor TXxmPostDataStream.Create(HSysQueue:THandle;RequestID:THTTP_REQUEST_ID;InputSize:cardinal);
+constructor TXxmPostDataStream.Create(HSysQueue:THandle;
+  RequestID:THTTP_REQUEST_ID;InputSize:cardinal);
 begin
   inherited Create;
   FHSysQueue:=HSysQueue;
@@ -579,9 +597,7 @@ begin
      begin
       p:=Memory;
       inc(cardinal(p),FInputRead);
-      HttpCheck(HttpReceiveRequestEntityBody(FHSysQueue,FRequestId,
-        HTTP_RECEIVE_REQUEST_ENTITY_BODY_FLAG_FILL_BUFFER,
-        p,l,l,nil));
+      HttpCheck(HttpReceiveRequestEntityBody(FHSysQueue,FRequestId,0,p,l,l,nil));
       inc(FInputRead,l);
      end;
    end;

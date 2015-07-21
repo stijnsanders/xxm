@@ -562,7 +562,7 @@ begin
     //TYMED_ISTORAGE?
     else
       raise EXxmUnknownPostDataTymed.Create(
-        'PostData has unkown TYMED '+IntToHex(stgmed.tymed,8));
+        'PostData has unsupported TYMED '+IntToHex(stgmed.tymed,8));
   end;
 end;
 
