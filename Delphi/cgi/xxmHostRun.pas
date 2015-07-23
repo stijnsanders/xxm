@@ -83,7 +83,6 @@ begin
     if ConnectNamedPipe(h,nil) then r:=ERROR_PIPE_CONNECTED else r:=GetLastError;
     if r=ERROR_PIPE_CONNECTED then
      begin
-
       CreatePipe(h1,ch.PipeRequest,nil,$1000);
       CreatePipe(ch.PipeResponse,h2,nil,$1000);
       if WriteFile(h,ch,ch.Size,l,nil) then
@@ -99,7 +98,6 @@ begin
         CloseHandle(ch.PipeRequest);
         CloseHandle(ch.PipeResponse);
        end;
-
       h:=INVALID_HANDLE_VALUE;
      end
     else
