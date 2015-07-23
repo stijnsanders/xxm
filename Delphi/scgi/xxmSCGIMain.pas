@@ -65,6 +65,7 @@ type
     procedure EndRequest; override;
     procedure FlushFinal; override;
     procedure FlushStream(AData:TStream;ADataSize:int64); override;
+    function GetRawSocket: IStream; override;
 
     { IXxmHttpHeaders }
     function GetRequestHeaders:IxxmDictionaryEx;
@@ -784,6 +785,16 @@ procedure TXxmSCGIContext.Resume(ToDrop: Boolean);
 begin
   if ToDrop then Next:=ntResumeDrop else Next:=ntResume;
   inherited;
+end;
+
+function TXxmSCGIContext.GetRawSocket: IStream;
+begin
+  if FReqHeaders['Upgrade']='' then Result:=nil else
+   begin
+    CheckSendStart(false);
+    SetBufferSize(0);//!
+    Result:=TRawSocketData.Create(FSocket);
+   end;
 end;
 
 { TXxmSCGIServerListener }
