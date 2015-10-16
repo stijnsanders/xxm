@@ -3,12 +3,12 @@ program [[ProjectName]];
 {
   xxm 'skip the handler'
   HTTP dedicated exe from xxm project
-  
+
   Usage:
     xxmConv /proto <path to these files> /x:XxmSourcePath <path to xxm source> /src <path to new folder for generated code> <path to xxm project>
-	
+
   Rember to set up version info on the resulting project.
-  
+
   $Rev$ $Date$
 }
 
@@ -41,6 +41,6 @@ uses
 [[ProjectHeader]]
 begin
   XxmProjectName:='[[ProjectName]]';
-  XxmRunServer;
   [[ProjectBody]]
+  XxmRunServer;
 end.

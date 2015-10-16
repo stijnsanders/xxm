@@ -106,6 +106,10 @@ type
     //add new here
     rp_Unknown);
 
+var
+  HttpListenPort:Word;
+  HttpBindIPv4,HttpBindIpV6:string;
+    
 procedure XxmRunServer;
 
 implementation
@@ -146,13 +150,12 @@ const
 var
   Server,Server6:TTcpServer;
   Listener,Listener6:TXxmHttpServerListener;
-  i,j,Port,Threads:integer;
+  i,j,Threads:integer;
   StartURL,s,t:AnsiString;
   Msg:TMsg;
   par:TXxmHttpRunParameters;
 begin
   //default values
-  Port:=80;
   StartURL:='';
   Threads:=$200;
 
@@ -167,7 +170,7 @@ begin
     while (par<>rp_Unknown) and (t<>ParameterKey[par]) do inc(par);
     case par of
       rpPort:
-        Port:=StrToInt(Copy(s,j+1,Length(s)-j));
+        HttpListenPort:=StrToInt(Copy(s,j+1,Length(s)-j));
       rpLoadCopy:
         GlobalAllowLoadCopy:=Copy(s,j+1,Length(s)-j)<>'0';
       rpStartURL:
@@ -194,7 +197,7 @@ begin
   Server:=TTcpServer.Create;
   Server6:=TTcpServer.Create(AF_INET6);
   try
-    Server.Bind('',Port);
+    Server.Bind('',HttpListenPort);
     //TODO: bind to multiple ports
     Server.Listen;
 
@@ -202,7 +205,7 @@ begin
       ShellExecute(GetDesktopWindow,nil,PChar(StartURL),nil,nil,SW_NORMAL);//check result?
 
     try
-      Server6.Bind('',Port);
+      Server6.Bind('',HttpListenPort);
       //TODO: bind to multiple ports
       Server6.Listen;
       Listener6:=TXxmHttpServerListener.Create(Server6);
@@ -770,6 +773,11 @@ begin
 end;
 
 initialization
+  //defaults
+  HttpListenPort:=80;
+  HttpBindIPv4:='';
+  HttpBindIpV6:='';
+
   StatusBuildError:=503;//TODO: from settings
   StatusException:=500;
   StatusFileNotFound:=404;
