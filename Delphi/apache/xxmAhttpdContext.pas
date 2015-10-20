@@ -2,13 +2,13 @@ unit xxmAhttpdContext;
 
 interface
 
-uses SysUtils, Classes, ActiveX, HTTPD2, xxm, xxmContext,
+uses SysUtils, Classes, ActiveX, httpd24, xxm, xxmContext,
   xxmHeaders, xxmParams, xxmPReg, xxmPRegXml, xxmParUtils;
 
 type
   TxxmAhttpdContext=class(TXxmGeneralContext, IxxmHttpHeaders)
   private
-    rq: Prequest_rec;
+    rq: PRequest;
     FConnected: boolean;
     FRedirectPrefix, FSessionID: AnsiString;
     FCookieParsed: boolean;
@@ -27,11 +27,12 @@ type
     function GetRequestHeader(const Name: WideString): WideString; override;
     procedure AddResponseHeader(const Name, Value: WideString); override;
     procedure SetStatus(Code:integer;Text:WideString); override;
+    function GetRawSocket: IStream; override;
     //IxxmHttpHeaders
     function GetRequestHeaders:IxxmDictionaryEx;
     function GetResponseHeaders:IxxmDictionaryEx;
   public
-    constructor Create(r:Prequest_rec);
+    constructor Create(r:PRequest);
     destructor Destroy; override;
     procedure Execute;
   end;
@@ -45,7 +46,7 @@ resourcestring
 
 { TxxmAhttpdContext }
 
-constructor TxxmAhttpdContext.Create(r: Prequest_rec);
+constructor TxxmAhttpdContext.Create(r: PRequest);
 begin
   inherited Create(ap_construct_url(r.pool,r.unparsed_uri,r));
   rq:=r;
@@ -86,6 +87,8 @@ begin
 
     BuildPage;
 
+    //TODO: rq.header_only?
+
   except
     on EXxmPageRedirected do Flush;
     on EXxmAutoBuildFailed do ;//assert output done
@@ -119,7 +122,7 @@ function TxxmAhttpdContext.ContextString(
   cs: TXxmContextString): WideString;
 begin
   case cs of
-    csVersion:Result:=SelfVersion+', '+ap_get_server_version;
+    csVersion:Result:=SelfVersion+', '+ap_get_server_description;//+ap_get_server_banner?
     csExtraInfo:Result:='';//TODO?
     csVerb:Result:=rq.method;
     csQueryString:Result:=rq.args;
@@ -129,8 +132,12 @@ begin
     csURL:Result:=GetURL;
     csReferer:Result:=apr_table_get(rq.headers_in,'Referer');
     csLanguage:Result:=apr_table_get(rq.headers_in,'Accept-Language');
-    csRemoteAddress:Result:=rq.main.connection.remote_ip;
-    csRemoteHost:Result:=rq.main.connection.remote_host;
+    csRemoteAddress:Result:=rq.main.connection.client_id;
+    csRemoteHost:
+      if rq.main.connection.remote_host=nil then
+        Result:=rq.main.connection.client_id //TODO: resolve now?
+      else
+        Result:=rq.main.connection.remote_host;
     csAuthUser,csAuthPassword:Result:=AuthValue(cs);
     csProjectName:Result:=FProjectName;
     csLocalURL:Result:=FFragmentName;
@@ -234,6 +241,7 @@ begin
     else      ;//rq.content_encoding:=apr_pstrdup(rq.pool,PAnsiChar('?
   end;
   //rq.connection.keepalive?//TODO
+  //ap_rflush? ap_send_interim_response?
 end;
 
 function TxxmAhttpdContext.GetRequestHeader(const Name: WideString): WideString;
@@ -256,6 +264,42 @@ begin
     apr_table_set(rq.headers_out,
       apr_pstrdup(rq.pool,PAnsiChar(AnsiString(Name))),
       apr_pstrdup(rq.pool,PAnsiChar(AnsiString(Value))));
+end;
+
+function TxxmAhttpdContext.GetRawSocket: IStream;
+var
+  f:PFilter;
+begin
+  if GetRequestHeader('Upgrade')='' then Result:=nil else
+   begin
+    //send header
+    CheckSendStart(false);
+    SetBufferSize(0);//!
+    {
+    c:=ap_setup_client_block(rq,REQUEST_CHUNKED_DECHUNK);
+    if c<>AP_OK then raise Exception.Create('ap_setup_client_block:'+IntToStr(c));
+    }
+    ap_send_interim_response(rq,1);
+
+    rq.connection.keepalive:=AP_CONN_CLOSE;
+
+    //TODO: apr_socket_timeout_set
+
+    //remove http filters
+    f:=rq.input_filters;
+    while (f<>nil) and not((f.frec<>nil) and (f.frec.name='http_in')) do
+      f:=f.next;
+    if f<>nil then ap_remove_input_filter(f);
+    {
+    f:=rq.output_filters;
+    while (f<>nil) and not((f.frec<>nil) and (f.frec.name='http_out')) do
+      f:=f.next;
+    if f<>nil then ap_remove_output_filter(f);
+    }
+
+    //raw socket
+    Result:=TRawSocketData.Create(rq);
+   end;
 end;
 
 initialization

@@ -3,7 +3,7 @@ library xxmAhttpd;
 {$R '..\common\xxmData.res' '..\common\xxmData.rc'}
 
 uses
-  HTTPD2 in 'HTTPD2.pas',
+  httpd24 in 'httpd24.pas',
   xxm in '..\bin\public\xxm.pas',
   xxmHeaders in '..\bin\public\xxmHeaders.pas',
   xxmParUtils in '..\common\xxmParUtils.pas',

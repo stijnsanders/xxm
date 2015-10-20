@@ -2,11 +2,10 @@ unit xxmAhttpdModule;
 
 interface
 
-uses HTTPD2;
+uses httpd24;
 
 var
-  xxm_module: module;
-  {$EXTERNALSYM xxm_module}
+  xxm_module: TModule;
 
 exports
   xxm_module name 'xxm_module';
@@ -15,11 +14,11 @@ implementation
 
 uses Windows, SysUtils, xxmAhttpdContext, ActiveX;
 
-function xxm_handler(r:Prequest_rec): integer; cdecl;
+function xxm_handler(r:PRequest): integer; cdecl;
 var
   ctx:TxxmAhttpdContext;
 begin
-  if AnsiString(r.handler)<>'xxm-handler' then Result:=DECLINED else
+  if AnsiString(r.handler)<>'xxm-handler' then Result:=AP_DECLINED else
    begin
     CoInitialize(nil);//TODO: keep threadvar flag?
 
@@ -36,7 +35,7 @@ begin
    end;
 end;
 
-procedure xxm_register_hooks(p:Papr_pool_t); cdecl;
+procedure xxm_register_hooks(p:PPool); cdecl;
 begin
   ap_hook_handler(xxm_handler,nil,nil,APR_HOOK_MIDDLE);
 end;
@@ -53,7 +52,7 @@ begin
   SetLength(XxmModuleName,i);
   while not(i=0) and not(XxmModuleName[i]='\') do dec(i);
   XxmModuleName:=Copy(XxmModuleName,i+1,Length(XxmModuleName)-i);
-  ZeroMemory(@xxm_module,SizeOf(module));
+  ZeroMemory(@xxm_module,SizeOf(TModule));
   with xxm_module do
    begin
     version := MODULE_MAGIC_NUMBER_MAJOR;

@@ -2,13 +2,13 @@ unit xxmAhttpdPars;
 
 interface
 
-uses xxmHeaders, xxmParUtils, HTTPD2;
+uses xxmHeaders, xxmParUtils, httpd24;
 
 type
   TxxmAhttpdTable=class(TInterfacedObject, IxxmDictionary, IxxmDictionaryEx)
   private
-    FPool:Papr_pool_t;
-    FTable:Papr_table_t;
+    FPool:PPool;
+    FTable:PTable;
   protected
     function GetItem(Name: OleVariant): WideString;
     procedure SetItem(Name: OleVariant; const Value: WideString);
@@ -17,7 +17,7 @@ type
     function GetCount:integer;
     function Complex(Name: OleVariant; out Items: IxxmDictionary): WideString;
   public
-    constructor Create(Pool:Papr_pool_t;Table:Papr_table_t);
+    constructor Create(Pool: PPool; Table: PTable);
   end;
 
   TxxmAhttpdSubValues=class(TInterfacedObject, IxxmDictionary)
@@ -42,13 +42,9 @@ implementation
 
 uses Classes, Variants, SysUtils;
 
-type
-  table_entries=array[0..0] of apr_table_entry_t;
-  Ptable_entries=^table_entries;
-
 { TxxmAhttpdTable }
 
-constructor TxxmAhttpdTable.Create(Pool: Papr_pool_t; Table: Papr_table_t);
+constructor TxxmAhttpdTable.Create(Pool: PPool; Table: PTable);
 begin
   inherited Create;
   FPool:=Pool;
@@ -70,7 +66,7 @@ begin
   if VarIsNumeric(Name) then i:=integer(Name) else
    begin
     i:=0;
-    while (i<l) and not(CompareText(Ptable_entries(FTable.a.elts)[i].key,Name)=0) do inc(i);//lower?
+    while (i<l) and not(CompareText(FTable.a.elts[i].key,Name)=0) do inc(i);//lower?
    end;
   if (i>=l) then i:=-1;
   sv:=TxxmAhttpdSubValues.Create(Self,i,Result);
@@ -85,7 +81,7 @@ begin
    begin
     i:=integer(Name);
     if (i>=0) and (i<FTable.a.nelts) then
-      Result:=Ptable_entries(FTable.a.elts)[i].val
+      Result:=FTable.a.elts[i].val
     else
       raise ERangeError.Create('TxxmAhttpdTable.GetItem: Out of range');
    end
@@ -96,7 +92,7 @@ end;
 function TxxmAhttpdTable.GetName(Idx: integer): WideString;
 begin
   if (Idx>=0) and (Idx<FTable.a.nelts) then
-    Result:=Ptable_entries(FTable.a.elts)[Idx].key
+    Result:=FTable.a.elts[Idx].key
   else
     raise ERangeError.Create('TxxmAhttpdTable.GetName: Out of range');
 end;
@@ -110,7 +106,7 @@ begin
    begin
     i:=integer(Name);
     if (i>=0) and (i<FTable.a.nelts) then
-      Ptable_entries(FTable.a.elts)[i].val:=apr_pstrdup(FPool,PAnsiChar(AnsiString(Value)))
+      FTable.a.elts[i].val:=apr_pstrdup(FPool,PAnsiChar(AnsiString(Value)))
     else
       raise ERangeError.Create('TxxmAhttpdTable.SetItem: Out of range');
    end
@@ -125,7 +121,7 @@ procedure TxxmAhttpdTable.SetName(Idx: integer; Value: WideString);
 begin
   HeaderCheckName(Value);
   if (Idx>=0) and (Idx<FTable.a.nelts) then
-    Ptable_entries(FTable.a.elts)[Idx].key:=
+    FTable.a.elts[Idx].key:=
       apr_pstrdup(FPool,PAnsiChar(AnsiString(Value)))
   else
     raise ERangeError.Create('TxxmAhttpdTable.SetName: Out of range');

@@ -8,6 +8,7 @@ v1.2.3.400?
 - fixed issue with non-latin encoded compiler error messages
 - fixed issue with non-latin encoded uploaded file name
 - fixed issue with IP-addresses
+- xxmAhttpd: Apache 2.4 support (no longer supports 2.2!)
 
 v1.2.2.369
 - error page: back link when referer, refresh link only on GET

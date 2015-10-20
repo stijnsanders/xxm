@@ -4,7 +4,7 @@ library xxmAhttpdDev;
 {$R '..\common\xxmDataDev.res' '..\common\xxmDataDev.rc'}
 
 uses
-  HTTPD2 in 'HTTPD2.pas',
+  httpd24 in 'httpd24.pas',
   xxm in '..\bin\public\xxm.pas',
   xxmHeaders in '..\bin\public\xxmHeaders.pas',
   xxmParUtils in '..\common\xxmParUtils.pas',
