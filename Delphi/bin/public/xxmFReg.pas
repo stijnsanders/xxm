@@ -9,7 +9,7 @@ or create a new one for your project.
 The TxxmProject (xxmp.pas) calls GetClass with the page section
 of the URL, or can pre-process the URL.
 
-  $Rev: 297 $ $Date: 2013-03-23 21:30:00 +0100 (za, 23 mrt 2013) $
+  $Rev: 394 $ $Date: 2015-07-30 00:31:51 +0200 (do, 30 jul 2015) $
 
 }
 

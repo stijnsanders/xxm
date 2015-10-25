@@ -17,7 +17,6 @@ program [[ProjectName]];
 [[ProjectSwitches]]
 uses
   SysUtils,
-  xxmLocalOnly in '[[XxmSourcePath]]\conv\proto_http_localOnly\xxmLocalOnly.pas',
   xxmHttpMain in '[[XxmSourcePath]]\http\xxmHttpMain.pas',
   xxm in '[[XxmSourcePath]]\bin\public\xxm.pas',
   xxmParams in '[[XxmSourcePath]]\common\xxmParams.pas',
@@ -28,6 +27,7 @@ uses
   xxmCommonUtils in '[[XxmSourcePath]]\common\xxmCommonUtils.pas',
   xxmContext in '[[XxmSourcePath]]\common\xxmContext.pas',
   xxmReadHandler in '[[XxmSourcePath]]\http\xxmReadHandler.pas',
+  xxmLocalOnly in '[[XxmSourcePath]]\conv\proto_http_localOnly\xxmLocalOnly.pas',
   xxmSock in '[[XxmSourcePath]]\http\xxmSock.pas',
   xxmThreadPool in '[[XxmSourcePath]]\common\xxmThreadPool.pas',
   xxmKeptCon in '[[XxmSourcePath]]\http\xxmKeptCon.pas',
