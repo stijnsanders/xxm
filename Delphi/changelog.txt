@@ -1,6 +1,6 @@
 v1.2.3.400?
 - (//TODO: HTTP2)
-- WebSocket support (only xxmHttp,xxmSyna)
+- WebSocket support (only xxmHttp,xxmSyna,xxmAhttpd,xxmHost)
 - SCGI handler: xxmSCGI*
 - serve handler's icon for "/favicon.ico" (project registry override)
 - fixed file handle leak on serving 304 responses on static files

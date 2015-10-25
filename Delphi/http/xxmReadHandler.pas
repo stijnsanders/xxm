@@ -225,10 +225,29 @@ function TRawSocketData.Read(pv: Pointer; cb: Integer;
   pcbRead: PLongint): HResult;
 var
   l:integer;
+  r,x:TFDSet;
+  t:TTimeVal;
 begin
-  l:=FSocket.ReceiveBuf(pv^,cb);
-  if l<=0 then
-    raise ETcpSocketError.Create('Connection Lost');//Result:=E?
+  r.fd_count:=1;
+  r.fd_array[0]:=FSocket.Handle;
+  x.fd_count:=1;
+  x.fd_array[0]:=FSocket.Handle;
+  t.tv_sec:=0;
+  t.tv_usec:=30000;//microseconds
+  if select(0,@r,nil,@x,@t)=SOCKET_ERROR then
+    l:=0 //raise?
+  else
+   begin
+    //TODO: if x.fd_count<>0 then Disconnect?raise?
+    if r.fd_count=0 then
+      l:=0
+    else
+     begin
+      l:=FSocket.ReceiveBuf(pv^,cb);
+      if l<=0 then
+        raise ETcpSocketError.Create('Connection Lost');//Result:=E?
+     end;
+   end;
   if pcbRead<>nil then pcbRead^:=l;
   Result:=S_OK;
 end;

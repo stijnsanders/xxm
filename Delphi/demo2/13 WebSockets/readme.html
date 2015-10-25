@@ -1,0 +1,19 @@
+<link rel="stylesheet" type="text/css" href="http://xxm.sourceforge.net/xxm.css" />
+<h3>xxm Demo Projects - 13 WebSockets</h3>
+<p>This is a demo project showing how to use <code>xxmWebSocket.pas</code> to implement a <a href="https://en.wikipedia.org/wiki/WebSocket">WebSocket</a>.</p>
+
+<dl>
+<dt>Web.xxmp</dt>
+<dd>The project file, contains an internal list of the files of the project, and other data about the project.<br />
+Use xxmProject.exe to edit and manage project settings.<br />
+For this demonstration project, unit <code>ws1.pas</code> was added.</dd>
+<dt>xxmp.pas</dt>
+<dd>The project's main unit. When this file is missing form the project, xxm creates one for you.</dd>
+<dt>Default.xxm</dt>
+<dd>The website's default page. Attempts to create a WebSocket instance (if your browser supports this), shows incoming messages, and provides a way to send messages.</dd>
+<dt>ws1.pas</dt>
+<dd>Defines a class <code>TMyWebSocket</code> that inherits from <code>TXxmWebSocket</code>.<br />
+It responds to incoming messages after a fixed delay.<br />
+It also uses a thread to check periodically when the sum of hours, minutes and seconds is a prime number, then sends a message.<br />
+<code>TXxmWebSocket</code> implements <code>IXxmPage</code> and is added to the fragment registry to map it to a local URL.</dd>
+</dl>

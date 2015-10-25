@@ -1,0 +1,62 @@
+[[!var
+wsURL:string;
+]][[
+wsURL:=Context.URL;
+if Copy(wsURL,1,4)='http' then
+  wsURL:=Copy(wsURL,5,Length(wsURL)-4);
+//assert Copy(wsURL,1,3)='://' or Copy(wsURL,1,4)='s://'
+if LowerCase(Copy(wsURL,Length(wsURL)-10,11))='default.xxm' then
+  wsURL:=Copy(wsURL,1,Length(wsURL)-11);
+wsURL:='ws'+wsURL+'ws1';
+
+<<div id="entry" style="position:fixed;top:0px;left:0px;padding:1em;background-color:silver;display:none;">
+<form style="margin:0px;">Type here and press enter:<br />
+<input type="text" id="x1" style="width:25em;background-color:gold;" /></form>
+</div>
+<div id="log" style="padding-top:4em;"></div>
+<script type="text/javascript">
+
+function LogMsg(msg){
+	var x=document.createElement("P");
+	x.textContent="["+(new Date()).toISOString()+"] "+msg;
+	document.getElementById("log").appendChild(x);
+	window.scrollBy(0,50);
+}
+
+if ("WebSocket" in window) {
+	var ws;
+
+	document.forms[0].onsubmit=function(){
+		var x=document.getElementById("x1");
+		ws.send(x.value);
+		LogMsg("Sent: "+x.value);
+		x.select();
+		return false;
+	};
+	document.getElementById("entry").style.display="";
+
+	// Create new websocket connection
+	LogMsg('Connecting...');
+	ws = new WebSocket("[[=wsURL]]");
+
+	// Called after connection is established
+	ws.onopen = function(){
+		LogMsg('Connected to: ' + ws.url);
+	};
+	// Called when a new message is received
+	ws.onmessage = function(msg){
+		LogMsg("Message: " + msg.data);
+	};
+
+	// Called when connection is closed
+	ws.onclose = function() {
+		//enableInputs(false);
+		LogMsg("Connection closed!");
+	};
+} else {
+	LogMsg("This browser doesn't support WebSocket!");
+}
+
+document.getElementById("x1").focus();
+
+</script>
