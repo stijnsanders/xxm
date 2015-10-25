@@ -24,12 +24,17 @@ uses xxm, Classes, mongoWire;
 type
   TXxmSession=class(TObject)
   private
-    FSessionID:WideString;
+    FID:WideString;
     function GetDbCon: TMongoWire;
   public
-    constructor Create(Context: IXxmContext);
+    constructor Create(const ID: WideString; Context: IXxmContext);
     destructor Destroy; override;
-    property SessionID:WideString read FSessionID;
+
+    //CSRF protection by posting session cookie value
+    function FormProtect:WideString;
+    procedure CheckProtect(Context: IXxmContext);
+
+    property ID:WideString read FID;
     property DbCon: TMongoWire read GetDbCon;
   end;
 
@@ -38,7 +43,7 @@ procedure AbandonSession;
 
 threadvar
   Session: TXxmSession;
-  
+
 const
   xxmDemoCollection='test.xxmdemo1';  
 
@@ -61,7 +66,9 @@ begin
     SessionStore.CaseSensitive:=true;
     //SessionStore.Duplicates:=dupError;
    end;
-  sid:=Context.SessionID;
+  sid:=Context.SessionID+
+    '|'+Context.ContextString(csUserAgent);//TODO: hash
+  //TODO: more ways to prevent session hijacking?
   i:=SessionStore.IndexOf(sid);
   //TODO: session expiry!!!
   if (i<>-1) then Session:=SessionStore.Objects[i] as TXxmSession else
@@ -69,7 +76,7 @@ begin
     //as a security measure, disallow  new sessions on a first POST request
     if Context.ContextString(csVerb)='POST' then
       raise Exception.Create('Access denied.');
-    Session:=TXxmSession.Create(Context);
+    Session:=TXxmSession.Create(sid,Context);
     SessionStore.AddObject(sid,Session);
    end;
 end;
@@ -77,7 +84,7 @@ end;
 //call AbandonSession to release session data (e.g. logoff)
 procedure AbandonSession;
 begin
-  SessionStore.Delete(SessionStore.IndexOf(Session.SessionID));
+  SessionStore.Delete(SessionStore.IndexOf(Session.ID));
   FreeAndNil(Session);
 end;
 
@@ -86,10 +93,10 @@ threadvar
 
 { TxxmSession }
 
-constructor TXxmSession.Create(Context: IXxmContext);
+constructor TXxmSession.Create(const ID: WideString; Context: IXxmContext);
 begin
   inherited Create;
-  FSessionID:=Context.SessionID;
+  FID:=Context.ID;
   //TODO: initiate expiry
   //FDbCon:=TMongoWire.Create(...
 end;
@@ -98,6 +105,26 @@ destructor TXxmSession.Destroy;
 begin
   //FDbCon.Free;
   inherited;
+end;
+
+function TXxmSession.FormProtect:WideString;
+begin
+  Result:='<input type="hidden" name="XxmSessionID" value="'+HTMLEncode(FID)+'" />';
+end;
+
+procedure TXxmSession.CheckProtect(Context: IXxmContext);
+var
+  p:IXxmParameter;
+  pp:IXxmParameterPost;
+begin
+  if Context.ContextString(csVerb)='POST' then
+   begin
+    p:=Context.Parameter['XxmSessionID'];
+    if not((p.QueryInterface(IxxmParameterPost,pp)=S_OK) and (p.Value=FID)) then
+      raise Exception.Create('Invalid POST source detected.');
+   end
+  else
+    raise Exception.Create('xxmSession.CheckProtect only works on POST requests.');
 end;
 
 function TXxmSession.GetDbCon: TMongoWire;
@@ -111,7 +138,7 @@ begin
 end;
 
 initialization
-  SessionStore:=nil;
+  SessionStore:=nil;//see SetSession
 finalization
   FreeAndNil(SessionStore);
 

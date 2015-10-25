@@ -24,20 +24,20 @@ uses xxm, Classes;
 type
   TXxmSession=class(TObject)
   private
-    FSessionID:WideString;
+    FID:WideString;
   public
 
     //TODO: full properties?
     Authenticated:boolean;
     Name:AnsiString;
 
-    constructor Create(Context: IXxmContext);
+    constructor Create(const ID: WideString; Context: IXxmContext);
 
     //CSRF protection by posting session cookie value
     function FormProtect:WideString;
     procedure CheckProtect(Context: IXxmContext);
 
-    property SessionID:WideString read FSessionID;
+    property ID:WideString read FID;
   end;
 
 procedure SetSession(Context: IXxmContext);
@@ -65,7 +65,9 @@ begin
     SessionStore.CaseSensitive:=true;
     //SessionStore.Duplicates:=dupError;
    end;
-  sid:=Context.SessionID;
+  sid:=Context.SessionID+
+    '|'+Context.ContextString(csUserAgent);//TODO: hash
+  //TODO: more ways to prevent session hijacking?
   i:=SessionStore.IndexOf(sid);
   //TODO: session expiry!!!
   if (i<>-1) then Session:=SessionStore.Objects[i] as TXxmSession else
@@ -73,7 +75,7 @@ begin
     //as a security measure, disallow  new sessions on a first POST request
     if Context.ContextString(csVerb)='POST' then
       raise Exception.Create('Access denied.');
-    Session:=TXxmSession.Create(Context);
+    Session:=TXxmSession.Create(sid,Context);
     SessionStore.AddObject(sid,Session);
    end;
 end;
@@ -81,16 +83,16 @@ end;
 //call AbandonSession to release session data (e.g. logoff)
 procedure AbandonSession;
 begin
-  SessionStore.Delete(SessionStore.IndexOf(Session.SessionID));
+  SessionStore.Delete(SessionStore.IndexOf(Session.ID));
   FreeAndNil(Session);
 end;
 
 { TxxmSession }
 
-constructor TXxmSession.Create(Context: IXxmContext);
+constructor TXxmSession.Create(const ID: WideString; Context: IXxmContext);
 begin
   inherited Create;
-  FSessionID:=Context.SessionID;
+  FID:=Context.ID;
   //TODO: initiate expiry
 
   //default values
@@ -101,7 +103,7 @@ end;
 
 function TXxmSession.FormProtect:WideString;
 begin
-  Result:='<input type="hidden" name="XxmSessionID" value="'+HTMLEncode(FSessionID)+'" />';
+  Result:='<input type="hidden" name="XxmSessionID" value="'+HTMLEncode(FID)+'" />';
 end;
 
 procedure TXxmSession.CheckProtect(Context: IXxmContext);
@@ -112,7 +114,7 @@ begin
   if Context.ContextString(csVerb)='POST' then
    begin
     p:=Context.Parameter['XxmSessionID'];
-    if not((p.QueryInterface(IxxmParameterPost,pp)=S_OK) and (p.Value=FSessionID)) then
+    if not((p.QueryInterface(IxxmParameterPost,pp)=S_OK) and (p.Value=FID)) then
       raise Exception.Create('Invalid POST source detected.');
    end
   else
