@@ -1,4 +1,5 @@
 <html>
+<html>
 <head>
 <title>xxm - reference</title>
 <link rel="stylesheet" type="text/css" href="xxm.css" />
@@ -33,6 +34,7 @@
 <li><a href="#projectintf">Optional project interfaces</a></li>
 <li><a href="#uploadprogress">Upload progress</a> <span class="newver">1.1.4</span></li>
 <li><a href="#lpsupport">Long polling support</a> <span class="newver">1.2.2</span></li>
+<li><a href="#wssupport">WebSocket support</a> <span class="newver">1.2.3</span></li>
 </ul>
 
 <p class="title"><a name="intro"></a>Introduction</p>
@@ -282,7 +284,7 @@ provides information about the incoming request
 </dd>
 
 <dt><code>function PostData:IStream;</code></dt>
-<dd>provides access to the data posted in the request (use <code>TOleStream</code> from the AxCtrls unit to use the <code>IStream</code> interface as a <code>TStream</code> descendant)</dd>
+<dd>provides access to the data posted in the request (use <code>TOleStream</code> from the AxCtrls unit to use the <code>IStream</code> interface as a <code>TStream</code> descendant). See also <a href="#wssupport">WebSocket support</a> <span class="newver">1.2.3</span>.</dd>
 
 <dt><code>function Connected:boolean;</code></dt>
 <dd>checks whether the client disconnected, typically when a user presses abort, or the connection is lost</dd>
@@ -383,7 +385,7 @@ function URLEncode(const KeyValuePairs:array of OleVariant):AnsiString; overload
 <p class="title"><a name="headers"></a>Headers <span class="newver">1.1.0</span></p>
 
 <p>The xxm context objects provide separate interfaces to allow access to request and response HTTP headers and parameters.
-Include the <code>xxmHeaders.pas</code> and query the Context object for an IXxmHttpHeaders or IXxmParameterCollection interface pointer.</p>
+Include the <code>xxmHeaders.pas</code> unit and query the Context object for an IXxmHttpHeaders or IXxmParameterCollection interface pointer.</p>
 
 <dl>
 <dt class="title"><code>IXxmHttpHeaders = interface</code></dt>
@@ -576,6 +578,12 @@ and priority of events may cause intervals to be longer.
 <br />
 <b>Attention:</b> keep the work done by this call as light and performant as possible, optionally checking values set by a separate thread managed by the xxm project.</dd>
 </dl>
+
+<p class="title"><a name="wssupport"></a>WebSocket support <span class="newver">1.2.3</span></p>
+
+<p>To implement a <a href="https://en.wikipedia.org/wiki/WebSocket">WebSocket</a>, create class that inherits from <code>TXxmWebSocket</code> declared in the <code>xxmWebSocket.pas</code> unit. It implements the <code>IXxmPage</code> interface, so can be registered with the fragment registry (e.g. xxmFReg.pas) which also may determine what URL the WebSocket will be accessible with (unless the project's <code>LoadPage</code> does other mapping of URLs).</p>
+
+<p>Override the virtual methods <code>ReadMessage</code> or <code>ReadBinary</code> to handle incoming messages. Optionally override virtual methods <code>ConnectSuccess</code> and <code>ConnectionLost</code> to handle opening and closing socket connections.</p>
 
 </body>
 </html>
