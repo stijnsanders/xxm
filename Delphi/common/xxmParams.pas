@@ -101,25 +101,31 @@ var
   verblock:PVSFIXEDFILEINFO;
   verlen:cardinal;
   p:PAnsiChar;
-  r:TResourceStream;
+  h1,h2:THandle;
 begin
-  //odd, a copy is required to avoid access violation in version.dll<
-  r:=TResourceStream.CreateFromID(HInstance,1,RT_VERSION);
-  try
-    r.Read(d[0],dSize);
-  finally
-    r.Free;
-  end;
-  if VerQueryValueA(@d[0],'\',pointer(verblock),verlen) then
-    SelfVersion:=
-      IntToStr(HiWord(verblock.dwFileVersionMS))+'.'+
-      IntToStr(LoWord(verblock.dwFileVersionMS))+'.'+
-      IntToStr(HiWord(verblock.dwFileVersionLS))+'.'+
-      IntToStr(LoWord(verblock.dwFileVersionLS))
-  else
-    SelfVersion:='v???';
-  if VerQueryValueA(@d[0],'\StringFileInfo\040904E4\FileDescription',pointer(p),verlen) then
-    SelfVersion:=p+' '+SelfVersion;
+  h1:=FindResource(HInstance,pointer(1),RT_VERSION);
+  if h1=0 then SelfVersion:='[no version data]' else
+   begin
+    h2:=LoadResource(HInstance,h1);
+    if h2=0 then SelfVersion:='[verion load failed]' else
+     begin
+      //odd, a copy is required to avoid access violation in version.dll
+      Move(LockResource(h2)^,d[0],SizeofResource(HInstance,h1));
+      UnlockResource(h2);
+      FreeResource(h2);
+      //
+      if VerQueryValueA(@d[0],'\',pointer(verblock),verlen) then
+        SelfVersion:=
+          IntToStr(HiWord(verblock.dwFileVersionMS))+'.'+
+          IntToStr(LoWord(verblock.dwFileVersionMS))+'.'+
+          IntToStr(HiWord(verblock.dwFileVersionLS))+'.'+
+          IntToStr(LoWord(verblock.dwFileVersionLS))
+      else
+        SelfVersion:='v???';
+      if VerQueryValueA(@d[0],'\StringFileInfo\040904E4\FileDescription',pointer(p),verlen) then
+        SelfVersion:=p+' '+SelfVersion;
+     end;
+   end;
 end;
 
 { TXxmReqPars }
