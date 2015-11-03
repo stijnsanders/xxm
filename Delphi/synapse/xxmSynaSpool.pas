@@ -83,7 +83,6 @@ begin
     Buffer.Position:=0;
     Context.KeptCount:=0;
     //protect from destruction by TXxmPageLoader.Execute:
-    Context.Next:=ntWasKept;
     (Context as IUnknown)._AddRef;
     SetEvent(FAddEvent);
   finally

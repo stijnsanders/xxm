@@ -601,7 +601,8 @@ type
   public
     Entry:TXxmProjectEntry;
     Next:TXxmCrossProjectIncludeCheck;
-    constructor Create(AEntry:TXxmProjectEntry;ANext:TXxmCrossProjectIncludeCheck);
+    constructor Create(AEntry: TXxmProjectEntry;
+      ANext: TXxmCrossProjectIncludeCheck);
   end;
 
 procedure TXxmGeneralContext.Include(Address: WideString;
@@ -647,7 +648,8 @@ begin
               raise EXxmAutoBuildFailed.Create(FProjectName);
           //if px<>nil then raise? just let the request complete
          end;
-        f:=FProjectEntry.Project.LoadFragment(Self,Copy(Address,j,l-j+1),FBuilding.RelativePath);
+        f:=FProjectEntry.Project.LoadFragment(Self,
+          Copy(Address,j,l-j+1),FBuilding.RelativePath);
         if f=nil then
           raise EXxmIncludeFragmentNotFound.Create(StringReplace(
             SXxmIncludeFragmentNotFound,'__',Address,[]));
@@ -670,7 +672,8 @@ begin
         end;
        end
       else
-        raise EXxmIncludeCrossProjectDisabled.Create(SXxmIncludeCrossProjectDisabled)
+        raise EXxmIncludeCrossProjectDisabled.Create(
+          SXxmIncludeCrossProjectDisabled)
     else
      begin
       //FPage.Project?
@@ -779,7 +782,8 @@ begin
     and (VarType(Data)=(varArray or varByte)) then
    begin
     CheckSendStart(false);
-    SendBuf(VarArrayLock(Data)^,VarArrayHighBound(Data,1)-VarArrayLowBound(Data,1)+1);
+    SendBuf(VarArrayLock(Data)^,
+      VarArrayHighBound(Data,1)-VarArrayLowBound(Data,1)+1);
     VarArrayUnlock(Data);
    end
   else
@@ -798,7 +802,8 @@ begin
   inherited;
   //TODO: auto mimetype by extension?
   b:=FHeaderSent<>XxmHeaderNotSent;
-  SendStream(TStreamAdapter.Create(TFileStream.Create(FilePath,fmOpenRead or fmShareDenyNone),soOwned));//does CheckSendStart
+  SendStream(TStreamAdapter.Create(TFileStream.Create(
+    FilePath,fmOpenRead or fmShareDenyNone),soOwned));//does CheckSendStart
   if b then FSingleFileSent:='' else FSingleFileSent:=FilePath;
 end;
 
@@ -892,7 +897,8 @@ const
   DefaultProgressStep=$10000;
 begin
   if FParams=nil then FParams:=TXxmReqPars.Create;//fill: postpone to first GetParameter call
-  if FParams.Filled then raise EXxmParametersAlreadyParsed.Create(SXxmParametersAlreadyParsed);
+  if FParams.Filled then
+    raise EXxmParametersAlreadyParsed.Create(SXxmParametersAlreadyParsed);
   if (Flags and xxmUploadProgressAttach_PostData)<>0 then
     FParams.DataProgressAgent:=Agent;
   if (Flags and xxmUploadProgressAttach_FileFields)<>0 then
@@ -964,8 +970,10 @@ begin
     if pe<>nil then Result:=pe.HandleException(Self,FPageClass,Ex) else
      begin
       pf:=FProjectEntry.GetProjectInterface(IXxmProjectEvents1) as IXxmProjectEvents1;
-      if pf<>nil then Result:=pf.HandleException(Self,FPageClass,Ex.ClassName,Ex.Message)
-        else Result:=false;
+      if pf<>nil then
+        Result:=pf.HandleException(Self,FPageClass,Ex.ClassName,Ex.Message)
+      else
+        Result:=false;
      end;
   except
     //raise?
@@ -1135,17 +1143,17 @@ begin
   if Fragment<>'' then
     case VarType(Value) of
       varNull,varEmpty:
-        Include(Fragment);
+        Include(Fragment,[],[]);
       varArray or varVariant:
        begin
         j:=VarArrayLowBound(Value,1);
         k:=VarArrayHighBound(Value,1);
         SetLength(x,k-j+1);
         for i:=0 to k-j do x[i]:=Value[j+i];
-        Include(Fragment,x);
+        Include(Fragment,x,[]);
        end;
       else
-        Include(Fragment,[Value]);
+        Include(Fragment,[Value],[]);
     end;
 end;
 

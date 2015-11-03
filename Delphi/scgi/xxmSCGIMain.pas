@@ -24,12 +24,14 @@ type
     ntSuspend,
     ntResume,
     ntResumeDrop,
-    ntWasKept
+    ntResumeSocket,
+    ntResumeDisconnect
   );
 
   TXxmSCGIContext=class(TXxmQueueContext,
     IXxmHttpHeaders,
-    IXxmContextSuspend)
+    IXxmContextSuspend,
+    IXxmSocketSuspend)
   private
     FSocket:TTcpSocket;
     FReqHeaders:TRequestHeaders;
@@ -77,6 +79,9 @@ type
       const ResumeFragment: WideString; ResumeValue: OleVariant;
       const DropFragment: WideString; DropValue: OleVariant);
     procedure Resume(ToDrop: Boolean); override;
+
+    { IXxmSocketSuspend }
+    procedure SuspendSocket(Handler: IXxmRawSocket);
 
     function GetProjectPage(FragmentName: WideString):IXxmFragment; override;
 
@@ -283,7 +288,6 @@ begin
   FSessionID:='';//see GetSessionID
   FURI:='';//see Execute
   FRedirectPrefix:='';
-  if Next=ntWasKept then _Release;
   Next:=ntNormal;
 end;
 
@@ -308,7 +312,11 @@ begin
        begin
         Next:=ntNormal;
         IncludeX(FDropFragment,FDropValue);
-       end;           
+       end;
+      ntResumeSocket:
+        (IUnknown(FResumeValue) as IXxmRawSocket).DataReady(0);
+      ntResumeDisconnect:
+        (IUnknown(FResumeValue) as IXxmRawSocket).Disconnect;
       else
        begin
         BeginRequest;
@@ -364,7 +372,10 @@ begin
       FSocket.Disconnect;
      end;
     ntKeep,ntResume,ntResumeDrop:
+     begin
+      Next:=ntNormal;//?
       KeptConnections.Queue(Self);
+     end;
   end;
 end;
 
@@ -795,6 +806,15 @@ begin
     SetBufferSize(0);//!
     Result:=TRawSocketData.Create(FSocket);
    end;
+end;
+
+procedure TXxmSCGIContext.SuspendSocket(Handler: IXxmRawSocket);
+begin
+  if Next=ntResumeSocket then
+    raise EXxmContextAlreadySuspended.Create(SXxmContextAlreadySuspended);
+  Next:=ntResumeSocket;
+  FResumeValue:=Handler;
+  KeptConnections.Queue(Self);
 end;
 
 { TXxmSCGIServerListener }

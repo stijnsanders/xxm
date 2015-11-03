@@ -62,7 +62,6 @@ begin
     FContexts.Add(Context);
     Context.KeptCount:=0;
     //protect from destruction by TXxmPageLoader.Execute:
-    Context.Next:=ntWasKept;
     (Context as IUnknown)._AddRef;
     SetEvent(FQueueEvent);
   finally
@@ -95,7 +94,14 @@ begin
           //timed out? (see also t value below: 300x100ms~=30s)
           if x.KeptCount=300 then
            begin
-            SafeFree(TInterfacedObject(x));
+            if x.Next=ntResumeSocket then
+             begin
+              x.Next:=ntResumeDisconnect;
+              PageLoaderPool.Queue(x);
+              (x as IUnknown)._Release;
+             end
+            else
+              SafeFree(TInterfacedObject(x));
             FContexts.Delete(i);
            end;
          end;
@@ -131,6 +137,7 @@ begin
               x:=TXxmSynaContext(FContexts[j]);
               FContexts.Delete(j);
               PageLoaderPool.Queue(x);
+              (x as IUnknown)._Release;
              end;
            end;
         finally

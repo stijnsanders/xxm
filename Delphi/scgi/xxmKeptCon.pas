@@ -72,7 +72,6 @@ begin
     FContexts[i]:=Context;
     Context.KeptCount:=0;
     //protect from destruction by TXxmPageLoader.Execute:
-    Context.Next:=ntWasKept;
     (Context as IUnknown)._AddRef;
     SetEvent(FQueueEvent);
   finally
@@ -145,7 +144,15 @@ begin
               while (j<FContextIndex) and not((FContexts[j]<>nil)
                 and (FContexts[j].Socket.Handle=h)) do inc(j);
               if j<FContextIndex then
-                SafeFree(TInterfacedObject(FContexts[j]));//else raise?
+                if FContexts[j].Next=ntResumeSocket then
+                 begin
+                  FContexts[j].Next:=ntResumeDisconnect;
+                  PageLoaderPool.Queue(FContexts[j]);
+                  (FContexts[j] as IUnknown)._Release;
+                  FContexts[j]:=nil;
+                 end
+                else
+                  SafeFree(TInterfacedObject(FContexts[j]));//else raise?
              end;
             //readables
             for k:=0 to r.fd_count-1 do
@@ -157,6 +164,7 @@ begin
               if j<FContextIndex then
                begin
                 PageLoaderPool.Queue(FContexts[j]);
+                (FContexts[j] as IUnknown)._Release;
                 FContexts[j]:=nil;
                end;
               //else raise?

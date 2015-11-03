@@ -179,6 +179,11 @@ type
     procedure Disconnect;
   end;
 
+  IXxmSocketSuspend = interface
+    ['{78786D00-0000-0018-C000-000000000018}']
+    procedure SuspendSocket(Handler: IXxmRawSocket);
+  end;
+
 const
   IID_IXxmProject: TGUID = '{78786D00-0000-0002-C000-000000000002}';
   IID_IXxmContext: TGUID = '{78786D00-0000-0003-C000-000000000003}';

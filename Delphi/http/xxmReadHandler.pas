@@ -224,30 +224,12 @@ end;
 function TRawSocketData.Read(pv: Pointer; cb: Integer;
   pcbRead: PLongint): HResult;
 var
-  l:integer;
-  r,x:TFDSet;
-  t:TTimeVal;
+  l:cardinal;
 begin
-  r.fd_count:=1;
-  r.fd_array[0]:=FSocket.Handle;
-  x.fd_count:=1;
-  x.fd_array[0]:=FSocket.Handle;
-  t.tv_sec:=0;
-  t.tv_usec:=30000;//microseconds
-  if select(0,@r,nil,@x,@t)=SOCKET_ERROR then
-    l:=0 //raise?
-  else
-   begin
-    //TODO: if x.fd_count<>0 then Disconnect?raise?
-    if r.fd_count=0 then
-      l:=0
-    else
-     begin
-      l:=FSocket.ReceiveBuf(pv^,cb);
-      if l<=0 then
-        raise ETcpSocketError.Create('Connection Lost');//Result:=E?
-     end;
-   end;
+  //assert DataReady called, returned true
+  l:=FSocket.ReceiveBuf(pv^,cb);
+  if l<=0 then
+    raise ETcpSocketError.Create('Connection Lost');//Result:=E?
   if pcbRead<>nil then pcbRead^:=l;
   Result:=S_OK;
 end;
@@ -275,7 +257,7 @@ begin
   x.fd_array[0]:=FSocket.Handle;
   t.tv_sec:=TimeoutMS div 1000;
   t.tv_usec:=(TimeoutMS mod 1000)*1000;//microseconds
-  if select(0,@r,nil,@x,nil)=SOCKET_ERROR then
+  if select(0,@r,nil,@x,@t)=SOCKET_ERROR then
     raise ETcpSocketError.Create(SysErrorMessage(WSAGetLastError));
   if x.fd_count=1 then //if __WSAFDIsSet(FSocket,x) then
     raise ETcpSocketError.Create('Socket in error state');//?

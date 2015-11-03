@@ -12,7 +12,7 @@ It implements IXxmPage, so you can call xxmFReg's
 with your inheriting class (or any alternative fragment registry you use)
 to determine which URL the WebSocket will be available with.
 
-  $Rev$ $Date$
+  $Rev: 399 $ $Date: 2015-10-25 23:48:29 +0100 (zo, 25 okt 2015) $
 
 }
 
@@ -21,10 +21,13 @@ interface
 uses SysUtils, xxm;
 
 type
-  TXxmWebSocket=class(TXxmPage)
+  TXxmWebSocket=class(TXxmPage, IXxmRawSocket)
   private
     FMaxFragmentSize:int64;
     FSocket:IXxmRawSocket;
+    FSockSus:IXxmSocketSuspend;
+    FIncomplete:byte;//TWebSocketBuilding;
+    FIncompleteData:UTF8String;
     procedure SendRaw(Op:byte;const Data:UTF8String);
   protected
     procedure ConnectSuccess; virtual;
@@ -39,6 +42,16 @@ type
     //IXxmPage
     procedure Build(const Context: IXxmContext; const Caller: IXxmFragment;
       const Values: array of OleVariant; const Objects: array of TObject); override;
+
+    //IXxmRawSocket
+    function Read(pv: Pointer; cb: Longint; pcbRead: PLongint): HResult;
+      stdcall;
+    function Write(pv: Pointer; cb: Longint; pcbWritten: PLongint): HResult;
+      stdcall;
+    function DataReady(TimeoutMS: cardinal): boolean;
+    procedure ClosingSocket;
+    procedure IXxmRawSocket.Disconnect=ClosingSocket;
+    
     //
     procedure SendText(const Data:UTF8String);
     procedure SendBinary(const Data:UTF8String);
@@ -227,8 +240,13 @@ begin
   for j:=0 to 4 do Result[j]:=SwapEndian(h[j]);
 end;
 
+const
+  //TWebSocketBuilding=(
+  wbNone = 0;
+  wbText = 1;
+  wbBinary = 2;
+
 type
-  TWebSocketBuilding=(wbNone,wbText,wbBinary);
   TMaskingKey=array[0..3] of byte;
   PMaskingKey=^TMaskingKey;
 
@@ -244,25 +262,32 @@ const
 
 { TXxmWebSocket }
 
+procedure TXxmWebSocket.AfterConstruction;
+begin
+  inherited;
+  FMaxFragmentSize:=$10000;//default
+  FSocket:=nil;
+  FSockSus:=nil;
+end;
+
+procedure TXxmWebSocket.BeforeDestruction;
+begin
+  inherited;
+  FSocket:=nil;//try except silent?
+  FSockSus:=nil;
+end;
+
 procedure TXxmWebSocket.Build(const Context: IXxmContext;
   const Caller: IXxmFragment; const Values: array of OleVariant;
   const Objects: array of TObject);
 var
   hReq,hRes:IxxmDictionaryEx;
   h:TSHA1Hash;
-  Frame:array of byte;
-  FrameLength:integer;
-  i,j,k:integer;
-  Frame_Payload_Length:int64;
-  Frame_Masked:boolean;
-  Frame_Masking_Key:TMaskingKey;
-  Incomplete:TWebSocketBuilding;
-  IncompleteData:UTF8String;
 begin
   //inherited;
 
   //http://tools.ietf.org/html/draft-ietf-hybi-thewebsocketprotocol-17
-
+  
   hReq:=(Context as IxxmHttpHeaders).RequestHeaders;
   hRes:=(Context as IxxmHttpHeaders).ResponseHeaders;
   if (CompareText(hReq['Connection'],'upgrade')=0)
@@ -288,148 +313,19 @@ begin
       raise EWebSocketError.Create('xxm handler doesn''t support RawSocket');
 
     ConnectSuccess;
-
-    Incomplete:=wbNone;
+    FIncomplete:=wbNone;
+    FIncompleteData:='';
     //try
-    //TODO: use (Context as IXxmContextSuspend).Suspend(
 
-      while Context.Connected do
-       begin
+    if Context.QueryInterface(IXxmSocketSuspend,FSockSus)=S_OK then
+      FSockSus.SuspendSocket(Self)
+    else
+     begin       
+      while Context.Connected do DataReady(0);
+      ClosingSocket;
+     end;
 
-        SetLength(Frame,$10000);
-        OleCheck(FSocket.Read(@Frame[0],$10000,@FrameLength));
-        if FrameLength<>0 then
-         begin
-          //Frame[0]:=//FIN1:RSV3:OP4
-          Frame_Masked:=(Frame[1] and $80)<>0;
-          Frame_Payload_Length:=Frame[1] and $7F;
-          i:=2;
-          if Frame_Payload_Length=126 then
-           begin
-            Frame_Payload_Length:=Frame[2] shl 8 or Frame[3];
-            i:=4;
-           end
-          else
-            if Frame_Payload_Length=127 then
-             begin
-              Frame_Payload_Length:=0;
-              while i<>10 do
-               begin
-                Frame_Payload_Length:=Frame_Payload_Length shl 8 or Frame[i];
-                inc(i);
-               end;
-             end;
-
-          if Frame_Masked then
-           begin
-            Frame_Masking_Key:=PMaskingKey(@Frame[i])^;
-            inc(i,4);
-
-            j:=i;
-            k:=i+Frame_Payload_Length;//assert<=FrameLength;
-            while j<k do
-             begin
-              Frame[j]:=Frame[j] xor Frame_Masking_Key[(j-i) mod 4];
-              inc(j);
-             end;
-
-           end;
-
-          if (Frame[0] and $70)<>0 then //RSV1,RSV2,RSV3
-           begin
-            FSocket.Disconnect;
-            raise EWebSocketError.Create('Unexpected reserved flags');
-           end;
-          //if not Frame_Masked then?
-
-          if (Frame[0] and $80)=0 then //FIN?
-            case Frame[0] and $F of
-              Frame_Op_Continuation:
-               begin
-                if Incomplete=wbNone then
-                  raise EWebSocketError.Create('Unexpected continuation');
-                j:=Length(IncompleteData);
-                SetLength(IncompleteData,j+Frame_Payload_Length);
-                Move(Frame[i],IncompleteData[j+1],Frame_Payload_Length);
-               end;
-              //TODO: support interleaved frames?
-              Frame_Op_Text:
-               begin
-                if Incomplete<>wbNone then
-                  raise EWebSocketError.Create('Unexpected interrupted sequence');
-                Incomplete:=wbText;
-                SetLength(IncompleteData,Frame_Payload_Length);
-                Move(Frame[i],IncompleteData[1],Frame_Payload_Length);
-               end;
-              Frame_Op_Binary:
-               begin
-                if Incomplete<>wbNone then
-                  raise EWebSocketError.Create('Unexpected interrupted sequence');
-                Incomplete:=wbBinary;
-                SetLength(IncompleteData,Frame_Payload_Length);
-                Move(Frame[i],IncompleteData[1],Frame_Payload_Length);
-               end;
-              else
-                raise EWebSocketError.Create('Unexpected continuation');
-            end
-          else
-            case Frame[0] and $F of
-              Frame_Op_Continuation:
-               begin
-                j:=Length(IncompleteData);
-                SetLength(IncompleteData,j+Frame_Payload_Length);
-                Move(Frame[i],IncompleteData[j+1],Frame_Payload_Length);
-                case Incomplete of
-                  wbNone:raise EWebSocketError.Create('Unexpected continuation');
-                  wbText:ReceiveText(IncompleteData);
-                  wbBinary:ReceiveBinary(IncompleteData);
-                end;
-                Incomplete:=wbNone;
-                IncompleteData:='';
-               end;
-              Frame_Op_Text:
-               begin
-                //if Incomplete<>wbNone then?
-                SetLength(IncompleteData,Frame_Payload_Length);
-                Move(Frame[i],IncompleteData[1],Frame_Payload_Length);
-                ReceiveText(IncompleteData);
-               end;
-              Frame_Op_Binary:
-               begin
-                //if Incomplete<>wbNone then?
-                SetLength(IncompleteData,Frame_Payload_Length);
-                Move(Frame[i],IncompleteData[1],Frame_Payload_Length);
-                ReceiveBinary(IncompleteData);
-               end;
-              Frame_Op_Close:
-               begin
-                SetLength(IncompleteData,Frame_Payload_Length);
-                Move(Frame[i],IncompleteData[1],Frame_Payload_Length);
-                SendRaw(Frame_Op_Close,IncompleteData);
-                //flush?
-                FSocket.Disconnect;
-                raise EWebSocketError.Create('Close frame received');
-               end;
-              Frame_Op_Ping:
-               begin
-                SetLength(IncompleteData,Frame_Payload_Length);
-                Move(Frame[i],IncompleteData[1],Frame_Payload_Length);
-                SendRaw(Frame_Op_Pong,IncompleteData);
-               end;
-              Frame_Op_Pong:
-               begin
-                //TODO: reset ping timeout
-               end;
-            end;
-         end;
-
-        //TODO: timer to send ping frames
-       end;
-
-     //except? //EWebSocketError?
-
-     FSocket:=nil;//try except silent?
-     ConnectionLost;
+    //except? //EWebSocketError?
 
    end
   else
@@ -440,17 +336,176 @@ begin
    end;
 end;
 
-procedure TXxmWebSocket.AfterConstruction;
+function TXxmWebSocket.Read(pv: Pointer; cb: Integer;
+  pcbRead: PLongint): HResult;
 begin
-  inherited;
-  FMaxFragmentSize:=$10000;//default
-  FSocket:=nil;
+  //IXxmRawSocket on TXxmWebSocket for suspend/resume only
+  Result:=E_NOTIMPL;
 end;
 
-procedure TXxmWebSocket.BeforeDestruction;
+function TXxmWebSocket.Write(pv: Pointer; cb: Integer;
+  pcbWritten: PLongint): HResult;
 begin
-  inherited;
+  //IXxmRawSocket on TXxmWebSocket for suspend/resume only
+  Result:=E_NOTIMPL;
+end;
+
+procedure TXxmWebSocket.Disconnect;
+begin
+  if FSocket<>nil then FSocket.Disconnect;
+end;
+
+function TXxmWebSocket.DataReady(TimeoutMS: cardinal): boolean;
+var
+  Frame:array of byte;
+  FrameLength:integer;
+  i,j,k:integer;
+  Frame_Payload_Length:int64;
+  Frame_Masked:boolean;
+  Frame_Masking_Key:TMaskingKey;
+begin
+  SetLength(Frame,$10000);
+  while FSocket.DataReady(50) do
+   begin
+    OleCheck(FSocket.Read(@Frame[0],$10000,@FrameLength));
+    if FrameLength<>0 then
+     begin
+      //Frame[0]:=//FIN1:RSV3:OP4
+      Frame_Masked:=(Frame[1] and $80)<>0;
+      Frame_Payload_Length:=Frame[1] and $7F;
+      i:=2;
+      if Frame_Payload_Length=126 then
+       begin
+        Frame_Payload_Length:=Frame[2] shl 8 or Frame[3];
+        i:=4;
+       end
+      else
+        if Frame_Payload_Length=127 then
+         begin
+          Frame_Payload_Length:=0;
+          while i<>10 do
+           begin
+            Frame_Payload_Length:=Frame_Payload_Length shl 8 or Frame[i];
+            inc(i);
+           end;
+         end;
+
+      if Frame_Masked then
+       begin
+        Frame_Masking_Key:=PMaskingKey(@Frame[i])^;
+        inc(i,4);
+
+        j:=i;
+        k:=i+Frame_Payload_Length;//assert<=FrameLength;
+        while j<k do
+         begin
+          Frame[j]:=Frame[j] xor Frame_Masking_Key[(j-i) mod 4];
+          inc(j);
+         end;
+
+       end;
+
+      if (Frame[0] and $70)<>0 then //RSV1,RSV2,RSV3
+       begin
+        FSocket.Disconnect;
+        raise EWebSocketError.Create('Unexpected reserved flags');
+       end;
+      //if not Frame_Masked then?
+
+      if (Frame[0] and $80)=0 then //FIN?
+        case Frame[0] and $F of
+          Frame_Op_Continuation:
+           begin
+            if FIncomplete=wbNone then
+              raise EWebSocketError.Create('Unexpected continuation');
+            j:=Length(FIncompleteData);
+            SetLength(FIncompleteData,j+Frame_Payload_Length);
+            Move(Frame[i],FIncompleteData[j+1],Frame_Payload_Length);
+           end;
+          //TODO: support interleaved frames?
+          Frame_Op_Text:
+           begin
+            if FIncomplete<>wbNone then
+              raise EWebSocketError.Create('Unexpected interrupted sequence');
+            FIncomplete:=wbText;
+            SetLength(FIncompleteData,Frame_Payload_Length);
+            Move(Frame[i],FIncompleteData[1],Frame_Payload_Length);
+           end;
+          Frame_Op_Binary:
+           begin
+            if FIncomplete<>wbNone then
+              raise EWebSocketError.Create('Unexpected interrupted sequence');
+            FIncomplete:=wbBinary;
+            SetLength(FIncompleteData,Frame_Payload_Length);
+            Move(Frame[i],FIncompleteData[1],Frame_Payload_Length);
+           end;
+          else
+            raise EWebSocketError.Create('Unexpected continuation');
+        end
+      else
+        case Frame[0] and $F of
+          Frame_Op_Continuation:
+           begin
+            j:=Length(FIncompleteData);
+            SetLength(FIncompleteData,j+Frame_Payload_Length);
+            Move(Frame[i],FIncompleteData[j+1],Frame_Payload_Length);
+            case FIncomplete of
+              wbNone:raise EWebSocketError.Create('Unexpected continuation');
+              wbText:ReceiveText(FIncompleteData);
+              wbBinary:ReceiveBinary(FIncompleteData);
+            end;
+            FIncomplete:=wbNone;
+            FIncompleteData:='';
+           end;
+          Frame_Op_Text:
+           begin
+            //if Incomplete<>wbNone then?
+            SetLength(FIncompleteData,Frame_Payload_Length);
+            Move(Frame[i],FIncompleteData[1],Frame_Payload_Length);
+            ReceiveText(FIncompleteData);
+           end;
+          Frame_Op_Binary:
+           begin
+            //if Incomplete<>wbNone then?
+            SetLength(FIncompleteData,Frame_Payload_Length);
+            Move(Frame[i],FIncompleteData[1],Frame_Payload_Length);
+            ReceiveBinary(FIncompleteData);
+           end;
+          Frame_Op_Close:
+           begin
+            SetLength(FIncompleteData,Frame_Payload_Length);
+            Move(Frame[i],FIncompleteData[1],Frame_Payload_Length);
+            SendRaw(Frame_Op_Close,FIncompleteData);
+            //flush?
+            FSocket.Disconnect;
+            raise EWebSocketError.Create('Close frame received');
+           end;
+          Frame_Op_Ping:
+           begin
+            SetLength(FIncompleteData,Frame_Payload_Length);
+            Move(Frame[i],FIncompleteData[1],Frame_Payload_Length);
+            SendRaw(Frame_Op_Pong,FIncompleteData);
+           end;
+          Frame_Op_Pong:
+           begin
+            //TODO: reset ping timeout
+           end;
+        end;
+     end;
+   end;
+  //TODO: timer to send ping frames
+
+  if (FSockSus<>nil) then //and FSocket.Connected do
+    FSockSus.SuspendSocket(Self);
+
+  Result:=true;
+end;
+
+procedure TXxmWebSocket.ClosingSocket;
+begin
   FSocket:=nil;//try except silent?
+  FSockSus:=nil;
+  ConnectionLost;
 end;
 
 procedure TXxmWebSocket.ConnectSuccess;
@@ -598,11 +653,6 @@ begin
     if i=0 then Frame[0]:=Frame_Op_Continuation;
     inc(i,PayloadSize);
    end;
-end;
-
-procedure TXxmWebSocket.Disconnect;
-begin
-  if FSocket<>nil then FSocket.Disconnect;
 end;
 
 initialization
