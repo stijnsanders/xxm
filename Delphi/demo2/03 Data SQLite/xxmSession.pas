@@ -94,7 +94,7 @@ var //see SQLITE_CONFIG_SERIALIZED: one connection may be used over several thre
 constructor TXxmSession.Create(const ID: WideString; Context: IXxmContext);
 begin
   inherited Create;
-  FID:=Context.ID;
+  FID:=ID;
   //TODO: initiate expiry
   //FDbCon:=TSQLiteConnection.Create(...'demo.db');
 end;

@@ -12,7 +12,7 @@ It implements IXxmPage, so you can call xxmFReg's
 with your inheriting class (or any alternative fragment registry you use)
 to determine which URL the WebSocket will be available with.
 
-  $Rev: 399 $ $Date: 2015-10-25 23:48:29 +0100 (zo, 25 okt 2015) $
+  $Rev: 401 $ $Date: 2015-11-04 00:05:54 +0100 (wo, 04 nov 2015) $
 
 }
 

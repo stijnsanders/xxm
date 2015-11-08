@@ -73,7 +73,7 @@ end;
 constructor TXxmSession.Create(const ID: WideString; Context: IXxmContext);
 begin
   inherited Create;
-  FID:=Context.ID;
+  FID:=ID;
   //TODO: initiate expiry
 
   //default values
