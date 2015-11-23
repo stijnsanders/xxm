@@ -177,7 +177,7 @@ begin
           end;
          end;
        end;
-    finally
+    except
       //silent (log?)
     end;
 end;

@@ -140,7 +140,7 @@ begin
           Context._Release;
         end;
        end;
-    finally
+    except
       //silent (log?)
     end;
   //CoUninitialize;//? hangs thread
@@ -487,7 +487,7 @@ begin
           LeaveCriticalSection(FLock);
         end;
        end;
-    finally
+    except
       //silent (log?)
     end;
 end;
