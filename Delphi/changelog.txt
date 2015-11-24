@@ -1,5 +1,4 @@
-v1.2.3.400?
-- (//TODO: HTTP2)
+v1.2.3.400
 - WebSocket support (only xxmHttp,xxmSyna,xxmAhttpd,xxmHost)
 - SCGI handler: xxmSCGI*
 - serve handler's icon for "/favicon.ico" (project registry override)

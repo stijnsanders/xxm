@@ -224,7 +224,7 @@ end;
 function TRawSocketData.Read(pv: Pointer; cb: Integer;
   pcbRead: PLongint): HResult;
 var
-  l:cardinal;
+  l:integer;
 begin
   //assert DataReady called, returned true
   l:=FSocket.ReceiveBuf(pv^,cb);
