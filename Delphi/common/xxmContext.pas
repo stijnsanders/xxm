@@ -208,6 +208,7 @@ begin
   FPage:=nil;
   FBuilding:=nil;
   FPageClass:='';
+  FSingleFileSent:='';
   FHeaderSent:=XxmHeaderNotSent;
   FIncludeDepth:=0;
   FIncludeCheck:=nil;

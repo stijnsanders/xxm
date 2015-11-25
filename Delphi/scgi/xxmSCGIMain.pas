@@ -21,6 +21,7 @@ type
     ntNormal,
     ntHeaderOnly,
     ntKeep,
+    ntSpool,
     ntSuspend,
     ntResume,
     ntResumeDrop,
@@ -337,6 +338,7 @@ begin
     and (FContentBuffer.Position>SpoolingThreshold) then
    begin
     CheckSendStart(true);
+    Next:=ntSpool;
     SpoolingConnections.Add(Self,FContentBuffer,false);
     FContentBuffer:=nil;//since spooling will free it when done
    end
@@ -351,6 +353,7 @@ begin
    begin
     AData.Seek(0,soFromEnd);//used by SpoolingConnections.Add
     CheckSendStart(true);
+    Next:=ntSpool;
     SpoolingConnections.Add(Self,AData,true);
    end
   else
