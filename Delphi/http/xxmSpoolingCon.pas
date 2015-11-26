@@ -11,8 +11,9 @@ type
     FAddEvent:THandle;
     FContexts:array of record
       Context:TXxmHttpContext;
-      Buffer:TStream;
+      KeptCount:cardinal;
       DataLeft:int64;
+      Buffer:TStream;
       BufferFreeWhenDone:boolean;
     end;
     FContextIndex,FContextSize:integer;
@@ -76,14 +77,14 @@ begin
        end;
       inc(FContextIndex);
      end;
-    FContexts[i].Context:=Context;
-    FContexts[i].Buffer:=Buffer;
-    FContexts[i].DataLeft:=Buffer.Position;
-    FContexts[i].BufferFreeWhenDone:=FreeWhenDone;
-    Buffer.Position:=0;
-    Context.KeptCount:=0;
     //protect from destruction by TXxmPageLoader.Execute:
     (Context as IUnknown)._AddRef;
+    FContexts[i].Context:=Context;
+    FContexts[i].KeptCount:=0;
+    FContexts[i].DataLeft:=Buffer.Position;
+    FContexts[i].Buffer:=Buffer;
+    FContexts[i].BufferFreeWhenDone:=FreeWhenDone;
+    Buffer.Position:=0;
     SetEvent(FAddEvent);
   finally
     LeaveCriticalSection(FLock);
@@ -95,11 +96,7 @@ begin
   if force then
     SafeFree(TInterfacedObject(FContexts[i].Context))
   else
-    try
-      (FContexts[i].Context as IUnknown)._Release;
-    finally
-      FContexts[i].Context:=nil;
-    end;
+    SafeClear(TInterfacedObject(FContexts[i].Context));
   if FContexts[i].BufferFreeWhenDone then
     FreeAndNil(FContexts[i].Buffer)
   else
@@ -130,9 +127,9 @@ begin
           k:=(i+j) mod FContextIndex;
           if FContexts[k].Context<>nil then
            begin
-            inc(FContexts[k].Context.KeptCount);
+            inc(FContexts[k].KeptCount);
             //timed out? (see also t value below: 300x100ms~=30s)
-            if FContexts[k].Context.KeptCount=300 then
+            if FContexts[k].KeptCount=300 then
               DropContext(true,k)
             else
              begin
@@ -209,7 +206,7 @@ begin
                     DropContext(false,j);
                    end
                   else
-                    FContexts[j].Context.KeptCount:=0;
+                    FContexts[j].KeptCount:=0;
                  end;
                end;
               //else raise?

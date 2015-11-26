@@ -148,8 +148,7 @@ begin
                  begin
                   FContexts[j].Next:=ntResumeDisconnect;
                   PageLoaderPool.Queue(FContexts[j]);
-                  (FContexts[j] as IUnknown)._Release;
-                  FContexts[j]:=nil;
+                  SafeClear(TInterfacedObject(FContexts[j]));
                  end
                 else
                   SafeFree(TInterfacedObject(FContexts[j]));//else raise?
@@ -164,8 +163,7 @@ begin
               if j<FContextIndex then
                begin
                 PageLoaderPool.Queue(FContexts[j]);
-                (FContexts[j] as IUnknown)._Release;
-                FContexts[j]:=nil;
+                SafeClear(TInterfacedObject(FContexts[j]));
                end;
               //else raise?
              end;

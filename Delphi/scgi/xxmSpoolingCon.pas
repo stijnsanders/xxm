@@ -95,11 +95,7 @@ begin
   if force then
     SafeFree(TInterfacedObject(FContexts[i].Context))
   else
-    try
-      (FContexts[i].Context as IUnknown)._Release;
-    finally
-      FContexts[i].Context:=nil;
-    end;
+    SafeClear(TInterfacedObject(FContexts[i].Context));
   if FContexts[i].BufferFreeWhenDone then
     FreeAndNil(FContexts[i].Buffer)
   else

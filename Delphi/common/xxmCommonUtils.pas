@@ -9,6 +9,7 @@ function GetFileModifiedDateTime(const FilePath:AnsiString;
   var FileSize:Int64):TDateTime;
 function GetFileSignature(const Path:AnsiString):AnsiString;
 procedure SafeFree(var Obj:TInterfacedObject);
+procedure SafeClear(var Obj:TInterfacedObject);
 
 type
   TOwningHandleStream=class(THandleStream)
@@ -111,6 +112,18 @@ begin
     pointer(x):=nil;
     pointer(Obj):=nil;
    end;
+end;
+
+procedure SafeClear(var Obj:TInterfacedObject);
+begin
+  if Obj<>nil then
+    try
+      (Obj as IUnknown)._Release;
+      Obj:=nil;
+    except
+      //silent
+      pointer(Obj):=nil;
+    end;
 end;
 
 { THeapStream }

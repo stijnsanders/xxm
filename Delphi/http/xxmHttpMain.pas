@@ -91,7 +91,6 @@ type
     property ResHeaders:TResponseHeaders read FResHeaders;
   public
     Next:TXxmNextTask;
-    KeptCount:cardinal;
     constructor Create;
     destructor Destroy; override;
     procedure Execute; override;
@@ -319,7 +318,10 @@ begin
         IncludeX(FDropFragment,FDropValue);
        end;
       ntResumeSocket:
+       begin
+        Next:=ntResumeDisconnect;//ntNormal?
         (IUnknown(FResumeValue) as IXxmRawSocket).DataReady(0);
+       end;
       ntResumeDisconnect:
         (IUnknown(FResumeValue) as IXxmRawSocket).Disconnect;
       else
