@@ -109,9 +109,9 @@ begin
             if FContexts[ii].KeptCount=300 then
               if FContexts[ii].Context.Next=ntResumeSocket then
                begin
-                FContexts[j].Context.Next:=ntResumeDisconnect;
-                PageLoaderPool.Queue(FContexts[j].Context);
-                SafeClear(TInterfacedObject(FContexts[j].Context));
+                FContexts[ii].Context.Next:=ntResumeDisconnect;
+                PageLoaderPool.Queue(FContexts[ii].Context);
+                SafeClear(TInterfacedObject(FContexts[ii].Context));
                end
               else
                 SafeFree(TInterfacedObject(FContexts[ii].Context))

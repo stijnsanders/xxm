@@ -9,7 +9,10 @@ type
   private
     FLock:TRTLCriticalSection;
     FQueueEvent:THandle;
-    FContexts:array of TXxmSCGIContext;
+    FContexts:array of record
+      Context:TXxmSCGIContext;
+      Keptcount:cardinal;
+    end;
     FContextIndex,FContextSize:integer;
   protected
     procedure Execute; override;
@@ -45,7 +48,8 @@ begin
   CloseHandle(FQueueEvent);
   DeleteCriticalSection(FLock);
   for i:=0 to FContextIndex-1 do
-    if FContexts[i]<>nil then SafeFree(TInterfacedObject(FContexts[i]));
+    if FContexts[i].Context<>nil then
+      SafeFree(TInterfacedObject(FContexts[i].Context));
   inherited;
 end;
 
@@ -59,7 +63,7 @@ begin
   EnterCriticalSection(FLock);
   try
     i:=0;
-    while (i<FContextIndex) and (FContexts[i]<>nil) do inc(i);
+    while (i<FContextIndex) and (FContexts[i].Context<>nil) do inc(i);
     if i=FContextIndex then
      begin
       if FContextIndex=FContextSize then
@@ -69,10 +73,10 @@ begin
        end;
       inc(FContextIndex);
      end;
-    FContexts[i]:=Context;
-    Context.KeptCount:=0;
     //protect from destruction by TXxmPageLoader.Execute:
     (Context as IUnknown)._AddRef;
+    FContexts[i].KeptCount:=0;
+    FContexts[i].Context:=Context;
     SetEvent(FQueueEvent);
   finally
     LeaveCriticalSection(FLock);
@@ -98,15 +102,22 @@ begin
         while (j<FContextIndex) and (r.fd_count<64) do
          begin
           ii:=(i+j) mod FContextIndex;
-          if FContexts[ii]<>nil then
+          if FContexts[ii].Context<>nil then
            begin
             inc(FContexts[ii].KeptCount);
             //timed out? (see also t value below: 300x100ms~=30s)
             if FContexts[ii].KeptCount=300 then
-              SafeFree(TInterfacedObject(FContexts[ii]))
+              if FContexts[ii].Context.Next=ntResumeSocket then
+               begin
+                FContexts[ii].Context.Next:=ntResumeDisconnect;
+                PageLoaderPool.Queue(FContexts[ii].Context);
+                SafeClear(TInterfacedObject(FContexts[ii].Context));
+               end
+              else
+                SafeFree(TInterfacedObject(FContexts[ii].Context))
             else
              begin
-              h:=FContexts[ii].Socket.Handle;
+              h:=FContexts[ii].Context.Socket.Handle;
               r.fd_array[r.fd_count]:=h;
               inc(r.fd_count);
               x.fd_array[x.fd_count]:=h;
@@ -141,34 +152,34 @@ begin
              begin
               j:=0;
               h:=x.fd_array[k];
-              while (j<FContextIndex) and not((FContexts[j]<>nil)
-                and (FContexts[j].Socket.Handle=h)) do inc(j);
+              while (j<FContextIndex) and not((FContexts[j].Context<>nil)
+                and (FContexts[j].Context.Socket.Handle=h)) do inc(j);
               if j<FContextIndex then
-                if FContexts[j].Next=ntResumeSocket then
+                if FContexts[j].Context.Next=ntResumeSocket then
                  begin
-                  FContexts[j].Next:=ntResumeDisconnect;
-                  PageLoaderPool.Queue(FContexts[j]);
-                  SafeClear(TInterfacedObject(FContexts[j]));
+                  FContexts[j].Context.Next:=ntResumeDisconnect;
+                  PageLoaderPool.Queue(FContexts[j].Context);
+                  SafeClear(TInterfacedObject(FContexts[j].Context));
                  end
                 else
-                  SafeFree(TInterfacedObject(FContexts[j]));//else raise?
+                  SafeFree(TInterfacedObject(FContexts[j].Context));
              end;
             //readables
             for k:=0 to r.fd_count-1 do
              begin
               j:=0;
               h:=r.fd_array[k];
-              while (j<FContextIndex) and not((FContexts[j]<>nil)
-                and (FContexts[j].Socket.Handle=h)) do inc(j);
+              while (j<FContextIndex) and not((FContexts[j].Context<>nil)
+                and (FContexts[j].Context.Socket.Handle=h)) do inc(j);
               if j<FContextIndex then
                begin
-                PageLoaderPool.Queue(FContexts[j]);
-                SafeClear(TInterfacedObject(FContexts[j]));
+                PageLoaderPool.Queue(FContexts[j].Context);
+                SafeClear(TInterfacedObject(FContexts[j].Context));
                end;
               //else raise?
              end;
             //clean-up
-            while (FContextIndex>0) and (FContexts[FContextIndex-1]=nil) do
+            while (FContextIndex>0) and (FContexts[FContextIndex-1].Context=nil) do
               dec(FContextIndex);
           finally
             LeaveCriticalSection(FLock);

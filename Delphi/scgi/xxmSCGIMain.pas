@@ -96,7 +96,7 @@ type
     property ResHeaders:TResponseHeaders read FResHeaders;
   public
     Next:TXxmNextTask;
-    KeptCount:cardinal;
+    
     constructor Create;
     destructor Destroy; override;
     procedure Execute; override;
