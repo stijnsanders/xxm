@@ -111,7 +111,7 @@ AutoIncBuild=0
 MajorVer=1
 MinorVer=2
 Release=3
-Build=404
+Build=408
 Debug=0
 PreRelease=0
 Special=0
@@ -122,7 +122,7 @@ CodePage=1252
 [Version Info Keys]
 CompanyName=
 FileDescription=xxm Http Service
-FileVersion=1.2.3.404
+FileVersion=1.2.3.408
 InternalName=
 LegalCopyright=
 LegalTrademarks=
