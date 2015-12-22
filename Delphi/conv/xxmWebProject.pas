@@ -872,7 +872,7 @@ begin
     for sl_x:=0 to sl_in.Count-1 do
      begin
       s:=sl_in[sl_x];
-      i:=Pos('.pas(',s);
+      if (s='') or (s[2]=':') or (s[2]='\') then i:=0 else i:=Pos('.pas(',s);
       if i<>0 then
        begin
         k:=i;
@@ -893,7 +893,7 @@ begin
           //silent
         end;
        end;
-      sl_out.Add(s);
+      if s<>'' then sl_out.Add(s);
      end;
     Result:=sl_out.Text;
   finally
