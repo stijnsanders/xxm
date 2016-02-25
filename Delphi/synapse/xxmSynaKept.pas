@@ -2,25 +2,30 @@ unit xxmSynaKept;
 
 interface
 
-uses Windows, Classes, xxmSynaMain;
+uses Windows, Classes, xxmContext;
 
 type
   TXxmKeptConnections=class(TThread)
   private
     FLock:TRTLCriticalSection;
     FQueueEvent:THandle;
-    FContexts: TList;
+    FContexts:array of record
+      Context:TXxmGeneralContext;
+      KeptTC,MaxTC:cardinal;
+    end;
+    FContextIndex,FContextSize:integer;
   protected
     procedure Execute; override;
   public
     constructor Create;
     destructor Destroy; override;
-    procedure Queue(Context:TXxmSynaContext);
+    procedure Queue(Context:TXxmGeneralContext;
+      SetState: TXxmContextState);
   end;
 
 implementation
 
-uses SysUtils, blcksock, xxmThreadPool, xxmCommonUtils;
+uses SysUtils, blcksock, xxmThreadPool, xxmCommonUtils, xxmSynaMain;
 
 { TXxmKeptConnections }
 
@@ -28,7 +33,8 @@ constructor TXxmKeptConnections.Create;
 begin
   inherited Create(false);
   Priority:=tpLower;//?
-  FContexts:=TList.Create;
+  FContextIndex:=0;
+  FContextSize:=0;
   InitializeCriticalSection(FLock);
   FQueueEvent:=CreateEvent(nil,true,false,nil);
 end;
@@ -36,33 +42,45 @@ end;
 destructor TXxmKeptConnections.Destroy;
 var
   i:integer;
-  x:TXxmSynaContext;
 begin
   Terminate;
   SetEvent(FQueueEvent);//wake up thread
   WaitFor;
   CloseHandle(FQueueEvent);
   DeleteCriticalSection(FLock);
-  for i:=0 to FContexts.Count-1 do
-   begin
-    x:=TXxmSynaContext(FContexts[i]);
-    SafeFree(TInterfacedObject(x));
-   end;
-  FContexts.Free;
+  for i:=0 to FContextIndex-1 do
+    FreeAndNil(FContexts[i].Context);
   inherited;
 end;
 
-procedure TXxmKeptConnections.Queue(Context: TXxmSynaContext);
+procedure TXxmKeptConnections.Queue(Context: TXxmGeneralContext;
+  SetState: TXxmContextState);
 const
   GrowStep=$100;
+var
+  i:integer;
 begin
   //TODO: maximum lingering connections? or close oldest on queue newer?
   EnterCriticalSection(FLock);
   try
-    FContexts.Add(Context);
-    Context.KeptCount:=0;
-    //protect from destruction by TXxmPageLoader.Execute:
-    (Context as IUnknown)._AddRef;
+    Context.State:=SetState;
+    i:=0;
+    while (i<FContextIndex) and (FContexts[i].Context<>nil) do inc(i);
+    if i=FContextIndex then
+     begin
+      if FContextIndex=FContextSize then
+       begin
+        inc(FContextSize,GrowStep);
+        SetLength(FContexts,FContextSize);
+       end;
+      inc(FContextIndex);
+     end;
+    if SetState=ctSocketResume then
+      FContexts[i].MaxTC:=8640000 //TODO: WebSocket ping/pong (then lower this)
+    else
+      FContexts[i].MaxTC:=3000;
+    FContexts[i].KeptTC:=GetTickCount;
+    FContexts[i].Context:=Context;
     SetEvent(FQueueEvent);
   finally
     LeaveCriticalSection(FLock);
@@ -71,7 +89,6 @@ end;
 
 procedure TXxmKeptConnections.Execute;
 var
-  x:TXxmSynaContext;
   xx:TTCPBlockSocket;
   r,l:TList;
   i,j:integer;
@@ -85,37 +102,36 @@ begin
       try
         EnterCriticalSection(FLock);
         try
-          i:=FContexts.Count;
-          while i<>0 do
+          i:=0;
+          while i<FContextIndex do
            begin
-            dec(i);
-            x:=TXxmSynaContext(FContexts[i]);
-            inc(x.KeptCount);
-            //timed out? (see also t value below: 300x100ms~=30s)
-            if x.KeptCount=300 then
+            if FContexts[i].Context<>nil then
              begin
-              if x.Next=ntResumeSocket then
-               begin
-                x.Next:=ntResumeDisconnect;
-                PageLoaderPool.Queue(x);
-                (x as IUnknown)._Release;
-               end
-              else
-                SafeFree(TInterfacedObject(x));
-              FContexts.Delete(i);
+              if cardinal(GetTickCount-FContexts[i].KeptTC)
+                >FContexts[i].MaxTC then
+                try
+                  if FContexts[i].Context.State=ctSocketResume then
+                    PageLoaderPool.Queue(FContexts[i].Context,ctSocketDisconnect)
+                  else
+                    FContexts[i].Context.Recycle;
+                finally
+                  FContexts[i].Context:=nil;
+                end;
              end;
+            inc(i);
            end;
           l.Clear;
           i:=0;
-          while i<FContexts.Count do
+          while i<FContextIndex do
            begin
-            l.Add(TXxmSynaContext(FContexts[i]).Socket);
+            if FContexts[i].Context<>nil then
+              l.Add((FContexts[i].Context as TXxmSynaContext).Socket);
             inc(i);
            end;
         finally
           LeaveCriticalSection(FLock);
         end;
-        if i=0 then //if FContexts.Count=0 then
+        if l.Count=0 then //if FContexts.Count=0 then
          begin
           ResetEvent(FQueueEvent);
           WaitForSingleObject(FQueueEvent,INFINITE);
@@ -134,10 +150,12 @@ begin
               if j<>0 then
                begin
                 dec(j);
-                x:=TXxmSynaContext(FContexts[j]);
-                FContexts.Delete(j);
-                PageLoaderPool.Queue(x);
-                (x as IUnknown)._Release;
+                try
+                  PageLoaderPool.Queue(FContexts[j].Context,
+                    FContexts[j].Context.State);
+                finally
+                  FContexts[j].Context:=nil;
+                end;
                end;
              end;
           finally

@@ -57,7 +57,7 @@ type
 
 implementation
 
-uses SysUtils;
+uses SysUtils,WinSock;
 
 { THandlerReadStreamAdapter }
 
@@ -250,8 +250,15 @@ begin
 end;
 
 procedure TRawSocketData.Disconnect;
+var
+  i:integer;
 begin
-  FSocket.CloseSocket;
+  if FSocket<>nil then
+   begin
+    i:=1;
+    setsockopt(FSocket.Socket,SOL_SOCKET,SO_REUSEADDR,@i,4);
+    FSocket.CloseSocket;
+   end;
 end;
 
 end.
