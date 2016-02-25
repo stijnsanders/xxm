@@ -13,7 +13,8 @@ uses
   xxmParams in '..\common\xxmParams.pas',
   xxmParUtils in '..\common\xxmParUtils.pas',
   xxmCommonUtils in '..\common\xxmCommonUtils.pas',
-  xxmContext in '..\common\xxmContext.pas';
+  xxmContext in '..\common\xxmContext.pas',
+  xxmThreadPool in '..\common\xxmThreadPool.pas';
 
 {$R *.res}
 

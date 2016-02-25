@@ -14,7 +14,8 @@ uses
   xxmParUtils in '..\common\xxmParUtils.pas',
   xxmAutoUpdate in '..\common\xxmAutoUpdate.pas',
   xxmCommonUtils in '..\common\xxmCommonUtils.pas',
-  xxmContext in '..\common\xxmContext.pas';
+  xxmContext in '..\common\xxmContext.pas',
+  xxmThreadPool in '..\common\xxmThreadPool.pas';
 
 {$R *.res}
 
