@@ -11,7 +11,8 @@ procedure HandleWindowsMessages(var QuitApp:boolean);
 
 implementation
 
-uses Windows, SysUtils, ActiveX, xxmPRegXml, xxmThreadPool, xxmHostMain, xxmCGIHeader;
+uses Windows, SysUtils, ActiveX, xxmPRegXml, xxmThreadPool, xxmHostMain, xxmCGIHeader,
+  xxmContext;
 
 procedure XxmRunHoster(HandleMessagesProc:TXxmHandleMessagesProc);
 type
@@ -86,10 +87,7 @@ begin
       CreatePipe(h1,ch.PipeRequest,nil,$1000);
       CreatePipe(ch.PipeResponse,h2,nil,$1000);
       if WriteFile(h,ch,ch.Size,l,nil) then
-       begin
-        //TODO: create context(s) up front (together with pipes?)
-        PageLoaderPool.Queue(TXxmHostedContext.Create(h1,h2));
-       end
+        (ContextPool.GetContext as TXxmHostedContext).Load(h1,h2)
       else
        begin
         CloseHandle(h);
