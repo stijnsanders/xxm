@@ -6,22 +6,8 @@ uses Windows, SysUtils, ActiveX, UrlMon, Classes, xxm, xxmContext,
   xxmPReg, xxmPRegLocal, xxmParams, xxmParUtils, xxmHeaders, xxmThreadPool;
 
 type
-  TXxmNextTask=(
-    ntStart,
-    ntResume,
-    ntResumeDrop,
-    ntBuildPage,
-    ntResponding,
-    ntDone,
-    ntRedirected,
-    ntSuspend,
-    ntComplete,
-    ntAborted
-  );
-
   TXxmLocalContext=class(TXxmQueueContext,
-    IXxmHttpHeaders,
-    IXxmContextSuspend)
+    IXxmHttpHeaders)
   private
     ProtSink:IInternetProtocolSink;
     BindInfo:IInternetBindInfo;
@@ -53,27 +39,25 @@ type
     function GetProjectPage(FragmentName: WideString):IXxmFragment; override;
     function GetRequestHeader(const Name: WideString): WideString; override;
     procedure AddResponseHeader(const Name, Value: WideString); override;
+    procedure BeginRequest; override;
+    procedure HandleRequest; override;
+    procedure EndRequest; override;
+
     { IXxmHttpHeaders }
     function GetRequestHeaders:IxxmDictionaryEx;
     function GetResponseHeaders:IxxmDictionaryEx;
-    { IXxmContextSuspend }
-    procedure Suspend(const EventKey: WideString;
-      CheckIntervalMS, MaxWaitTimeSec: cardinal;
-      const ResumeFragment: WideString; ResumeValue: OleVariant;
-      const DropFragment: WideString; DropValue: OleVariant);
-    procedure Resume(ToDrop: Boolean); override;
   public
     OutputData:TStream;
     OutputSize:Int64;
-    Next:TXxmNextTask;
-    DataRead:boolean;
+    DataRead,Terminated:boolean;
     Loader:TXxmPageLoader;
 
-    constructor Create(URL:WideString;
-      OIProtSink: IInternetProtocolSink; OIBindInfo: IInternetBindInfo);
+    procedure AfterConstruction; override;
     destructor Destroy; override;
 
-    procedure Execute; override;
+    procedure Load(const URL:WideString;
+      OIProtSink: IInternetProtocolSink; OIBindInfo: IInternetBindInfo);
+    procedure Recycle;override;
 
     procedure Lock;
     procedure Unlock;
@@ -101,23 +85,46 @@ const //resourcestring?
 
 { TXxmLocalContext }
 
-constructor TXxmLocalContext.Create(URL:WideString;
-  OIProtSink: IInternetProtocolSink; OIBindInfo: IInternetBindInfo);
+procedure TXxmLocalContext.AfterConstruction;
 begin
-  inherited Create(URL);
-  DataRead:=true;
-  Next:=ntStart;
+  Terminated:=false;
   OutputData:=nil;
   OutputSize:=0;
   SendDirect:=SendData;
+  FReqHeaders:=TRequestHeaders.Create;
+  FResHeaders:=TResponseHeaders.Create;
   InitializeCriticalSection(FLock);
+  inherited;//here because calls BeginRequest;
+end;
 
+destructor TXxmLocalContext.Destroy;
+begin
+  FHttpNegotiate:=nil;
+  BindInfo:=nil;
+  ProtSink:=nil;
+  FReqHeaders.Free;
+  FResHeaders.Free;
+  FreeAndNil(OutputData);
+  DeleteCriticalSection(FLock);
+  inherited;
+end;
+
+procedure TXxmLocalContext.Load(const URL:WideString;
+  OIProtSink: IInternetProtocolSink; OIBindInfo: IInternetBindInfo);
+begin
+  FURL:=URL;
   BindInfo:=OIBindInfo;
   ProtSink:=OIProtSink;
+end;
+
+procedure TXxmLocalContext.BeginRequest;
+begin
+  inherited;
+  Terminated:=false;
+  DataRead:=true;
+  FReqHeaders.Reset;
+  FResHeaders.Reset;
   FTotalSize:=0;
-  FReqHeaders:=nil;
-  FResHeaders:=TResponseHeaders.Create;
-  (FResHeaders as IUnknown)._AddRef;
   FHttpNegotiate:=nil;
   FGotSessionID:=false;
   FAuthUsr:='';
@@ -128,16 +135,36 @@ begin
   FDropValue:=Null;
 end;
 
-destructor TXxmLocalContext.Destroy;
+procedure TXxmLocalContext.EndRequest;
 begin
-  FHttpNegotiate:=nil;
+  if not Terminated then
+   begin
+    ProtSink.ReportData(BSCF_LASTDATANOTIFICATION or BSCF_DATAFULLYAVAILABLE,FTotalSize,0);
+    if StatusCode=200 then
+      ProtSink.ReportResult(S_OK,StatusCode,nil)
+    else
+      ProtSink.ReportResult(S_OK,StatusCode,PWideChar(StatusText));
+    //if Terminated then Recycle;//see TXxmLocalHandler.Terminate
+    Terminated:=true;
+    State:=ctSpooling;//prevent send to pool on recycle (see Terminate)
+   end;
+
   BindInfo:=nil;
   ProtSink:=nil;
-  SafeFree(TInterfacedObject(FReqHeaders));
-  SafeFree(TInterfacedObject(FResHeaders));
-  FreeAndNil(OutputData);
-  DeleteCriticalSection(FLock);
+  FHttpNegotiate:=nil;
+  FResumeValue:=Null;
+  FDropValue:=Null;
   inherited;
+end;
+
+procedure TXxmLocalContext.Recycle;
+begin
+  Lock;
+  try
+    if State<>ctSpooling then inherited;
+  finally
+    Unlock;
+  end;
 end;
 
 function TXxmLocalContext.GetProjectEntry: TXxmProjectEntry;
@@ -154,142 +181,127 @@ begin
   OleCheck(ProtSink.ReportProgress(BINDSTATUS_SENDINGREQUEST, PWideChar(FFragmentName)));
 end;
 
-procedure TXxmLocalContext.Execute;
+procedure TXxmLocalContext.HandleRequest;
 var
   i,j,l:integer;
   ba:TBindInfoF;
   bi:TBindInfo;
   x:AnsiString;
+  DoBuild:boolean;
 begin
   try
-    while Next<ntDone do
-      case Next of
+    //bind parameters
+    ZeroMemory(@bi,SizeOf(bi));
+    bi.cbSize:=SizeOf(bi);
+    BindInfo.GetBindInfo(ba,bi);
 
-        ntStart:
+    //if (ba and BINDF_)<>0 then
+    {
+    BINDF_ASYNCSTORAGE
+    BINDF_NOPROGRESSIVERENDERING
+    BINDF_OFFLINEOPERATION
+    BINDF_GETNEWESTVERSION
+    BINDF_NOWRITECACHE
+    BINDF_NEEDFILE
+    BINDF_PULLDATA
+    BINDF_IGNORESECURITYPROBLEM
+    BINDF_RESYNCHRONIZE
+    BINDF_HYPERLINK
+    BINDF_NO_UI
+    BINDF_SILENTOPERATION
+    BINDF_PRAGMA_NO_CACHE
+    BINDF_FREE_THREADED
+    BINDF_DIRECT_READ
+    BINDF_FORMS_SUBMIT
+    BINDF_GETFROMCACHE_IF_NET_FAIL
+    }
+
+    case bi.dwBindVerb of
+      BINDVERB_GET:FVerb:='GET';
+      BINDVERB_POST:FVerb:='POST';
+      BINDVERB_PUT:FVerb:='PUT';
+      else FVerb:=bi.szCustomVerb;
+    end;
+    if bi.szExtraInfo=nil then FExtraInfo:='' else FExtraInfo:=bi.szExtraInfo;
+    //bi.grfBindInfoF
+    //bi.dwCodePage?
+    if bi.cbstgmedData<>0 then FPostData:=StgMediumAsStream(bi.stgmedData);
+
+    OleCheck(ProtSink.ReportProgress(BINDSTATUS_FINDINGRESOURCE, nil));
+    //parse URL
+    i:=1;
+    l:=Length(FURL);
+    while (i<=l) and (FURL[i]<>':') do inc(i);
+    inc(i);
+    //assert starts with 'xxm:'
+    if (i>l) then
+     begin
+      //nothing after 'xxm:'
+      FURL:=Copy(FURL,1,i-1)+'//'+Copy(FURL,1,i-2)+'/';
+      inc(i,2);
+      l:=Length(FURL);
+      OleCheck(ProtSink.ReportProgress(BINDSTATUS_REDIRECTING,PWideChar(FURL)));
+     end
+    else
+     begin
+      j:=i;
+      if (i<=l) and (FURL[i]='/') then inc(i);
+      if (i<=l) and (FURL[i]='/') then inc(i);
+      if i-j<>2 then
+       begin
+        FURL:=Copy(FURL,1,j-1)+'//'+Copy(FURL,i,l-i+1);
+        i:=j+2;
+        l:=Length(FURL);
+        OleCheck(ProtSink.ReportProgress(BINDSTATUS_REDIRECTING,PWideChar(FURL)));
+       end;
+     end;
+    j:=i;
+    while (i<=l) and not(AnsiChar(FURL[i]) in ['/','?','&','$','#']) do inc(i);
+    //if server then remote?
+    FProjectName:=Copy(FURL,j,i-j);
+    if FProjectName='' then
+     begin
+      FProjectName:=DefaultProjectName;
+      FURL:=Copy(FURL,1,j-1)+FProjectName+Copy(FURL,i,Length(FURL)-i+1);
+      OleCheck(ProtSink.ReportProgress(BINDSTATUS_REDIRECTING,PWideChar(FURL)));
+     end;
+    FPageClass:='['+FProjectName+']';
+    if (i>l) then
+     begin
+      FURL:=FURL+'/';
+      inc(l);
+      OleCheck(ProtSink.ReportProgress(BINDSTATUS_REDIRECTING,PWideChar(FURL)));
+     end;
+    if (FURL[i]='/') then inc(i);
+
+    j:=i;
+    while (i<=l) and not(AnsiChar(FURL[i]) in ['?','&','$','#']) do inc(i);
+    FFragmentName:=Copy(FURL,j,i-j);
+    if (FURL[i]='?') then inc(i);
+    j:=i;
+    while (j<=l) and (FURL[j]<>'#') do inc(j);
+    FQueryString:=Copy(FURL,i,j-i);
+
+    //TODO: ctHeaderOnly?
+
+    DoBuild:=true;
+    while DoBuild do
+     begin
+      DoBuild:=false;
+      try
+        BuildPage;
+      except
+        //TODO: IAuthenticate doesn't work?
+        //custom authentication interface and credentials store:
+        on e1:EXxmUserAuthenticated do
          begin
-          Next:=ntBuildPage;
-          //bind parameters
-          ZeroMemory(@bi,SizeOf(bi));
-          bi.cbSize:=SizeOf(bi);
-          BindInfo.GetBindInfo(ba,bi);
-
-          //if (ba and BINDF_)<>0 then
-          {
-          BINDF_ASYNCSTORAGE
-          BINDF_NOPROGRESSIVERENDERING
-          BINDF_OFFLINEOPERATION
-          BINDF_GETNEWESTVERSION
-          BINDF_NOWRITECACHE
-          BINDF_NEEDFILE
-          BINDF_PULLDATA
-          BINDF_IGNORESECURITYPROBLEM
-          BINDF_RESYNCHRONIZE
-          BINDF_HYPERLINK
-          BINDF_NO_UI
-          BINDF_SILENTOPERATION
-          BINDF_PRAGMA_NO_CACHE
-          BINDF_FREE_THREADED
-          BINDF_DIRECT_READ
-          BINDF_FORMS_SUBMIT
-          BINDF_GETFROMCACHE_IF_NET_FAIL
-          }
-
-          case bi.dwBindVerb of
-            BINDVERB_GET:FVerb:='GET';
-            BINDVERB_POST:FVerb:='POST';
-            BINDVERB_PUT:FVerb:='PUT';
-            else FVerb:=bi.szCustomVerb;
-          end;
-          if bi.szExtraInfo=nil then FExtraInfo:='' else FExtraInfo:=bi.szExtraInfo;
-          //bi.grfBindInfoF
-          //bi.dwCodePage?
-          if bi.cbstgmedData<>0 then FPostData:=StgMediumAsStream(bi.stgmedData);
-
-          OleCheck(ProtSink.ReportProgress(BINDSTATUS_FINDINGRESOURCE, nil));
-          //parse URL
-          i:=1;
-          l:=Length(FURL);
-          while (i<=l) and (FURL[i]<>':') do inc(i);
-          inc(i);
-          //assert starts with 'xxm:'
-          if (i>l) then
-           begin
-            //nothing after 'xxm:'
-            FURL:=Copy(FURL,1,i-1)+'//'+Copy(FURL,1,i-2)+'/';
-            inc(i,2);
-            l:=Length(FURL);
-            OleCheck(ProtSink.ReportProgress(BINDSTATUS_REDIRECTING,PWideChar(FURL)));
-           end
-          else
-           begin
-            j:=i;
-            if (i<=l) and (FURL[i]='/') then inc(i);
-            if (i<=l) and (FURL[i]='/') then inc(i);
-            if i-j<>2 then
-             begin
-              FURL:=Copy(FURL,1,j-1)+'//'+Copy(FURL,i,l-i+1);
-              i:=j+2;
-              l:=Length(FURL);
-              OleCheck(ProtSink.ReportProgress(BINDSTATUS_REDIRECTING,PWideChar(FURL)));
-             end;
-           end;
-          j:=i;
-          while (i<=l) and not(AnsiChar(FURL[i]) in ['/','?','&','$','#']) do inc(i);
-          //if server then remote?
-          FProjectName:=Copy(FURL,j,i-j);
-          if FProjectName='' then
-           begin
-            FProjectName:=DefaultProjectName;
-            FURL:=Copy(FURL,1,j-1)+FProjectName+Copy(FURL,i,Length(FURL)-i+1);
-            OleCheck(ProtSink.ReportProgress(BINDSTATUS_REDIRECTING,PWideChar(FURL)));
-           end;
-          FPageClass:='['+FProjectName+']';
-          if (i>l) then
-           begin
-            FURL:=FURL+'/';
-            inc(l);
-            OleCheck(ProtSink.ReportProgress(BINDSTATUS_REDIRECTING,PWideChar(FURL)));
-           end;
-          if (FURL[i]='/') then inc(i);
-
-          j:=i;
-          while (i<=l) and not(AnsiChar(FURL[i]) in ['?','&','$','#']) do inc(i);
-          FFragmentName:=Copy(FURL,j,i-j);
-          if (FURL[i]='?') then inc(i);
-          j:=i;
-          while (j<=l) and (FURL[j]<>'#') do inc(j);
-          FQueryString:=Copy(FURL,i,j-i);
+          FAuthUsr:=e1.UserName;
+          FAuthPwd:=e1.Password;
+          DoBuild:=true;
+          //assert State=ctHeaderNotSent
          end;
-
-        ntBuildPage:
-          try
-            Next:=ntDone;
-            BuildPage;
-          except
-            //TODO: IAuthenticate doesn't work?
-            //custom authentication interface and credentials store:
-            on e1:EXxmUserAuthenticated do
-             begin
-              FAuthUsr:=e1.UserName;
-              FAuthPwd:=e1.Password;
-              Next:=ntBuildPage;
-             end;
-          end;
-
-        ntResume:
-         begin
-          Next:=ntDone;
-          IncludeX(FResumeFragment,FResumeValue);
-          if not BuildPageLeaveOpen then ClosePage;
-         end;
-        ntResumeDrop:
-         begin
-          Next:=ntDone;
-          IncludeX(FDropFragment,FDropValue);
-          if not BuildPageLeaveOpen then ClosePage;
-         end;
-
       end;
+     end;
 
   except
     on EXxmPageRedirected do Flush;
@@ -305,25 +317,14 @@ begin
        begin
         ForceStatus(StatusException,'ERROR');
         try
-          if FPostData=nil then x:='none' else x:=IntToStr(FPostData.Size)+' bytes';
+          if FPostData=nil then x:='none' else
+            x:=IntToStr(FPostData.Size)+' bytes';
         except
           x:='unknown';
         end;
         SendError('error',e.ClassName,e.Message);
        end;
-  end;
-  case Next of
-    ntSuspend:Next:=ntResume;
-    ntRedirected:Next:=ntComplete;
-    else
-     begin
-      Next:=ntComplete;
-      ProtSink.ReportData(BSCF_LASTDATANOTIFICATION or BSCF_DATAFULLYAVAILABLE,FTotalSize,0);
-      if StatusCode=200 then
-        ProtSink.ReportResult(S_OK,StatusCode,nil)
-      else
-        ProtSink.ReportResult(S_OK,StatusCode,PWideChar(StatusText));
-     end;
+
   end;
 end;
 
@@ -356,7 +357,7 @@ end;
 
 function TXxmLocalContext.SendData(const Buffer; Count: LongInt): LongInt;
 begin
-  if Next=ntAborted then
+  if Terminated then
     raise EXxmPageLoadAborted.Create(SXxmPageLoadAborted);
   if Count=0 then Result:=0 else
    begin
@@ -477,6 +478,8 @@ var
   px:WideString;
   py:PWideChar;
 begin
+  if Terminated then
+    raise EXxmPageLoadAborted.Create(SXxmPageLoadAborted);
   if StatusCode=401 then
    begin
     px:=FResHeaders.Item['WWW-Authenticate'];
@@ -486,6 +489,8 @@ begin
       XxmAuthenticateUser(FProjectName,FURL,px);
      end;
    end;
+
+  inherited;//State:=ctResponding;
 
   OleCheck(ProtSink.ReportProgress(BINDSTATUS_MIMETYPEAVAILABLE,PWideChar(FContentType)));
   if FHttpNegotiate=nil then
@@ -568,7 +573,7 @@ end;
 
 function TXxmLocalContext.Connected: Boolean;
 begin
-  Result:=Next<ntComplete;
+  Result:=not(Terminated);
 end;
 
 procedure TXxmLocalContext.Redirect(RedirectURL: WideString; Relative:boolean);
@@ -578,7 +583,7 @@ var
 begin
   inherited;
   CheckHeaderNotSent;
-  Next:=ntRedirected;
+  State:=ctHeaderOnly;
   //BINDSTATUS_REDIRECTING?
   if Relative then
    begin
@@ -615,9 +620,8 @@ var
   px:PWideChar;
   ps:AnsiString;
 begin
-  if FReqHeaders=nil then
+  if FReqHeaders.Count=0 then //assert at least one request header line
    begin
-    //catch extra headers
     px:=nil;
     if FHttpNegotiate=nil then
       OleCheck((ProtSink as IServiceProvider).QueryService(
@@ -625,9 +629,9 @@ begin
     OleCheck(FHttpNegotiate.BeginningTransaction(PWideChar(FURL),nil,0,px));
     ps:=px;//TODO: encoding?
     CoTaskMemFree(px);
-    if FPostData<>nil then ps:=ps+'Content-Length: '+IntToStr(FPostData.Size)+#13#10;
-    FReqHeaders:=TRequestHeaders.Create(ps);
-    (FReqHeaders as IUnknown)._AddRef;
+    if FPostData<>nil then
+      ps:=ps+'Content-Length: '+IntToStr(FPostData.Size)+#13#10;
+    FReqHeaders.Load(ps);
    end;
 end;
 
@@ -815,28 +819,6 @@ begin
   FResHeaders.Add(Name,Value);
 end;
 
-procedure TXxmLocalContext.Suspend(const EventKey: WideString;
-  CheckIntervalMS, MaxWaitTimeSec: cardinal;
-  const ResumeFragment: WideString; ResumeValue: OleVariant;
-  const DropFragment: WideString; DropValue: OleVariant);
-begin
-  if Next=ntSuspend then
-    raise EXxmContextAlreadySuspended.Create(SXxmContextAlreadySuspended);
-  PageLoaderPool.EventsController.SuspendContext(Self,EventKey,
-    CheckIntervalMS,MaxWaitTimeSec);
-  FResumeFragment:=ResumeFragment;
-  FResumeValue:=ResumeValue;
-  FDropFragment:=DropFragment;
-  FDropValue:=DropValue;
-  Next:=ntSuspend;
-  BuildPageLeaveOpen:=true;
-end;
-
-procedure TXxmLocalContext.Resume(ToDrop: Boolean);
-begin
-  //before above because inherited does PageLoaderPool.Queue!
-  if ToDrop then Next:=ntResumeDrop else Next:=ntResume;
-  inherited;
-end;
-
+initialization
+  ContextPool:=TXxmContextPool.Create(TXxmLocalContext);
 end.

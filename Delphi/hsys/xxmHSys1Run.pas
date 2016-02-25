@@ -12,7 +12,7 @@ procedure HandleWindowsMessages(var QuitApp:boolean);
 implementation
 
 uses Windows, SysUtils, Classes, ActiveX, httpapi1,
-  xxmPRegXml, xxmThreadPool, xxmHSysMain;
+  xxmPRegXml, xxmThreadPool, xxmHSysMain, xxmContext;
 
 type
   THSysParameters=(
@@ -40,7 +40,6 @@ var
   hp:THSysParameters;
   hrq:THandle;
   QuitApp:boolean;
-
 begin
   CoInitialize(nil);
   QuitApp:=false;
@@ -87,14 +86,14 @@ begin
 
       if Port<>0 then
        begin
-        s:='http://'+Host+':'+IntToStr(Port)+'/'+s+'/';
-        HttpCheck(HttpAddUrl(hrq,PWideChar(s),nil));
+        HttpCheck(HttpAddUrl(hrq,PWideChar(
+          'http://'+Host+':'+IntToStr(Port)+'/'+s+'/'),nil));
         inc(c);
        end;
       if SecurePort<>0 then
        begin
-        s:='https://'+Host+':'+IntToStr(SecurePort)+'/'+s+'/';
-        HttpCheck(HttpAddUrl(hrq,PWideChar(s),nil));
+        HttpCheck(HttpAddUrl(hrq,PWideChar(
+          'https://'+Host+':'+IntToStr(SecurePort)+'/'+s+'/'),nil));
         inc(c);
        end;
 
@@ -104,6 +103,7 @@ begin
   if c=0 then raise Exception.Create('No projects loaded');
 
   XxmProjectCache:=TXxmProjectCacheXml.Create;
+  ContextPool:=TXxmContextPool.Create(TXxmHSysContext);
   PageLoaderPool:=TXxmPageLoaderPool.Create(Threads);
   
   //TODO: try except
@@ -112,7 +112,7 @@ begin
   while not QuitApp do
    begin
     //if WaitForSingleObject(hrq,0)=WAIT_OBJECT_0 then ???
-      PageLoaderPool.Queue(TXxmHSysContext.Create(hrq));
+    (ContextPool.GetContext as TXxmHSysContext).Load(hrq);
     HandleMessagesProc(QuitApp);
    end;
 

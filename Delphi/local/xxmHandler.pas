@@ -7,7 +7,7 @@ interface
 //https://msdn.microsoft.com/en-us/library/aa767743.aspx
 
 uses
-  Windows, SysUtils, ActiveX, Classes, ComObj, UrlMon, xxm, xxmLoader;
+  Windows, SysUtils, ActiveX, Classes, ComObj, UrlMon, xxm, xxmContext;
 
 type
   //odd, old UrlMon.pas has an error in ParseUrl?
@@ -27,7 +27,7 @@ type
   TXxmLocalHandler=class(TComObject, IInternetProtocol, IWinInetHttpInfo, IInternetProtocolInfoX)
   private
     FDataPos: Int64;
-    FContext: TXxmLocalContext;
+    FContext: TXxmGeneralContext;
     FTerminateTC: cardinal;
   protected
     { IInternetProtocolRoot }
@@ -82,7 +82,7 @@ const
 
 implementation
 
-uses ComServ, Registry, xxmWinInet, xxmThreadPool;
+uses ComServ, Registry, xxmWinInet, xxmThreadPool, xxmLoader;
 
 { TXxmLocalHandler }
 
@@ -96,12 +96,7 @@ end;
 
 destructor TXxmLocalHandler.Destroy;
 begin
-  try
-    if FContext<>nil then IUnknown(FContext)._Release;
-  except
-    //silent
-  end;
-  FContext:=nil;
+  //FContext.Recycle: see Terminate
   inherited;
 end;
 
@@ -111,11 +106,11 @@ function TXxmLocalHandler.Start(szUrl: PWideChar;
   OIProtSink: IInternetProtocolSink; OIBindInfo: IInternetBindInfo; grfPI,
   dwReserved: Cardinal): HRESULT;
 begin
-  FContext:=TXxmLocalContext.Create(szUrl,OIProtSink,OIBindInfo);
-  IUnknown(FContext)._AddRef;//see TXxmLocalHandler.Destroy
+  FContext:=ContextPool.GetContext;
+  (FContext as TXxmLocalContext).Load(szUrl,OIProtSink,OIBindInfo);
   if PageLoaderPool=nil then PageLoaderPool:=TXxmPageLoaderPool.Create($10);
   //SetThreadName('xxmLocalHandler:'+szUrl);
-  PageLoaderPool.Queue(FContext);
+  PageLoaderPool.Queue(FContext,ctHeaderNotSent);
   Result:=HResult(E_PENDING);
 end;
 
@@ -138,20 +133,24 @@ end;
 
 function TXxmLocalHandler.Abort(hrReason: HRESULT; dwOptions: Cardinal): HRESULT;
 begin
-  FContext.Next:=ntAborted;
+  (FContext as TXxmLocalContext).Terminated:=true;
   Result:=S_OK;
 end;
 
 function TXxmLocalHandler.Terminate(dwOptions: Cardinal): HRESULT;
 begin
-  //while not(FContext.FNext=nDone) do Sleep(5);
-  //SetThreadName('(xxmLocalHandler)');
-  try
-    if FContext<>nil then IUnknown(FContext)._Release;
-  except
-    //silent
-  end;
-  FContext:=nil;
+  if FContext<>nil then
+   begin
+    if FContext.State=ctSpooling then FContext.State:=ctResponding;
+    if (FContext as TXxmLocalContext).Terminated then
+     begin
+      //SetThreadName('(xxmLocalHandler)');
+      //ContextPool.AddContext(FContext);
+      FContext.Recycle;
+     end
+    else
+      (FContext as TXxmLocalContext).Terminated:=true;
+   end;
   Result:=S_OK;
 end;
 
@@ -173,33 +172,35 @@ type
   TBArr=array[0..0] of byte;
   PBArr=^TBArr;
 var
+  ctx:TXxmLocalContext;
   ReadSize:integer;
   BArr:PBArr;
 const
   CollapseThreshold=$20000;//128KB
 begin
-  FContext.Lock;
+  ctx:=FContext as TXxmLocalContext;
+  ctx.Lock;
   try
     //read how much now?
     ReadSize:=cb;
-    if FDataPos+ReadSize>FContext.OutputSize then
-      ReadSize:=FContext.OutputSize-FDataPos;
+    if FDataPos+ReadSize>ctx.OutputSize then
+      ReadSize:=ctx.OutputSize-FDataPos;
     if ReadSize<0 then ReadSize:=0;
 
     //read!
     if ReadSize=0 then cbRead:=0 else
      begin
-      FContext.OutputData.Position:=FDataPos;
-      cbRead:=FContext.OutputData.Read(pv^,ReadSize);
+      ctx.OutputData.Position:=FDataPos;
+      cbRead:=ctx.OutputData.Read(pv^,ReadSize);
       FDataPos:=FDataPos+cbRead;
       //cache to file??
      end;
 
-    if (FDataPos>=FContext.OutputSize) then
+    if (FDataPos>=ctx.OutputSize) then
      begin
-      if (FContext.OutputData is TMemoryStream) then
+      if (ctx.OutputData is TMemoryStream) then
        begin
-        FContext.OutputSize:=0;//no SetSize, just reset pointer, saves on realloc calls
+        ctx.OutputSize:=0;//no SetSize, just reset pointer, saves on realloc calls
         FDataPos:=0;
        end;
       ReadSize:=0;
@@ -207,9 +208,10 @@ begin
 
     if ReadSize=0 then
      begin
-      if FContext.Next=ntComplete then
+      if ctx.Terminated then
        begin
-        //if FContext.Next=ntRedirected then Result:=INET_E_USE_DEFAULT_PROTOCOLHANDLER else
+        //if ctx.State=ctRedirected then
+        //  Result:=INET_E_USE_DEFAULT_PROTOCOLHANDLER else
         Result:=S_FALSE;
        end
       else
@@ -217,20 +219,21 @@ begin
      end
     else
      begin
-      if (FContext.OutputData is TMemoryStream) and (FDataPos>=CollapseThreshold) then
+      if (ctx.OutputData is TMemoryStream) and (FDataPos>=CollapseThreshold) then
        begin
-        FContext.OutputSize:=FContext.OutputSize-FDataPos;
-        BArr:=PBArr((FContext.OutputData as TMemoryStream).Memory);
-        Move(BArr[FDataPos],BArr[0],FContext.OutputSize);
+        ctx.OutputSize:=ctx.OutputSize-FDataPos;
+        BArr:=PBArr((ctx.OutputData as TMemoryStream).Memory);
+        Move(BArr[FDataPos],BArr[0],ctx.OutputSize);
         FDataPos:=0;
        end;
       Result:=S_OK;
      end;
+
     //INET_E_DATA_NOT_AVAILABLE //all read but more data was expected
     //except Result:=INET_E_DOWNLOAD_FAILURE?
   finally
-    FContext.DataRead:=true;
-    FContext.Unlock;
+    ctx.DataRead:=true;
+    ctx.Unlock;
   end;
 end;
 
@@ -318,11 +321,16 @@ begin
        begin
         Result:=S_FALSE;
         case dwOption and $0FFFFFFF of
-          HTTP_QUERY_REFRESH:Result:=S_FALSE;
-          HTTP_QUERY_STATUS_TEXT:s:=FContext.StatusText+#0;
-          HTTP_QUERY_REQUEST_METHOD:s:=FContext.Verb+#0;
-          HTTP_QUERY_CONTENT_TYPE:s:=FContext.ContentType+#0;
-          else Result:=E_INVALIDARG;
+          HTTP_QUERY_REFRESH:
+            Result:=S_FALSE;
+          HTTP_QUERY_STATUS_TEXT:
+            s:=FContext.StatusText+#0;
+          HTTP_QUERY_REQUEST_METHOD:
+            s:=(FContext as TXxmLocalContext).Verb+#0;
+          HTTP_QUERY_CONTENT_TYPE:
+            s:=FContext.ContentType+#0;
+          else
+            Result:=E_INVALIDARG;
         end;
         if Result=S_OK then
           if cbBuf<DWORD(Length(s)) then Result:=E_OUTOFMEMORY else

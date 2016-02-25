@@ -28,14 +28,15 @@ type
     FResumeValue,FDropValue:OleVariant;
     procedure ServerFunction(HSERRequest: DWORD; Buffer: Pointer;
       Size, DataType: LPDWORD);
-    procedure FlushNext;
-    procedure EndSession;
   protected
     function GetSessionID: WideString; override;
     procedure DispositionAttach(FileName: WideString); override;
     function SendData(const Buffer; Count: LongInt): LongInt;
     function ContextString(cs: TXxmContextString): WideString; override;
     function Connected: Boolean; override;
+    procedure BeginRequest; override;
+    procedure HandleRequest; override;
+    procedure EndRequest; override;
     procedure Redirect(RedirectURL: WideString; Relative:boolean); override;
     function GetCookie(Name: WideString): WideString; override;
 
@@ -54,15 +55,15 @@ type
       CheckIntervalMS, MaxWaitTimeSec: cardinal;
       const ResumeFragment: WideString; ResumeValue: OleVariant;
       const DropFragment: WideString; DropValue: OleVariant);
-    procedure Resume(ToDrop:boolean); override;
 
     procedure FlushFinal; override;
     procedure FlushStream(AData: TStream; ADataSize: Int64); override;
-
+    procedure Spool; override;
   public
-    constructor Create(pecb: PEXTENSION_CONTROL_BLOCK);
+    procedure AfterConstruction; override;
     destructor Destroy; override;
-    procedure Execute; override;
+    procedure Load(pecb: PEXTENSION_CONTROL_BLOCK);
+    procedure Recycle; override;
   end;
 
   EXxmContextStringUnknown=class(Exception);
@@ -100,17 +101,19 @@ begin
     Ver.dwExtensionVersion:=verblock.dwFileVersionMS;
   if VerQueryValueA(@d[0],'\StringFileInfo\040904E4\FileDescription',pointer(p),verlen) then
     Move(p^,Ver.lpszExtensionDesc[0],verlen);
-  Result:=true;
+  if ContextPool=nil then
+    ContextPool:=TXxmContextPool.Create(TXxmIsapiContext);
   if PageLoaderPool=nil then
     PageLoaderPool:=TXxmPageLoaderPool.Create(PoolMaxThreads);
   if XxmProjectCache=nil then
     XxmProjectCache:=TXxmProjectCacheXml.Create;
+  Result:=true;
 end;
 
 function HttpExtensionProc(PECB: PEXTENSION_CONTROL_BLOCK): DWORD; stdcall;
 begin
   try
-    PageLoaderPool.Queue(TXxmIsapiContext.Create(PECB));
+    (ContextPool.GetContext as TXxmIsapiContext).Load(PECB);
     Result:=HSE_STATUS_PENDING; //HSE_STATUS_SUCCESS
   except
     Result:=HSE_STATUS_ERROR;
@@ -133,11 +136,8 @@ begin
 end;
 
 const
-  IOState_Normal  =0;//lowest bit 0 for 'sync' states
-  IOState_Suspend =2;
-  IOState_Error   =4;
-  IOState_Resume  =6;
-  IOState_ResDrop =8;
+  IOState_None    =0;//lowest bit 0 for 'sync' states
+  IOState_Error   =2;
   IOState_Pending =1;//lowest bit 1 for 'async' states
   IOState_Final   =3;
   IOState_Stream  =5;
@@ -147,13 +147,13 @@ procedure ContextIOCompletion(var ECB: TEXTENSION_CONTROL_BLOCK;
 begin
   //assert pContext.ecb=ECB
   try
-    //TODO: if dwError<>0 then EndSession!
+    //TODO: if dwError<>0 then EndRequest? Recycle?
     case pContext.FIOState of
       IOState_Pending:
        begin
         BufferStore.AddBuffer(TMemoryStream(pContext.FIOStream));
         if dwError=0 then
-          pContext.FIOState:=IOState_Normal
+          pContext.FIOState:=IOState_None
         else
          begin
           DWORD(pContext.FIOStream):=dwError;
@@ -163,24 +163,24 @@ begin
       IOState_Final:
        begin
         BufferStore.AddBuffer(TMemoryStream(pContext.FIOStream));
-        pContext.EndSession;
-        pContext._Release;//pContext.Free;
+        pContext.Recycle;
        end;
       IOState_Stream:
         if dwError=0 then
-          PageLoaderPool.Queue(pContext)
+         begin
+          pContext.FIOState:=IOState_None;
+          PageLoaderPool.Queue(pContext,ctSpooling)
+         end
         else
          begin
           pContext.FIOStream.Free;
-          pContext._Release;//pContext.Free;
+          pContext.Recycle;
          end;
     end;
   except
     //silent (log?)
   end;
 end;
-
-{ TXxmIsapiContext }
 
 function GetVar(pecb: PEXTENSION_CONTROL_BLOCK; const key:AnsiString):AnsiString;
 var
@@ -194,87 +194,95 @@ begin
   SetLength(Result,l-1);
 end;
 
-const
-  httpScheme:array[boolean] of WideString=('http://','https://');
+{ TXxmIsapiContext }
 
-constructor TXxmIsapiContext.Create(pecb: PEXTENSION_CONTROL_BLOCK);
-var
-  uri:WideString;
+procedure TXxmIsapiContext.AfterConstruction;
 begin
-  uri:=GetVar(pecb,'HTTP_URL');
-  inherited Create(
-    httpScheme[UpperCase(GetVar(pecb,'HTTPS'))='ON']+
-    GetVar(pecb,'HTTP_HOST')+uri);//TODO: unicode?
-  ecb:=pecb;
-  SendDirect:=SendData;
-  FURI:=uri;
-  FCookieParsed:=false;
-  FSessionID:='';//see GetSessionID
-  FIOState:=IOState_Normal;
-  FIOStream:=nil;
-  FReqHeaders:=nil;
+  FReqHeaders:=TRequestHeaders.Create;
   FResHeaders:=TResponseHeaders.Create;
-  (FResHeaders as IUnknown)._AddRef;
+  inherited;
 end;
 
 destructor TXxmIsapiContext.Destroy;
 begin
-  BufferStore.AddBuffer(FContentBuffer);
-  SafeFree(TInterfacedObject(FReqHeaders));
-  SafeFree(TInterfacedObject(FResHeaders));
+  FReqHeaders.Free;
+  FResHeaders.Free;
   inherited;
 end;
 
-procedure TXxmIsapiContext.Execute;
+const
+  httpScheme:array[boolean] of WideString=('http://','https://');
+
+procedure TXxmIsapiContext.Load(pecb: PEXTENSION_CONTROL_BLOCK);
+begin
+  ecb:=pecb;
+  FURI:=GetVar(ecb,'HTTP_URL');
+  FURL:=
+    httpScheme[UpperCase(GetVar(ecb,'HTTPS'))='ON']+
+    GetVar(ecb,'HTTP_HOST')+FURI;//TODO: unicode?
+  SendDirect:=SendData;
+  BeginRequest;
+  PageLoaderPool.Queue(Self,ctHeaderNotSent);
+end;
+
+procedure TXxmIsapiContext.BeginRequest;
+begin
+  inherited;
+  FCookieParsed:=false;
+  FSessionID:='';//see GetSessionID
+  FIOState:=IOState_None;
+  FIOStream:=nil;
+  FResHeaders.Reset;
+  FReqHeaders.Reset;
+end;
+
+procedure TXxmIsapiContext.EndRequest;
+var
+  i:DWORD;
+begin
+  ecb.dwHttpStatusCode:=StatusCode;
+  //ServerFunction(HSE_REQ_CLOSE_CONNECTION,nil,nil,nil);
+  i:=HSE_STATUS_SUCCESS_AND_KEEP_CONN;
+  ecb.ServerSupportFunction(ecb.ConnID,HSE_REQ_DONE_WITH_SESSION,@i,nil,nil);
+  inherited;
+  BufferStore.AddBuffer(FContentBuffer);
+end;
+
+procedure TXxmIsapiContext.HandleRequest;
 var
   x,y:AnsiString;
   i:integer;
 begin
   try
-    case FIOState of
+    ServerFunction(HSE_REQ_IO_COMPLETION,@ContextIOCompletion,nil,PDWORD(Self));
+    //parse url
+    x:=FURI;//GetVar(ecb,'HTTP_URL');
+    y:=GetVar(ecb,'SCRIPT_NAME');
+    if y=ecb.lpszPathInfo then
+     begin
+      //called mapped
+      FRedirectPrefix:='';
+     end
+    else
+     begin
+      //called directly
+      FRedirectPrefix:=y;
+      x:=Copy(x,Length(y)+1,Length(x)-Length(y));
+     end;
 
-      IOState_Normal:
-       begin
-        ServerFunction(HSE_REQ_IO_COMPLETION,@ContextIOCompletion,nil,PDWORD(Self));
-        //parse url
-        x:=FURI;//GetVar(ecb,'HTTP_URL');
-        y:=GetVar(ecb,'SCRIPT_NAME');
-        if y=ecb.lpszPathInfo then
-         begin
-          //called mapped
-          FRedirectPrefix:='';
-         end
-        else
-         begin
-          //called directly
-          FRedirectPrefix:=y;
-          x:=Copy(x,Length(y)+1,Length(x)-Length(y));
-         end;
+    //FResHeaders['X-Powered-By']:=SelfVersion;
 
-        FResHeaders['X-Powered-By']:=SelfVersion;
+    //project name
+    i:=1;
+    if i>Length(x) then Redirect('/',true) else
+      if x[i]<>'/' then Redirect('/'+Copy(x,i,Length(x)-i+1),true);
+    //redirect raises EXxmPageRedirected
+    inc(i);
+    if XxmProjectCache.ProjectFromURI(Self,x,i,FProjectName,FFragmentName) then
+      FRedirectPrefix:=FRedirectPrefix+'/'+FProjectName;
+    FPageClass:='['+FProjectName+']';
 
-        //project name
-        i:=1;
-        if i>Length(x) then Redirect('/',true) else
-          if x[i]<>'/' then Redirect('/'+Copy(x,i,Length(x)-i+1),true);
-        //redirect raises EXxmPageRedirected
-        inc(i);
-        if XxmProjectCache.ProjectFromURI(Self,x,i,FProjectName,FFragmentName) then
-          FRedirectPrefix:=FRedirectPrefix+'/'+FProjectName;
-        FPageClass:='['+FProjectName+']';
-
-        BuildPage;
-       end;
-
-      IOState_Stream:
-        FlushNext;
-        
-      IOState_Resume:
-        IncludeX(FResumeFragment,FResumeValue);
-      IOState_ResDrop:
-        IncludeX(FDropFragment,FDropValue);
-
-    end;
+    BuildPage;
 
   except
     on EXxmPageRedirected do Flush;
@@ -300,17 +308,11 @@ begin
         //TODO:ServerFunction(HSE_REQ_ABORTIVE_CLOSE,nil,nil,nil);?
        end;
   end;
-  if not(BuildPageLeaveOpen) and ((FIOState and 1)=0) then EndSession;
 end;
 
-procedure TXxmIsapiContext.EndSession;
-var
-  i:DWORD;
+procedure TXxmIsapiContext.Recycle;
 begin
-  ecb.dwHttpStatusCode:=StatusCode;
-  //ServerFunction(HSE_REQ_CLOSE_CONNECTION,nil,nil,nil);
-  i:=HSE_STATUS_SUCCESS_AND_KEEP_CONN;
-  ecb.ServerSupportFunction(ecb.ConnID,HSE_REQ_DONE_WITH_SESSION,@i,nil,nil);
+  if (FIOState and 1)=0 then inherited;
 end;
 
 function TXxmIsapiContext.GetProjectEntry:TXxmProjectEntry;
@@ -433,6 +435,7 @@ var
   head:THSE_SEND_HEADER_EX_INFO;
   s,t:AnsiString;
 begin
+  inherited;
   //TODO: only IIS7 or higher? see http://support.microsoft.com/kb/946086
   ecb.ServerSupportFunction(ecb.ConnID,HSE_REQ_SET_FLUSH_FLAG,pointer(true),nil,nil);
 
@@ -441,12 +444,16 @@ begin
   head.pszStatus:=PAnsiChar(s);
   head.cchStatus:=Length(s);
   //use FResHeader.Complex?
-  case FAutoEncoding of
-    aeUtf8:   FResHeaders['Content-Type']:=FContentType+'; charset="utf-8"';
-    aeUtf16:  FResHeaders['Content-Type']:=FContentType+'; charset="utf-16"';
-    aeIso8859:FResHeaders['Content-Type']:=FContentType+'; charset="iso-8859-15"';
-    else      FResHeaders['Content-Type']:=FContentType;
-  end;
+  if FContentType<>'' then
+   begin
+    case FAutoEncoding of
+      aeUtf8:   t:='; charset="utf-8"';
+      aeUtf16:  t:='; charset="utf-16"';
+      aeIso8859:t:='; charset="iso-8859-15"';
+      else t:='';
+    end;
+    FResHeaders['Content-Type']:=FContentType+t;
+   end;
   t:=FResHeaders.Build+#13#10;
   //TODO cookies? redirect?
   head.pszHeader:=PAnsiChar(t);
@@ -530,11 +537,7 @@ end;
 
 function TXxmIsapiContext.GetRequestHeaders: IxxmDictionaryEx;
 begin
-  if FReqHeaders=nil then
-   begin
-    FReqHeaders:=TRequestHeaders.Create(GetVar(ecb,'ALL_RAW'));
-    (FReqHeaders as IUnknown)._AddRef;
-   end;
+  FReqHeaders.Load(GetVar(ecb,'ALL_RAW'));
   Result:=FReqHeaders;
 end;
 
@@ -571,7 +574,6 @@ begin
       raise EXxmTransferError.Create(SysErrorMessage(DWORD(FIOStream)));
     CheckSendStart(true);
     //async
-    _AddRef;//_Release of either TXxmIsapiHandler or ContextIOCompletion will be destroying
     FIOState:=IOState_Final;
     FIOStream:=FContentBuffer;
     l:=FContentBuffer.Position;
@@ -598,23 +600,23 @@ begin
     FIOState:=IOState_Stream;
     FIOStream:=AData;
     FIOStream.Position:=0;
-    FlushNext;
+    Spool;
    end
   else
     inherited;//assert WasKept=false
 end;
 
-procedure TXxmIsapiContext.FlushNext;
+procedure TXxmIsapiContext.Spool;
 var
   l:integer;
 begin
+  //inherited;
   l:=FIOStream.Read(FContentBuffer.Memory^,BufferSize);
   if l=0 then
    begin
-    FIOState:=IOState_Normal;
+    FIOState:=IOState_None;
     FreeAndNil(FIOStream);
-    EndSession;
-    _Release;
+    Recycle;
    end
   else
    begin
@@ -629,26 +631,17 @@ procedure TXxmIsapiContext.Suspend(const EventKey: WideString;
   const ResumeFragment: WideString; ResumeValue: OleVariant;
   const DropFragment: WideString; DropValue: OleVariant);
 begin
-  if FIOState=IOState_Suspend then
+  if State=ctSuspended then
     raise EXxmContextAlreadySuspended.Create(SXxmContextAlreadySuspended);
   while (FIOState and 1)<>0 do Sleep(1);
   if FIOState=IOState_Error then
     raise EXxmTransferError.Create(SysErrorMessage(DWORD(FIOStream)));
-  PageLoaderPool.EventsController.SuspendContext(Self,EventKey,
-    CheckIntervalMS,MaxWaitTimeSec);
   FResumeFragment:=ResumeFragment;
   FResumeValue:=ResumeValue;
   FDropFragment:=DropFragment;
   FDropValue:=DropValue;
-  FIOState:=IOState_Suspend;
-  BuildPageLeaveOpen:=true;
-end;
-
-procedure TXxmIsapiContext.Resume(ToDrop: boolean);
-begin
-  BuildPageLeaveOpen:=false;
-  if ToDrop then FIOState:=IOState_ResDrop else FIOState:=IOState_Resume;
-  inherited;
+  PageLoaderPool.EventsController.SuspendContext(Self,EventKey,
+    CheckIntervalMS,MaxWaitTimeSec);
 end;
 
 initialization

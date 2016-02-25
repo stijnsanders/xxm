@@ -12,7 +12,7 @@ procedure HandleWindowsMessages(var QuitApp:boolean);
 implementation
 
 uses Windows, SysUtils, Classes, ActiveX, httpapi2,
-  xxmPRegXml, xxmThreadPool, xxmHSysMain;
+  xxmPRegXml, xxmThreadPool, xxmHSysMain, xxmContext;
 
 type
   THSysParameters=(
@@ -90,14 +90,14 @@ begin
 
       if Port<>0 then
        begin
-        s:='http://'+Host+':'+IntToStr(Port)+'/'+s+'/';
-        HttpCheck(HttpAddUrlToUrlGroup(hrg,PWideChar(s),0,0));
+        HttpCheck(HttpAddUrlToUrlGroup(hrg,PWideChar(
+          'http://'+Host+':'+IntToStr(Port)+'/'+s+'/'),0,0));
         inc(c);
        end;
       if SecurePort<>0 then
        begin
-        s:='https://'+Host+':'+IntToStr(SecurePort)+'/'+s+'/';
-        HttpCheck(HttpAddUrlToUrlGroup(hrg,PWideChar(s),0,0));
+        HttpCheck(HttpAddUrlToUrlGroup(hrg,PWideChar(
+          'https://'+Host+':'+IntToStr(SecurePort)+'/'+s+'/'),0,0));
         inc(c);
        end;
 
@@ -107,6 +107,7 @@ begin
   if c=0 then raise Exception.Create('No projects loaded');
 
   XxmProjectCache:=TXxmProjectCacheXml.Create;
+  ContextPool:=TXxmContextPool.Create(TXxmHSysContext);
   PageLoaderPool:=TXxmPageLoaderPool.Create(Threads);
 
   hrq.Flags:=HTTP_PROPERTY_FLAG_PRESENT;
@@ -123,7 +124,8 @@ begin
   while not QuitApp do
    begin
     //if WaitForSingleObject(hrq,0)=WAIT_OBJECT_0 then ???
-      PageLoaderPool.Queue(TXxmHSysContext.Create(hrq.RequestQueueHandle));
+    (ContextPool.GetContext as TXxmHSysContext).
+      Load(hrq.RequestQueueHandle);
     HandleMessagesProc(QuitApp);
    end;
 
