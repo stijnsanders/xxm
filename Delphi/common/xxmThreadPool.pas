@@ -3,16 +3,35 @@ unit xxmThreadPool;
 interface
 
 uses
-  Windows, SysUtils, xxmContext, Classes, xxmPReg;
+  Windows, SysUtils, xxm, xxmContext, Classes, xxmPReg;
 
 type
-  TXxmQueueContext=class(TXxmGeneralContext)
-  protected
+  TXxmQueueContext=class(TXxmGeneralContext
+    ,IXxmContextSuspend
+    //,IXxmSocketSuspend //only on handlers that support this!
+    )
+  private
     QueueIn,QueueOut:TXxmQueueContext;
     QueueSince,SuspendMax:cardinal;
-    procedure Resume(ToDrop:boolean); virtual;
+
+    FResumeFragment, FDropFragment: WideString;
+    FResumeValue, FDropValue: OleVariant;
+  protected
+
+    procedure BeginRequest; override;
+    procedure EndRequest; override;
+
+    { IXxmContextSuspend }
+    procedure Suspend(const EventKey: WideString;
+      CheckIntervalMS, MaxWaitTimeSec: cardinal;
+      const ResumeFragment: WideString; ResumeValue: OleVariant;
+      const DropFragment: WideString; DropValue: OleVariant);
+
+    { IXxmSocketSuspend }
+    procedure SuspendSocket(Handler: IXxmRawSocket); virtual;
+
   public
-    procedure Execute; virtual; abstract;
+    procedure Perform;  
   end;
 
   TXxmEventsController=class;//forward
@@ -39,7 +58,8 @@ type
   public
     constructor Create(PoolMaxThreads:integer);
     destructor Destroy; override;
-    procedure Queue(Context:TXxmQueueContext);//called from handler
+    procedure Queue(Context:TXxmGeneralContext;
+      SetState:TXxmContextState);//called from handler
     function Unqueue:TXxmQueueContext;//called from threads
     function EventsController:TXxmEventsController;
   end;
@@ -59,9 +79,11 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-    procedure SuspendContext(Context:TXxmQueueContext;const EventKey:WideString;
-      CheckIntervalMS,MaxWeightSec:cardinal);
+    procedure SuspendContext(Context:TXxmGeneralContext;
+      const EventKey:WideString; CheckIntervalMS,MaxWeightSec:cardinal);
   end;
+
+  EXxmContextAlreadySuspended=class(Exception);
 
 var
   PageLoaderPool:TXxmPageLoaderPool;
@@ -72,7 +94,10 @@ function IsDebuggerPresent: BOOL; stdcall;
 implementation
 
 uses
-  xxm, ActiveX;
+  ActiveX, Variants;
+
+const //resourcestring?
+  SXxmContextAlreadySuspended='Context has already been suspended';
 
 function IsDebuggerPresent; external 'kernel32.dll';
 
@@ -132,13 +157,9 @@ begin
        end
       else
        begin
-        //Context._AddRef;//_AddRef moved to TXxmPageLoaderPool.Queue
-        try
-          //SetThreadName('xxm:'+Context.FURL);
-          Context.Execute;//assert all exceptions handled!
-        finally
-          Context._Release;
-        end;
+        //SetThreadName('xxm:'+Context.URL);
+        Context.Perform;
+        //assert all exceptions handled
        end;
     except
       //silent (log?)
@@ -230,30 +251,33 @@ begin
   end;
 end;
 
-procedure TXxmPageLoaderPool.Queue(Context:TXxmQueueContext);
+procedure TXxmPageLoaderPool.Queue(Context:TXxmGeneralContext;
+  SetState:TXxmContextState);
 var
   i,j:integer;
+  c:TXxmQueueContext;
 begin
   //TODO: max on queue, fire 'server busy' when full?
   i:=0;
   if Context<>nil then
    begin
+    Context.State:=SetState;
+    c:=Context as TXxmQueueContext;
     EnterCriticalSection(FLock);
     try
       //add to queue
-      Context._AddRef;//see _Release by TXxmPageLoader.Execute
-      Context.QueueIn:=FQueueIn;
-      Context.QueueOut:=nil;
-      Context.QueueSince:=GetTickCount;
+      c.QueueIn:=FQueueIn;
+      c.QueueOut:=nil;
+      c.QueueSince:=GetTickCount;
       if FQueueIn=nil then
        begin
-        FQueueIn:=Context;
-        FQueueOut:=Context;
+        FQueueIn:=c;
+        FQueueOut:=c;
        end
       else
        begin
-        FQueueIn.QueueOut:=Context;
-        FQueueIn:=Context;
+        FQueueIn.QueueOut:=c;
+        FQueueIn:=c;
        end;
 
       //find or fire thread
@@ -332,16 +356,18 @@ begin
   inherited;
 end;
 
-procedure TXxmEventsController.SuspendContext(Context: TXxmQueueContext;
+procedure TXxmEventsController.SuspendContext(Context: TXxmGeneralContext;
   const EventKey: WideString; CheckIntervalMS, MaxWeightSec: cardinal);
 var
   pe:TXxmProjectEntry;
   i,tc:cardinal;
-  c,c1:TXxmQueueContext;
+  c,c0,c1:TXxmQueueContext;
 begin
+  Context.State:=ctSuspended;
   EnterCriticalSection(FLock);
   try
-    pe:=Context.ProjectEntry;
+    c0:=Context as TXxmQueueContext;
+    pe:=c0.ProjectEntry;
     tc:=GetTickCount;
     i:=0;
     while (i<FEventsIndex) and not((FEvents[i].ProjectEntry=pe)
@@ -354,11 +380,11 @@ begin
         SetLength(FEvents,FEventsSize);
         FEvents[i].Key:=EventKey;
         FEvents[i].ProjectEntry:=pe;
-        FEvents[i].Queue:=Context;
+        FEvents[i].Queue:=c0;
         FEvents[i].CheckInterval:=CheckIntervalMS;
         FEvents[i].CheckLast:=tc;
         inc(FEventsIndex);
-        Context.QueueIn:=nil;
+        c0.QueueIn:=nil;
        end;
      end
     else
@@ -370,21 +396,20 @@ begin
       //insert sorted by SuspendMax (zeroes on tail)
       c1:=nil;
       c:=FEvents[i].Queue;
-      while (c<>nil) and (((Context.SuspendMax=0) and (c.SuspendMax<>0)) or
-        (integer(c.SuspendMax)-integer(Context.SuspendMax)<=0)) do
+      while (c<>nil) and (((c0.SuspendMax=0) and (c.SuspendMax<>0)) or
+        (integer(c.SuspendMax)-integer(c0.SuspendMax)<=0)) do
        begin
         c1:=c;
         c:=c.QueueIn;
        end;
-      Context.QueueIn:=c;
-      if c1=nil then FEvents[i].Queue:=Context else c1.QueueIn:=Context;
+      c0.QueueIn:=c;
+      if c1=nil then FEvents[i].Queue:=c0 else c1.QueueIn:=c0;
      end;
-    Context._AddRef;
-    Context.QueueSince:=tc;
-    if MaxWeightSec=0 then Context.SuspendMax:=0 else
+    c0.QueueSince:=tc;
+    if MaxWeightSec=0 then c0.SuspendMax:=0 else
      begin
-      Context.SuspendMax:=tc+MaxWeightSec*1000;
-      if Context.SuspendMax=0 then inc(Context.SuspendMax);
+      c0.SuspendMax:=tc+MaxWeightSec*1000;
+      if c0.SuspendMax=0 then inc(c0.SuspendMax);
      end;
   finally
     LeaveCriticalSection(FLock);
@@ -443,7 +468,7 @@ begin
                  begin
                   c1:=c;
                   c:=c.QueueIn;
-                  c1.Resume(false);
+                  PageLoaderPool.Queue(c1,ctResuming);
                  end;
                end
               else
@@ -454,8 +479,13 @@ begin
                   if not(c.Connected) or
                     ((c.SuspendMax<>0) and ((integer(tc)-integer(c.SuspendMax)>0))) then
                    begin
-                    if c1=nil then FEvents[j].Queue:=c.QueueIn else c1.QueueIn:=c.QueueIn;
-                    c.Resume(true);
+                    if c1=nil then
+                      FEvents[j].Queue:=c.QueueIn
+                    else
+                      c1.QueueIn:=c.QueueIn;
+                      
+                    PageLoaderPool.Queue(c,ctDropping);
+
                     if c1=nil then c:=FEvents[j].Queue else c:=c1.QueueIn;
                    end
                   else
@@ -472,7 +502,7 @@ begin
                begin
                 c1:=c;
                 c:=c.QueueIn;
-                c1.Resume(true);
+                PageLoaderPool.Queue(c1,ctDropping);
                end;
             end;
             try
@@ -494,12 +524,99 @@ end;
 
 { TXxmQueueContext }
 
-procedure TXxmQueueContext.Resume(ToDrop:boolean);
+procedure TXxmQueueContext.BeginRequest;
 begin
-  //if ToDrop then Next:=ntResumeDrop else Next:=ntResume;
-  PageLoaderPool.Queue(Self);
-  BuildPageLeaveOpen:=false;
-  _Release;//see _Addref by TXxmEventsController.SuspendContext
+  inherited;
+  FResumeFragment:='';
+  FResumeValue:=Null;
+  FDropFragment:='';
+  FDropValue:=Null;
+end;
+
+procedure TXxmQueueContext.EndRequest;
+begin
+  FResumeValue:=Null;
+  FDropValue:=Null;
+  inherited;
+end;
+
+procedure TXxmQueueContext.Perform;
+begin
+  try
+    case State of
+      ctHeaderNotSent:
+       begin
+        BeginRequest;
+        HandleRequest;
+       end;
+      ctSpooling:
+        Spool;
+      ctResuming:
+       begin
+        State:=ctResponding;
+        IncludeX(FResumeFragment,FResumeValue);
+       end;
+      ctDropping:
+       begin
+        State:=ctResponding;
+        IncludeX(FDropFragment,FDropValue);
+       end;
+      ctSocketResume:
+       begin
+        State:=ctSocketDisconnect;
+        (IUnknown(FResumeValue) as IXxmRawSocket).DataReady(0);
+        if State=ctSocketDisconnect then
+         begin
+          State:=ctResponding;
+          (IUnknown(FResumeValue) as IXxmRawSocket).Disconnect;
+         end;
+       end;
+      ctSocketDisconnect:
+       begin
+        State:=ctResponding;
+        (IUnknown(FResumeValue) as IXxmRawSocket).Disconnect;
+       end;
+      else
+        State:=ctResponding;//unexpected! raise?
+    end;
+  except
+    //silent
+    //TODO: on e:Exception do log!
+    if State>ctResponding then State:=ctResponding;
+  end;
+  try
+    if State in [ctHeaderNotSent..ctResponding] then
+     begin
+      EndRequest;
+      Recycle;
+     end;
+  except
+    //silent (log?)
+  end;
+end;
+
+procedure TXxmQueueContext.Suspend(const EventKey: WideString;
+  CheckIntervalMS, MaxWaitTimeSec: cardinal;
+  const ResumeFragment: WideString; ResumeValue: OleVariant;
+  const DropFragment: WideString; DropValue: OleVariant);
+begin
+  if State=ctSuspended then
+    raise EXxmContextAlreadySuspended.Create(SXxmContextAlreadySuspended);
+  FResumeFragment:=ResumeFragment;
+  FResumeValue:=ResumeValue;
+  FDropFragment:=DropFragment;
+  FDropValue:=DropValue;
+  PageLoaderPool.EventsController.SuspendContext(Self,
+    EventKey,CheckIntervalMS,MaxWaitTimeSec);
+end;
+
+procedure TXxmQueueContext.SuspendSocket(Handler: IXxmRawSocket);
+begin
+  if State=ctSocketResume then
+    raise EXxmContextAlreadySuspended.Create(SXxmContextAlreadySuspended);
+  FResumeValue:=Handler;
+  //TODO: force inheriters to keep connection:
+  //KeptConnections.Queue(Self,ctSocketResume);
 end;
 
 initialization

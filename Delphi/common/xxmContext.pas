@@ -2,18 +2,29 @@ unit xxmContext;
 
 interface
 
-uses Windows, SysUtils, Classes, ActiveX, xxm, xxmPReg, xxmHeaders, xxmParams;
+uses Windows, SysUtils, Classes, ActiveX, xxm, xxmPReg, xxmHeaders,
+  xxmParams, xxmParUtils;
 
 const
   XxmMaxIncludeDepth=64;//TODO: setting?
-  XxmHeaderSent=0;
-  XxmHeaderNotSent=1;
-  XxmHeaderOnNextFlush=2;
 
 type
   TXxmSendBufHandler=function(const Buffer; Count: LongInt): LongInt of object;
 
-  TXxmGeneralContext=class(TInterfacedObject,
+  TXxmContextState=(
+    ctHeaderNotSent,
+    ctHeaderOnNextFlush,
+    ctHeaderOnly,
+    ctResponding,
+    ctSpooling,
+    ctSuspended,
+    ctResuming,
+    ctDropping,
+    ctSocketResume,
+    ctSocketDisconnect
+  );
+
+  TXxmGeneralContext=class(TControlledLifeTimeObject,
     IXxmContext,
     IxxmParameterCollection,
     IxxmUploadProgressService)
@@ -21,7 +32,7 @@ type
   private
     FProjectEntry: TXxmProjectEntry;
     FPage, FBuilding: IXxmFragment;
-    FStatusCode, FIncludeDepth, FHeaderSent, FBufferSize: integer;
+    FStatusCode, FIncludeDepth, FBufferSize: integer;
     FStatusText, FSingleFileSent: WideString;
     FParams: TXxmReqPars;
     FIncludeCheck: pointer;//see Include
@@ -34,7 +45,7 @@ type
     FPostData: TStream;
     FPostTempFile: AnsiString;
     SendBuf, SendDirect: TXxmSendBufHandler;
-    SettingCookie, BuildPageLeaveOpen: boolean;
+    SettingCookie: boolean;
 
     { IXxmContext }
     function GetURL: WideString;
@@ -81,6 +92,7 @@ type
     procedure Flush;
     procedure FlushFinal; virtual;
     procedure FlushStream(AData:TStream;ADataSize:int64); virtual;
+    procedure Spool; virtual;
     function GetRawSocket: IStream; virtual;
 
     { IxxmParameterCollection }
@@ -91,7 +103,7 @@ type
 
     {  }
     function GetProjectEntry:TXxmProjectEntry; virtual; abstract;
-    procedure SendHeader; virtual; abstract;
+    procedure SendHeader; virtual;
     function GetRequestHeader(const Name: WideString): WideString; virtual; abstract;
     procedure AddResponseHeader(const Name, Value: WideString); virtual; abstract;
 
@@ -106,9 +118,9 @@ type
     function HandleException(Ex: Exception): boolean;
 
     procedure BeginRequest; virtual;
+    procedure HandleRequest; virtual; abstract;
     procedure LoadPage;
     procedure BuildPage;
-    procedure ClosePage;
     procedure SingleFile;
     procedure EndRequest; virtual;
 
@@ -116,15 +128,30 @@ type
     property BufferSize: integer read FBufferSize;
     //see also GetBufferSize,SetBufferSize, only here for inheriters
   public
-    //abstract! constructor only here for private variable init
-    constructor Create(const URL:WideString);
-    procedure AfterConstruction; override;
-    destructor Destroy; override;
+    State:TXxmContextState;
+
+    procedure Recycle; virtual;
+
     //property URL:WideString read GetURL;
     property ContentType:WideString read FContentType;
     property StatusCode:integer read FStatusCode;
     property StatusText:WideString read FStatusText;
     property SingleFileSent:WideString read FSingleFileSent;
+  end;
+
+  TXxmContextClass=class of TXxmGeneralContext;
+
+  TXxmContextPool=class(TObject)
+  private
+    FLock:TRTLCriticalSection;
+    FClass:TXxmContextClass;
+    FStore:array of TXxmGeneralContext;
+    FStoreIndex,FStoreSize:cardinal;
+  public
+    constructor Create(SClass:TXxmContextClass);
+    destructor Destroy; override;
+    function GetContext:TXxmGeneralContext;
+    procedure AddContext(var Context:TXxmGeneralContext);
   end;
 
   TXxmBufferStore=class(TObject)
@@ -153,6 +180,7 @@ type
 var
   //see xxmSettings
   StatusBuildError,StatusException,StatusFileNotFound:integer;
+  ContextPool:TXxmContextPool;
   BufferStore:TXxmBufferStore;
 
 const
@@ -161,7 +189,7 @@ const
 
 implementation
 
-uses Variants, ComObj, xxmCommonUtils, xxmParUtils;
+uses Variants, ComObj, xxmCommonUtils;
 
 const //resourcestring?
   SXxmDirectInclude='Direct call to include fragment is not allowed';
@@ -173,26 +201,6 @@ const //resourcestring?
   SXxmBufferSizeInvalid='BufferSize exceeds maximum';
 
 { TXxmGeneralContext }
-
-constructor TXxmGeneralContext.Create(const URL: WideString);
-begin
-  inherited Create;
-  FURL:=URL;
-  FContentBuffer:=nil;
-  SendDirect:=nil;//TODO: stub raise abstract error?
-end;
-
-procedure TXxmGeneralContext.AfterConstruction;
-begin
-  inherited;
-  BeginRequest;
-end;
-
-destructor TXxmGeneralContext.Destroy;
-begin
-  EndRequest;
-  inherited;
-end;
 
 procedure TXxmGeneralContext.BeginRequest;
 begin
@@ -209,7 +217,6 @@ begin
   FBuilding:=nil;
   FPageClass:='';
   FSingleFileSent:='';
-  FHeaderSent:=XxmHeaderNotSent;
   FIncludeDepth:=0;
   FIncludeCheck:=nil;
   FStatusCode:=200;//default
@@ -218,8 +225,8 @@ begin
   FProjectName:='';//parsed from URL later
   FFragmentName:='';//parsed from URL later
   FBufferSize:=0;
-  BuildPageLeaveOpen:=false;
   SendBuf:=SendDirect;
+  State:=ctHeaderNotSent;
 end;
 
 procedure TXxmGeneralContext.EndRequest;
@@ -252,6 +259,12 @@ begin
   end;
   FreeAndNil(FParams);
   BufferStore.AddBuffer(FContentBuffer);
+  //ContextPool.AddContext: see TXxmPageLoader.Execute
+end;
+
+procedure TXxmGeneralContext.Recycle;
+begin
+  ContextPool.AddContext(Self);
 end;
 
 function TXxmGeneralContext.GetURL: WideString;
@@ -281,11 +294,11 @@ end;
 procedure TXxmGeneralContext.BuildPage;
 var
   p:IXxmPage;
+  i:int64;
 begin
   //clear buffer just in case
   if FContentBuffer<>nil then FContentBuffer.Position:=0;
 
-  BuildPageLeaveOpen:=false;
   LoadPage;
   if FPage=nil then
     SingleFile
@@ -302,25 +315,27 @@ begin
     FBuilding:=FPage;
     FPage.Build(Self,nil,[],[]);//any parameters?
 
-    if not BuildPageLeaveOpen then ClosePage;
+    //close page
+    if State in [ctHeaderNotSent..ctResponding] then
+     begin
+      if State<>ctResponding then
+       begin
+        if FBufferSize=0 then i:=0 else i:=FContentBuffer.Position;
+        if (i=0) and (FStatusCode=200) then
+          ForceStatus(204,'No Content');
+        if FStatusCode<>304 then
+          AddResponseHeader('Content-Length',IntToStr(i));
+        if i=0 then SendHeader;
+       end;
+      FlushFinal;
+     end;
    end;
 end;
 
-procedure TXxmGeneralContext.ClosePage;
-var
-  i:int64;
+procedure TXxmGeneralContext.SendHeader;
 begin
-  //any content?
-  if FHeaderSent<>XxmHeaderSent then
-   begin
-    if FBufferSize=0 then i:=0 else i:=FContentBuffer.Position;
-    if (i=0) and (FStatusCode=200) then
-      ForceStatus(204,'No Content');
-    if FStatusCode<>304 then
-      AddResponseHeader('Content-Length',IntToStr(i));
-    if i=0 then SendHeader;
-   end;
-  FlushFinal;
+  //if State=ctResponding then raise?
+  State:=ctResponding;
 end;
 
 procedure TXxmGeneralContext.SingleFile;
@@ -368,8 +383,9 @@ begin
         if y<>'' then AddResponseHeader('Last-Modified',y);
         if fs<>0 then AddResponseHeader('Content-Length',IntToStr(fs));
         FlushStream(TOwningHandleStream.Create(fh),fs);
+        //TOwningHandleStream does CloseHandle(fh) when done
        end;
-    except
+    except //not finally!
       CloseHandle(fh);
       raise;
     end;
@@ -400,7 +416,7 @@ end;
 
 function TXxmGeneralContext.CheckSendStart(NoOnNextFlush:boolean):boolean;
 begin
-  if FHeaderSent=XxmHeaderSent then
+  if State=ctResponding then
    begin
     FSingleFileSent:='';
     Result:=false;
@@ -408,14 +424,13 @@ begin
   else
     if (FBufferSize=0) or NoOnNextFlush then
      begin
-      FHeaderSent:=XxmHeaderSent;
       SendHeader;
       Result:=true;
      end
     else
-      if FHeaderSent=XxmHeaderNotSent then
+      if State=ctHeaderNotSent then
        begin
-        FHeaderSent:=XxmHeaderOnNextFlush;
+        State:=ctHeaderOnNextFlush;
         Result:=true;
        end
       else
@@ -424,7 +439,7 @@ end;
 
 procedure TXxmGeneralContext.CheckHeaderNotSent;
 begin
-  if FHeaderSent<>XxmHeaderNotSent then
+  if State<>ctHeaderNotSent then
     raise EXxmResponseHeaderAlreadySent.Create(SXxmResponseHeaderAlreadySent);
 end;
 
@@ -439,7 +454,7 @@ const
 begin
   if Connected then
    begin
-    if (FHeaderSent=XxmHeaderSent) and (FContentType='text/plain') then
+    if (State=ctResponding) and (FContentType='text/plain') then
      begin
       tt:=#13#10'----------------------------------------'+
         #13#10'### '+res+' ###'+
@@ -538,7 +553,7 @@ begin
          end;
         i:=j;
        end;
-      if FHeaderSent<>XxmHeaderSent then
+      if State<>ctResponding then
        begin
         FContentType:='text/html';
         FAutoEncoding:=aeContentDefined;//?
@@ -797,15 +812,12 @@ begin
 end;
 
 procedure TXxmGeneralContext.SendFile(FilePath: WideString);
-var
-  b:boolean;
 begin
   inherited;
   //TODO: auto mimetype by extension?
-  b:=FHeaderSent<>XxmHeaderNotSent;
+  if State=ctHeaderNotSent then FSingleFileSent:=FilePath;
   SendStream(TStreamAdapter.Create(TFileStream.Create(
-    FilePath,fmOpenRead or fmShareDenyNone),soOwned));//does CheckSendStart
-  if b then FSingleFileSent:='' else FSingleFileSent:=FilePath;
+    FilePath,fmOpenRead or fmShareDenyNone),soOwned));
 end;
 
 procedure TXxmGeneralContext.Send(Value: integer);
@@ -944,11 +956,7 @@ procedure TXxmGeneralContext.Flush;
 var
   i:int64;
 begin
-  if FHeaderSent=XxmHeaderOnNextFlush then
-   begin
-    FHeaderSent:=XxmHeaderSent;
-    SendHeader;
-   end;
+  if State=ctHeaderOnNextFlush then SendHeader;
   if FBufferSize<>0 then
    begin
     i:=FContentBuffer.Position;
@@ -1158,6 +1166,69 @@ begin
     end;
 end;
 
+{
+//moved to TXxmQueuedContext
+procedure TXxmGeneralContext.Perform;
+begin
+  try
+    case State of
+      ctHeaderNotSent:
+       begin
+        BeginRequest;
+        HandleRequest;
+       end;
+      ctSpooling:
+        Spool;
+      ctResuming:
+       begin
+        State:=ctResponding;
+        IncludeX(FResumeFragment,FResumeValue);
+       end;
+      ctDropping:
+       begin
+        State:=ctResponding;
+        IncludeX(FDropFragment,FDropValue);
+       end;
+      ctSocketResume:
+       begin
+        State:=ctSocketDisconnect;
+        (IUnknown(FResumeValue) as IXxmRawSocket).DataReady(0);
+        if State=ctSocketDisconnect then
+         begin
+          State:=ctResponding;
+          (IUnknown(FResumeValue) as IXxmRawSocket).Disconnect;
+         end;
+       end;
+      ctSocketDisconnect:
+       begin
+        State:=ctResponding;
+        (IUnknown(FResumeValue) as IXxmRawSocket).Disconnect;
+       end;
+      else
+        State:=ctResponding;//unexpected! raise?
+    end;
+  except
+    //silent
+    //TODO: on e:Exception do log!
+    if State>ctResponding then State:=ctResponding;
+  end;
+  try
+    if State in [ctHeaderNotSent..ctResponding] then
+     begin
+      EndRequest;
+      Recycle;
+     end;
+  except
+    //silent (log?)
+  end;
+end;
+}
+
+procedure TXxmGeneralContext.Spool;
+begin
+  //see State=ctSpooling, some handles use this to spool buffered context
+end;
+
 { TXxmCrossProjectIncludeCheck }
 
 constructor TXxmCrossProjectIncludeCheck.Create(AEntry: TXxmProjectEntry;
@@ -1240,8 +1311,90 @@ begin
    end;
 end;
 
+{ TXxmContextPool }
+
+constructor TXxmContextPool.Create(SClass: TXxmContextClass);
+begin
+  inherited Create;
+  FClass:=SClass;
+  FStoreIndex:=0;
+  FStoreSize:=0;
+  InitializeCriticalSection(FLock);
+  //TODO: pre-load with x instances?
+end;
+
+destructor TXxmContextPool.Destroy;
+var
+  i:cardinal;
+begin
+  if FStoreIndex<>0 then
+    for i:=0 to FStoreIndex-1 do
+      try
+        FreeAndNil(FStore[i]);
+      finally
+        //silent
+        pointer(FStore[i]):=nil;
+      end;
+  DeleteCriticalSection(FLock);
+  inherited;
+end;
+
+procedure TXxmContextPool.AddContext(var Context: TXxmGeneralContext);
+var
+  i:cardinal;
+begin
+  //TODO: clear/reset/check context
+  EnterCriticalSection(FLock);
+  try
+    i:=0;
+    while (i<FStoreIndex) and (FStore[i]<>Context) do inc(i);
+    if i=FStoreIndex then
+     begin
+      i:=0;
+      while (i<FStoreIndex) and (FStore[i]<>nil) do inc(i);
+      if i=FStoreIndex then
+       begin
+        if FStoreIndex=FStoreSize then
+         begin
+          //grow
+          inc(FStoreSize,$1000);
+          SetLength(FStore,FStoreSize);
+         end;
+        inc(FStoreIndex);
+       end;
+      FStore[i]:=Context;
+     end;
+    Context:=nil;
+  finally
+    LeaveCriticalSection(FLock);
+  end;
+end;
+
+function TXxmContextPool.GetContext: TXxmGeneralContext;
+var
+  i:cardinal;
+begin
+  EnterCriticalSection(FLock);
+  try
+    i:=0;
+    while (i<FStoreIndex) and (FStore[i]=nil) do inc(i);
+    if i=FStoreIndex then
+      Result:=FClass.Create
+    else
+     begin
+      Result:=FStore[i];
+      FStore[i]:=nil;
+     end;
+  finally
+    LeaveCriticalSection(FLock);
+  end;
+  //TODO: check/validate/clear context?
+end;
+
 initialization
+  ContextPool:=nil;//created by handler initialization
   BufferStore:=TXxmBufferStore.Create;
 finalization
+  ContextPool.Free;
   BufferStore.Free;
 end.

@@ -2,26 +2,48 @@ unit xxmParUtils;
 
 interface
 
-uses SysUtils, Classes, xxmHeaders;
+uses SysUtils, Classes, ActiveX, xxmHeaders;
+
+{$D-}
+{$L-}
 
 type
+  {
+  TControlledLifeTimeObject
+  serves as an alternative to TInterfacedObject,
+  but counts on an owner-object to call constructor and destructor
+  and govern the external use of the object, so it's no longer in use
+  when destroying. This way _AddRef and _Release no longer
+  need to call interlocked operations, optionally improving performance
+  on multi-code systems under load.
+  }
+  TControlledLifeTimeObject=class(TObject, IInterface)
+  protected
+    function QueryInterface(const IID:TGUID; out Obj):HResult; stdcall;
+    function _AddRef:integer; stdcall;
+    function _Release:integer; stdcall;
+  end;
+
   TParamIndexes=array of record
     NameStart,NameLength,ValueStart,ValueLength:integer;
   end;
 
-  TRequestHeaders=class(TInterfacedObject, IxxmDictionary, IxxmDictionaryEx)
+  TRequestHeaders=class(TControlledLifeTimeObject,
+    IxxmDictionary, IxxmDictionaryEx)
   private
     FData:AnsiString;
     FIdx:TParamIndexes;
-    function GetItem(Name: OleVariant): WideString;
-    procedure SetItem(Name: OleVariant; const Value: WideString);
-    function GetName(Idx: integer): WideString;
-    procedure SetName(Idx: integer; Value: WideString);
+    function GetItem(Name:OleVariant):WideString;
+    procedure SetItem(Name:OleVariant;const Value:WideString);
+    function GetName(Idx:integer): WideString;
+    procedure SetName(Idx:integer;Value:WideString);
     function GetCount:integer;
   public
-    constructor Create(const Data:AnsiString);
+    constructor Create;
     destructor Destroy; override;
-    property Item[Name:OleVariant]:WideString read GetItem write SetItem; default;
+    procedure Load(const Data:AnsiString);
+    procedure Reset;
+    property Item[Name: OleVariant]:WideString read GetItem write SetItem; default;
     property Name[Idx: integer]:WideString read GetName write SetName;
     property Count:integer read GetCount;
     function Complex(Name:OleVariant;out Items:IxxmDictionary):WideString;
@@ -31,23 +53,24 @@ type
   private
     FData:WideString;
     FIdx:TParamIndexes;
-    function GetItem(Name: OleVariant): WideString;
-    procedure SetItem(Name: OleVariant; const Value: WideString);
-    function GetName(Idx: integer): WideString;
-    procedure SetName(Idx: integer; Value: WideString);
+    function GetItem(Name:OleVariant):WideString;
+    procedure SetItem(Name:OleVariant;const Value:WideString);
+    function GetName(Idx:integer):WideString;
+    procedure SetName(Idx:integer; Value:WideString);
     function GetCount:integer;
   public
     constructor Create(const Data:WideString;ValueStart,ValueLength:integer;
       var FirstValue:WideString);
     destructor Destroy; override;
     property Item[Name:OleVariant]:WideString read GetItem write SetItem; default;
-    property Name[Idx: integer]:WideString read GetName write SetName;
+    property Name[Idx:integer]:WideString read GetName write SetName;
     property Count:integer read GetCount;
   end;
 
   TResponseSubValues=class;//forward
 
-  TResponseHeaders=class(TInterfacedObject, IxxmDictionary, IxxmDictionaryEx)
+  TResponseHeaders=class(TControlledLifeTimeObject,
+    IxxmDictionary, IxxmDictionaryEx)
   private
     FItems:array of record
       Name,Value:WideString;
@@ -64,8 +87,9 @@ type
   public
     constructor Create;
     destructor Destroy; override;
+    procedure Reset;
     property Item[Name:OleVariant]:WideString read GetItem write SetItem; default;
-    property Name[Idx: integer]:WideString read GetName write SetName;
+    property Name[Idx:integer]:WideString read GetName write SetName;
     property Count:integer read FItemsCount;//read GetCount;
     function Complex(Name:OleVariant;out Items:IxxmDictionary):WideString;
     function Build:AnsiString;
@@ -90,6 +114,7 @@ type
   public
     constructor Create;
     destructor Destroy; override;
+    procedure Reset;
     property Item[Name:OleVariant]:WideString read GetItem write SetItem; default;
     property Count:integer read FItemsCount;//read GetCount;
     procedure Build(ss:TStringStream);
@@ -145,6 +170,28 @@ function UTF8ToWideString(const s: UTF8String): WideString;
 implementation
 
 uses Variants, xxmCommonUtils;
+
+{ TControlledLifeTimeObject }
+
+function TControlledLifeTimeObject.QueryInterface(const IID: TGUID;
+  out Obj): HResult;
+begin
+  if GetInterface(IID, Obj) then Result:=0 else Result:=E_NOINTERFACE;
+end;
+
+function TControlledLifeTimeObject._AddRef: integer;
+begin
+  //ignore
+  Result:=1;
+end;
+
+function TControlledLifeTimeObject._Release: integer;
+begin
+  //ignore
+  Result:=0;
+end;
+
+{  }
 
 procedure SplitHeader(const Value:AnsiString; var Params:TParamIndexes);
 var
@@ -515,18 +562,28 @@ end;
 
 { TRequestHeaders }
 
-constructor TRequestHeaders.Create(const Data: AnsiString);
+constructor TRequestHeaders.Create;
 begin
   inherited Create;
-  FData:=Data;
-  SplitHeader(FData,FIdx);
+  FData:='';//Reset;
 end;
 
 destructor TRequestHeaders.Destroy;
 begin
+  Reset;
+  inherited;
+end;
+
+procedure TRequestHeaders.Load(const Data: AnsiString);
+begin
+  FData:=Data;
+  SplitHeader(FData,FIdx);
+end;
+
+procedure TRequestHeaders.Reset;
+begin
   SetLength(FIdx,0);
   FData:='';
-  inherited;
 end;
 
 function TRequestHeaders.GetCount: integer;
@@ -662,9 +719,20 @@ var
 begin
   for i:=0 to FItemsCount-1 do
     if FItems[i].SubValues<>nil then
-      SafeFree(TInterfacedObject(FItems[i].SubValues));
+      FItems[i].SubValues.Free;
   SetLength(FItems,0);
   inherited;
+end;
+
+procedure TResponseHeaders.Reset;
+var
+  i:integer;
+begin
+  FBuilt:=false;
+  for i:=0 to FItemsCount-1 do
+    if FItems[i].SubValues<>nil then
+      FItems[i].SubValues.Reset;
+  FItemsCount:=0;
 end;
 
 procedure TResponseHeaders.Grow;
@@ -868,6 +936,12 @@ destructor TResponseSubValues.Destroy;
 begin
   SetLength(FItems,0);
   inherited;
+end;
+
+procedure TResponseSubValues.Reset;
+begin
+  FBuilt:=false;
+  FItemsCount:=0;
 end;
 
 procedure TResponseSubValues.Grow;
