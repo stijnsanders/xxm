@@ -6,7 +6,11 @@ uses SysUtils, Classes, ActiveX, httpd24, xxm, xxmContext,
   xxmHeaders, xxmParams, xxmPReg, xxmPRegXml, xxmParUtils;
 
 type
-  TxxmAhttpdContext=class(TXxmGeneralContext, IxxmHttpHeaders)
+  TxxmAhttpdContext=class(TXxmGeneralContext
+    ,IXxmHttpHeaders
+    //,IXxmContextSuspend //TODO:
+    //,IXxmSocketSuspend
+    )
   private
     rq: PRequest;
     FConnected: boolean;
@@ -19,6 +23,9 @@ type
     procedure DispositionAttach(FileName: WideString); override;
     function ContextString(cs:TXxmContextString):WideString; override;
     function Connected:boolean; override;
+    procedure BeginRequest; override;
+    procedure HandleRequest; override;
+    procedure EndRequest; override;
     procedure Redirect(RedirectURL:WideString; Relative:boolean); override;
     function GetCookie(Name:WideString):WideString; override;
     procedure SendHeader; override;
@@ -28,33 +35,30 @@ type
     procedure AddResponseHeader(const Name, Value: WideString); override;
     procedure SetStatus(Code:integer;Text:WideString); override;
     function GetRawSocket: IStream; override;
-    //IxxmHttpHeaders
+    { IxxmHttpHeaders }
     function GetRequestHeaders:IxxmDictionaryEx;
     function GetResponseHeaders:IxxmDictionaryEx;
   public
-    constructor Create(r:PRequest);
+    procedure AfterConstruction; override;
     destructor Destroy; override;
-    procedure Execute;
+    procedure Perform(r: PRequest);
+    property XConnected: boolean read FConnected;
   end;
 
 implementation
 
-uses Windows, Variants, ComObj, xxmCommonUtils, xxmAhttpdClientStream, xxmAhttpdPars;
+uses Windows, Variants, ComObj, xxmCommonUtils,
+  xxmAhttpdClientStream, xxmAhttpdPars;
 
 resourcestring
   SXxmRWriteFailed='ap_rwrite failed';
 
 { TxxmAhttpdContext }
 
-constructor TxxmAhttpdContext.Create(r: PRequest);
+procedure TxxmAhttpdContext.AfterConstruction;
 begin
-  inherited Create(ap_construct_url(r.pool,r.unparsed_uri,r));
-  rq:=r;
-  FConnected:=true;
-  FRedirectPrefix:='';//see Execute
-  FCookieParsed:=false;
-  FSessionID:='';//see GetSessionID
   SendDirect:=SendData;
+  inherited;
 end;
 
 destructor TxxmAhttpdContext.Destroy;
@@ -63,13 +67,41 @@ begin
   inherited;
 end;
 
-procedure TxxmAhttpdContext.Execute;
+procedure TxxmAhttpdContext.Perform(r: PRequest);
+begin
+  State:=ctHeaderNotSent;
+  FURL:=ap_construct_url(r.pool,r.unparsed_uri,r);
+  rq:=r;
+
+  BeginRequest;
+  HandleRequest;
+  //TODO if State then?
+  EndRequest;
+  Recycle;
+end;
+
+procedure TxxmAhttpdContext.BeginRequest;
+begin
+  inherited;
+  FConnected:=true;
+  FRedirectPrefix:='';//see Execute
+  FCookieParsed:=false;
+  FSessionID:='';//see GetSessionID
+end;
+
+procedure TxxmAhttpdContext.EndRequest;
+begin
+  inherited;
+  FConnected:=false;
+end;
+
+procedure TxxmAhttpdContext.HandleRequest;
 var
   x,y:AnsiString;
   i:integer;
 begin
   try
-    AddResponseHeader('X-Powered-By',SelfVersion);
+    //AddResponseHeader('X-Powered-By',SelfVersion);
     if XxmProjectCache=nil then XxmProjectCache:=TXxmProjectCacheXml.Create;
 
     //parse url
@@ -232,6 +264,7 @@ end;
 
 procedure TxxmAhttpdContext.SendHeader;
 begin
+  inherited;
   //rq.status_line Sent by first ap_rwrite?
   rq.content_type:=apr_pstrdup(rq.pool,PAnsiChar(AnsiString(FContentType)));
   case FAutoEncoding of
@@ -273,6 +306,7 @@ begin
   if GetRequestHeader('Upgrade')='' then Result:=nil else
    begin
     //send header
+    FContentType:='';
     CheckSendStart(false);
     SetBufferSize(0);//!
     {

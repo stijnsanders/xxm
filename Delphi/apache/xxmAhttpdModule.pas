@@ -12,26 +12,15 @@ exports
 
 implementation
 
-uses Windows, SysUtils, xxmAhttpdContext, ActiveX;
+uses Windows, SysUtils, xxmAhttpdContext, ActiveX, xxmContext;
 
 function xxm_handler(r:PRequest): integer; cdecl;
-var
-  ctx:TxxmAhttpdContext;
 begin
   if AnsiString(r.handler)<>'xxm-handler' then Result:=AP_DECLINED else
    begin
-    CoInitialize(nil);//TODO: keep threadvar flag?
-
-    ctx:=TxxmAhttpdContext.Create(r);
-    (ctx as IUnknown)._AddRef;
-    try
-      ctx.Execute;
-    finally
-      (ctx as IUnknown)._Release;
-      //ctx.Free;//TODO: pool these?
-    end;
-
-    Result:=AP_OK;
+    CoInitialize(nil);
+    (ContextPool.GetContext as TxxmAhttpdContext).Perform(r);
+    Result:=AP_OK;//pending?
    end;
 end;
 
@@ -43,6 +32,9 @@ end;
 var
   XxmModuleName:AnsiString;
 
+const
+  PoolMaxThreads=$200;//TODO: from setting?
+
 procedure InitXxmAhttpdModule;
 var
   i:integer;
@@ -50,7 +42,7 @@ begin
   SetLength(XxmModuleName,MAX_PATH+1);
   i:=GetModuleFileNameA(HInstance,PAnsiChar(XxmModuleName),MAX_PATH);
   SetLength(XxmModuleName,i);
-  while not(i=0) and not(XxmModuleName[i]='\') do dec(i);
+  while (i<>0) and (XxmModuleName[i]<>'\') do dec(i);
   XxmModuleName:=Copy(XxmModuleName,i+1,Length(XxmModuleName)-i);
   ZeroMemory(@xxm_module,SizeOf(TModule));
   with xxm_module do
@@ -62,6 +54,7 @@ begin
     magic := MODULE_MAGIC_COOKIE;
     register_hooks := xxm_register_hooks;
    end;
+  ContextPool:=TXxmContextPool.Create(TxxmAhttpdContext);
 end;
 
 initialization
