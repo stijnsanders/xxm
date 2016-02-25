@@ -268,9 +268,12 @@ procedure TRawSocketData.Disconnect;
 var
   i:integer;
 begin
-  i:=1;
-  setsockopt(FSocket.Handle,SOL_SOCKET,SO_REUSEADDR,@i,4);
-  FSocket.Disconnect;
+  if FSocket<>nil then
+   begin
+    i:=1;
+    setsockopt(FSocket.Handle,SOL_SOCKET,SO_REUSEADDR,@i,4);
+    FSocket.Disconnect;
+   end;
 end;
 
 end.

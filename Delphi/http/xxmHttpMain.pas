@@ -17,21 +17,8 @@ type
     destructor Destroy; override;
   end;
 
-  TXxmNextTask=(
-    ntNormal,
-    ntHeaderOnly,
-    ntKeep,
-    ntSpool,
-    ntSuspend,
-    ntResume,
-    ntResumeDrop,
-    ntResumeSocket,
-    ntResumeDisconnect
-  );
-
   TXxmHttpContext=class(TXxmQueueContext,
     IXxmHttpHeaders,
-    IXxmContextSuspend,
     IXxmSocketSuspend)
   private
     FSocket:TTcpSocket;
@@ -42,10 +29,7 @@ type
     FCookie: AnsiString;
     FCookieIdx: TParamIndexes;
     FQueryStringIndex:integer;
-    FResumeFragment,FDropFragment:WideString;
-    FResumeValue,FDropValue:OleVariant;
     function Accept(Socket:TTcpSocket):TXxmHttpContext;
-    procedure HandleRequest;
   protected
     function GetSessionID: WideString; override;
     procedure DispositionAttach(FileName: WideString); override;
@@ -60,6 +44,7 @@ type
     procedure AddResponseHeader(const Name, Value: WideString); override;
 
     procedure BeginRequest; override;
+    procedure HandleRequest; override;
     procedure EndRequest; override;
     procedure FlushFinal; override;
     procedure FlushStream(AData:TStream;ADataSize:int64); override;
@@ -69,16 +54,10 @@ type
     function GetRequestHeaders:IxxmDictionaryEx;
     function GetResponseHeaders:IxxmDictionaryEx;
 
-    { IXxmContextSuspend }
-    procedure Suspend(const EventKey: WideString;
-      CheckIntervalMS, MaxWaitTimeSec: cardinal;
-      const ResumeFragment: WideString; ResumeValue: OleVariant;
-      const DropFragment: WideString; DropValue: OleVariant);
-    procedure Resume(ToDrop: Boolean); override;
-
     { IXxmSocketSuspend }
-    procedure SuspendSocket(Handler: IXxmRawSocket);
+    procedure SuspendSocket(Handler: IXxmRawSocket); override;
 
+    {  }
     function GetProjectPage(FragmentName: WideString):IXxmFragment; override;
 
     procedure ProcessRequestHeaders; virtual;
@@ -90,18 +69,15 @@ type
     property ReqHeaders:TRequestHeaders read FReqHeaders;
     property ResHeaders:TResponseHeaders read FResHeaders;
   public
-    Next:TXxmNextTask;
-    constructor Create;
+    procedure AfterConstruction; override;
     destructor Destroy; override;
-    procedure Execute; override;
-    procedure PostExecute;
+    procedure Recycle; override;
     property Socket: TTcpSocket read FSocket;
   end;
 
   EXxmMaximumHeaderLines=class(Exception);
   EXxmContextStringUnknown=class(Exception);
   EXxmUnknownPostDataTymed=class(Exception);
-  EXxmContextAlreadySuspended=class(Exception);
 
   TXxmHttpRunParameters=(
     rpPort,
@@ -125,7 +101,6 @@ uses Variants, ComObj, xxmCommonUtils, xxmReadHandler, ShellApi,
 resourcestring
   SXxmMaximumHeaderLines='Maximum header lines exceeded.';
   SXxmContextStringUnknown='Unknown ContextString __';
-  SXxmContextAlreadySuspended='Context has already been suspended';
 
 const
   HTTPMaxHeaderLines=$400;//1KiB
@@ -198,6 +173,7 @@ begin
   CoInitialize(nil);
   SetErrorMode(SEM_FAILCRITICALERRORS);
   XxmProjectCache:=TXxmProjectCacheXml.Create;
+  ContextPool:=TXxmContextPool.Create(TXxmHttpContext);
   PageLoaderPool:=TXxmPageLoaderPool.Create(Threads);
   Server:=TTcpServer.Create;
   Server6:=TTcpServer.Create(AF_INET6);
@@ -246,12 +222,22 @@ end;
 
 { TXxmHttpContext }
 
-constructor TXxmHttpContext.Create;//(Socket:TTcpSocket);
+procedure TXxmHttpContext.AfterConstruction;
 begin
-  inherited Create('');//URL is parsed by Execute
-  //FSocket:=Socket;//see TXxmHttpServerListener
-  Next:=ntNormal;
-  SendDirect:=nil;//see BeginRequest to detect AfterConstruction
+  FSocket:=nil;
+  SendDirect:=nil;
+  FReqHeaders:=TRequestHeaders.Create;
+  FResHeaders:=TResponseHeaders.Create;
+  inherited;
+end;
+
+destructor TXxmHttpContext.Destroy;
+begin
+  BufferStore.AddBuffer(FContentBuffer);
+  FreeAndNil(FSocket);
+  FReqHeaders.Free;
+  FResHeaders.Free;
+  inherited;
 end;
 
 function TXxmHttpContext.Accept(Socket: TTcpSocket): TXxmHttpContext;
@@ -271,70 +257,47 @@ begin
   Result:=Self;
 end;
 
-destructor TXxmHttpContext.Destroy;
-begin
-  BufferStore.AddBuffer(FContentBuffer);
-  FSocket.Free;
-  inherited;
-end;
-
 procedure TXxmHttpContext.BeginRequest;
 begin
   inherited;
-  FReqHeaders:=nil;
-  if FResHeaders=nil then
-   begin
-    FResHeaders:=TResponseHeaders.Create;
-    (FResHeaders as IUnknown)._AddRef;
-   end;
+  FReqHeaders.Reset;
+  FResHeaders.Reset;
   FCookieParsed:=false;
   FQueryStringIndex:=1;
   FSessionID:='';//see GetSessionID
   FURI:='';//see Execute
   FRedirectPrefix:='';
-  Next:=ntNormal;
 end;
 
 procedure TXxmHttpContext.EndRequest;
 begin
   inherited;
-  SafeFree(TInterfacedObject(FReqHeaders));
-  SafeFree(TInterfacedObject(FResHeaders));
+  //FURL:='';
+  //Disconnect: see Recycle
 end;
 
-procedure TXxmHttpContext.Execute;
+procedure TXxmHttpContext.Recycle;
+var
+  i:integer;
 begin
-  //while here now done by KeptConnections
-  try
-    case Next of
-      ntResume:
+  if (FSocket<>nil) and FSocket.Connected
+    and ((FResHeaders['Content-Length']<>'')
+    or (State=ctHeaderOnly)) then
+    KeptConnections.Queue(Self,ctHeaderNotSent)
+  else
+   begin
+    if FSocket<>nil then
+     begin
+      if FSocket.Connected then
        begin
-        Next:=ntNormal;
-        IncludeX(FResumeFragment,FResumeValue);
+        i:=1;
+        setsockopt(FSocket.Handle,SOL_SOCKET,SO_REUSEADDR,@i,4);
+        FSocket.Disconnect;
        end;
-      ntResumeDrop:
-       begin
-        Next:=ntNormal;
-        IncludeX(FDropFragment,FDropValue);
-       end;
-      ntResumeSocket:
-       begin
-        Next:=ntResumeDisconnect;//ntNormal?
-        (IUnknown(FResumeValue) as IXxmRawSocket).DataReady(0);
-       end;
-      ntResumeDisconnect:
-        (IUnknown(FResumeValue) as IXxmRawSocket).Disconnect;
-      else
-       begin
-        BeginRequest;
-        HandleRequest;
-       end;
-    end;
-    if not BuildPageLeaveOpen then PostProcessRequest;
-  finally
-    if not BuildPageLeaveOpen then EndRequest;
-  end;
-  PostExecute;
+      FreeAndNil(FSocket);
+     end;
+    inherited;
+   end;
 end;
 
 procedure TXxmHttpContext.FlushFinal;
@@ -344,7 +307,6 @@ begin
     and (FContentBuffer.Position>SpoolingThreshold) then
    begin
     CheckSendStart(true);
-    Next:=ntSpool;
     SpoolingConnections.Add(Self,FContentBuffer,false);
     FContentBuffer:=nil;//since spooling will free it when done
    end
@@ -359,33 +321,10 @@ begin
    begin
     AData.Seek(0,soFromEnd);//used by SpoolingConnections.Add
     CheckSendStart(true);
-    Next:=ntSpool;
     SpoolingConnections.Add(Self,AData,true);
    end
   else
     inherited;
-end;
-
-procedure TXxmHttpContext.PostExecute;
-var
-  i:integer;
-begin
-  case Next of
-    ntNormal:
-     begin
-      //if (StatusCode<400) and (FHeaderSent=XxmHeaderSent) then?
-       begin
-        i:=1;
-        setsockopt(FSocket.Handle,SOL_SOCKET,SO_REUSEADDR,@i,4);
-       end;
-      FSocket.Disconnect;
-     end;
-    ntKeep,ntResume,ntResumeDrop:
-     begin
-      Next:=ntNormal;
-      KeptConnections.Queue(Self);
-     end;
-  end;
 end;
 
 procedure TXxmHttpContext.HandleRequest;
@@ -406,7 +345,7 @@ begin
     i:=1;
     j:=1;
     repeat
-      if j>l then
+      if j>l then   
        begin
         if l=k then
          begin
@@ -415,7 +354,10 @@ begin
          end;
         n:=FSocket.ReceiveBuf(x[l+1],k-l);
         if (n<=0) or (cardinal(GetTickCount-tc)>HTTPMaxHeaderParseTimeMS) then
+         begin
+          FSocket.Disconnect;
           raise EXxmConnectionLost.Create('Connection Lost');
+         end;
         inc(l,n);
        end;
       while (j<=l) and (x[j]<>#13) and (x[j]<>#10) do inc(j);
@@ -452,8 +394,7 @@ begin
        end;
     until m=-1;
     x:=Copy(x,j,l-j+1);
-    FReqHeaders:=TRequestHeaders.Create(y);
-    (FReqHeaders as IUnknown)._AddRef;
+    FReqHeaders.Load(y);
 
     ProcessRequestHeaders;
     //if XxmProjectCache=nil then XxmProjectCache:=TXxmProjectCacheXml.Create;
@@ -461,7 +402,8 @@ begin
     if (FURI<>'') and (FURI[1]='/') then
      begin
       FQueryStringIndex:=2;
-      if XxmProjectCache.ProjectFromURI(Self,FURI,FQueryStringIndex,FProjectName,FFragmentName) then
+      if XxmProjectCache.ProjectFromURI(Self,
+        FURI,FQueryStringIndex,FProjectName,FFragmentName) then
         FRedirectPrefix:='/'+FProjectName;
       FPageClass:='['+FProjectName+']';
      end
@@ -501,13 +443,13 @@ begin
 
     if FVerb='OPTIONS' then
      begin
-      Next:=ntHeaderOnly;
       FAutoEncoding:=aeContentDefined;//prevent Content-Type
       AddResponseHeader('Allow','OPTIONS, GET, HEAD, POST');
       AddResponseHeader('Public','OPTIONS, GET, HEAD, POST');
       AddResponseHeader('Content-Length','0');
       LoadPage;//IXxmProject.LoadPage without IXxmPage.Build
       CheckSendStart(true);
+      State:=ctHeaderOnly;
      end
     else if FVerb='TRACE' then
      begin
@@ -519,7 +461,7 @@ begin
      begin
       if FVerb='HEAD' then
        begin
-        Next:=ntHeaderOnly;//see SendHeader
+        State:=ctHeaderOnly;//see SendHeader
         AddResponseHeader('Content-Length','0');
        end;
       BuildPage;
@@ -535,6 +477,12 @@ begin
         ForceStatus(StatusException,'Internal Server Error');
         SendError('error',e.ClassName,e.Message);
        end;
+  end;
+  
+  try
+    PostProcessRequest;
+  except
+    //silent!
   end;
 end;
 
@@ -617,6 +565,8 @@ var
 begin
   inherited;
   SetStatus(302,'Object moved');//SetStatus(301,'Moved Permanently');
+  //if FResHeaders['Cache-Control']='' then
+  // FResHeaders['Cache-Control']:='no-cache, no-store';
   NewURL:=RedirectURL;
   if Relative and (NewURL<>'') and (NewURL[1]='/') then NewURL:=FRedirectPrefix+NewURL;
   RedirBody:='<h1>Object moved</h1><p><a href="'+HTMLEncode(NewURL)+'">'+HTMLEncode(NewURL)+'</a></p>'#13#10;
@@ -643,20 +593,19 @@ const
   );
 begin
   //use FResHeader.Complex?
-  FResHeaders['Content-Type']:=FContentType+AutoEncodingCharset[FAutoEncoding];
+  if FContentType<>'' then
+    FResHeaders['Content-Type']:=FContentType+
+      AutoEncodingCharset[FAutoEncoding];
   x:=FHTTPVersion+' '+IntToStr(StatusCode)+' '+StatusText+#13#10+
     FResHeaders.Build+#13#10;
   l:=Length(x);
   if FSocket.SendBuf(x[1],l)<>l then
     raise EXxmTransferError.Create(SysErrorMessage(GetLastError));
   //TODO: transfer encoding chunked
-  if Next=ntHeaderOnly then
-   begin
-    Next:=ntKeep;//assert FResHeaders['Content-Length']='0'
-    raise EXxmPageRedirected.Create(FVerb);
-   end
+  if State=ctHeaderOnly then
+    raise EXxmPageRedirected.Create(FVerb)
   else
-    if FResHeaders['Content-Length']<>'' then Next:=ntKeep;
+    State:=ctResponding;
 end;
 
 function TXxmHttpContext.GetRequestHeader(const Name: WideString): WideString;
@@ -677,7 +626,6 @@ end;
 
 function TXxmHttpContext.GetRequestHeaders: IxxmDictionaryEx;
 begin
-  //assert not(FReqHeaders=nil) since parsed at start of Execute
   Result:=FReqHeaders;
 end;
 
@@ -691,7 +639,7 @@ begin
   //'Authorization' ?
   //'If-Modified-Since' ? 304
   //'Connection: Keep-alive' ? with sent Content-Length
-  FResHeaders['Server']:=HttpSelfVersion; //X-Powered-By?
+
   FURL:=FReqHeaders['Host'];
   if FURL='' then
    begin
@@ -700,6 +648,8 @@ begin
       FURL:=FURL+':'+IntToStr(FSocket.Port);
    end;
   FURL:='http://'+FURL+FURI;//TODO: 'https' if SSL?
+
+  //FResHeaders['Server']:=HttpSelfVersion; //X-Powered-By?
 end;
 
 procedure TXxmHttpContext.PreProcessRequest;
@@ -720,33 +670,11 @@ begin
   //  see also TXxmSpoolingConnections
 end;
 
-procedure TXxmHttpContext.Suspend(const EventKey: WideString;
-  CheckIntervalMS, MaxWaitTimeSec: cardinal;
-  const ResumeFragment: WideString; ResumeValue: OleVariant;
-  const DropFragment: WideString; DropValue: OleVariant);
-begin
-  if Next=ntSuspend then
-    raise EXxmContextAlreadySuspended.Create(SXxmContextAlreadySuspended);
-  PageLoaderPool.EventsController.SuspendContext(Self,
-    EventKey,CheckIntervalMS,MaxWaitTimeSec);
-  FResumeFragment:=ResumeFragment;
-  FResumeValue:=ResumeValue;
-  FDropFragment:=DropFragment;
-  FDropValue:=DropValue;
-  Next:=ntSuspend;
-  BuildPageLeaveOpen:=true;
-end;
-
-procedure TXxmHttpContext.Resume(ToDrop: Boolean);
-begin
-  if ToDrop then Next:=ntResumeDrop else Next:=ntResume;
-  inherited;
-end;
-
 function TXxmHttpContext.GetRawSocket: IStream;
 begin
   if FReqHeaders['Upgrade']='' then Result:=nil else
    begin
+    FContentType:='';
     CheckSendStart(false);
     SetBufferSize(0);//!
     Result:=TRawSocketData.Create(FSocket);
@@ -755,11 +683,8 @@ end;
 
 procedure TXxmHttpContext.SuspendSocket(Handler: IXxmRawSocket);
 begin
-  if Next=ntResumeSocket then
-    raise EXxmContextAlreadySuspended.Create(SXxmContextAlreadySuspended);
-  Next:=ntResumeSocket;
-  FResumeValue:=Handler;
-  KeptConnections.Queue(Self);
+  inherited;
+  KeptConnections.Queue(Self,ctSocketResume);
 end;
 
 { TXxmHttpServerListener }
@@ -786,12 +711,13 @@ begin
   //assert FServer.Bind called
   while not Terminated do
     try
-      c:=TXxmHttpContext.Create;//TODO: from pool?
+      c:=ContextPool.GetContext as TXxmHttpContext;//TXxmHttpContext.Create;
       FServer.WaitForConnection;
       if Terminated then
         c.Free
       else
-        PageLoaderPool.Queue(c.Accept(FServer.Accept)); //KeptConnections.Queue(?
+        //KeptConnections.Queue(?
+        PageLoaderPool.Queue(c.Accept(FServer.Accept),ctHeaderNotSent);
     except
       //TODO: log? display?
     end;

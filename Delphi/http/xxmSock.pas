@@ -134,8 +134,11 @@ var
   end;
 
 procedure RaiseLastWSAError;
+var
+  r:integer;
 begin
-  raise ETcpSocketError.Create(SysErrorMessage(WSAGetLastError));
+  r:=WSAGetLastError;
+  raise ETcpSocketError.Create(IntToStr(r)+' '+SysErrorMessage(r));
 end;
 
 procedure PrepareSockAddr(var addr: TSocketAddress; family, port: word;
