@@ -6,5 +6,9 @@
 		<File ID="default_xxm" UnitName="default_xxm1" UnitPath=""><Path>Default.xxm</Path></File>
 		<File ID="drop_xxmi" UnitName="drop_xxmi1" UnitPath=""><Path>Drop.xxmi</Path></File>
 		<File ID="next_xxmi" UnitName="next_xxmi1" UnitPath=""><Path>Next.xxmi</Path></File>
+		<File ID="es_xxm" UnitName="es_xxm1" UnitPath=""><Path>ES.xxm</Path></File>
+		<File ID="es1_xxm" UnitName="es1_xxm1" UnitPath=""><Path>ES1.xxm</Path></File>
+		<File ID="es2_xxmi" UnitName="es2_xxmi1" UnitPath=""><Path>ES2.xxmi</Path></File>
+		<File ID="es3_xxmi" UnitName="es3_xxmi1" UnitPath=""><Path>ES3.xxmi</Path></File>
 	</Files>
 </XxmWebProject>

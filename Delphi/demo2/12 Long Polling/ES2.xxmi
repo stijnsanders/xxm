@@ -1,0 +1,18 @@
+[[!var
+i:integer;
+th,tm,ts,tz:word;
+]][[
+
+DecodeTime(Now,th,tm,ts,tz);
+
+Context.SendHTML(['data: ',FormatDateTime('hh:nn:ss',Now),', ',th,'+',tm,'+',ts,' = ',th+tm+ts,#13#10#13#10]);
+
+//Context.Flush; //not needed since Context.BufferSize=0 (by default)
+
+i:=Values[0]+1;
+if i=10 then
+ begin
+  Context.SendHTML('data: Ten events shown'#13#10#13#10);
+ end
+else
+  (Context as IXxmContextSuspend).Suspend('demo12',250,1000,'ES2.xxmi',i,'ES3.xxmi',i);

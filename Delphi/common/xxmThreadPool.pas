@@ -16,6 +16,7 @@ type
 
     FResumeFragment, FDropFragment: WideString;
     FResumeValue, FDropValue: OleVariant;
+    FStateNext: TXxmContextState;
   protected
 
     procedure BeginRequest; override;
@@ -531,6 +532,7 @@ begin
   FResumeValue:=Null;
   FDropFragment:='';
   FDropValue:=Null;
+  FStateNext:=ctResponding;//default
 end;
 
 procedure TXxmQueueContext.EndRequest;
@@ -553,12 +555,12 @@ begin
         Spool;
       ctResuming:
        begin
-        State:=ctResponding;
+        State:=FStateNext;
         IncludeX(FResumeFragment,FResumeValue);
        end;
       ctDropping:
        begin
-        State:=ctResponding;
+        State:=FStateNext;
         IncludeX(FDropFragment,FDropValue);
        end;
       ctSocketResume:
@@ -567,13 +569,13 @@ begin
         (IUnknown(FResumeValue) as IXxmRawSocket).DataReady(0);
         if State=ctSocketDisconnect then
          begin
-          State:=ctResponding;
+          State:=FStateNext;
           (IUnknown(FResumeValue) as IXxmRawSocket).Disconnect;
          end;
        end;
       ctSocketDisconnect:
        begin
-        State:=ctResponding;
+        State:=FStateNext;
         (IUnknown(FResumeValue) as IXxmRawSocket).Disconnect;
        end;
       else
@@ -584,15 +586,12 @@ begin
     //TODO: on e:Exception do log!
     if State>ctResponding then State:=ctResponding;
   end;
-  try
-    if State in [ctHeaderNotSent..ctResponding] then
-     begin
-      EndRequest;
+  if State in [ctHeaderNotSent..ctResponding] then
+    try
       Recycle;
-     end;
-  except
-    //silent (log?)
-  end;
+    except
+      //silent (log?)
+    end;
 end;
 
 procedure TXxmQueueContext.Suspend(const EventKey: WideString;
@@ -606,6 +605,7 @@ begin
   FResumeValue:=ResumeValue;
   FDropFragment:=DropFragment;
   FDropValue:=DropValue;
+  FStateNext:=State;
   PageLoaderPool.EventsController.SuspendContext(Self,
     EventKey,CheckIntervalMS,MaxWaitTimeSec);
 end;
@@ -615,6 +615,7 @@ begin
   if State=ctSocketResume then
     raise EXxmContextAlreadySuspended.Create(SXxmContextAlreadySuspended);
   FResumeValue:=Handler;
+  FStateNext:=State;
   //TODO: force inheriters to keep connection:
   //KeptConnections.Queue(Self,ctSocketResume);
 end;

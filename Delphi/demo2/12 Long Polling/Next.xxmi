@@ -14,6 +14,6 @@ if i=10 then
   <p>Ten events shown</p>
  end
 else
-  (Context as IXxmContextSuspend).Suspend('demo11',250,1000,'Next.xxmi',i,'Drop.xxmi',i);
+  (Context as IXxmContextSuspend).Suspend('demo12',250,1000,'Next.xxmi',i,'Drop.xxmi',i);
 
 ]]

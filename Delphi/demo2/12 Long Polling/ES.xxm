@@ -1,0 +1,37 @@
+<!doctype html>
+<h1>Event Stream Demo</h1>
+<p>Showing maximum 10 lines when the time reaches a value where <i>hours+minutes+seconds</i> is a prime number:</p>
+<div id="log"></div>
+
+<script>
+
+function LogMsg(msg){
+	var x=document.createElement("P");
+	x.textContent="["+(new Date()).toISOString()+"] "+msg;
+	document.getElementById("log").appendChild(x);
+	window.scrollBy(0,50);
+}
+
+if ("EventSource" in window) {
+	var es;
+
+	LogMsg('Connecting...');
+	es = new EventSource("ES1.xxm");
+
+	es.onopen = function(){
+		LogMsg('Connected to event stream');
+	};
+	
+	es.onmessage = function(msg){
+		LogMsg("Message: " + msg.data);
+	};
+
+	es.onerror = function() {
+		LogMsg("Connection error!");
+	};
+	
+} else {
+	LogMsg("This browser doesn't support WebSocket!");
+}
+
+</script>

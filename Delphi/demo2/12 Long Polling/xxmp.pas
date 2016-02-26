@@ -63,6 +63,7 @@ var
   th,tm,ts,tz:word;
   i,j:cardinal;
 begin
+  //if EventKey='demo12'?
   DecodeTime(Now,th,tm,ts,tz);
   i:=th+tm+ts;
   if CheckedLast=i then Result:=false else
