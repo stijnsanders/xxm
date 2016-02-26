@@ -388,7 +388,6 @@ const
     '; charset="iso-8859-15"'
   );
 begin
-  inherited;
   //TODO: Content-Length?
   //TODO: Connection keep?
   //use FResHeader.Complex?
@@ -401,6 +400,7 @@ begin
     'Status: '+IntToStr(i)+' '+StatusText+#13#10+
     FResHeaders.Build+#13#10;
   WriteFile(FPipeOut,x[1],Length(x),l,nil);
+  inherited;
 end;
 
 function TXxmHostedContext.GetRequestHeaders: IxxmDictionaryEx;

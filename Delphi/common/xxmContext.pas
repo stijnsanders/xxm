@@ -128,7 +128,7 @@ type
     property BufferSize: integer read FBufferSize;
     //see also GetBufferSize,SetBufferSize, only here for inheriters
   public
-    State:TXxmContextState;
+    State: TXxmContextState;
 
     procedure Recycle; virtual;
 
@@ -264,6 +264,7 @@ end;
 
 procedure TXxmGeneralContext.Recycle;
 begin
+  EndRequest;
   ContextPool.AddContext(Self);
 end;
 
@@ -335,7 +336,10 @@ end;
 procedure TXxmGeneralContext.SendHeader;
 begin
   //if State=ctResponding then raise?
-  State:=ctResponding;
+  if State=ctHeaderOnly then
+    raise EXxmPageRedirected.Create(ContextString(csVerb))
+  else
+    State:=ctResponding;
 end;
 
 procedure TXxmGeneralContext.SingleFile;
@@ -1165,64 +1169,6 @@ begin
         Include(Fragment,[Value],[]);
     end;
 end;
-
-{
-//moved to TXxmQueuedContext
-procedure TXxmGeneralContext.Perform;
-begin
-  try
-    case State of
-      ctHeaderNotSent:
-       begin
-        BeginRequest;
-        HandleRequest;
-       end;
-      ctSpooling:
-        Spool;
-      ctResuming:
-       begin
-        State:=ctResponding;
-        IncludeX(FResumeFragment,FResumeValue);
-       end;
-      ctDropping:
-       begin
-        State:=ctResponding;
-        IncludeX(FDropFragment,FDropValue);
-       end;
-      ctSocketResume:
-       begin
-        State:=ctSocketDisconnect;
-        (IUnknown(FResumeValue) as IXxmRawSocket).DataReady(0);
-        if State=ctSocketDisconnect then
-         begin
-          State:=ctResponding;
-          (IUnknown(FResumeValue) as IXxmRawSocket).Disconnect;
-         end;
-       end;
-      ctSocketDisconnect:
-       begin
-        State:=ctResponding;
-        (IUnknown(FResumeValue) as IXxmRawSocket).Disconnect;
-       end;
-      else
-        State:=ctResponding;//unexpected! raise?
-    end;
-  except
-    //silent
-    //TODO: on e:Exception do log!
-    if State>ctResponding then State:=ctResponding;
-  end;
-  try
-    if State in [ctHeaderNotSent..ctResponding] then
-     begin
-      EndRequest;
-      Recycle;
-     end;
-  except
-    //silent (log?)
-  end;
-end;
-}
 
 procedure TXxmGeneralContext.Spool;
 begin

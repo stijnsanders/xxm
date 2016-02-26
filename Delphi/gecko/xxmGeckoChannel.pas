@@ -462,6 +462,7 @@ begin
   if FContentType<>'' then
     FResHeaders['Content-Type']:=FContentType;
   //TODO: +'; charset='+?
+  inherited;
 end;
 
 function TxxmChannel.SendData(const Buffer; Count: LongInt): LongInt;

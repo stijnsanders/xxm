@@ -615,7 +615,6 @@ const
     '; charset="iso-8859-15"'
   );
 begin
-  inherited;
   //use FResHeader.Complex?
   if FContentType<>'' then
     FResHeaders['Content-Type']:=FContentType+
@@ -626,15 +625,7 @@ begin
   if FSocket.SendBuf(x[1],l)<>l then
     raise EXxmTransferError.Create(SysErrorMessage(GetLastError));
   //TODO: transfer encoding chunked
-  {
-  if Next=ntHeaderOnly then
-   begin
-    Next:=ntKeep;//assert FResHeaders['Content-Length']='0'
-    raise EXxmPageRedirected.Create(FVerb);
-   end
-  else
-    if FResHeaders['Content-Length']<>'' then Next:=ntKeep;
-  }
+  inherited;
 end;
 
 function TXxmSCGIContext.GetCGIValue(const Name: AnsiString): AnsiString;

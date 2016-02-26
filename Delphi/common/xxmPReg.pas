@@ -167,6 +167,7 @@ begin
     pe:=nil;
    end;
 
+  //assert only one thread at once, use Lock/Unlock!
   while (FContextCount>0) do Sleep(1);
 
   if (FProject<>nil) and (FProject.QueryInterface(IXxmProjectEvents1,pe)=S_OK) then

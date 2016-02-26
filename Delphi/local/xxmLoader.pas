@@ -490,8 +490,6 @@ begin
      end;
    end;
 
-  inherited;//State:=ctResponding;
-
   OleCheck(ProtSink.ReportProgress(BINDSTATUS_MIMETYPEAVAILABLE,PWideChar(FContentType)));
   if FHttpNegotiate=nil then
     OleCheck((ProtSink as IServiceProvider).QueryService(
@@ -503,6 +501,8 @@ begin
   //BINDSTATUS_ENCODING
   OleCheck(ProtSink.ReportProgress(BINDSTATUS_VERIFIEDMIMETYPEAVAILABLE,PWideChar(FContentType)));
   OleCheck(ProtSink.ReportProgress(BINDSTATUS_BEGINDOWNLOADDATA,''));
+  
+  inherited;//State:=ctResponding;
 end;
 
 function TXxmLocalContext.StgMediumAsStream(stgmed: TStgMedium): TStream;

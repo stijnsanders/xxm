@@ -435,7 +435,6 @@ var
   head:THSE_SEND_HEADER_EX_INFO;
   s,t:AnsiString;
 begin
-  inherited;
   //TODO: only IIS7 or higher? see http://support.microsoft.com/kb/946086
   ecb.ServerSupportFunction(ecb.ConnID,HSE_REQ_SET_FLUSH_FLAG,pointer(true),nil,nil);
 
@@ -460,6 +459,7 @@ begin
   head.cchHeader:=Length(t);
   head.fKeepConn:=FResHeaders['Content-Length']<>'';//TODO: chunked encoding
   ServerFunction(HSE_REQ_SEND_RESPONSE_HEADER_EX,@head,nil,nil);
+  inherited;
 end;
 
 function TXxmIsapiContext.Connected: Boolean;

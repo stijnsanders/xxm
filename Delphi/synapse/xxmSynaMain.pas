@@ -628,10 +628,7 @@ begin
   Move(x[1],d[0],l);
   FSocket.SendBuffer(@d[0],l);
   //TODO: transfer encoding chunked
-  if State=ctHeaderOnly then //assert FResHeaders['Content-Length']='0'
-    raise EXxmPageRedirected.Create(FVerb)
-  else
-    State:=ctResponding;
+  inherited;
 end;
 
 function TXxmSynaContext.GetRequestHeader(const Name: WideString): WideString;

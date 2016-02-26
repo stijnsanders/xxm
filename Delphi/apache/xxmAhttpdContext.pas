@@ -264,7 +264,6 @@ end;
 
 procedure TxxmAhttpdContext.SendHeader;
 begin
-  inherited;
   //rq.status_line Sent by first ap_rwrite?
   rq.content_type:=apr_pstrdup(rq.pool,PAnsiChar(AnsiString(FContentType)));
   case FAutoEncoding of
@@ -275,6 +274,7 @@ begin
   end;
   //rq.connection.keepalive?//TODO
   //ap_rflush? ap_send_interim_response?
+  inherited;
 end;
 
 function TxxmAhttpdContext.GetRequestHeader(const Name: WideString): WideString;

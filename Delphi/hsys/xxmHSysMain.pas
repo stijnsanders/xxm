@@ -349,7 +349,6 @@ const
     '; charset="iso-8859-15"'
   );
 begin
-  inherited;
   //TODO: Content-Length?
   //TODO: Connection keep?
   FRes.StatusCode:=StatusCode;
@@ -367,6 +366,7 @@ begin
   HttpCheck(HttpSendHttpResponse(FHSysQueue,FReq.RequestId,
     HTTP_SEND_RESPONSE_FLAG_MORE_DATA,
     @FRes,nil,l,nil,0,nil,nil));
+  inherited;
 end;
 
 function TXxmHSysContext.GetRequestHeaders: IxxmDictionaryEx;

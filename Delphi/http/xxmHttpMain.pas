@@ -280,6 +280,11 @@ procedure TXxmHttpContext.Recycle;
 var
   i:integer;
 begin
+  try
+    EndRequest;
+  except
+    //silent (log?)
+  end;
   if (FSocket<>nil) and FSocket.Connected
     and ((FResHeaders['Content-Length']<>'')
     or (State=ctHeaderOnly)) then
@@ -602,10 +607,7 @@ begin
   if FSocket.SendBuf(x[1],l)<>l then
     raise EXxmTransferError.Create(SysErrorMessage(GetLastError));
   //TODO: transfer encoding chunked
-  if State=ctHeaderOnly then
-    raise EXxmPageRedirected.Create(FVerb)
-  else
-    State:=ctResponding;
+  inherited;
 end;
 
 function TXxmHttpContext.GetRequestHeader(const Name: WideString): WideString;
