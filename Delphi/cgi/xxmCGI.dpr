@@ -32,7 +32,7 @@ begin
    begin
     //TODO: auto-start xxmHost?
     //TODO: retry+timeout?
-    ExitCode:=500;
+    ExitCode:=503;
     s:='Content-type: text/plain'#13#10#13#10'Error connecting to xxm request handler process'#13#10;
     l:=Length(s);
     WriteFile(hOut,s[1],l,l,nil);
