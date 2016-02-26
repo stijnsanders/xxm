@@ -42,6 +42,7 @@ function TXxmxxm.LoadPage(Context: IXxmContext; Address: WideString): IXxmFragme
 begin
   inherited;
   //TODO: link session to request
+  Context.BufferSize:=$10000;
   Result:=XxmFragmentRegistry.GetFragment(Self,Address,'');
   //TODO: if Context.ContextString(csVerb)='OPTION' then...
 end;

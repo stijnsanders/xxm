@@ -5,4 +5,6 @@
 		<Unit UnitName="ws1"/>
 		<File ID="default_xxm" UnitName="default_xxm1" UnitPath=""><Path>Default.xxm</Path></File>
 	</Files>
+	<UUID>{8D57AEC7-A87E-4155-8242-2C34F581AFFF}</UUID>
+	<LastModified>2015-10-25T23:22:01</LastModified>
 </XxmWebProject>

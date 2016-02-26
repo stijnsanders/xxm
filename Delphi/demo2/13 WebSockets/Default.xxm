@@ -9,7 +9,8 @@ if LowerCase(Copy(wsURL,Length(wsURL)-10,11))='default.xxm' then
   wsURL:=Copy(wsURL,1,Length(wsURL)-11);
 wsURL:='ws'+wsURL+'ws1';
 
-<<div id="entry" style="position:fixed;top:0px;left:0px;padding:1em;background-color:silver;display:none;">
+<<!doctype html>
+<div id="entry" style="position:fixed;top:0px;left:0px;padding:1em;background-color:silver;display:none;">
 <form style="margin:0px;">Type here and press enter:<br />
 <input type="text" id="x1" style="width:25em;background-color:gold;" /></form>
 </div>

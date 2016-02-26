@@ -4,7 +4,7 @@
 <link rel="stylesheet" type="text/css" href="xxm.css" />
 </head>
 <body>
-<p><a href="http://sourceforge.net"><img src="http://sflogo.sourceforge.net/sflogo.php?group_id=230065&amp;type=5" width="210" height="62" border="0" alt="SourceForge.net Logo" align="right" /></a><img src="xxm.png" alt="xxm" /></p>
+<p><img src="xxm.png" alt="xxm" /></p>
 <p class="nav">
 <a href="index.html">about</a> |
 <a href="download.html">download</a> |
@@ -86,6 +86,9 @@ when the buffer is full, or when <code>Context.Flush</code> is called, and an at
 If you want to maintain a long-running process with the client disconnected, check <code>Context.Connected</code> whether it is safe to send data.<br />
 (Though this will keep one of the threads in the thread-pool occupied and unavailable to process incoming requests.<br />
 For long-running processes please use threads you manage yourself, or use another server process with IPC like COM, named pipes or network connections.)</dd>
+
+<dt>why do I get this error: <code>There is no overloaded version of 'Send' that can be called with these arguments</code>?</dt>
+<dd><code>IXxmContext</code> has a few overloads of <code>Send</code> and <code>SendHTML</code> so that in most cases you can use the <code>[[=x]]</code> syntax without much thinking about type, but some types are unclear or ambiguous between the available overloads. In this case use an explicit type cast or an extra local variable</dd>
 
 <dt><a name="debug"></a>how do I debug an xxm project</dt>
 <dd>an xxm project is still a Delphi project, so you can open the project's dpr in Delphi, just remember to edit the xxm and xxmi files, and not the pas files directly (unless for temporary debugging behaviour).<br />
