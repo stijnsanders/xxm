@@ -1,22 +1,13 @@
-unit xxmHttpMain;
+unit xxmHttpCtx;
 
 interface
 
 uses
   SysUtils, Windows, xxmSock, xxmThreadPool, xxm, Classes, ActiveX,
-  xxmContext, xxmPReg, xxmPRegXml, xxmParams, xxmParUtils, xxmHeaders;
+  xxmContext, xxmPReg, xxmPRegXml, xxmParams, xxmParUtils, xxmHeaders,
+  xxmKeptCon, xxmSpoolingCon;
 
 type
-  TXxmHttpServerListener=class(TThread)
-  private
-    FServer:TTcpServer;
-  protected
-    procedure Execute; override;
-  public
-    constructor Create(Server:TTcpServer);
-    destructor Destroy; override;
-  end;
-
   TXxmHttpContext=class(TXxmQueueContext,
     IXxmHttpHeaders,
     IXxmSocketSuspend)
@@ -29,7 +20,6 @@ type
     FCookie: AnsiString;
     FCookieIdx: TParamIndexes;
     FQueryStringIndex:integer;
-    function Accept(Socket:TTcpSocket):TXxmHttpContext;
   protected
     function GetSessionID: WideString; override;
     procedure DispositionAttach(FileName: WideString); override;
@@ -71,6 +61,7 @@ type
   public
     procedure AfterConstruction; override;
     destructor Destroy; override;
+    function Accept(Socket:TTcpSocket):TXxmHttpContext;
     procedure Recycle; override;
     property Socket: TTcpSocket read FSocket;
   end;
@@ -79,24 +70,14 @@ type
   EXxmContextStringUnknown=class(Exception);
   EXxmUnknownPostDataTymed=class(Exception);
 
-  TXxmHttpRunParameters=(
-    rpPort,
-    rpLoadCopy,
-    rpStartURL,
-    rpThreads,
-    //add new here
-    rp_Unknown);
-
 var
-  HttpListenPort:Word;
-  HttpBindIPv4,HttpBindIpV6:string;
-    
-procedure XxmRunServer;
+  //TODO: array, spread evenly over background threads
+  KeptConnections:TXxmKeptConnections;
+  SpoolingConnections:TXxmSpoolingConnections;
 
 implementation
 
-uses Variants, ComObj, xxmCommonUtils, xxmReadHandler, ShellApi,
-  xxmKeptCon, xxmSpoolingCon;
+uses Variants, ComObj, xxmCommonUtils, xxmReadHandler;
 
 resourcestring
   SXxmMaximumHeaderLines='Maximum header lines exceeded.';
@@ -108,117 +89,8 @@ const
   PostDataThreshold=$100000;//1MiB
   SpoolingThreshold=$10000;//64KiB
 
-var
-  HttpSelfVersion:AnsiString;
-  //TODO: array, spread evenly over background threads
-  KeptConnections:TXxmKeptConnections;
-  SpoolingConnections:TXxmSpoolingConnections;
-
 type
   EXxmConnectionLost=class(Exception);
-
-procedure XxmRunServer;
-const
-  ParameterKey:array[TXxmHttpRunParameters] of AnsiString=(
-    'port',
-    'loadcopy',
-    'starturl',
-    'threads',
-    //add new here (lowercase)
-    '');
-  WM_QUIT = $0012;//from Messages
-var
-  Server,Server6:TTcpServer;
-  Listener,Listener6:TXxmHttpServerListener;
-  i,j,Threads:integer;
-  StartURL,s,t:AnsiString;
-  Msg:TMsg;
-  par:TXxmHttpRunParameters;
-begin
-  //default values
-  StartURL:='';
-  Threads:=$200;
-
-  //process command line parameters
-  for i:=1 to ParamCount do
-   begin
-    s:=ParamStr(i);
-    j:=1;
-    while (j<=Length(s)) and (s[j]<>'=') do inc(j);
-    t:=LowerCase(Copy(s,1,j-1));
-    par:=TXxmHttpRunParameters(0);
-    while (par<>rp_Unknown) and (t<>ParameterKey[par]) do inc(par);
-    case par of
-      rpPort:
-        HttpListenPort:=StrToInt(Copy(s,j+1,Length(s)-j));
-      rpLoadCopy:
-        GlobalAllowLoadCopy:=Copy(s,j+1,Length(s)-j)<>'0';
-      rpStartURL:
-        StartURL:=Copy(s,j+1,Length(s)-j);
-      rpThreads:
-        Threads:=StrToInt(Copy(s,j+1,Length(s)-j));
-      //add new here
-      rp_Unknown:
-        raise Exception.Create('Unknown setting: '+t);
-    end;
-   end;
-
-  //build HTTP version string
-  i:=Length(SelfVersion);
-  while (i<>0) and (SelfVersion[i]<>' ') do dec(i);
-  HttpSelfVersion:=StringReplace(Copy(SelfVersion,1,i-1),' ','_',[rfReplaceAll])+
-    '/'+Copy(SelfVersion,i+1,Length(SelfVersion)-i);
-
-  //
-  CoInitialize(nil);
-  SetErrorMode(SEM_FAILCRITICALERRORS);
-  XxmProjectCache:=TXxmProjectCacheXml.Create;
-  ContextPool:=TXxmContextPool.Create(TXxmHttpContext);
-  PageLoaderPool:=TXxmPageLoaderPool.Create(Threads);
-  Server:=TTcpServer.Create;
-  Server6:=TTcpServer.Create(AF_INET6);
-  try
-    Server.Bind('',HttpListenPort);
-    //TODO: bind to multiple ports
-    Server.Listen;
-
-    if StartURL<>'' then
-      ShellExecute(GetDesktopWindow,nil,PChar(StartURL),nil,nil,SW_NORMAL);//check result?
-
-    try
-      Server6.Bind('',HttpListenPort);
-      //TODO: bind to multiple ports
-      Server6.Listen;
-      Listener6:=TXxmHttpServerListener.Create(Server6);
-    except
-      //silent? log? raise?
-      Listener6:=nil;
-    end;
-
-    Listener:=TXxmHttpServerListener.Create(Server);
-    KeptConnections:=TXxmKeptConnections.Create;
-    SpoolingConnections:=TXxmSpoolingConnections.Create;
-    try
-      repeat
-        if GetMessage(Msg,0,0,0) then
-          if Msg.message<>WM_QUIT then
-           begin
-            TranslateMessage(Msg);
-            DispatchMessage(Msg);
-           end;
-      until Msg.message=WM_QUIT;
-    finally
-      Listener.Free;
-      Listener6.Free;
-      KeptConnections.Free;
-      SpoolingConnections.Free;
-    end;
-
-  finally
-    Server.Free;
-    Server6.Free;
-  end;
-end;
 
 { TXxmHttpContext }
 
@@ -689,48 +561,7 @@ begin
   KeptConnections.Queue(Self,ctSocketResume);
 end;
 
-{ TXxmHttpServerListener }
-
-constructor TXxmHttpServerListener.Create(Server: TTcpServer);
-begin
-  inherited Create(false);
-  FServer:=Server;
-  //Priority:=tpNormal;?
-end;
-
-destructor TXxmHttpServerListener.Destroy;
-begin
-  Terminate;//FTerminated:=true;
-  closesocket(FServer.Handle);//forces WaitForConnection to return
-  inherited;
-end;
-
-procedure TXxmHttpServerListener.Execute;
-var
-  c:TXxmHttpContext;
-begin
-  //inherited;
-  //assert FServer.Bind called
-  while not Terminated do
-    try
-      c:=ContextPool.GetContext as TXxmHttpContext;//TXxmHttpContext.Create;
-      FServer.WaitForConnection;
-      if Terminated then
-        c.Free
-      else
-        //KeptConnections.Queue(?
-        PageLoaderPool.Queue(c.Accept(FServer.Accept),ctHeaderNotSent);
-    except
-      //TODO: log? display?
-    end;
-end;
-
 initialization
-  //defaults
-  HttpListenPort:=80;
-  HttpBindIPv4:='';
-  HttpBindIpV6:='';
-
   StatusBuildError:=503;//TODO: from settings
   StatusException:=500;
   StatusFileNotFound:=404;

@@ -31,7 +31,7 @@ type
 
 implementation
 
-uses SysUtils, xxmSock, xxmThreadPool, xxmCommonUtils, xxmHttpMain;
+uses SysUtils, xxmSock, xxmThreadPool, xxmCommonUtils, xxmHttpCtx;
 
 { TXxmSpoolingConnections }
 

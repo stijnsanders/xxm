@@ -4,8 +4,9 @@ program xxmHttp;
 
 uses
   SysUtils,
-  xxmHttpMain in 'xxmHttpMain.pas',
   xxm in '..\bin\public\xxm.pas',
+  xxmHttpCtx in 'xxmHttpCtx.pas',
+  xxmHttpRun in 'xxmHttpRun.pas',
   xxmParams in '..\common\xxmParams.pas',
   xxmParUtils in '..\common\xxmParUtils.pas',
   xxmHeaders in '..\bin\public\xxmHeaders.pas',
