@@ -1,5 +1,6 @@
-[[
+[[@xxmHeaders]][[
 
 Context.ContentType:='text/event-stream';
+(Context as IxxmHttpHeaders).ResponseHeaders['Cache-Control']:='no-cache';
 
 (Context as IXxmContextSuspend).Suspend('demo12',250,1000,'ES2.xxmi',1,'ES3.xxmi',1);
