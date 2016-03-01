@@ -4,15 +4,15 @@ interface
 
 uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, SvcMgr, Dialogs,
-    xxmHttpMain, xxmSock;
+    xxmHttpRun, xxmSock;
 
 type
   TxxmService = class(TService)
     procedure ServiceStart(Sender: TService; var Started: Boolean);
     procedure ServiceStop(Sender: TService; var Stopped: Boolean);
   private
-    FServer:TTcpServer;
-    FListener:TXxmHttpServerListener;
+    FServer,FServer6:TTcpServer;
+    FListener,FListener6:TXxmHttpServerListener;
   public
     function GetServiceController: TServiceController; override;
   end;
@@ -22,7 +22,8 @@ var
 
 implementation
 
-uses Registry, xxmPReg, xxmPRegXml, ActiveX, xxmThreadPool;
+uses Registry, xxmPReg, xxmPRegXml, ActiveX,
+  xxmThreadPool, xxmContext, xxmHttpCtx, xxmKeptCon, xxmSpoolingCon;
 
 {$R *.dfm}
 
@@ -69,17 +70,34 @@ begin
   end;
   CoInitialize(nil);
   XxmProjectCache:=TXxmProjectCacheXml.Create;
+  ContextPool:=TXxmContextPool.Create(TXxmHttpContext);
+  KeptConnections:=TXxmKeptConnections.Create;
+  SpoolingConnections:=TXxmSpoolingConnections.Create;
   PageLoaderPool:=TXxmPageLoaderPool.Create(t);
-  FServer:=TTcpServer.Create;
+  //IPv4
+  FServer:=TTcpServer.Create(AF_INET);
   FServer.Bind('',p);
   FServer.Listen;
   FListener:=TXxmHttpServerListener.Create(FServer);
+  FServer6:=TTcpServer.Create(AF_INET6);
+  FListener6:=nil;//default
+  try
+    FServer6.Bind('',p);
+    FServer.Listen;
+    FListener6:=TXxmHttpServerListener.Create(FServer6);
+  except
+    FServer6:=nil;
+  end;
 end;
 
 procedure TxxmService.ServiceStop(Sender: TService; var Stopped: Boolean);
 begin
   FListener.Free;
+  FListener6.Free;
   FServer.Free;
+  FServer6.Free;
+  KeptConnections.Free;
+  SpoolingConnections.Free;
   FreeAndNil(XxmProjectCache);
 end;
 

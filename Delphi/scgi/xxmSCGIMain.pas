@@ -4,7 +4,8 @@ interface
 
 uses
   SysUtils, Windows, xxmSock, xxmThreadPool, xxm, Classes, ActiveX,
-  xxmContext, xxmPReg, xxmPRegXml, xxmParams, xxmParUtils, xxmHeaders;
+  xxmContext, xxmPReg, xxmPRegXml, xxmParams, xxmParUtils, xxmHeaders,
+  xxmKeptCon, xxmSpoolingCon;
 
 type
   TXxmSCGIServerListener=class(TThread)
@@ -90,12 +91,16 @@ type
     //add new here
     rp_Unknown);
 
+var
+  //TODO: array, spread evenly over background threads
+  KeptConnections:TXxmKeptConnections;
+  SpoolingConnections:TXxmSpoolingConnections;
+
 procedure XxmRunServer;
 
 implementation
 
-uses Variants, ComObj, xxmCommonUtils, xxmReadHandler, ShellApi,
-  xxmKeptCon, xxmSpoolingCon;
+uses Variants, ComObj, xxmCommonUtils, xxmReadHandler, ShellApi;
 
 resourcestring
   SXxmMaximumHeaderLines='Maximum header lines exceeded.';
@@ -107,12 +112,6 @@ const
   HTTPMaxHeaderParseTimeMS=10000;
   PostDataThreshold=$100000;//1MiB
   SpoolingThreshold=$10000;//64KiB
-
-var
-  HttpSelfVersion:AnsiString;
-  //TODO: array, spread evenly over background threads
-  KeptConnections:TXxmKeptConnections;
-  SpoolingConnections:TXxmSpoolingConnections;
 
 type
   EXxmConnectionLost=class(Exception);
@@ -160,17 +159,21 @@ begin
     end;
    end;
 
+  {
   //build HTTP version string
   i:=Length(SelfVersion);
   while (i<>0) and (SelfVersion[i]<>' ') do dec(i);
   HttpSelfVersion:=StringReplace(Copy(SelfVersion,1,i-1),' ','_',[rfReplaceAll])+
     '/'+Copy(SelfVersion,i+1,Length(SelfVersion)-i);
+  }
 
   //
   CoInitialize(nil);
   SetErrorMode(SEM_FAILCRITICALERRORS);
   XxmProjectCache:=TXxmProjectCacheXml.Create;
   ContextPool:=TXxmContextPool.Create(TXxmSCGIContext);
+  KeptConnections:=TXxmKeptConnections.Create;
+  SpoolingConnections:=TXxmSpoolingConnections.Create;
   PageLoaderPool:=TXxmPageLoaderPool.Create(Threads);
   Server:=TTcpServer.Create;
   Server6:=TTcpServer.Create(AF_INET6);
@@ -189,8 +192,6 @@ begin
     end;
 
     Listener:=TXxmSCGIServerListener.Create(Server);
-    KeptConnections:=TXxmKeptConnections.Create;
-    SpoolingConnections:=TXxmSpoolingConnections.Create;
     try
       repeat
         if GetMessage(Msg,0,0,0) then

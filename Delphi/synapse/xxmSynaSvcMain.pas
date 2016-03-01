@@ -21,7 +21,8 @@ var
 
 implementation
 
-uses Registry, xxmPReg, xxmPRegXml, ActiveX, xxmThreadPool;
+uses Registry, xxmPReg, xxmPRegXml, ActiveX, xxmThreadPool, xxmContext,
+  xxmSynaKept, xxmSynaSpool;
 
 {$R *.dfm}
 
@@ -69,8 +70,12 @@ begin
     r.Free;
   end;
   CoInitialize(nil);
+  SetErrorMode(SEM_FAILCRITICALERRORS);
   XxmProjectCache:=TXxmProjectCacheXml.Create;
+  ContextPool:=TXxmContextPool.Create(TXxmSynaContext);
   PageLoaderPool:=TXxmPageLoaderPool.Create(t);
+  KeptConnections:=TXxmKeptConnections.Create;
+  SpoolingConnections:=TXxmSpoolingConnections.Create;
   FServer:=TXxmSynaServer.Create(p);
   //if not FServer.Listening then raise?
 end;
@@ -78,6 +83,8 @@ end;
 procedure TxxmService.ServiceStop(Sender: TService; var Stopped: Boolean);
 begin
   FServer.Free;
+  KeptConnections.Free;
+  SpoolingConnections.Free;
 end;
 
 end.

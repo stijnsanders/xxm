@@ -93,6 +93,8 @@ begin
   SetErrorMode(SEM_FAILCRITICALERRORS);
   XxmProjectCache:=TXxmProjectCacheXml.Create;
   ContextPool:=TXxmContextPool.Create(TXxmHttpContext);
+  KeptConnections:=TXxmKeptConnections.Create;
+  SpoolingConnections:=TXxmSpoolingConnections.Create;
   PageLoaderPool:=TXxmPageLoaderPool.Create(Threads);
   Server:=TTcpServer.Create;
   Server6:=TTcpServer.Create(AF_INET6);
@@ -115,8 +117,6 @@ begin
     end;
 
     Listener:=TXxmHttpServerListener.Create(Server);
-    KeptConnections:=TXxmKeptConnections.Create;
-    SpoolingConnections:=TXxmSpoolingConnections.Create;
     try
       repeat
         if GetMessage(Msg,0,0,0) then

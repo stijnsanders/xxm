@@ -4,7 +4,8 @@ interface
 
 uses
   SysUtils, blcksock, xxm, Classes, ActiveX, xxmContext, xxmThreadPool,
-  xxmPReg, xxmPRegXml, xxmParams, xxmParUtils, xxmHeaders;
+  xxmPReg, xxmPRegXml, xxmParams, xxmParUtils, xxmHeaders,
+  xxmSynaKept, xxmSynaSpool;
 
 type
   TXxmSynaServer = class(TThread)
@@ -97,12 +98,16 @@ type
     //add new here
     rp_Unknown);
 
+var
+  KeptConnections:TXxmKeptConnections;
+  SpoolingConnections:TXxmSpoolingConnections;
+
 procedure XxmRunServer;
 
 implementation
 
 uses Windows, Variants, ComObj, AxCtrls, WinSock, ShellApi,
-  xxmCommonUtils, xxmReadHandler, xxmSynaKept, xxmSynaSpool;
+  xxmCommonUtils, xxmReadHandler;
 
 resourcestring
   SXxmMaximumHeaderLines='Maximum header lines exceeded.';
@@ -115,11 +120,6 @@ const
   PostDataThreshold=$100000;//1MiB
   SpoolingThreshold=$10000;//64KiB
   DefaultRecvTimeout=250;//ms
-
-var
-  HttpSelfVersion:AnsiString;
-  KeptConnections:TXxmKeptConnections;
-  SpoolingConnections:TXxmSpoolingConnections;
 
 procedure XxmRunServer;
 const
@@ -172,11 +172,13 @@ begin
     end;
    end;
 
+  {
   //build HTTP version string
   i:=Length(SelfVersion);
   while (i<>0) and (SelfVersion[i]<>' ') do dec(i);
   HttpSelfVersion:=StringReplace(Copy(SelfVersion,1,i-1),' ','_',[rfReplaceAll])+
     '/'+Copy(SelfVersion,i+1,Length(SelfVersion)-i);
+  }
 
   //
   CoInitialize(nil);
