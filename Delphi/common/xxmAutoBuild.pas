@@ -4,11 +4,13 @@ interface
 
 uses xxm, xxmPReg;
 
-function AutoBuild(Entry: TXxmProjectEntry; Context: IXxmContext; ProjectName: WideString):boolean;
+function AutoBuild(Entry: TXxmProjectEntry; Context: IXxmContext;
+  const ProjectName: WideString):boolean;
 
 implementation
 
-uses Windows, SysUtils, Classes, Registry, xxmWebProject, xxmUtilities, xxmCommonUtils;
+uses Windows, SysUtils, Classes, Registry, xxmWebProject, xxmUtilities,
+  xxmCommonUtils;
 
 var
   BuildOutput:TStringStream;
@@ -18,7 +20,8 @@ begin
   BuildOutput.WriteString(Msg);
 end;
 
-function AutoBuild(Entry: TXxmProjectEntry; Context: IXxmContext; ProjectName: WideString):boolean;
+function AutoBuild(Entry: TXxmProjectEntry; Context: IXxmContext;
+  const ProjectName: WideString):boolean;
 var
   WebProject:TXxmWebProject;
   wsig,fn:AnsiString;

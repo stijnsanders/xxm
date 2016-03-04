@@ -66,7 +66,8 @@ type
   EXxmProjectLoadFailed=class(Exception);
   EXxmModuleNotFound=class(Exception);
 
-  TXxmAutoBuildHandler=function(Entry: TXxmProjectEntry; Context: IXxmContext; ProjectName: WideString): boolean;
+  TXxmAutoBuildHandler=function(Entry: TXxmProjectEntry;
+    Context: IXxmContext; const ProjectName: WideString): boolean;
 
 var
   XxmAutoBuildHandler:TXxmAutoBuildHandler;

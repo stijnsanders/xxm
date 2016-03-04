@@ -4,13 +4,15 @@ interface
 
 uses xxm, xxmPReg;
 
-function AutoUpdate(Entry :TXxmProjectEntry; Context: IXxmContext; ProjectName: WideString): boolean;
+function AutoUpdate(Entry :TXxmProjectEntry; Context: IXxmContext;
+  const ProjectName: WideString): boolean;
 
 implementation
 
 uses Windows, SysUtils, xxmCommonUtils;
 
-function AutoUpdate(Entry: TXxmProjectEntry; Context: IXxmContext; ProjectName: WideString): boolean;
+function AutoUpdate(Entry: TXxmProjectEntry; Context: IXxmContext;
+  const ProjectName: WideString): boolean;
 var
   fn,fn1,s,s1:AnsiString;
   i,lc:integer;
