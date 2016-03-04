@@ -15,7 +15,7 @@ uses Windows, SysUtils, Classes, Registry, xxmWebProject, xxmUtilities,
 var
   BuildOutput:TStringStream;
 
-procedure DoBuildOutput(Msg:AnsiString);
+procedure DoBuildOutput(const Msg:AnsiString);
 begin
   BuildOutput.WriteString(Msg);
 end;
@@ -59,7 +59,8 @@ const
         case s[j] of
           '1':Result:=Result+HTMLEncode(val1);
           '2':Result:=Result+HTMLEncode(val2);
-          'L':Result:=Result+WebProject.ResolveErrorLines(BuildOutput.DataString);
+          'L':Result:=Result+
+            WebProject.ResolveErrorLines(BuildOutput.DataString);
           'N':Result:=Result+DateTimeToStr(Now);
           'P':Result:=Result+HTMLEncode(ProjectName);
           'U':Result:=Result+HTMLEncode(Context.URL);
@@ -84,14 +85,15 @@ begin
         //TODO: bidirectional xxl/xxmp mapping?
         BuildOutput:=TStringStream.Create('');
         try
-          BuildOutput.WriteString(Context.ContextString(csVersion)+#13#10);
+          DoBuildOutput(Context.ContextString(csVersion)+#13#10);
           //CanCreate would disturb standalone xxl
           WebProject:=TXxmWebProject.Create(fn,DoBuildOutput,false);
           try
             b:=WebProject.CheckFiles(false,nil);
             if not(b) then
              begin
-              wsig:=GetFileSignature(WebProject.RootFolder+WebProject.ProjectFile);
+              wsig:=GetFileSignature(
+                WebProject.RootFolder+WebProject.ProjectFile);
               if Entry.Signature<>wsig then
                 b:=WebProject.GenerateProjectFiles(false,nil);
              end;
@@ -103,7 +105,8 @@ begin
               if WebProject.Compile then
                begin
                 WebProject.Update;
-                wsig:=GetFileSignature(WebProject.RootFolder+WebProject.ProjectFile);
+                wsig:=GetFileSignature(
+                  WebProject.RootFolder+WebProject.ProjectFile);
                 Entry.Signature:=wsig;
                 Entry.LastCheck:=GetTickCount;
                end

@@ -5,7 +5,7 @@ interface
 uses Windows, SysUtils, Classes, MSXML2_TLB, xxmPageParse;
 
 type
-  TXxmWebProjectOutput=procedure(Msg:AnsiString);
+  TXxmWebProjectOutput=procedure(const Msg:AnsiString);
 
   TXxmWebProject=class(TObject)
   private
