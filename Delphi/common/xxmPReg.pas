@@ -30,6 +30,7 @@ type
   public
     //used by auto-build/auto-update
     LastCheck:cardinal;
+    LastResult:boolean;
 
     constructor Create(const Name: WideString);
     destructor Destroy; override;
@@ -108,6 +109,7 @@ begin
   FLoadSignature:='';//used for auto-update
   FCheckMutex:=0;
   LastCheck:=GetTickCount-100000;
+  LastResult:=true;//default
 end;
 
 procedure TXxmProjectEntry.AfterConstruction;

@@ -73,66 +73,73 @@ const
   end;
 
 begin
-  Result:=true;//default;
-  if (GetTickCount-Entry.LastCheck)>NoNextBuildAfter then
+  Result:=Entry.LastResult;//default;
+  if cardinal(GetTickCount-Entry.LastCheck)>NoNextBuildAfter then
    begin
     fn:=Entry.ModulePath;//force get from registry outside of lock
     Entry.Lock;
     try
       //again for those that waited on lock
-      if (GetTickCount-Entry.LastCheck)>NoNextBuildAfter then
-      try
-        //TODO: bidirectional xxl/xxmp mapping?
-        BuildOutput:=TStringStream.Create('');
+      if cardinal(GetTickCount-Entry.LastCheck)>NoNextBuildAfter then
         try
-          DoBuildOutput(Context.ContextString(csVersion)+#13#10);
-          //CanCreate would disturb standalone xxl
-          WebProject:=TXxmWebProject.Create(fn,DoBuildOutput,false);
+          //TODO: bidirectional xxl/xxmp mapping?
+          BuildOutput:=TStringStream.Create('');
           try
-            b:=WebProject.CheckFiles(false,nil);
-            if not(b) then
-             begin
-              wsig:=GetFileSignature(
-                WebProject.RootFolder+WebProject.ProjectFile);
-              if Entry.Signature<>wsig then
-                b:=WebProject.GenerateProjectFiles(false,nil);
-             end;
-            if b or not(FileExists(fn)) then
-             begin
-              Entry.Release;
-              //only compile when changes detected
-              //only save when compile success
-              if WebProject.Compile then
+            DoBuildOutput(Context.ContextString(csVersion)+#13#10);
+            //CanCreate would disturb standalone xxl
+            WebProject:=TXxmWebProject.Create(fn,DoBuildOutput,false);
+            try
+              b:=WebProject.CheckFiles(false,nil);
+              if not(b) then
                begin
-                WebProject.Update;
+                Result:=true;
                 wsig:=GetFileSignature(
                   WebProject.RootFolder+WebProject.ProjectFile);
-                Entry.Signature:=wsig;
-                Entry.LastCheck:=GetTickCount;
-               end
-              else
-               begin
-                Result:=false;
-                Context.SendHTML(BuildError('bfail','',''));
-                //TODO: rig lastcheck to fail waiting threads?
+                if Entry.Signature<>wsig then
+                  b:=WebProject.GenerateProjectFiles(false,nil);
                end;
-             end
-            else
+              if b or not(FileExists(fn)) then
+               begin
+                Entry.Release;
+                //only compile when changes detected
+                //only save when compile success
+                if WebProject.Compile then
+                 begin
+                  WebProject.Update;
+                  wsig:=GetFileSignature(
+                    WebProject.RootFolder+WebProject.ProjectFile);
+                  Entry.Signature:=wsig;
+                  Result:=true;
+                 end
+                else
+                 begin
+                  Context.SendHTML(BuildError('bfail','',''));
+                  Result:=false;
+                 end;
+               end;
+              Entry.LastResult:=Result;
               Entry.LastCheck:=GetTickCount;
+            finally
+              WebProject.Free;
+            end;
           finally
-            WebProject.Free;
+            BuildOutput.Free;
           end;
-        finally
-          BuildOutput.Free;
-        end;
-      except
-        on e:EXxmWebProjectNotFound do Result:=true;//assert xxl only
-        on e:Exception do
-         begin
-          Result:=false;
-          Context.SendHTML(BuildError('berror',e.ClassName,e.Message));
-         end;
-      end;
+        except
+          on e:EXxmWebProjectNotFound do Result:=true;//assert xxl only
+          on e:Exception do
+           begin
+            Result:=false;
+            Context.SendHTML(BuildError('berror',e.ClassName,e.Message));
+           end;
+        end
+      else
+       begin
+        Result:=Entry.LastResult;
+        if not Result then
+          Context.SendHTML(BuildError('berror','Build Failed',
+            'Compile failed on other thread, view compile log or refresh.'));
+       end;
     finally
       Entry.Unlock;
     end;
