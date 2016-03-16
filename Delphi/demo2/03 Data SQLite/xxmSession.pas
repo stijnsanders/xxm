@@ -85,8 +85,7 @@ begin
   FreeAndNil(Session);
 end;
 
-//threadvar
-var //see SQLITE_CONFIG_SERIALIZED: one connection may be used over several threads! (otherwise will throw "database is locked" under load)
+threadvar
   ThreadDbCon:TSQLiteConnection;
 
 { TxxmSession }
@@ -129,11 +128,12 @@ function TXxmSession.GetDbCon: TSQLiteConnection;
 var
   fn:string;
 begin
-  if ThreadDbCon=nil then 
+  if ThreadDbCon=nil then
    begin
     SetLength(fn,1024);
     SetLength(fn,GetModuleFileName(HInstance,PChar(fn),1024));
     ThreadDBCon:=TSQLiteConnection.Create(ExtractFilePath(fn)+'demo.db');//TODO from setting?
+    ThreadDBCon.BusyTimeout:=30000;
    end;
   Result:=ThreadDbCon;
 end;

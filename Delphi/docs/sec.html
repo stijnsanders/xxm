@@ -48,13 +48,17 @@ See <a href="http://sourceforge.net/projects/xxm/files/xxm/">xxm_demo.zip</a> de
 
 <p>A method to protect data stored in (persistent) cookies (that is a cookie with an expiry date in the future) is encryption, or using an id refering to data in the database.</p>
 
-<p class="title">check a <code>Context.Parameter</code> is a POST parameter from a form field (not a GET parameter from the query string in the URL)</p>
+<p class="title"><a name="post"></a>check a <code>Context.Parameter</code> is a POST parameter from a form field (not a GET parameter from the query string in the URL)</p>
 
 <p><code>Context.Parameter</code> provides access to all parameters of the page request, all parameters expose the IXxmParameter interface, but a POST parameter does expose the IXxmPostParameter interface. Check this by using <code>as</code> or <code>QueryInterface</code></p>
 
-<p class="title">re-validate posted forms</p>
+<p class="title"><a name="validate"></a>re-validate posted forms</p>
 
 <p>If you perform client-side validation, or have sections of the form that are hidden depending on authentication or priveleges, re-check values and permissions when processing posted values.</p>
+
+<p class="title"><a name="mistakes"></a>prevent you from making mistakes</p>
+
+<p>I've elected to not include this in the design goals of xxm. You're supposed to know what your doing, and be responsible about working on an online platform that will respond to requests of people. Even if they have malicious intent or are not even people but automated bots that search for vulnerabilities of your web-solution.</p>
 
 <p class="title"><b>more reading</b></p>
 

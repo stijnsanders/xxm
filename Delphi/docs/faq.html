@@ -42,34 +42,35 @@ when a new session is started, a session cookie is set. When you don't use
 Context.SessionID from LoadPage, and use it later on, the SetCookie can't
 add to the response headers.</dd>
 
-<dt>why do I get this error: <code>Error: ',' or ';' expected but identifier 'xxmFReg' found</code></dt>
+<dt><a name="xxmfreg"></a>why do I get this error: <code>Error: ',' or ';' expected but identifier 'xxmFReg' found</code></dt>
 <dd>You need to end the list of units in a <code>[[@Unit1,Unit2,]]</code> section with a comma. This is because in <code>proto/xxm.pas</code> and <code>proto/xxmi.pas</code> templates, this section is inserted here:<br /><code>uses SysUtils, [[UsesClause]] xxmFReg;</code><br />syntax requires a comma after each unit, so of you provide one or more units, you have to provide the closing comma.</dd>
 
 <dt>is it better/faster/... to use Context.SendHTML whereever possible?</dt>
 <dd>No. HTML is parsed into Context.SendHTML calls for you, and doesn't take as much time extra as it would take you to type the HTML in Delphi string  syntax. By far. The compile time of both is virtually equal. The execution time is equal.</dd>
 
-<dt>can I use SaveToStream on object to write to the Context directly</dt>
+<dt><a name="stream"></a>can I use SaveToStream on object to write to the Context directly</dt>
 <dd>Not directly, but the <code>public</code> folder that holds the <code>xxm.pas</code> file defining the main xxm interfaces, also holds a file <code>xxmStream.pas</code> that defines a <code>TxxmOutputStream</code> object, that inherits from TStream and takes a IxxmContext pointer.</dd>
 
-<dt>does xxm work with <a href="http://jquery.com/">jQuery</a> and <a href="http://www.prototypejs.org/">prototype</a>?</dt>
+<dt><a name="jquery"></a>does xxm work with <a href="http://jquery.com/">jQuery</a> and <a href="http://www.prototypejs.org/">prototype</a>?</dt>
 <dd>Yes. These are javascript libraries, and javascript is able to resolve relative URL's, even with an XmlHttpRequest. Prototype may need a minor tweak to work with the xxmLocal handler in InternetExplorer, since as a security measure the responseDocument property is undefined on non-http protocol handlers.</dd>
 
-<dt>when using an AutoBuild handler, pascal compile errors get shown with the line-number of the parsed source file, not the xxm source file, how do I map between the two?</dt>
-<dd>as of version 1.0.2.260, the xxm parser keeps line-number maps for each file, and AutoBuild handlers use these to replace the line number of the compiler output (shown between parentheses "<code>()</code>") with the corresponding line-number(s) of the xxm source file (shown between square brackets "<code>[]</code>"). Since several tags from different places in the xxm-sourcefile could end up on the same line (e.g. all <code>[[@someunit,]]</code> tags are added to the implementation uses clause) more than one xxm source line-number could be displayed.</dd>
+<dt><a name="linenrs"></a>when using an AutoBuild handler, pascal compile errors get shown with the line-number of the parsed source file, not the xxm source file, how do I map between the two?</dt>
+<dd>as of version <span class="newver">1.0.2.260</span>, the xxm parser keeps line-number maps for each file, and AutoBuild handlers use these to replace the line number of the compiler output (shown between parentheses "<code>()</code>") with the corresponding line-number(s) of the xxm source file (shown between square brackets "<code>[]</code>"). Since several tags from different places in the xxm-sourcefile could end up on the same line (e.g. all <code>[[@someunit,]]</code> tags are added to the implementation uses clause) more than one xxm source line-number could be displayed.</dd>
 
-<dt>why would I use <code>Context.Include</code>, when I can create a fragment and call its <code>Build(Context,Self,[],[]);</code> myself?</dt>
+<dt><a name="include"></a>why would I use <code>Context.Include</code>, when I can create a fragment and call its <code>Build(Context,Self,[],[]);</code> myself?</dt>
 <dd>I'll give three good reasons:<br />
 <u>Exception handling</u>: xxm handlers keeps track of which fragment is building, and adapts the default exception display to display information about the fragment the exception occurred in.<br />
 <u>Include depth checking</u>: xxm handlers keep a count of 'include depth' and disallows includes beyond a certain depth, this protects you from 'include loops', a scenario that just might pop up when which fragment to include is getting a but elaborate.<br />
 <u>Fragment registry</u>: xxm handlers use the fragment registry (actually <code>IxxmProject.LoadFragment</code>) to get hold of a fragment object, and doing so allows the fragment registry to handle object-pooling and object-reuse (if you'd like, in fact you're free to choose the fragment registry implementation for an xxm project).<br />
 <u>Then again</u>, if you really don't care about the above, you're totally free to call <code>TxxmFragment.Build</code> yourself.</dd>
 
-<dt>why does the Redirect method have a <code>Relative:boolean</code> parameter?<dt>
+<dt><a name="redirrel"></a>why does the Redirect method have a <code>Relative:boolean</code> parameter?<dt>
 <dd>short story: to make you think.
 Long story: though it is theoretically possible to infer from a URL if it's relative or absolute,
 in most cases, whether it is or not, is fixed by design.<br />
 For example a page posted to by a form, uses something like <code>Context.Redirect('Product.xxm?id='+IntToStr(id),true);</code> to display the result,
 or a website that forwards to sites with absolute URL's from websites should use <code>Context.Redirect(WebsiteUrlFromDB,false);</code>.
+Also, there's always this thing called security. Providing a page that redirects to a URL posted over a request parameter, <a href="https://www.owasp.org/index.php/Open_redirect">is considered a vulnerability</a>, so prevent writing code like <code>Context.Redirect(x,false)</code> where <code>x</code> is taken from the request data.
 </dd>
 
 <dt>why is there no <code>IXxmParameter.AsBool</code> or <code>IXxmParameter.AsDate</code>?</dt>
@@ -87,7 +88,7 @@ If you want to maintain a long-running process with the client disconnected, che
 (Though this will keep one of the threads in the thread-pool occupied and unavailable to process incoming requests.<br />
 For long-running processes please use threads you manage yourself, or use another server process with IPC like COM, named pipes or network connections.)</dd>
 
-<dt>why do I get this error: <code>There is no overloaded version of 'Send' that can be called with these arguments</code>?</dt>
+<dt><a name="send"></a>why do I get this error: <code>There is no overloaded version of 'Send' that can be called with these arguments</code>?</dt>
 <dd><code>IXxmContext</code> has a few overloads of <code>Send</code> and <code>SendHTML</code> so that in most cases you can use the <code>[[=x]]</code> syntax without much thinking about type, but some types are unclear or ambiguous between the available overloads. In this case use an explicit type cast or an extra local variable</dd>
 
 <dt><a name="debug"></a>how do I debug an xxm project</dt>
@@ -95,7 +96,7 @@ For long-running processes please use threads you manage yourself, or use anothe
 When you're using xxmLocal (or xxmLocalDev), set the host application to Internet Explorer (typically <code>C:\Program Files\Internet Explorer\iexplore.exe</code>), optionally with an "xxm://" URL to open your project. (Update: to force IE8 to run in a single process, see <a href="http://blogs.msdn.com/askie/archive/2009/03/09/opening-a-new-tab-may-launch-a-new-process-with-internet-explorer-8-0.aspx">TabProcGrowth</a>)<br />
 When you're using xxmIsapiEx (or xxmIsapiDev) on your local IIS, switch IIS into stand-alone mode and use inetinfo.exe as host application, or create a virtual directory with high isolation (IIS 7: in an application pool of it's own), and use <code>%SystemRoot%\system32\dllhost.exe /ProcessID:<i>{AppID}</i></code> with the AppID you can pick up from the properties of the COM+ application in the 'Component Services' administrative tool</dd>
 
-<dt>how do I support passing extra parameters with the directory delimiter?<br />
+<dt><a name="xpars"></a>how do I support passing extra parameters with the directory delimiter?<br />
 (e.g.: <code>http://localhost/xxm/test/test.xxm/a/1/b/2</code> )</dt>
 <dd>The URL is parsed to get a project name and a fragment address.
 no forward directory checking is done, since xxm files and directories may not be present,
@@ -107,7 +108,7 @@ Internet Explorer was not able to open this Internet site.  The requested site i
 </dt>
 <dd>the registry is used to determine which MIME-type to declare for the file. Look under HKEY_CLASSES_ROOT for a ContentType value under the key with the extension (e.g.: [HKEY_CLASSES_ROOT\.txt] @ContentType="text/plain")</dd>
 
-<dt>is it possible to update an xxm project without taking the webserver/webservice down?</dt>
+<dt><a name="update"></a>is it possible to update an xxm project without taking the webserver/webservice down?</dt>
 <dd>yes. When setting up an xxm environment, select one of the auto-update options (xxm*AU.*). These check the directory of the xxm project if a <code>.xxu</code> file is provided, then queues new requests until all current requests are completed, unloads the <code>.xxl</code> library, replaces it with the <code>.xxu</code> file, re-loads the library and continues processing requests.</dd>
 
 <dt>how do I know if auto-update has updated my xxl?</dt>

@@ -15,7 +15,10 @@ type
   TSQLiteConnection=class(TObject)
   private
     FHandle:HSQLiteDB;
+    FBusyTimeout:integer;
     function GetLastInsertRowID:int64;
+    function GetChanges:integer;
+    procedure SetBusyTimeout(const Value: integer);
   public
     constructor Create(FileName:UTF8String);
     constructor CreateReadOnly(FileName:UTF8String);
@@ -26,7 +29,9 @@ type
     function Exists(SQL:UTF8String):boolean; overload;
     function Exists(SQL:UTF8String;const Parameters:array of OleVariant):boolean; overload;
     property Handle:HSQLiteDB read FHandle;
+    property BusyTimeout:integer read FBusyTimeout write SetBusyTimeout;
     property LastInsertRowID:int64 read GetLastInsertRowID;
+    property Changes:integer read GetChanges;
   end;
 
   TSQLiteStatement=class(TObject)
@@ -188,9 +193,20 @@ begin
   end;
 end;
 
+function TSQLiteConnection.GetChanges: integer;
+begin
+  Result:=sqlite3_changes(FHandle);
+end;
+
 function TSQLiteConnection.GetLastInsertRowID: int64;
 begin
   Result:=sqlite3_last_insert_rowid(FHandle);
+end;
+
+procedure TSQLiteConnection.SetBusyTimeout(const Value: integer);
+begin
+  sqlite3_check(sqlite3_busy_timeout(FHandle,Value));
+  FBusyTimeout:=Value;
 end;
 
 { TSQLiteStatement }
