@@ -100,7 +100,7 @@ Conditionals=
 DebugSourceDirs=
 UsePackages=0
 [Parameters]
-RunParams=..\demo
+RunParams=/proto D:\Data\xxm\Delphi\conv\proto_http /src D:\Data\2015\tx\src_1 /x:XxmSourcePath D:\Data\xxm\Delphi D:\Data\2015\tx
 HostApplication=
 Launcher=
 UseLauncher=0
@@ -129,4 +129,4 @@ LegalTrademarks=
 OriginalFilename=
 ProductName=xxm
 ProductVersion=1.0.0.0
-Comments=http://xxm.sf.net/
+Comments=http://yoy.be/xxm/

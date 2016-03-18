@@ -4,7 +4,7 @@ interface
 
 procedure WelcomeMessage;
 procedure RegisterCompileOption;
-procedure DoWrite(Msg:AnsiString);
+procedure DoWrite(const Msg:AnsiString);
 
 implementation
 
@@ -59,7 +59,7 @@ begin
   Writeln('Compile option registered on xxmp filetype');
 end;
 
-procedure DoWrite(Msg:AnsiString);
+procedure DoWrite(const Msg:AnsiString);
 begin
   Write(Msg);//stdout
 end;

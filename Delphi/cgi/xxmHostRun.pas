@@ -11,8 +11,8 @@ procedure HandleWindowsMessages(var QuitApp:boolean);
 
 implementation
 
-uses Windows, SysUtils, ActiveX, xxmPRegXml, xxmThreadPool, xxmHostMain, xxmCGIHeader,
-  xxmContext;
+uses Windows, SysUtils, ActiveX, xxmPReg, xxmPRegXml,
+  xxmThreadPool, xxmHostMain, xxmCGIHeader, xxmContext;
 
 procedure XxmRunHoster(HandleMessagesProc:TXxmHandleMessagesProc);
 type

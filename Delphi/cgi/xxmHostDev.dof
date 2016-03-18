@@ -111,7 +111,7 @@ AutoIncBuild=0
 MajorVer=1
 MinorVer=2
 Release=4
-Build=414
+Build=424
 Debug=0
 PreRelease=0
 Special=0
@@ -122,7 +122,7 @@ CodePage=1252
 [Version Info Keys]
 CompanyName=
 FileDescription=xxm CGI Host (AutoBuild)
-FileVersion=1.2.4.414
+FileVersion=1.2.4.424
 InternalName=
 LegalCopyright=
 LegalTrademarks=
