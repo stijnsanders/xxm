@@ -543,8 +543,8 @@ begin
     csLocalURL:Result:=FFragmentName;
     csReferer:Result:=FReqHeaders['Referer'];
     csLanguage:Result:=FReqHeaders['Accept-Language'];
-    csRemoteAddress:Result:=FSocket.Address;
-    csRemoteHost:Result:=FSocket.HostName;
+    csRemoteAddress:Result:=GetCGIValue('REMOTE_ADDR');
+    csRemoteHost:Result:=GetCGIValue('REMOTE_HOST');
     csAuthUser,csAuthPassword:Result:=AuthValue(cs);
     else
       raise EXxmContextStringUnknown.Create(StringReplace(

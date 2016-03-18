@@ -18,12 +18,14 @@ procedure XxmRunHoster(HandleMessagesProc:TXxmHandleMessagesProc);
 type
   TParameters=(
     cpPipePath,
+    cpLoadCopy,
     cpThreads,
     //add new here
     cp_Unknown);
 const
   ParameterKey:array[TParameters] of AnsiString=(
     'pipe',
+    'loadcopy',
     'threads',
     //add new here (lowercase)
     '');
@@ -51,10 +53,15 @@ begin
     par:=TParameters(0);
     while not(par=cp_Unknown) and not(t=ParameterKey[par]) do inc(par);
     case par of
-      cpPipePath:PipePath:=Copy(s,j+1,Length(s)-j);
-      cpThreads:Threads:=StrToInt(Copy(s,j+1,Length(s)-j));
+      cpPipePath:
+        PipePath:=Copy(s,j+1,Length(s)-j);
+      cpLoadCopy:
+        GlobalAllowLoadCopy:=Copy(s,j+1,Length(s)-j)<>'0';
+      cpThreads:
+        Threads:=StrToInt(Copy(s,j+1,Length(s)-j));
       //add new here
-      cp_Unknown: raise Exception.Create('Unknown setting: '+t);
+      cp_Unknown:
+        raise Exception.Create('Unknown setting: '+t);
     end;
    end;
 
