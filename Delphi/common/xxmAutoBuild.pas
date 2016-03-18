@@ -126,7 +126,7 @@ begin
             BuildOutput.Free;
           end;
         except
-          on e:EXxmWebProjectNotFound do Result:=true;//assert xxl only
+          on EXxmWebProjectNotFound do Result:=true;//assert xxl only
           on e:Exception do
            begin
             Result:=false;

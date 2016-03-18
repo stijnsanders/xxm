@@ -152,15 +152,17 @@ procedure TXxmHttpContext.Recycle;
 var
   i:integer;
 begin
-  try
-    EndRequest;
-  except
-    //silent (log?)
-  end;
   if (FSocket<>nil) and FSocket.Connected
     and ((FResHeaders['Content-Length']<>'')
     or (State=ctHeaderOnly)) then
-    KeptConnections.Queue(Self,ctHeaderNotSent)
+   begin
+    try
+      EndRequest;
+    except
+      //silent
+    end;
+    KeptConnections.Queue(Self,ctHeaderNotSent);
+   end
   else
    begin
     if FSocket<>nil then
@@ -248,7 +250,7 @@ begin
           inc(i);
           j:=i;
           while (j<=l) and (x[j]>' ') do inc(j);
-          FURI:=Copy(x,i,j-i);    
+          FURI:=Copy(x,i,j-i);
           inc(j);
           i:=j;
           while (j<=l) and (x[j]<>#13) and (x[j]<>#10) do inc(j);

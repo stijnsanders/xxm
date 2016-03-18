@@ -721,7 +721,14 @@ begin
   if (FSocket<>nil) //and FSocket.Connected
     and ((FResHeaders['Content-Length']<>'')
     or (State=ctHeaderOnly)) then
-    KeptConnections.Queue(Self,ctHeaderNotSent)
+   begin
+    try
+      EndRequest;
+    except
+      //silent
+    end;
+    KeptConnections.Queue(Self,ctHeaderNotSent);
+   end
   else
    begin
     if FSocket<>nil then

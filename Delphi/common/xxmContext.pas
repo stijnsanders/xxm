@@ -264,7 +264,11 @@ end;
 
 procedure TXxmGeneralContext.Recycle;
 begin
-  EndRequest;
+  try
+    EndRequest;
+  except
+    //silent
+  end;
   ContextPool.AddContext(Self);
 end;
 
