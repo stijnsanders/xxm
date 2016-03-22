@@ -156,20 +156,13 @@ begin
 end;
 
 procedure TXxmHttpServerListener.Execute;
-var
-  c:TXxmHttpContext;
 begin
   //inherited;
   //assert FServer.Bind called
   while not Terminated do
     try
-      c:=ContextPool.GetContext as TXxmHttpContext;//TXxmHttpContext.Create;
-      FServer.WaitForConnection;
-      if Terminated then
-        c.Free
-      else
-        //KeptConnections.Queue(?
-        PageLoaderPool.Queue(c.Accept(FServer.Accept),ctHeaderNotSent);
+      PageLoaderPool.Queue((ContextPool.GetContext as TXxmHttpContext)
+        .Accept(FServer.Accept),ctHeaderNotSent);
     except
       //TODO: log? display?
     end;
