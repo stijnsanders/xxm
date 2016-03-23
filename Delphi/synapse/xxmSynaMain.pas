@@ -718,9 +718,8 @@ procedure TXxmSynaContext.Recycle;
 var
   i:integer;
 begin
-  if (FSocket<>nil) //and FSocket.Connected
-    and ((FResHeaders['Content-Length']<>'')
-    or (State=ctHeaderOnly)) then
+  if (State<>ctSocketDisconnect)
+    and ((FResHeaders['Content-Length']<>'') or (State=ctHeaderOnly)) then
    begin
     try
       EndRequest;

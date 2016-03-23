@@ -97,6 +97,7 @@ end;
 procedure TXxmSpoolingConnections.DropContext(i:integer);
 begin
   try
+    FContexts[i].Context.State:=ctSocketDisconnect;
     FContexts[i].Context.Recycle;
     if FContexts[i].BufferFreeWhenDone then
       FreeAndNil(FContexts[i].Buffer)

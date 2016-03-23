@@ -113,7 +113,10 @@ begin
                   if FContexts[i].Context.State=ctSocketResume then
                     PageLoaderPool.Queue(FContexts[i].Context,ctSocketDisconnect)
                   else
+                   begin
+                    FContexts[i].Context.State:=ctSocketDisconnect;
                     FContexts[i].Context.Recycle;
+                   end;
                 finally
                   FContexts[i].Context:=nil;
                 end;

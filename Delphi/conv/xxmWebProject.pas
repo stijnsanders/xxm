@@ -418,7 +418,7 @@ begin
           Signatures.Values[SignaturesUpdateReasonKey]:='<'+uname;
         Result:=true;
        end;
-
+       
     finally
       sl.Free;
       sl1.Free;
@@ -435,7 +435,6 @@ begin
         uname:=VarToStr(xFile.getAttribute('UnitName'));
         upath:=VarToStr(xFile.getAttribute('UnitPath'));
         fn:=upath+uname+DelphiExtension;
-
         s:=GetFileSignature(FRootFolder+fn);
         if Signatures.Values[uname]<>s then
          begin
@@ -445,7 +444,6 @@ begin
             Signatures.Values[SignaturesUpdateReasonKey]:=uname;
           Result:=true;
          end;
-
         xFile:=xl.nextNode as IXMLDOMElement;
        end;
     finally
@@ -471,7 +469,6 @@ begin
             Signatures.Values[SignaturesUpdateReasonKey]:=uname;
           Result:=true;
          end;
-
         xFile:=xl.nextNode as IXMLDOMElement;
        end;
     finally

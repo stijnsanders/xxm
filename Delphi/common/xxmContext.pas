@@ -330,7 +330,11 @@ begin
           ForceStatus(204,'No Content');
         if FStatusCode<>304 then
           AddResponseHeader('Content-Length',IntToStr(i));
-        if i=0 then SendHeader;
+        if i=0 then
+         begin
+          SendHeader;
+          State:=ctHeaderOnly;
+         end;
        end;
       FlushFinal;
      end;
@@ -384,6 +388,7 @@ begin
         ForceStatus(304,'Not Modified');
         //AddResponseHeader('Content-Length',?
         SendHeader;
+        State:=ctHeaderOnly;
         CloseHandle(fh);
        end
       else

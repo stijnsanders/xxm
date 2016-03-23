@@ -152,9 +152,8 @@ procedure TXxmHttpContext.Recycle;
 var
   i:integer;
 begin
-  if (FSocket<>nil) and FSocket.Connected
-    and ((FResHeaders['Content-Length']<>'')
-    or (State=ctHeaderOnly)) then
+  if (State<>ctSocketDisconnect)
+    and ((FResHeaders['Content-Length']<>'') or (State=ctHeaderOnly)) then
    begin
     try
       EndRequest;
@@ -234,6 +233,8 @@ begin
         n:=FSocket.ReceiveBuf(x[l+1],k-l);
         if (n<=0) or (cardinal(GetTickCount-tc)>HTTPMaxHeaderParseTimeMS) then
          begin
+          i:=1;
+          setsockopt(FSocket.Handle,SOL_SOCKET,SO_REUSEADDR,@i,4);
           FSocket.Disconnect;
           raise EXxmConnectionLost.Create('Connection Lost');
          end;
