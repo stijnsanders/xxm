@@ -7,7 +7,7 @@ procedure XxmStartURL;
 
 implementation
 
-uses SysUtils, Windows, ShellAPI, xxmHttpMain;
+uses SysUtils, Windows, ShellAPI, xxmHttpRun;
 
 function XxmGlobalMutex(const ProjectName: string): boolean;
 var

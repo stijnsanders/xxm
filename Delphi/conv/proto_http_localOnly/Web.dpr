@@ -17,7 +17,8 @@ program [[ProjectName]];
 [[ProjectSwitches]]
 uses
   SysUtils,
-  xxmHttpMain in '[[XxmSourcePath]]\http\xxmHttpMain.pas',
+  xxmHttpCtx in '[[XxmSourcePath]]\http\xxmHttpCtx.pas',
+  xxmHttpRun in '[[XxmSourcePath]]\http\xxmHttpRun.pas',
   xxm in '[[XxmSourcePath]]\bin\public\xxm.pas',
   xxmParams in '[[XxmSourcePath]]\common\xxmParams.pas',
   xxmParUtils in '[[XxmSourcePath]]\common\xxmParUtils.pas',
