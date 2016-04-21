@@ -162,13 +162,15 @@ begin
        end;
       IOState_Final:
        begin
+        pContext.FIOState:=IOState_None;
         BufferStore.AddBuffer(TMemoryStream(pContext.FIOStream));
         pContext.Recycle;
        end;
       IOState_Stream:
+       begin
+        pContext.FIOState:=IOState_None;
         if dwError=0 then
          begin
-          pContext.FIOState:=IOState_None;
           PageLoaderPool.Queue(pContext,ctSpooling)
          end
         else
@@ -176,6 +178,7 @@ begin
           pContext.FIOStream.Free;
           pContext.Recycle;
          end;
+       end;
     end;
   except
     //silent (log?)
