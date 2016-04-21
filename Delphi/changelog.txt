@@ -1,3 +1,6 @@
+v1.2.4.430
+- xxmISAPI: fixed issue with open connections not accepting new requests
+
 v1.2.4.424
 - revised context object lifetime management (lock-less reference counting)
 - demo 7 "Resources": added "If-Modified-Since"
