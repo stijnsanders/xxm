@@ -73,7 +73,7 @@ const
   end;
 
 begin
-  Result:=Entry.LastResult;//default;
+  Result:=Entry.LastResult='';//default;
   if cardinal(GetTickCount-Entry.LastCheck)>NoNextBuildAfter then
    begin
     fn:=Entry.ModulePath;//force get from registry outside of lock
@@ -92,6 +92,7 @@ begin
               b:=WebProject.CheckFiles(false,nil);
               if not(b) then
                begin
+                Entry.LastResult:='';
                 Result:=true;
                 wsig:=GetFileSignature(
                   WebProject.RootFolder+WebProject.ProjectFile);
@@ -109,15 +110,15 @@ begin
                   wsig:=GetFileSignature(
                     WebProject.RootFolder+WebProject.ProjectFile);
                   Entry.Signature:=wsig;
+                  Entry.LastResult:='';
                   Result:=true;
                  end
                 else
                  begin
-                  Context.SendHTML(BuildError('bfail','',''));
+                  Entry.LastResult:=BuildError('bfail','','');
                   Result:=false;
                  end;
                end;
-              Entry.LastResult:=Result;
               Entry.LastCheck:=GetTickCount;
             finally
               WebProject.Free;
@@ -134,16 +135,12 @@ begin
            end;
         end
       else
-       begin
-        Result:=Entry.LastResult;
-        if not Result then
-          Context.SendHTML(BuildError('berror','Build Failed',
-            'Compile failed on other thread, view compile log or refresh.'));
-       end;
+        Result:=Entry.LastResult<>'';
     finally
       Entry.Unlock;
     end;
    end;
+  if not Result then Context.SendHTML(Entry.LastResult);
 end;
 
 end.
