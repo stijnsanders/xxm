@@ -29,6 +29,7 @@
 <li><a href="#xxmparameter">IXxmParameter</a></li>
 <li><a href="#xxmversion">XxmVersion</a></li>
 <li><a href="#htmlencode">HTMLEncode</a></li>
+<li><a href="#binpublic">bin\public units</a></li>
 <li><a href="#headers">Headers</a> <span class="newver">1.1.0</span></li>
 <li><a href="#parservalues">Override parser values</a> <span class="newver">1.1.3</span></li>
 <li><a href="#projectintf">Optional project interfaces</a></li>
@@ -114,7 +115,7 @@ It is advised to use include fragments with <code>Context.Include</code> instead
 this enables code like this: <code style="background-color:#FFFFFF;"><span style="background-color:#CCFFCC">[[</span>Context.Send('<span style="background-color:#FFCCCC;">]]</span>');<span style="background-color:#CCFFCC">]]</span></code> and <code><span style="background-color:#CCFFCC">[[</span>=MyArray[x<span style="background-color:#FFCCCC">]</span><span style="background-color:#FFFFCC">]</span><span style="background-color:#CCFFCC">]</span></code>, but also enables a comment block to 'comment out' a full block of both HTML and code blocks.</p>
 
 <p>Each xxm and xxmi source file is converted into a pas file, using a prototype file.
-By default the prototype files are used from the "proto" directory provided with the xxm installation, but an xxm project can provide custom prototype files.</p>
+By default the prototype files are used from the <code>proto</code> directory provided with the xxm installation, but an xxm project can provide custom prototype files.</p>
 
 <p>When the default prototype files are used, each resulting pas file declares a descendant TXxmFragment class (either TXxmPage or TXxmInclude).
 The Delphi code blocks are duplicated in the predesignated spot, and all HTML is converted into calls to <code>Context.SendHTML();</code>
@@ -152,8 +153,8 @@ which in some cases might slightly alter the layout.</p>
 
 <p class="title"><a name="proto"></a>Proto</p>
 
-<p>To convert .xxm and .xxmi files into .pas files, the converter uses prototype files from the "proto" folder.
-By default the files are used from the "proto" folder of the xxm installation, but an xxm project may provide its own "proto" folder with alternative prototype files.
+<p>To convert .xxm and .xxmi files into .pas files, the converter uses prototype files from the <code>proto</code> folder.
+By default the files are used from the <code>proto</code> folder of the xxm installation, but an xxm project may provide its own <code>proto</code> folder with alternative prototype files.
 This allows to add used units or declarations ready for use in all pages and includes of an xxm project.</p>
 
 <p class="title"><a name="interface"></a>Interface</p>
@@ -241,7 +242,7 @@ the <a href="#ContentType">ContentType</a> is set to the MIME-type string found 
 <dd>sends the contents of the stream to the response (use <code>TStreamAdapter</code> from the Classes unit
 to provide an <code>IStream</code> interface on a <code>TStream</code> object)</dd>
 
-<dt><code>
+<dt><a name="include"></a><code>
     procedure Include(Address: WideString); overload;<br />
     procedure Include(Address: WideString;<br />
     &nbsp;  const Values: array of OleVariant); overload;<br />
@@ -380,6 +381,21 @@ function URLEncode(const KeyValuePairs:array of OleVariant):AnsiString; overload
 </dt>
 <dd>encodes/decodes data to/from URL notation</dd>
 
+</dl>
+
+<p class="title"><a name="binpublic"></a>bin/public units</p>
+
+<p>It's advised when installing xxm to store the <code>public</code> and <a href="#proto"><code>proto</code></a> folders together with the binaries. (e.g. <code>C:\InetPub\xxm</code>).<br />
+A new xxm project has by default <code>&lt;CompileCommand&gt;</code> set to <code>dcc32 <span style="background-color:#CCCCFF">-U[[HandlerPath]]public</span> -Q [[ProjectName]].dpr</code> so these units are available by default.</p>
+
+<dl>
+<dt>xxm.pas</dt><dd>The main central xxm unit that defines the common <a href="#interface">interface</a> to interact with the xxm handler.</dd>
+<dt>xxmFReg.pas</dt><dd>The default <a href="#fragment">fragment</a> class registry, used by the default <code>xxmp.pas</code>. You are free to change both in your project. In larger projects a specific solution may perform better then the default solution based on a plain <code>TStringList</code>.</dd>
+<dt>xxmHeaders.pas <span class="newver">1.1.0</span></dt><dd>Extra interfaces to manipulate request and response <a href="#headers">headers</a>.</dd>
+<dt>xxmSession.pas</dt><dd>A default session object. New xxm projects don't include this. Take a copy of this file in your project folder, add it to Web.xxmp (by adding <code>&lt;Unit UnitName="xxmSession"/&gt;</code>), add a SetSession call to your xxmp.pas' LoadPage method (where it says <code>//TODO: link session to request</code>), and modify the session object to hold the data required by your application.</dd>
+<dt>xxmStream.pas</dt><dd>Defines the <code>TxxmOutputStream</code> class you can wrap around a <code>IXxmContext</code> to have a stream to write to and have the data sent to the response.</dd>
+<dt>xxmString.pas</dt><dd>Defines the <code>TStringContext</code> that enables to catch output from fragments. Use it either by temporarily <a href="#parservalues">overriding parser values</a>, or by using its <a href="#include"><code>Include</code> method(s)</a>.
+<dt>xxmWebSocket.pas <span class="newver">1.2.3</span></dt><dd>Defines the base class <code>TXxmWebSocket</code> you can inherit from to provide <a href="#wssupport">web sockets</a>.</dd>
 </dl>
 
 <p class="title"><a name="headers"></a>Headers <span class="newver">1.1.0</span></p>

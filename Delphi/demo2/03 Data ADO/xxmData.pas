@@ -45,7 +45,7 @@ type
     class function SingleValue(const SQL: AnsiString): Variant; overload;
 
     procedure Reset;
-	procedure CheckResultSet;//use with multiple resultsets (e.g. when calling stored procedure)
+    procedure CheckResultSet;//use with multiple resultsets (e.g. when calling stored procedure)
     function Read:boolean;
     property Fields[Idx:OleVariant]:OleVariant read GetValue; default;
     property EOF: boolean read IsEof;
@@ -65,7 +65,7 @@ type
     constructor Create(const TableName, PKName: AnsiString; Id: integer);
     destructor Destroy; override;
 
-    class function Perform(const QueryName: AnsiString; const Values: array of Variant): integer; overload;
+    class function Execute(const QueryName: AnsiString; const Values: array of Variant): integer; overload;
 
     procedure Update;
     procedure Cancel;
@@ -158,11 +158,11 @@ begin
         //process previous marker
         if r1<>0 then
          begin
-		  if q=ql then
-		   begin
-		    inc(ql,$100);//grow
-			SetLength(FQueries,ql);
-		   end;
+          if q=ql then
+           begin
+            inc(ql,$100);//grow
+            SetLength(FQueries,ql);
+           end;
           FQueries[q].ID:=Copy(s,s1,s2-s1);
           FQueries[q].SQL:=Copy(s,r1,r2-r1+1);
           inc(q);
@@ -184,14 +184,14 @@ begin
     //skip trailing whitespace
     dec(i);
     while (i<>0) and (s[i]<' ') do dec(i);
-	if q=ql then
-	 begin
-	  inc(ql);//,$100);
+    if q=ql then
+     begin
+      inc(ql);//,$100);
       SetLength(FQueries,ql);
-	 end;
+     end;
     FQueries[q].ID:=Copy(s,s1,s2-s1);
     FQueries[q].SQL:=Copy(s,r1,i-r1+1);
-	inc(q);
+    inc(q);
    end;
   SetLength(FQueries,q);
 end;
@@ -509,7 +509,7 @@ begin
   end;
 end;
 
-class function TDataChanger.Perform(const QueryName: AnsiString; const Values: array of Variant): integer;
+class function TDataChanger.Execute(const QueryName: AnsiString; const Values: array of Variant): integer;
 var
   cmd:Command;
   v:OleVariant;
@@ -520,7 +520,7 @@ begin
     cmd.CommandText:=QueryStore.GetSQL(QueryName);
     CmdParameters(cmd,Values);
     cmd.Execute(v,EmptyParam,0);//rs:=
-	//while (rs<>nil) and (rs.State=adStateClosed) do rs:=rs.NextRecordset(v);
+    //while (rs<>nil) and (rs.State=adStateClosed) do rs:=rs.NextRecordset(v);
     Result:=v;
   except
     on e:Exception do
