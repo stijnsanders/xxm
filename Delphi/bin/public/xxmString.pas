@@ -258,7 +258,7 @@ var
 begin
   if FIncludeDepth=XxmMaxIncludeDepth then
     raise EXxmIncludeStackFull.Create(SXxmIncludeStackFull);
-  p:=FContext.Page.Project;
+  p:=FBuilding.Project;//p:=FContext.Page.Project;?
   try
     //TODO: relative path to FContext.ContextString(clLocalURL)
     f:=p.LoadFragment(FContext,Address,FBuilding.RelativePath);
