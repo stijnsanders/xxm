@@ -1,6 +1,7 @@
 program xxmHttpAU;
 
 {$R '..\common\xxmData.res' '..\common\xxmData.rc'}
+{$R 'xxmHttpAU_manifest.res' 'xxmHttpAU_manifest.rc'}
 
 uses
   SysUtils,
