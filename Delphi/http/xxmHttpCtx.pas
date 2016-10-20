@@ -4,7 +4,7 @@ interface
 
 uses
   SysUtils, Windows, xxmSock, xxmThreadPool, xxm, Classes, ActiveX,
-  xxmContext, xxmPReg, xxmPRegXml, xxmParams, xxmParUtils, xxmHeaders,
+  xxmContext, xxmPReg, xxmPRegJson, xxmParams, xxmParUtils, xxmHeaders,
   xxmKeptCon, xxmSpoolingCon;
 
 type

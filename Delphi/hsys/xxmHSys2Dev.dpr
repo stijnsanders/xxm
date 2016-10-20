@@ -15,16 +15,18 @@ uses
   xxmHeaders in '..\bin\public\xxmHeaders.pas',
   xxmThreadPool in '..\common\xxmThreadPool.pas',
   xxmPReg in '..\common\xxmPReg.pas',
-  xxmPRegXml in '..\common\xxmPRegXml.pas',
+  xxmPRegJson in '..\common\xxmPRegJson.pas',
   xxmCommonUtils in '..\common\xxmCommonUtils.pas',
   xxmContext in '..\common\xxmContext.pas',
   xxmAutoBuild in '..\common\xxmAutoBuild.pas',
   xxmWebProject in '..\conv\xxmWebProject.pas',
   MSXML2_TLB in '..\common\MSXML2_TLB.pas',
+  jsonDoc in '..\common\jsonDoc.pas',
   xxmUtilities in '..\conv\xxmUtilities.pas',
   xxmPageParse in '..\conv\xxmPageParse.pas',
   xxmProtoParse in '..\conv\xxmProtoParse.pas',
-  xxmHSysHeaders in 'xxmHSysHeaders.pas';
+  xxmHSysHeaders in 'xxmHSysHeaders.pas',
+  xxmConvertXML in '..\common\xxmConvertXML.pas';
 
 {$R *.res}
 

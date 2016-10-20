@@ -10,7 +10,7 @@ uses
   xxm in '..\bin\public\xxm.pas',
   xxmIsapiMain in 'xxmIsapiMain.pas',
   xxmPReg in '..\common\xxmPReg.pas',
-  xxmPRegXml in '..\common\xxmPRegXml.pas',
+  xxmPRegJson in '..\common\xxmPRegJson.pas',
   xxmParams in '..\common\xxmParams.pas',
   xxmParUtils in '..\common\xxmParUtils.pas',
   xxmHeaders in '..\bin\public\xxmHeaders.pas',
@@ -19,11 +19,13 @@ uses
   xxmContext in '..\common\xxmContext.pas',
   xxmIsapiStream in 'xxmIsapiStream.pas',
   MSXML2_TLB in '..\common\MSXML2_TLB.pas',
+  jsonDoc in '..\common\jsonDoc.pas',
   xxmAutoBuild in '..\common\xxmAutoBuild.pas',
   xxmWebProject in '..\conv\xxmWebProject.pas',
   xxmPageParse in '..\conv\xxmPageParse.pas',
   xxmProtoParse in '..\conv\xxmProtoParse.pas',
-  xxmUtilities in '..\conv\xxmUtilities.pas';
+  xxmUtilities in '..\conv\xxmUtilities.pas',
+  xxmConvertXML in '..\common\xxmConvertXML.pas';
 
 {$R *.res}
 

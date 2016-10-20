@@ -471,7 +471,7 @@ begin
       //SimpleAdd('.xxmp','xxmpfile');
       r.OpenKey('.xxmp',true);
       r.WriteString('','xxmpfile');
-      r.WriteString('Content Type','text/xml');
+      r.WriteString('Content Type','text/json');
       r.CloseKey;
       SimpleAdd('xxmpfile','xxm Project File');
       i:=Length(fn);

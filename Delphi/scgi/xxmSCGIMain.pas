@@ -4,7 +4,7 @@ interface
 
 uses
   SysUtils, Windows, xxmSock, xxmThreadPool, xxm, Classes, ActiveX,
-  xxmContext, xxmPReg, xxmPRegXml, xxmParams, xxmParUtils, xxmHeaders,
+  xxmContext, xxmPReg, xxmPRegJson, xxmParams, xxmParUtils, xxmHeaders,
   xxmKeptCon, xxmSpoolingCon;
 
 type
@@ -170,7 +170,7 @@ begin
   //
   CoInitialize(nil);
   SetErrorMode(SEM_FAILCRITICALERRORS);
-  XxmProjectCache:=TXxmProjectCacheXml.Create;
+  XxmProjectCache:=TXxmProjectCacheJson.Create;
   ContextPool:=TXxmContextPool.Create(TXxmSCGIContext);
   KeptConnections:=TXxmKeptConnections.Create;
   SpoolingConnections:=TXxmSpoolingConnections.Create;

@@ -2,26 +2,23 @@ unit xxmWebProject;
 
 interface
 
-uses Windows, SysUtils, Classes, MSXML2_TLB, xxmPageParse;
+uses Windows, SysUtils, Classes, jsonDoc, xxmPageParse;
 
 type
   TXxmWebProjectOutput=procedure(const Msg:AnsiString);
 
   TXxmWebProject=class(TObject)
   private
-    Data:DOMDocument;
+    Data:IJSONDocument;
     DataStartSize:integer;
     DataFileName,FProjectName,FRootFolder,FSrcFolder,
     FHandlerPath,FProtoPathDef,FProtoPath:AnsiString;
-    RootNode,DataFiles:IXMLDOMElement;
     Modified,DoLineMaps:boolean;
     Signatures:TStringList;
     FOnOutput:TXxmWebProjectOutput;
     FParserValues:TXxmPageParserValueList;
 
-    function ForceNode(element:IXMLDOMElement;
-      const tagname,id:AnsiString;indentlevel:integer):IXMLDOMElement;
-    function NodesText(element:IXMLDOMElement;const xpath:AnsiString):AnsiString;
+    function KeyText(const Key:WideString):AnsiString;
 
     function ReadString(const FilePath:AnsiString):AnsiString;
     procedure BuildOutput(const Msg:AnsiString);
@@ -53,7 +50,8 @@ type
 
 implementation
 
-uses Variants, ComObj, xxmUtilities, xxmProtoParse, xxmCommonUtils;
+uses Variants, ComObj, xxmUtilities, xxmProtoParse, xxmCommonUtils,
+  xxmConvertXML, MSXML2_TLB;
 
 {  }
 
@@ -97,10 +95,11 @@ const
 constructor TXxmWebProject.Create(const SourcePath: AnsiString;
   OnOutput:TXxmWebProjectOutput; CanCreate:boolean);
 var
-  x:IXMLDOMElement;
+  v:OleVariant;
   i,j,l:integer;
   s:AnsiString;
   f:TFileStream;
+  d:IJSONDocument;
   pv:TXxmPageParserValues;
 begin
   inherited Create;
@@ -148,8 +147,9 @@ begin
         i:=Length(FRootFolder)-1;
         while (i<>0) and (FRootFolder[i]<>PathDelim) do dec(i);
         FProjectName:=Copy(FRootFolder,i+1,Length(FRootFolder)-i-1);
-        s:='<XxmWebProject>'#13#10#9'<ProjectName></ProjectName>'#13#10#9+
-          '<CompileCommand>dcc32 -U[[HandlerPath]]public -Q [[ProjectName]].dpr</CompileCommand>'#13#10'</XxmWebProject>';
+        s:='{name:"'+FProjectName+
+          '",compileCommand:"dcc32 -U[[HandlerPath]]public'+
+          ' -Q [[ProjectName]].dpr"}';
         f:=TFileStream.Create(FRootFolder+DataFileName,fmCreate);
         try
           f.Write(s[1],Length(s));
@@ -166,22 +166,39 @@ begin
   FProtoPathDef:=FHandlerPath+ProtoDirectory+PathDelim;
   FSrcFolder:=FRootFolder+SourceDirectory+PathDelim;
 
-  Data:=CoDOMDocument.Create;
-  Data.async:=false;
-  Data.preserveWhiteSpace:=true;
-  if not(Data.load(FRootFolder+DataFileName)) then
-    raise EXxmWebProjectLoad.Create(StringReplace(
-      SXxmWebProjectLoad,'__',FRootFolder+DataFileName,[])+
-      #13#10+Data.parseError.reason);
-  RootNode:=Data.documentElement;
+  f:=TFileStream.Create(FRootFolder+DataFileName,fmOpenRead);
+  try
+    DataStartSize:=f.Size;
+    SetLength(s,DataStartSize);
+    f.Read(s[1],DataStartSize);
+  finally
+    f.Free;
+  end;
 
-  DataStartSize:=Length(Data.xml);
+  //TRANSITIONAL: convert
+  if (s<>'') and (s[1]='<') then
+   begin
+    s:=ConvertProjectFile(s);
+    //CopyFile(,'.bak')?
+    if not(CopyFile(PChar(FRootFolder+DataFileName),PChar(FRootFolder+
+      StringReplace(DataFileName,'.','_',[rfReplaceAll])+'.bak'),false)) then
+      RaiseLastOSError;
+    f:=TFileStream.Create(FRootFolder+DataFileName,fmCreate);
+    try
+      f.Write(s[1],Length(s));
+    finally
+      f.Free;
+    end;
 
-  x:=ForceNode(RootNode,'UUID','',1);
-  if x.text='' then x.text:=CreateClassID;//other random info?
+   end;
 
-  x:=ForceNode(RootNode,'ProjectName','',1);
-  if x.text='' then
+  Data:=JSON;
+  Data.Parse(s);
+  v:=Data['uuid'];
+  if VarIsNull(v) then Data['uuid']:=CreateClassID;//other random info?
+
+  v:=Data['name'];
+  if VarIsNull(v) or (v='') then
    begin
     if FProjectName='' then
      begin
@@ -189,12 +206,13 @@ begin
       while (i<>0) and (DataFileName[i]<>'.') do dec(i);
       FProjectName:=Copy(DataFileName,1,Length(DataFileName)-i-1);
      end;
-    x.text:=FProjectName;
+    Data['name']:=FProjectName;
    end
   else
-    FProjectName:=x.text;
+    FProjectName:=v;
 
-  DataFiles:=ForceNode(RootNode,'Files','',1);
+  //v:=Data['files'];
+  //if VarIsNull(v) then Data['files']:=VarArrayOf([]);
 
   if DirectoryExists(FRootFolder+ProtoDirectory) then
     FProtoPath:=FRootFolder+ProtoDirectory+PathDelim
@@ -202,23 +220,26 @@ begin
     FProtoPath:=FProtoPathDef;
 
   FParserValues:=DefaultParserValues;
-  pv:=TXxmPageParserValues(0);
-  while (pv<>pv_Unknown) do
+  d:=JSON(Data['parserValues']);
+  if d<>nil then
    begin
-    x:=RootNode.selectSingleNode('ParserValues/'+
-      ParserValueElement[pv]) as IXMLDOMElement;
-    if x<>nil then
+    pv:=TXxmPageParserValues(0);
+    while (pv<>pv_Unknown) do
      begin
-      s:=StringReplace(StringReplace(x.text,
-        '$v',FParserValues[pv].Code,[rfReplaceAll]),
-        '$d',FParserValues[pv].Code,[rfReplaceAll]);
-      l:=Length(s);
-      j:=0;
-      for i:=1 to l-1 do if (s[i]=#13) and (s[i+1]=#10) then inc(j);
-      FParserValues[pv].Code:=s;
-      FParserValues[pv].EOLs:=j;
+      v:=d[ParserValueElement[pv]];
+      if not(VarIsNull(v)) then
+       begin
+        s:=StringReplace(StringReplace(v,
+          '$v',FParserValues[pv].Code,[rfReplaceAll]),
+          '$d',FParserValues[pv].Code,[rfReplaceAll]);
+        l:=Length(s);
+        j:=0;
+        for i:=1 to l-1 do if (s[i]=#13) and (s[i+1]=#10) then inc(j);
+        FParserValues[pv].Code:=s;
+        FParserValues[pv].EOLs:=j;
+       end;
+      inc(pv);
      end;
-    inc(pv);
    end;
 end;
 
@@ -232,15 +253,23 @@ end;
 
 procedure TXxmWebProject.Update;
 var
-  fn:AnsiString;
+  f:TFileStream;
+  fn,s:AnsiString;
 begin
   if Modified then
    begin
-    if DataStartSize<>Length(Data.xml) then
+    s:=AnsiString(Data.ToString);//TODO: UTF8
+    //TODO: if Data.Dirty
+    if DataStartSize<>Length(s) then
      begin
-      ForceNode(RootNode,'LastModified','',1).text:=
+      Data['lastModified']:=
         FormatDateTime('yyyy-mm-dd"T"hh:nn:ss',Now);//timezone?
-      Data.save(FRootFolder+DataFileName);
+      f:=TFileStream.Create(FRootFolder+DataFileName,fmCreate);
+      try
+        f.Write(s[1],Length(s));
+      finally
+        f.Free;
+      end;
       Modified:=false;
      end;
 
@@ -262,9 +291,9 @@ var
   p:TXxmProtoParser;
   q:TXxmPageParser;
   m:TXxmLineNumbersMap;
-  xl:IXMLDOMNodeList;
-  xFile,x:IXMLDOMElement;
-  xn:IXMLDOMNode;
+  DataFiles,d:IJSONDocument;
+  e:IJSONEnumerator;
+  v:OleVariant;
   fn,fnu,s,cid,uname,upath,uext:AnsiString;
   sl,sl1:TStringList;
   sl_i,i,cPathIndex,fExtIndex,fPathIndex:integer;
@@ -281,6 +310,13 @@ begin
     //silent
   end;
 
+  DataFiles:=JSON(Data['files']);
+  if DataFiles=nil then
+   begin
+    DataFiles:=JSON;
+    Data['files']:=DataFiles;
+   end;
+
   p:=TXxmProtoParser.Create;
   q:=TXxmPageParser.Create(FParserValues);
   m:=TXxmLineNumbersMap.Create;
@@ -288,19 +324,9 @@ begin
     sl:=TStringList.Create;
     sl1:=TStringList.Create;
     try
-
-      xl:=DataFiles.selectNodes('File');
-      try
-        x:=xl.nextNode as IXMLDOMElement;
-        while x<>nil do
-         begin
-          sl1.Add(x.getAttribute('ID'));
-          x:=xl.nextNode as IXMLDOMElement;
-         end;
-      finally
-        x:=nil;
-        xl:=nil;
-      end;
+      e:=JSONEnum(DataFiles);
+      while e.Next do sl1.Add(e.Key);
+      e:=nil;
 
       ListFilesInPath(sl,FRootFolder);
 
@@ -308,17 +334,22 @@ begin
        begin
         fn:=sl[sl_i];
         cid:=GetInternalIdentifier(fn,cPathIndex,fExtIndex,fPathIndex);
-        xFile:=ForceNode(DataFiles,'File',cid,2);
+        d:=JSON(DataFiles[cid]);
+        if d=nil then
+         begin
+          d:=JSON;
+          DataFiles[cid]:=d;
+         end;
         i:=sl1.IndexOf(cid);
         if i<>-1 then sl1.Delete(i);
         //fn fit for URL
         fnu:=StringReplace(fn,'\','/',[rfReplaceAll]);
-        x:=ForceNode(xFile,'Path','',-1);
-        x.text:=fnu;
+        d['path']:=fnu;
         //pascal unit name
-        upath:=VarToStr(xFile.getAttribute('UnitPath'));
-        uname:=VarToStr(xFile.getAttribute('UnitName'));
-        if fExtIndex=0 then uext:='' else uext:=Copy(fn,fExtIndex+1,Length(fn)-fExtIndex);
+        upath:=VarToStr(d['unitPath']);
+        uname:=VarToStr(d['unitName']);
+        if fExtIndex=0 then uext:='' else
+          uext:=Copy(fn,fExtIndex+1,Length(fn)-fExtIndex);
 
         if uname='' then
          begin
@@ -329,16 +360,16 @@ begin
           repeat
             inc(i);
             s:=uname+IntToStr(i);
-            x:=DataFiles.selectSingleNode('File[@UnitName="'+s+'"]') as IXMLDOMElement;
-          until (x=nil);
+            v:=DataFiles[s];
+          until VarIsNull(v);
           uname:=s;
-          xFile.setAttribute('UnitName',uname);
+          d['unitName']:=uname;
           Modified:=true;
          end;
         if upath='' then
          begin
           upath:=Copy(fn,1,fPathIndex);
-          xFile.setAttribute('UnitPath',upath);
+          d['unitPath']:=upath;
          end;
 
         //TODO: setting no pas subdirs?
@@ -401,18 +432,14 @@ begin
       for sl_i:=0 to sl1.Count-1 do
        begin
         cid:=sl1[sl_i];
-        xFile:=ForceNode(DataFiles,'File',cid,2);
+        d:=JSON(DataFiles[cid]);
         //TODO: setting keep pas?
-        uname:=VarToStr(xFile.getAttribute('UnitName'));
-        upath:=VarToStr(xFile.getAttribute('UnitPath'));
+        uname:=VarToStr(d['unitName']);
+        upath:=VarToStr(d['unitPath']);
         DeleteFile(FSrcFolder+upath+uname+DelphiExtension);
         DeleteFile(FSrcFolder+upath+uname+LinesMapExtension);
-        //remove whitespace
-        xn:=xFile.previousSibling;
-        if (xn<>nil) and (xn.nodeType=NODE_TEXT) then
-          xFile.parentNode.removeChild(xn);
         //remove file tag
-        xFile.parentNode.removeChild(xFile);
+        DataFiles[cid]:=Null;
         Modified:=true;
         if not Result then
           Signatures.Values[SignaturesUpdateReasonKey]:='<'+uname;
@@ -422,59 +449,45 @@ begin
     finally
       sl.Free;
       sl1.Free;
-      x:=nil;
-      xFile:=nil;
     end;
 
     //check units
-    xl:=DataFiles.selectNodes('Unit');
-    try
-      xFile:=xl.nextNode as IXMLDOMElement;
-      while xFile<>nil do
+    e:=JSONEnum(Data['units']);
+    while e.Next do
+     begin
+      d:=JSON(e.Value);
+      uname:=e.Key;//VarToStr(d['unitName']);
+      upath:=VarToStr(d['unitPath']);
+      fn:=upath+uname+DelphiExtension;
+      s:=GetFileSignature(FRootFolder+fn);
+      if Signatures.Values[uname]<>s then
        begin
-        uname:=VarToStr(xFile.getAttribute('UnitName'));
-        upath:=VarToStr(xFile.getAttribute('UnitPath'));
-        fn:=upath+uname+DelphiExtension;
-        s:=GetFileSignature(FRootFolder+fn);
-        if Signatures.Values[uname]<>s then
-         begin
-          Signatures.Values[uname]:=s;
-          Modified:=true;
-          if not Result then
-            Signatures.Values[SignaturesUpdateReasonKey]:=uname;
-          Result:=true;
-         end;
-        xFile:=xl.nextNode as IXMLDOMElement;
+        Signatures.Values[uname]:=s;
+        Modified:=true;
+        if not Result then
+          Signatures.Values[SignaturesUpdateReasonKey]:=uname;
+        Result:=true;
        end;
-    finally
-      xFile:=nil;
-      xl:=nil;
-    end;
+     end;
     //missing? delete?
 
     //check resource files
-    xl:=DataFiles.selectNodes('Resource');
-    try
-      xFile:=xl.nextNode as IXMLDOMElement;
-      while xFile<>nil do
+    e:=JSONEnum(Data['resources']);
+    while e.Next do
+     begin
+      d:=JSON(e.Value);
+      fn:=VarToStr(e.Key);//fn:=VarToStr(d['path']);
+      s:=GetFileSignature(FRootFolder+fn);
+      uname:=':'+StringReplace(fn,'=','_',[rfReplaceAll]);
+      if Signatures.Values[uname]<>s then
        begin
-        fn:=ForceNode(xFile,'Path','',-1).text;
-        s:=GetFileSignature(FRootFolder+fn);
-        uname:=':'+StringReplace(fn,'=','_',[rfReplaceAll]);
-        if Signatures.Values[uname]<>s then
-         begin
-          Signatures.Values[uname]:=s;
-          Modified:=true;
-          if not Result then
-            Signatures.Values[SignaturesUpdateReasonKey]:=uname;
-          Result:=true;
-         end;
-        xFile:=xl.nextNode as IXMLDOMElement;
+        Signatures.Values[uname]:=s;
+        Modified:=true;
+        if not Result then
+          Signatures.Values[SignaturesUpdateReasonKey]:=uname;
+        Result:=true;
        end;
-    finally
-      xFile:=nil;
-      xl:=nil;
-    end;
+     end;
 
     GenerateProjectFiles(Rebuild,ExtraFields);
 
@@ -489,8 +502,8 @@ function TXxmWebProject.GenerateProjectFiles(Rebuild:boolean;
   ExtraFields:TStrings):boolean;
 var
   p:TXxmProtoParser;
-  x:IXMLDOMElement;
-  xl:IXMLDOMNodeList;
+  e:IJSONEnumerator;
+  d:IJSONDocument;
   fh:THandle;
   fd:TWin32FindDataA;
   fn1,fn2,s:AnsiString;
@@ -516,30 +529,30 @@ begin
           ptProtoFile:p.Output(FProtoPath+ProtoProjectDpr);
           ptIterateFragment:
            begin
-            xl:=DataFiles.selectNodes('File');
-            x:=xl.nextNode as IXMLDOMElement;
-            p.IterateBegin(x<>nil);
+            e:=JSONEnum(Data['files']);
+            if e.Next then d:=JSON(e.Value) else d:=nil;
+            p.IterateBegin(d<>nil);
            end;
           ptIterateInclude:
            begin
-            xl:=DataFiles.selectNodes('Unit');
-            x:=xl.nextNode as IXMLDOMElement;
-            p.IterateBegin(x<>nil);
+            e:=JSONEnum(Data['units']);
+            if e.Next then d:=JSON(e.Value) else d:=nil;
+            p.IterateBegin(d<>nil);
            end;
-          ptFragmentUnit:p.Output(VarToStr(x.getAttribute('UnitName')));
-          ptFragmentPath:p.Output(VarToStr(x.getAttribute('UnitPath')));
-          ptFragmentAddress:p.Output((x.selectSingleNode('Path') as IXMLDOMElement).text);
-          ptIncludeUnit:p.Output(VarToStr(x.getAttribute('UnitName')));
-          ptIncludePath:p.Output(VarToStr(x.getAttribute('UnitPath')));
+          ptFragmentUnit:p.Output(VarToStr(d['unitName']));
+          ptFragmentPath:p.Output(VarToStr(d['unitPath']));
+          ptFragmentAddress:p.Output(VarToStr(d['path']));
+          ptIncludeUnit:p.Output(e.Key);//p.Output(VarToStr(d['unitName']));
+          ptIncludePath:p.Output(VarToStr(d['unitPath']));
           ptIterateEnd:
            begin
-            x:=xl.nextNode as IXMLDOMElement;
-            p.IterateNext(x<>nil);
+            if e.Next then d:=JSON(e.Value) else d:=nil;
+            p.IterateNext(d<>nil);
            end;
-          ptUsesClause:     p.Output(NodesText(RootNode,'UsesClause'));
-          ptProjectHeader:  p.Output(NodesText(RootNode,'Header'));
-          ptProjectBody:    p.Output(NodesText(RootNode,'Body'));
-          ptProjectSwitches:p.Output(NodesText(RootNode,'Switches'));
+          ptUsesClause:     p.Output(KeyText('usesClause'));
+          ptProjectHeader:  p.Output(KeyText('header'));
+          ptProjectBody:    p.Output(KeyText('body'));
+          ptProjectSwitches:p.Output(KeyText('switches'));
           pt_Unknown:
             if not p.Done then p.Output(ExtraFields.Values[p.GetTagLabel]);
         end;
@@ -616,42 +629,6 @@ begin
    end;
 end;
 
-function TXxmWebProject.ForceNode(element:IXMLDOMElement;
-  const tagname,id:AnsiString;indentlevel:integer): IXMLDOMElement;
-var
-  ind:string;
-  i:integer;
-  isfirst:boolean;
-begin
-  if id='' then
-    Result:=element.selectSingleNode(tagname) as IXMLDOMElement
-  else
-    Result:=element.selectSingleNode(tagname+'[@ID="'+id+'"]') as IXMLDOMElement;
-  if Result=nil then
-   begin
-    //not found: add
-    if indentlevel>-1 then
-     begin
-      isfirst:=element.firstChild=nil;
-      ind:=#13#10;
-      SetLength(ind,1+indentlevel);
-      for i:=1 to indentlevel-1 do ind[2+i]:=#9;
-      if isfirst then
-        element.appendChild(element.ownerDocument.createTextNode(ind+#9))
-      else
-        element.appendChild(element.ownerDocument.createTextNode(#9));
-     end;
-    //then tag
-    Result:=element.ownerDocument.createElement(tagname);
-    if id<>'' then Result.setAttribute('ID',id);
-    element.appendChild(Result);
-    //and suffix whitespace on first elem
-    if indentlevel>-1 then
-      element.appendChild(element.ownerDocument.createTextNode(ind));
-    Modified:=true;
-   end;
-end;
-
 function TXxmWebProject.ReadString(const FilePath: AnsiString): AnsiString;
 var
   f:TFileStream;
@@ -667,31 +644,41 @@ begin
   end;
 end;
 
-function TXxmWebProject.NodesText(element:IXMLDOMElement;const xpath:AnsiString):AnsiString;
+function TXxmWebProject.KeyText(const Key: WideString):AnsiString;
 var
-  xl:IXMLDOMNodeList;
-  x:IXMLDOMElement;
+  v:OleVariant;
+  v1,v2:integer;
   s:TStringStream;
 begin
-  //CDATA? seems to work with .text
-  xl:=element.selectNodes(xpath);
-  x:=xl.nextNode as IXMLDOMElement;
-  s:=TStringStream.Create('');
-  try
-    while x<>nil do
-     begin
-      s.WriteString(x.text);
-      x:=xl.nextNode as IXMLDOMElement;
-     end;
-    Result:=
-      StringReplace(
-      StringReplace(
-        s.DataString,
-        #13#10,#10,[rfReplaceAll]),
-        #10,#13#10,[rfReplaceAll]);
-  finally
-    s.Free;
-  end;
+  v:=Data[Key];
+  if VarIsNull(v) then
+    Result:=''
+  else
+   begin
+    s:=TStringStream.Create('');
+    try
+      if VarIsArray(v) then
+       begin
+        v1:=VarArrayLowBound(v,1);
+        v2:=VarArrayHighBound(v,1);
+        while v1<v2 do
+         begin
+          s.WriteString(VarToStr(v[v1]));
+          inc(v1);
+         end;
+       end
+      else
+        s.WriteString(VarToStr(v));
+      Result:=
+        StringReplace(
+        StringReplace(
+          s.DataString,
+          #13#10,#10,[rfReplaceAll]),
+          #10,#13#10,[rfReplaceAll]);
+    finally
+      s.Free;
+    end;
+   end;
 end;
 
 {$IF not Declared(TStartupInfoA)}
@@ -710,28 +697,32 @@ var
   sa:TSecurityAttributes;
   f:TFileStream;
   d:array[0..$FFF] of AnsiChar;
-  procedure GetNodesText(element: IXMLDOMElement; xpath, prefix: AnsiString);
+  procedure GetKeys(const Key: WideString; const Prefix: AnsiString);
   var
-    xl:IXMLDOMNodeList;
-    x:IXMLDOMNode;
-    s1,s2:WideString;
+    v,vx:OleVariant;
+    v1,v2:integer;
   begin
-    xl:=element.selectNodes(xpath);
-    x:=xl.nextNode;
-    while x<>nil do
-     begin
-      s1:=Trim(x.text);
-      s2:=VarToStr((x as IXMLDOMElement).getAttribute('Path'));
-      if s1<>'' then
-        if s2='' then
-          cl.Add(prefix+s1)
-        else
+    v:=Data[Key];
+    if not(VarIsNull(v)) then
+      if VarIsArray(v) then
+       begin
+        v1:=VarArrayLowBound(v,1);
+        v2:=VarArrayHighBound(v,1);
+        while v1<v2 do
          begin
-          cl.Add('4'+s2);
-          cl.Add('5'+s1);
+          vx:=v[v1];
+          if VarIsArray(vx) then
+           begin
+            cl.Add('4'+VarToStr(vx[1]));//path
+            cl.Add('5'+VarToStr(vx[0]));//command
+           end
+          else
+            cl.Add(prefix+VarToStr(vx));
+          inc(v2);
          end;
-      x:=xl.nextNode;
-     end;
+       end
+      else
+        cl.Add(prefix+VarToStr(v));
   end;
   function DoCommand(cmd,fld:AnsiString):boolean;
   var
@@ -791,9 +782,9 @@ var
 begin
   cl:=TStringList.Create;
   try
-    GetNodesText(RootNode,'PreCompileCommand','1');
-    GetNodesText(RootNode,'CompileCommand','2');
-    GetNodesText(RootNode,'PostCompileCommand','3');
+    GetKeys('preCompileCommand','1');
+    GetKeys('compileCommand','2');
+    GetKeys('postCompileCommand','3');
     if cl.Count=0 then
       Result:=true
     else
@@ -858,7 +849,6 @@ var
   s,t:string;
   i,j,k,l:integer;
   map:TXxmLineNumbersMap;
-  x:IXMLDOMElement;
 begin
   //TODO: call ResolveErrorLines from xxmConv also
   map:=TXxmLineNumbersMap.Create;
@@ -881,10 +871,8 @@ begin
         try
           t:=Copy(s,1,i-2);
           map.Load(ChangeFileExt(FSrcFolder+t,LinesMapExtension));
-          x:=DataFiles.selectSingleNode('File[@UnitName="'+
-            Copy(s,k+1,i-k-6)+'"]/Path') as IXMLDOMElement;
-          if x<>nil then t:=x.text;
-          s:=t+'['+map.GetXxmLines(StrToInt(Copy(s,i,j-i)))+
+          s:=VarToStr(JSON(JSON(Data['files'])[Copy(s,k+1,i-k-6)])['path'])
+            +'['+map.GetXxmLines(StrToInt(Copy(s,i,j-i)))+
             ']'+Copy(s,j+1,Length(s)-j);
         except
           //silent

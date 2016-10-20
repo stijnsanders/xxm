@@ -96,11 +96,11 @@ PackageDLLOutputDir=
 PackageDCPOutputDir=
 SearchPath=
 Packages=vcl;rtl;dbrtl;adortl;vcldb;vclx;bdertl;vcldbx;ibxpress;dsnap;cds;bdecds;qrpt;teeui;teedb;tee;dss;teeqr;visualclx;visualdbclx;dsnapcrba;dsnapcon;VclSmp;vclshlctrls;vclie;xmlrtl;inet;inetdbbde;inetdbxpress;inetdb;nmfast;webdsnap;websnap;soaprtl;dbexpress;dbxcds;indy;dclOffice2k;dxEdtrD6;dxcomnd6;EQTLD6;ECQDBCD6;EQGridD6;dxGrEdD6;dxExELD6;dxELibD6;rbDAD66;rbDBDE66;rbDIDE66
-Conditionals=
+Conditionals=JSONDOC_STOREINDENTING
 DebugSourceDirs=
 UsePackages=0
 [Parameters]
-RunParams=/proto D:\Data\xxm\Delphi\conv\proto_http /src D:\Data\2015\tx\src_1 /x:XxmSourcePath D:\Data\xxm\Delphi D:\Data\2015\tx
+RunParams=D:\Data\2016\tx\rel_1\tx.db -I D:\Data\2016\tx\tx.sql D:\Data\2016\tx\tx_UPGRADE.sql
 HostApplication=
 Launcher=
 UseLauncher=0
@@ -110,8 +110,8 @@ IncludeVerInfo=1
 AutoIncBuild=0
 MajorVer=1
 MinorVer=2
-Release=3
-Build=400
+Release=5
+Build=444
 Debug=0
 PreRelease=0
 Special=0
@@ -122,7 +122,7 @@ CodePage=1252
 [Version Info Keys]
 CompanyName=
 FileDescription=xxm Conversion Utility
-FileVersion=1.2.3.400
+FileVersion=1.2.5.444
 InternalName=xxmConv
 LegalCopyright=
 LegalTrademarks=
@@ -130,3 +130,15 @@ OriginalFilename=
 ProductName=xxm
 ProductVersion=1.0.0.0
 Comments=http://yoy.be/xxm/
+[HistoryLists\hlConditionals]
+Count=1
+Item0=JSONDOC_STOREINDENTING
+[HistoryLists\hlUnitAliases]
+Count=1
+Item0=WinTypes=Windows;WinProcs=Windows;DbiTypes=BDE;DbiProcs=BDE;DbiErrs=BDE;
+[HistoryLists\hlUnitOutputDirectory]
+Count=1
+Item0=..\dcu
+[HistoryLists\hlOutputDirectorry]
+Count=1
+Item0=..\bin

@@ -21,7 +21,7 @@ var
 
 implementation
 
-uses Registry, xxmPReg, xxmPRegXml, ActiveX, xxmThreadPool, xxmContext,
+uses Registry, xxmPReg, xxmPRegJson, ActiveX, xxmThreadPool, xxmContext,
   xxmSynaKept, xxmSynaSpool;
 
 {$R *.dfm}
@@ -71,7 +71,7 @@ begin
   end;
   CoInitialize(nil);
   SetErrorMode(SEM_FAILCRITICALERRORS);
-  XxmProjectCache:=TXxmProjectCacheXml.Create;
+  XxmProjectCache:=TXxmProjectCacheJson.Create;
   ContextPool:=TXxmContextPool.Create(TXxmSynaContext);
   PageLoaderPool:=TXxmPageLoaderPool.Create(t);
   KeptConnections:=TXxmKeptConnections.Create;

@@ -4,7 +4,7 @@ interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Menus, MSXML2_TLB, ComCtrls, StdCtrls, Dialogs, ImgList, ActnList;
+  Menus, jsonDoc, ComCtrls, StdCtrls, Dialogs, ImgList, ActnList;
 
 type
   TEditProjectMainForm = class(TForm)
@@ -48,7 +48,7 @@ type
     Includeunit2: TMenuItem;
     StatusBar1: TStatusBar;
     btnRegisterFile: TButton;
-    odXxmXml: TOpenDialog;
+    odXxmJson: TOpenDialog;
     TabSheet3: TTabSheet;
     cbParserValue: TComboBox;
     txtParserValue: TMemo;
@@ -81,15 +81,12 @@ type
   private
     Modified:boolean;
     ProjectPath,ProjectFolder:AnsiString;
-    ProjectData:DOMDocument;
+    ProjectData:IJSONDocument;
     LastParserValue:integer;
     function CheckModified:boolean;
-    function LoadProject(Path:AnsiString;CreateNew:boolean):boolean;
+    function LoadProject(const Path:AnsiString;CreateNew:boolean):boolean;
     procedure SaveProject;
-    function GetNode(element:IXMLDOMElement;xpath:WideString):IXMLDOMElement;
     procedure ExpandNode(node:TTreeNode);
-    function RootNodeAppend(const nodeName:WideString;
-      node:IXMLDOMElement):IXMLDOMElement;
     procedure SaveParserValue;
   protected
     procedure DoCreate; override;
@@ -101,7 +98,8 @@ type
   TFileNode=class(TTreeNode)
   public
     IsDir:boolean;
-    ProjectNode:IXMLDOMElement;
+    Col,Key:string;
+    Doc:IJSONDocument;
   end;
 
 const
@@ -112,7 +110,8 @@ var
 
 implementation
 
-uses DateUtils, xxmUtilities, Registry, ShellAPI, ComObj;
+uses DateUtils, xxmUtilities, Registry, ShellAPI, ComObj, xxmConvertXML,
+  xxmConvert2;
 
 {$R *.dfm}
 
@@ -121,7 +120,7 @@ var
   s:AnsiString;
 begin
   inherited;
-  ProjectData:=CoDOMDocument.Create;
+  ProjectData:=JSON;
   if ParamCount=0 then
    begin
     if not(LoadProject('',false)) then Application.Terminate;
@@ -152,10 +151,11 @@ begin
     end;
 end;
 
-function TEditProjectMainForm.LoadProject(Path: AnsiString;
+function TEditProjectMainForm.LoadProject(const Path: AnsiString;
   CreateNew: boolean): boolean;
 var
-  fn:AnsiString;
+  f:TFileStream;
+  fn,fd:AnsiString;
   fe:boolean;
   i,j:integer;
 begin
@@ -183,12 +183,21 @@ begin
     fe:=GetFileSize(fn)>0;
     if fe then
      begin
-      if not(ProjectData.load(fn)) then
-       begin
-        MessageBoxW(Handle,PWideChar('Loading project failed:'#13#10+ProjectData.parseError.reason),
-          ApplicationTitle,MB_OK or MB_ICONERROR);
-        Result:=false;
-       end;
+
+      f:=TFileStream.Create(fn,fmOpenRead or fmShareDenyWrite);
+      try
+        //TODO: support UTF8,UTF16
+        i:=f.Size;
+        SetLength(fd,i);
+        f.Read(fd[1],i);
+      finally
+        f.Free;
+      end;
+
+      //TRANSITIONAL
+      if (i<>0) and (fd[1]='<') then fd:=ConvertProjectFile(fd);
+
+      ProjectData.Parse(fd);
      end
     else
      begin
@@ -196,15 +205,19 @@ begin
       while (j<>0) and (fn[j]<>PathDelim) do dec(j);
       i:=j-1;
       while (i>0) and (fn[i]<>PathDelim) do dec(i);
-      ProjectData.loadXML('<XxmWebProject>'#13#10#9'<ProjectName>'+Copy(fn,i+1,j-i-1)+'</ProjectName>'#13#10#9+
-        '<CompileCommand>dcc32 -U[[HandlerPath]]public -Q [[ProjectName]].dpr</CompileCommand>'#13#10'</XxmWebProject>');
+      ProjectData['name']:=Copy(fn,i+1,j-i-1);
+      ProjectData['compileCommand']:='dcc32 -U[[HandlerPath]]public -Q [[ProjectName]].dpr';
+      ProjectData['files']:=JSON;
+      ProjectData['units']:=JSON;
+      ProjectData['resources']:=JSON;
+      //'UUID' here?
      end;
     ProjectPath:=fn;
     Caption:='xxm Project - '+fn;
     Application.Title:='xxm Project - '+fn;
 
-    txtProjectName.Text:=GetNode(ProjectData.documentElement,'ProjectName').text;
-    txtCompileCommand.Text:=GetNode(ProjectData.documentElement,'CompileCommand').text;
+    txtProjectName.Text:=VarToStr(ProjectData['name']);
+    txtCompileCommand.Text:=VarToStr(ProjectData['compileCommand']);//TODO: support array of strings
     LastParserValue:=-1;
     cbParserValue.ItemIndex:=-1;
 
@@ -220,15 +233,24 @@ begin
 end;
 
 procedure TEditProjectMainForm.SaveProject;
+var
+  s:AnsiString;
+  f:TFileStream;
 begin
   if txtProjectName.Text='' then raise Exception.Create('Project name required');
   SaveParserValue;
-  GetNode(ProjectData.documentElement,'ProjectName').text:=txtProjectName.Text;
-  GetNode(ProjectData.documentElement,'CompileCommand').text:=txtCompileCommand.Text;
-  RootNodeAppend('LastModified',nil).text:=
+  ProjectData['name']:=txtProjectName.Text;
+  ProjectData['compileCommand']:=txtCompileCommand.Text;//TODO: support array of strings
+  ProjectData['lastModified']:=
     FormatDateTime('yyyy-mm-dd"T"hh:nn:ss',Now);//timezone?
   //TODO: files?
-  ProjectData.save(ProjectPath);
+  s:=ProjectData.ToString;
+  f:=TFileStream.Create(ProjectPath,fmCreate);
+  try
+    f.Write(s[1],Length(s));//TODO: UTF8
+  finally
+    f.Free;
+  end;
   Modified:=false;
 end;
 
@@ -247,12 +269,6 @@ procedure TEditProjectMainForm.tvFilesCreateNodeClass(
   Sender: TCustomTreeView; var NodeClass: TTreeNodeClass);
 begin
   NodeClass:=TFileNode;
-end;
-
-function TEditProjectMainForm.GetNode(element: IXMLDOMElement;
-  xpath: WideString): IXMLDOMElement;
-begin
-  Result:=element.selectSingleNode(xpath) as IXMLDOMElement;
 end;
 
 procedure TEditProjectMainForm.New1Click(Sender: TObject);
@@ -322,22 +338,24 @@ procedure TEditProjectMainForm.ExpandNode(node: TTreeNode);
 var
   fh:THandle;
   fd:TWin32FindDataA;
-  d,fn,fe:AnsiString;
+  d,fn,fe,dx,fx:AnsiString;
   ft:TXxmFileType;
-  n:TTreeNode;
+  nn:TTreeNode;
+  n:TFileNode;
   i:integer;
-  x:IXMLDOMElement;
+  x:IJSONDocument;
+  y:IJSONEnumerator;
 begin
   tvFiles.Items.BeginUpdate;
   try
     tvFiles.SortType:=stNone;
     if node=nil then tvFiles.Items.Clear else node.DeleteChildren;
     d:='';
-    n:=node;
-    while n<>nil do
+    nn:=node;
+    while nn<>nil do
      begin
-      d:=n.Text+PathDelim+d;
-      n:=n.Parent;
+      d:=nn.Text+PathDelim+d;
+      nn:=nn.Parent;
      end;
     fh:=FindFirstFileA(PAnsiChar(ProjectFolder+d+'*.*'),fd);
     if fh<>INVALID_HANDLE_VALUE then
@@ -348,9 +366,11 @@ begin
             if (fd.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY)=0 then
              begin
               //file
-              n:=tvFiles.Items.AddChild(node,fd.cFileName);
-              (n as TFileNode).IsDir:=false;
-              (n as TFileNode).ProjectNode:=nil;
+              n:=tvFiles.Items.AddChild(node,fd.cFileName) as TFileNode;
+              n.IsDir:=false;
+              n.Col:='';
+              n.Key:='';
+              n.Doc:=nil;
               fn:=fd.cFileName;
               i:=Length(fn);
               while (i<>0) and (fn[i]<>'.') do dec(i);
@@ -360,18 +380,25 @@ begin
                   n.ImageIndex:=iiPasGenerated
                 else
                  begin
-                  x:=ProjectData.documentElement.selectSingleNode(
-                    'Files/Unit[@UnitName="'+Copy(fn,1,i-1)+'"&&@UnitPath="'+
-                    StringReplace(d,'\','\\',[rfReplaceAll])+'"]') as IXMLDOMElement;
-                  if (x=nil) and (d='') then x:=ProjectData.documentElement.selectSingleNode(
-                    'Files/Unit[@UnitName="'+Copy(fn,1,i-1)+'"]') as IXMLDOMElement;
-                  if x=nil then
-                    n.ImageIndex:=iiPas
-                  else
+                  fx:=Copy(fn,1,i-1);
+                  dx:=StringReplace(d,'\','\\',[rfReplaceAll]);
+                  x:=nil;
+                  y:=JSONEnum(ProjectData['units']);
+                  while (x=nil) and y.Next do
                    begin
-                    (n as TFileNode).ProjectNode:=x;
-                    n.ImageIndex:=iiPasIncluded;
+                    x:=JSON(y.Value);
+                    if not((VarToStr(x['unitName'])=fx) and
+                      (VarToStr(x['unitPath'])=dx)) then
+                     begin
+                      n.Col:='files';
+                      n.Key:=y.Key;
+                      n.Doc:=x;
+                      n.ImageIndex:=iiPasIncluded;
+                     end
+                    else
+                      x:=nil;
                    end;
+                  if x=nil then n.ImageIndex:=iiPas;
                  end
               else if fe=DelphiProjectExtension then //.dpr
                 n.ImageIndex:=iiDpr
@@ -384,9 +411,21 @@ begin
                 case ft of
                   ftPage,ftInclude:
                    begin
-                    x:=ProjectData.documentElement.selectSingleNode(
-                      'Files/Unit[Path="'+StringReplace(d,'\','\\',[rfReplaceAll])+Copy(fn,1,i-1)+'"]') as IXMLDOMElement;
-                    (n as TFileNode).ProjectNode:=x;
+                    dx:=StringReplace(d,'\','\\',[rfReplaceAll])+Copy(fn,1,i-1);
+                    x:=nil;
+                    y:=JSONEnum(ProjectData['files']);
+                    while (x=nil) and y.Next do
+                     begin
+                      x:=JSON(y.Value);
+                      if VarToStr(x['path'])=dx then
+                       begin
+                        n.Col:='files';
+                        n.Key:=y.Key;
+                        n.Doc:=x;
+                       end
+                      else
+                        x:=nil;
+                     end;
                     if ft=ftPage then
                       n.ImageIndex:=iiXxm
                     else
@@ -399,9 +438,11 @@ begin
                    end;
                   ft_Unknown:
                    begin
-                    x:=ProjectData.documentElement.selectSingleNode(
-                      'Files/Resource[Path="'+StringReplace(d,'\','\\',[rfReplaceAll])+fn+'"]') as IXMLDOMElement;
-                    (n as TFileNode).ProjectNode:=x;
+                    dx:=StringReplace(d,'\','\\',[rfReplaceAll])+fn;
+                    x:=JSON(JSON(ProjectData['resources'])[dx]);
+                    n.Col:='resources';
+                    n.Key:=dx;
+                    n.Doc:=x;
                     if x=nil then
                       n.ImageIndex:=iiFile
                     else
@@ -417,9 +458,11 @@ begin
               if (fd.cFileName[0]<>'.') then
                begin
                 fn:=fd.cFileName;
-                n:=tvFiles.Items.AddChild(node,fn);
-                (n as TFileNode).IsDir:=true;
-                (n as TFileNode).ProjectNode:=nil;
+                n:=tvFiles.Items.AddChild(node,fn) as TFileNode;
+                n.IsDir:=true;
+                n.Col:='';
+                n.Key:='';
+                n.Doc:=nil;
                 if ((node=nil) and ((fn=SourceDirectory) or (fn=ProtoDirectory))) or
                    ((n.Parent<>nil) and (n.Parent.ImageIndex=iiDirGenerated)) then
                  begin
@@ -472,8 +515,6 @@ var
   so:TSHFileOpStructA;
   n,nx:TTreeNode;
   s:AnsiString;
-  x:IXMLDOMElement;
-  y:IXMLDOMNode;
 begin
   nx:=tvFiles.Selected;
   n:=nx;
@@ -494,14 +535,7 @@ begin
   OleCheck(SHFileOperationA(so));
   if not(so.fAnyOperationsAborted) then
    begin
-    x:=(nx as TFileNode).ProjectNode;
-    if x<>nil then
-     begin
-      y:=x.previousSibling;
-      if (y<>nil) and (y.nodeType=NODE_TEXT) then x.parentNode.removeChild(y);//whitespace
-      x.parentNode.removeChild(x);
-      x:=nil;
-     end;
+    JSON(ProjectData[(nx as TFileNode).Col])[(nx as TFileNode).Key]:=Null;
     nx.Delete;
    end;
 end;
@@ -519,12 +553,11 @@ end;
 procedure TEditProjectMainForm.actIncludeExecute(Sender: TObject);
 var
   n,nx:TTreeNode;
-  x,y:IXMLDOMElement;
+  nn:TFileNode;
   s:AnsiString;
   i,j:integer;
 begin
   n:=tvFiles.Selected;
-  x:=nil;//default
   nx:=n;
   s:='';
   while nx<>nil do
@@ -532,7 +565,7 @@ begin
     s:=PathDelim+nx.Text+s;
     nx:=nx.Parent;
    end;
-  //case (n of TFileNode) of
+  nn:=n as TFileNode;
   case n.ImageIndex of
     iiPas:
      begin
@@ -540,46 +573,41 @@ begin
       while (i<>0) and (s[i]<>'.') do dec(i);
       j:=i;
       while (j<>0) and (s[j]<>PathDelim) do dec(j);
-      x:=ProjectData.createElement('Unit');
-      x.setAttribute('UnitName',Copy(s,j+1,i-j-1));
-      if (j>1) then x.setAttribute('UnitPath',Copy(s,2,j-1));
-      n.ImageIndex:=iiPasIncluded;
+      nn.ImageIndex:=iiPasIncluded;
+      nn.Col:='units';
+      nn.Key:=Copy(s,j+1,i-j-1);
+      nn.Doc:=JSON;
+      if j>1 then nn.Doc['unitPath']:=Copy(s,2,j-1);
+      JSON(ProjectData[nn.Col])[nn.Key]:=nn.Doc;
+      Modified:=true;
      end;
     iiFile:
      begin
-      x:=ProjectData.createElement('Resource');
-      y:=ProjectData.createElement('Path');
-      y.text:=Copy(s,2,Length(s));
-      x.appendChild(y);
-      n.ImageIndex:=iiFileIncluded;
+      nn.ImageIndex:=iiFileIncluded;
+      nn.Col:='resources';
+      nn.Key:=Copy(s,2,Length(s));
+      nn.Doc:=JSON;
+      JSON(ProjectData[nn.Col])[nn.Key]:=nn.Doc;
+      Modified:=true;
      end;
     //more?
   end;
-  if x<>nil then
-   begin
-    (n as TFileNode).ProjectNode:=x;
-    n.SelectedIndex:=n.ImageIndex;
-    RootNodeAppend('Files',x);
-    Modified:=true;
-   end;
   tvFilesChange(tvFiles,n);
 end;
 
 procedure TEditProjectMainForm.actExcludeExecute(Sender: TObject);
 var
-  n:TTreeNode;
-  x:IXMLDOMElement;
+  n:TFileNode;
 begin
-  n:=tvFiles.Selected;
+  n:=tvFiles.Selected as TFileNode;
   //case (n of TFileNode) of
   case n.ImageIndex of
     iiPasIncluded,iiFileIncluded:
      begin
-      x:=(n as TFileNode).ProjectNode;
-      x.parentNode.removeChild(x);
+      JSON(ProjectData[n.Col])[n.Key]:=Null;
+      n.Doc:=nil;
       n.ImageIndex:=n.ImageIndex-1;
       n.SelectedIndex:=n.ImageIndex;
-      (n as TFileNode).ProjectNode:=nil;
       Modified:=true;
      end;
     //more?
@@ -613,8 +641,9 @@ end;
 
 procedure TEditProjectMainForm.actIncludePasExecute(Sender: TObject);
 var
-  x:IXMLDOMElement;
-  s,t:AnsiString;
+  x:IJSONDocument;
+  y:IJSONEnumerator;
+  s,t,u:AnsiString;
   i,j,l,fi,fl,fc:integer;
 begin
   if odIncludeUnit.Execute then
@@ -645,111 +674,106 @@ begin
       while (i<>0) and (s[i]<>'.') do dec(i);
       j:=i;
       while (j<>0) and (s[j]<>PathDelim) do dec(j);
-      t:='@UnitName="'+Copy(s,j+1,i-j-1)+'"';
-      if j>0 then t:=t+'&&@UnitPath="'+StringReplace(Copy(s,1,j),'\','\\',[rfReplaceAll])+'"';
-      if ProjectData.documentElement.selectSingleNode('Files/Unit['+t+']')=nil then
+
+      t:=Copy(s,j+1,i-j-1);//unitName
+      u:=Copy(s,1,j);//unitPath
+
+      x:=nil;
+      y:=JSONEnum(ProjectData['files']);
+      while (x=nil) and y.Next do
        begin
-        x:=ProjectData.createElement('Unit');
-        x.setAttribute('UnitName',Copy(s,j+1,i-j-1));
-        if j>1 then x.setAttribute('UnitPath',Copy(s,1,j));
+        x:=JSON(y.Value);
+        if (VarToStr(x['unitName'])=t) and ((j=0) or (VarToStr(x['unitPath'])=u)) then
+         begin
+          if fl=1 then MessageBoxA(Handle,PAnsiChar(
+            'Unit "'+s+'" is aready added to the project'),
+            'xxm Project',MB_OK or MB_ICONERROR);
+         end
+        else
+          x:=nil;
+       end;
+      if x=nil then
+       begin
+        x:=JSON(['unitName',t]);
+        if j<>0 then x['unitPath']:=u;
         //(n as TFileNode).ProjectNode:=x;
-        RootNodeAppend('Files',x);
         Modified:=true;
         inc(fc);
         if fl=1 then MessageBoxA(Handle,PAnsiChar('Unit "'+s+'" added'),
           'xxm Project',MB_OK or MB_ICONINFORMATION);
-       end
-      else
-        if fl=1 then MessageBoxA(Handle,PAnsiChar(
-          'Unit "'+s+'" is aready added to the project'),
-          'xxm Project',MB_OK or MB_ICONERROR);
+       end;
      end;
     if fl>1 then MessageBoxA(Handle,PAnsiChar(IntToStr(fc)+' units added'),
       'xxm Project',MB_OK or MB_ICONINFORMATION);
    end;
 end;
 
-function TEditProjectMainForm.RootNodeAppend(const nodeName:WideString;
-  node:IXMLDOMElement):IXMLDOMElement;
-var
-  x:IXMLDOMElement;
-  y:IXMLDOMNode;
-begin
-  x:=ProjectData.documentElement.selectSingleNode(nodeName) as IXMLDOMElement;
-  if x=nil then
-   begin
-    x:=ProjectData.createElement(nodeName);
-    ProjectData.documentElement.appendChild(ProjectData.createTextNode(#13#10#9));
-    ProjectData.documentElement.appendChild(x);
-    ProjectData.documentElement.appendChild(ProjectData.createTextNode(#13#10));
-    if node<>nil then x.appendChild(ProjectData.createTextNode(#13#10#9));
-   end;
-  if node<>nil then
-   begin
-    y:=x.lastChild;
-    if (y=nil) or (y.nodeType<>NODE_TEXT) then
-      x.appendChild(ProjectData.createTextNode(#13#10#9#9))
-    else
-      x.appendChild(ProjectData.createTextNode(#9));
-    x.appendChild(node);
-    x.appendChild(ProjectData.createTextNode(#13#10#9));
-   end;
-  Result:=x;
-end;
-
 procedure TEditProjectMainForm.btnRegisterFileClick(Sender: TObject);
 var
   fn,s,t,u:AnsiString;
-  doc:DOMDocument;
-  x,y:IXMLDOMElement;
+  f:TFileStream;
+  d,d1:IJSONDocument;
 begin
   if CheckModified then
    begin
     t:=txtProjectName.Text;
     if t='' then raise Exception.Create('Project name required');
     s:=ProjectFolder+t+'.xxl';
-    if odXxmXml.Execute then
+    if odXxmJson.Execute then
      begin
-      fn:=odXxmXml.FileName;
-      doc:=CoDOMDocument.Create;
+      fn:=odXxmJson.FileName;
+      //TRANSITIONAL
+      if LowerCase(Copy(fn,Length(fn)-3,4))='.xml' then
+       begin
+        s:=GetCurrentDir;
+        SetCurrentDir(ExtractFilePath(fn));
+        ConvertProjectReg;
+        SetCurrentDir(s);
+        fn:=Copy(fn,1,Length(fn)-4)+'.json';
+       end;
+
+      d:=JSON;
       if FileExists(fn) then
        begin
-        if not(doc.load(fn)) then
-          raise Exception.Create('Loading xxm.xml failed:'#13#10+doc.parseError.reason);
+        f:=TFileStream.Create(fn,fmOpenRead or fmShareDenyWrite);
+        try
+          //TODO: support unicode UTF8, UTF16?
+          SetLength(s,f.Size);
+          f.Read(s[1],f.Size);
+        finally
+          f.Free;
+        end;
+        d.Parse(s);
        end
       else
-        doc.loadXML('<ProjectRegistry />');
-      x:=doc.documentElement.selectSingleNode('Project[@Name="'+t+'"]') as IXMLDOMElement;
-      if x=nil then u:='' else
        begin
-        y:=x.selectSingleNode('ModulePath') as IXMLDOMElement;
-        if y=nil then u:='[<Project Name="'+t+'"> but no <ModulePath> found]' else u:=y.text;
+        d['projects']:=JSON;
        end;
+      d1:=JSON(JSON(d['projects'])[t]);
+      if d1=nil then u:='' else u:=VarToStr(d1['path']);
       if (u='') or (u=s) or (MessageBoxA(GetDesktopWindow,PAnsiChar('Project "'+t+
         '" was already registered as'#13#10'  '+u+
         #13#10'Do you want to overwrite this registration?'#13#10'  '+s),
         'xxm Project',MB_OKCANCEL or MB_ICONQUESTION or MB_SYSTEMMODAL)=idOK) then
        begin
-        if x=nil then
+        if d1=nil then
          begin
-          x:=doc.createElement('Project');
-          x.setAttribute('Name',t);
-          doc.documentElement.appendChild(doc.createTextNode(#13#10#9));
-          doc.documentElement.appendChild(x);
-          doc.documentElement.appendChild(doc.createTextNode(#13#10));
+          d1:=JSON;
+          JSON(d['projects'])[t]:=d1;
          end
         else
          begin
-          x.removeAttribute('Signature');
-          x.removeAttribute('Alias');//?
+          d1['signature']:=Null;
+          d1['alias']:=Null;//?
          end;
-        if y=nil then
-         begin
-          y:=doc.createElement('ModulePath');
-          x.appendChild(y);
-         end;
-        y.text:=s;
-        doc.save(fn);
+        d1['path']:=s;
+        s:=d.ToString;//TODO: UTF
+        f:=TFileStream.Create(fn,fmCreate);
+        try
+          f.Write(s[1],Length(s));
+        finally
+          f.Free;
+        end;
         MessageBoxA(GetDesktopWindow,PAnsiChar('Project "'+t+'" registered with "'+fn+'".'),
           'xxm Project',MB_OK or MB_ICONINFORMATION);
        end;
@@ -771,19 +795,16 @@ const
 
 procedure TEditProjectMainForm.cbParserValueChange(Sender: TObject);
 var
-  x:IXMLDOMNode;
+  d:IJSONDocument;
 begin
   if cbParserValue.ItemIndex=-1 then
     txtParserValue.Text:=''
   else
    begin
     SaveParserValue;
-    x:=GetNode(ProjectData.documentElement,'ParserValues/'+
-      ParserValueElement[cbParserValue.ItemIndex]);
-    if x=nil then
-      txtParserValue.Text:=''
-    else
-      txtParserValue.Text:=x.text;
+    d:=JSON(ProjectData['parserValues']);
+    txtParserValue.Text:=VarToStr(
+      d[ParserValueElement[cbParserValue.ItemIndex]]);
    end;
   //txtParserValue.Modified:=false;
   LastParserValue:=cbParserValue.ItemIndex;
@@ -796,25 +817,15 @@ end;
 
 procedure TEditProjectMainForm.SaveParserValue;
 var
-  x:IXMLDOMElement;
+  d:IJSONDocument;
 begin
   if LastParserValue<>-1 then
    begin
-    x:=GetNode(ProjectData.documentElement,'ParserValues/'+
-      ParserValueElement[LastParserValue]);
+    d:=JSON(ProjectData['parserValues']);
     if txtParserValue.Text='' then
-     begin
-      if x<>nil then x.parentNode.removeChild(x);
-     end
+      d[ParserValueElement[LastParserValue]]:=Null
     else
-     begin
-      if x=nil then
-       begin
-        x:=ProjectData.createElement(ParserValueElement[LastParserValue]);
-        RootNodeAppend('ParserValues',x);
-       end;
-      x.text:=txtParserValue.Text;
-     end;
+      d[ParserValueElement[LastParserValue]]:=txtParserValue.Text;
    end;
 end;
 

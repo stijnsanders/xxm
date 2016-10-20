@@ -12,7 +12,7 @@ procedure HandleWindowsMessages(var QuitApp:boolean);
 implementation
 
 uses Windows, SysUtils, Classes, ActiveX, httpapi1,
-  xxmPRegXml, xxmThreadPool, xxmHSysMain, xxmContext;
+  xxmPRegJson, xxmThreadPool, xxmHSysMain, xxmContext;
 
 type
   THSysParameters=(
@@ -102,7 +102,7 @@ begin
   //TODO: load from xxm.xml?
   if c=0 then raise Exception.Create('No projects loaded');
 
-  XxmProjectCache:=TXxmProjectCacheXml.Create;
+  XxmProjectCache:=TXxmProjectCacheJson.Create;
   ContextPool:=TXxmContextPool.Create(TXxmHSysContext);
   PageLoaderPool:=TXxmPageLoaderPool.Create(Threads);
   

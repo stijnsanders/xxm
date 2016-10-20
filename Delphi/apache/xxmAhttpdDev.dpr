@@ -13,7 +13,7 @@ uses
   xxmAhttpdContext in 'xxmAhttpdContext.pas',
   xxmCommonUtils in '..\common\xxmCommonUtils.pas',
   xxmPReg in '..\common\xxmPReg.pas',
-  xxmPRegXml in '..\common\xxmPRegXml.pas',
+  xxmPRegJson in '..\common\xxmPRegJson.pas',
   xxmAhttpdClientStream in 'xxmAhttpdClientStream.pas',
   xxmAhttpdPars in 'xxmAhttpdPars.pas',
   xxmContext in '..\common\xxmContext.pas',
@@ -22,7 +22,9 @@ uses
   xxmPageParse in '..\conv\xxmPageParse.pas',
   xxmProtoParse in '..\conv\xxmProtoParse.pas',
   xxmUtilities in '..\conv\xxmUtilities.pas',
-  MSXML2_TLB in '..\common\MSXML2_TLB.pas';
+  MSXML2_TLB in '..\common\MSXML2_TLB.pas',
+  jsonDoc in '..\common\jsonDoc.pas',
+  xxmConvertXML in '..\common\xxmConvertXML.pas';
 
 {$R *.RES}
 

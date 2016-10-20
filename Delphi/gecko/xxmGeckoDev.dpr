@@ -19,9 +19,11 @@ uses
   xxmAutoBuild in '..\common\xxmAutoBuild.pas',
   xxmWebProject in '..\conv\xxmWebProject.pas',
   MSXML2_TLB in '..\common\MSXML2_TLB.pas',
+  jsonDoc in '..\common\jsonDoc.pas',
   xxmUtilities in '..\conv\xxmUtilities.pas',
   xxmPageParse in '..\conv\xxmPageParse.pas',
-  xxmProtoParse in '..\conv\xxmProtoParse.pas';
+  xxmProtoParse in '..\conv\xxmProtoParse.pas',
+  xxmConvertXML in '..\common\xxmConvertXML.pas';
 
 {$R *.res}
 

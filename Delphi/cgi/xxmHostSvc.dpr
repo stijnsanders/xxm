@@ -14,10 +14,11 @@ uses
   xxmParUtils in '..\common\xxmParUtils.pas',
   xxmHeaders in '..\bin\public\xxmHeaders.pas',
   xxmPReg in '..\common\xxmPReg.pas',
-  xxmPRegXml in '..\common\xxmPRegXml.pas',
+  xxmPRegJson in '..\common\xxmPRegJson.pas',
   xxmCommonUtils in '..\common\xxmCommonUtils.pas',
   xxmContext in '..\common\xxmContext.pas',
-  MSXML2_TLB in '..\common\MSXML2_TLB.pas';
+  MSXML2_TLB in '..\common\MSXML2_TLB.pas',
+  jsonDoc in '..\common\jsonDoc.pas';
 
 {$R *.RES}
 

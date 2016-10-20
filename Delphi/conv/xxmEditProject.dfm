@@ -76,7 +76,7 @@ object EditProjectMainForm: TEditProjectMainForm
         Top = 120
         Width = 153
         Height = 25
-        Caption = 'Register with xxm.xml...'
+        Caption = 'Register with xxm.json...'
         TabOrder = 3
         OnClick = btnRegisterFileClick
       end
@@ -187,7 +187,7 @@ object EditProjectMainForm: TEditProjectMainForm
   end
   object StatusBar1: TStatusBar
     Left = 0
-    Top = 425
+    Top = 424
     Width = 419
     Height = 19
     Panels = <
@@ -986,11 +986,11 @@ object EditProjectMainForm: TEditProjectMainForm
     Left = 192
     Top = 96
   end
-  object odXxmXml: TOpenDialog
-    DefaultExt = 'xml'
-    FileName = 'xxm.xml'
-    Filter = 'xxm.xml|xxm.xml|xml file (*.xml)|*.xml|All files (*.*)|*.*'
-    Title = 'Select xxm.xml to register with'
+  object odXxmJson: TOpenDialog
+    DefaultExt = 'json'
+    FileName = 'xxm.json'
+    Filter = 'xxm.json|xxm.json|xxm.xml|xxm.xml|All files (*.*)|*.*'
+    Title = 'Select xxm.json to register with'
     Left = 224
     Top = 96
   end

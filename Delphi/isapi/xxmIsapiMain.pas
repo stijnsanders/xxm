@@ -3,7 +3,7 @@ unit xxmIsapiMain;
 interface
 
 uses Windows, SysUtils, Classes, ActiveX, isapi4, xxm, xxmContext,
-  xxmPReg, xxmPRegXml, xxmParams, xxmParUtils, xxmHeaders, xxmThreadPool;
+  xxmPReg, xxmPRegJson, xxmParams, xxmParUtils, xxmHeaders, xxmThreadPool;
 
 function GetExtensionVersion(var Ver: THSE_VERSION_INFO): BOOL; stdcall;
 function HttpExtensionProc(PECB: PEXTENSION_CONTROL_BLOCK): DWORD; stdcall;
@@ -106,7 +106,7 @@ begin
   if PageLoaderPool=nil then
     PageLoaderPool:=TXxmPageLoaderPool.Create(PoolMaxThreads);
   if XxmProjectCache=nil then
-    XxmProjectCache:=TXxmProjectCacheXml.Create;
+    XxmProjectCache:=TXxmProjectCacheJson.Create;
   Result:=true;
 end;
 

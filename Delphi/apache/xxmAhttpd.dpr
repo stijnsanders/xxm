@@ -12,10 +12,11 @@ uses
   xxmAhttpdContext in 'xxmAhttpdContext.pas',
   xxmCommonUtils in '..\common\xxmCommonUtils.pas',
   xxmPReg in '..\common\xxmPReg.pas',
-  xxmPRegXml in '..\common\xxmPRegXml.pas',
+  xxmPRegJson in '..\common\xxmPRegJson.pas',
   xxmAhttpdClientStream in 'xxmAhttpdClientStream.pas',
   xxmAhttpdPars in 'xxmAhttpdPars.pas',
   MSXML2_TLB in '..\common\MSXML2_TLB.pas',
+  jsonDoc in '..\common\jsonDoc.pas',
   xxmContext in '..\common\xxmContext.pas';
 
 {$R *.RES}

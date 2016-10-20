@@ -1,6 +1,19 @@
+v1.2.5.?
+- xxmHttpAU: added manifest to avoid default UAC elevation request
+- project registry "xxm.json" (conversion tool for "xxm.xml")
+- project file "Web.xxmp" JSON (auto-conversion from XML)
+    ### ATTENTION ### ATTENTION ### ATTENTION ###
+    xxmProject and xxm handlers are fitted with a transitional
+    automatic conversion procedure that will convert XML project files (Web.xxmp)
+    and the project registry (xxm.xml) into JSON files. (Web.xxmp in place,
+    storing a Web_xxmp.bak copy; xxm.json)
+    This may cause incompatibilities if different xxm versions are required to
+    coexist on the same installation(s).
+    This procedure (and all code using XML) is scheduled to be removed at a
+    later, currently undetermined, version.
+
 v1.2.4.430
 - xxmISAPI: fixed issue with open connections not accepting new requests
-- xxmHttpAU: added manifest to avoid default UAC elevation request
 
 v1.2.4.424
 - revised context object lifetime management (lock-less reference counting)

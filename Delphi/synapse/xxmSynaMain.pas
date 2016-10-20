@@ -4,7 +4,7 @@ interface
 
 uses
   SysUtils, blcksock, xxm, Classes, ActiveX, xxmContext, xxmThreadPool,
-  xxmPReg, xxmPRegXml, xxmParams, xxmParUtils, xxmHeaders,
+  xxmPReg, xxmPRegJson, xxmParams, xxmParUtils, xxmHeaders,
   xxmSynaKept, xxmSynaSpool;
 
 type
@@ -183,7 +183,7 @@ begin
   //
   CoInitialize(nil);
   SetErrorMode(SEM_FAILCRITICALERRORS);
-  XxmProjectCache:=TXxmProjectCacheXml.Create;
+  XxmProjectCache:=TXxmProjectCacheJson.Create;
   ContextPool:=TXxmContextPool.Create(TXxmSynaContext);
   PageLoaderPool:=TXxmPageLoaderPool.Create(Threads);
   KeptConnections:=TXxmKeptConnections.Create;
