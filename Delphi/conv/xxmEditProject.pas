@@ -592,6 +592,7 @@ begin
      end;
     //more?
   end;
+  nn.SelectedIndex:=nn.ImageIndex;
   tvFilesChange(tvFiles,n);
 end;
 
