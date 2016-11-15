@@ -108,9 +108,8 @@ begin
     while x<>nil do
      begin
       d1[x.getAttribute('ID')]:=JSON([
-        'unitName',x.getAttribute('UnitName'),
-        'unitPath',x.getAttribute('UnitPath'),
-        'path',x.selectSingleNode('Path').text
+        'path',StringReplace(
+          x.selectSingleNode('Path').text,PathDelim,'/',[rfReplaceAll])
       ]);
       x:=xl.nextNode as IXMLDOMElement;
      end;
@@ -126,7 +125,8 @@ begin
      begin
       d2:=JSON;
       if not(VarIsNull(x.getAttribute('UnitPath'))) then
-        d2['unitPath']:=x.getAttribute('UnitPath');
+        d2['unitPath']:=StringReplace(
+          x.getAttribute('UnitPath'),PathDelim,'/',[rfReplaceAll]);
       d1[x.getAttribute('UnitName')]:=d2;
       x:=xl.nextNode as IXMLDOMElement;
      end;
@@ -140,7 +140,8 @@ begin
     d['resources']:=d1;
     while x<>nil do
      begin
-      d1[x.selectSingleNode('Path').text]:=JSON;
+      d1[StringReplace(
+        x.selectSingleNode('Path').text,PathDelim,'/',[rfReplaceAll])]:=JSON;
       x:=xl.nextNode as IXMLDOMElement;
      end;
    end;

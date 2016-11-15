@@ -381,16 +381,15 @@ begin
                 else
                  begin
                   fx:=Copy(fn,1,i-1);
-                  dx:=StringReplace(d,'\','\\',[rfReplaceAll]);
+                  dx:=StringReplace(d,PathDelim,'/',[rfReplaceAll]);
                   x:=nil;
                   y:=JSONEnum(ProjectData['units']);
                   while (x=nil) and y.Next do
                    begin
                     x:=JSON(y.Value);
-                    if not((VarToStr(x['unitName'])=fx) and
-                      (VarToStr(x['unitPath'])=dx)) then
+                    if (y.Key=fx) and (VarToStr(x['unitPath'])=dx) then
                      begin
-                      n.Col:='files';
+                      n.Col:='units';
                       n.Key:=y.Key;
                       n.Doc:=x;
                       n.ImageIndex:=iiPasIncluded;
@@ -411,7 +410,7 @@ begin
                 case ft of
                   ftPage,ftInclude:
                    begin
-                    dx:=StringReplace(d,'\','\\',[rfReplaceAll])+Copy(fn,1,i-1);
+                    dx:=StringReplace(d,PathDelim,'/',[rfReplaceAll])+Copy(fn,1,i-1);
                     x:=nil;
                     y:=JSONEnum(ProjectData['files']);
                     while (x=nil) and y.Next do
@@ -438,7 +437,7 @@ begin
                    end;
                   ft_Unknown:
                    begin
-                    dx:=StringReplace(d,'\','\\',[rfReplaceAll])+fn;
+                    dx:=StringReplace(d,PathDelim,'/',[rfReplaceAll])+fn;
                     x:=JSON(JSON(ProjectData['resources'])[dx]);
                     n.Col:='resources';
                     n.Key:=dx;
@@ -577,7 +576,8 @@ begin
       nn.Col:='units';
       nn.Key:=Copy(s,j+1,i-j-1);
       nn.Doc:=JSON;
-      if j>1 then nn.Doc['unitPath']:=Copy(s,2,j-1);
+      if j>1 then nn.Doc['unitPath']:=
+        StringReplace(Copy(s,2,j-1),PathDelim,'/',[rfReplaceAll]);
       JSON(ProjectData[nn.Col])[nn.Key]:=nn.Doc;
       Modified:=true;
      end;
@@ -585,7 +585,7 @@ begin
      begin
       nn.ImageIndex:=iiFileIncluded;
       nn.Col:='resources';
-      nn.Key:=Copy(s,2,Length(s));
+      nn.Key:=StringReplace(Copy(s,2,Length(s)),PathDelim,'/',[rfReplaceAll]);
       nn.Doc:=JSON;
       JSON(ProjectData[nn.Col])[nn.Key]:=nn.Doc;
       Modified:=true;
@@ -629,7 +629,7 @@ begin
   s:='';
   while n<>nil do
    begin
-    s:='\'+n.Text+s;
+    s:=PathDelim+n.Text+s;
     n:=n.Parent;
    end;
   StatusBar1.Panels[0].Text:=Copy(s,2,Length(s));
@@ -677,14 +677,14 @@ begin
       while (j<>0) and (s[j]<>PathDelim) do dec(j);
 
       t:=Copy(s,j+1,i-j-1);//unitName
-      u:=Copy(s,1,j);//unitPath
+      u:=StringReplace(Copy(s,1,j),PathDelim,'/',[rfReplaceAll]);//unitPath
 
       x:=nil;
-      y:=JSONEnum(ProjectData['files']);
+      y:=JSONEnum(ProjectData['units']);
       while (x=nil) and y.Next do
        begin
         x:=JSON(y.Value);
-        if (VarToStr(x['unitName'])=t) and ((j=0) or (VarToStr(x['unitPath'])=u)) then
+        if (y.Key=t) and ((j=0) or (VarToStr(x['unitPath'])=u)) then
          begin
           if fl=1 then MessageBoxA(Handle,PAnsiChar(
             'Unit "'+s+'" is aready added to the project'),
@@ -695,9 +695,10 @@ begin
        end;
       if x=nil then
        begin
-        x:=JSON(['unitName',t]);
+        x:=JSON;
         if j<>0 then x['unitPath']:=u;
-        //(n as TFileNode).ProjectNode:=x;
+        //(n as TFileNode).Doc:=x;
+        JSON(ProjectData['units'])[t]:=x;
         Modified:=true;
         inc(fc);
         if fl=1 then MessageBoxA(Handle,PAnsiChar('Unit "'+s+'" added'),
@@ -774,7 +775,7 @@ begin
           d1['signature']:=Null;
           d1['alias']:=Null;//?
          end;
-        d1['path']:=s;
+        d1['path']:=StringReplace(s,PathDelim,'/',[rfReplaceAll]);
         s:=Utf8ByteOrderMark+UTF8Encode(d.ToString);
         f:=TFileStream.Create(fn,fmCreate);
         try

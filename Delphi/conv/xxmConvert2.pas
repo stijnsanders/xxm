@@ -55,7 +55,8 @@ begin
     if not(VarIsNull(v)) then p['alias']:=v;
 
     y:=x.selectSingleNode('ModulePath') as IXMLDOMElement;
-    if y<>nil then p['path']:=y.text;
+    if y<>nil then p['path']:=
+      StringReplace(y.text,PathDelim,'/',[rfReplaceAll]);
 
     v:=x.getAttribute('LoadCopy');
     if not(VarIsNull(v)) then p['loadCopy']:=VarToStr(v)<>'0';

@@ -211,9 +211,6 @@ begin
   else
     FProjectName:=v;
 
-  //v:=Data['files'];
-  //if VarIsNull(v) then Data['files']:=VarArrayOf([]);
-
   if DirectoryExists(FRootFolder+ProtoDirectory) then
     FProtoPath:=FRootFolder+ProtoDirectory+PathDelim
   else
@@ -343,7 +340,7 @@ begin
         i:=sl1.IndexOf(cid);
         if i<>-1 then sl1.Delete(i);
         //fn fit for URL
-        fnu:=StringReplace(fn,'\','/',[rfReplaceAll]);
+        fnu:=StringReplace(fn,PathDelim,'/',[rfReplaceAll]);
         d['path']:=fnu;
         //pascal unit name
         upath:=VarToStr(d['unitPath']);
@@ -476,7 +473,7 @@ begin
     while e.Next do
      begin
       d:=JSON(e.Value);
-      fn:=VarToStr(e.Key);//fn:=VarToStr(d['path']);
+      fn:=StringReplace(VarToStr(e.Key),'/',PathDelim,[rfReplaceAll]);
       s:=GetFileSignature(FRootFolder+fn);
       uname:=':'+StringReplace(fn,'=','_',[rfReplaceAll]);
       if Signatures.Values[uname]<>s then
@@ -540,10 +537,13 @@ begin
             p.IterateBegin(d<>nil);
            end;
           ptFragmentUnit:p.Output(VarToStr(d['unitName']));
-          ptFragmentPath:p.Output(VarToStr(d['unitPath']));
-          ptFragmentAddress:p.Output(VarToStr(d['path']));
-          ptIncludeUnit:p.Output(e.Key);//p.Output(VarToStr(d['unitName']));
-          ptIncludePath:p.Output(VarToStr(d['unitPath']));
+          ptFragmentPath:p.Output(StringReplace(
+            VarToStr(d['unitPath']),'/',PathDelim,[rfReplaceAll]));
+          ptFragmentAddress:p.Output(StringReplace(
+            VarToStr(d['path']),'/',PathDelim,[rfReplaceAll]));
+          ptIncludeUnit:p.Output(e.Key);
+          ptIncludePath:p.Output(StringReplace(
+            VarToStr(d['unitPath']),'/',PathDelim,[rfReplaceAll]));
           ptIterateEnd:
            begin
             if e.Next then d:=JSON(e.Value) else d:=nil;
@@ -846,9 +846,11 @@ function TXxmWebProject.ResolveErrorLines(
 var
   sl_in,sl_out:TStringList;
   sl_x:integer;
-  s,t:string;
+  s,t,u:string;
   i,j,k,l:integer;
   map:TXxmLineNumbersMap;
+  d:IJSONDocument;
+  e:IJSONEnumerator;
 begin
   //TODO: call ResolveErrorLines from xxmConv also
   map:=TXxmLineNumbersMap.Create;
@@ -869,11 +871,21 @@ begin
         l:=Length(s);
         while (j<=l) and (s[j]<>')') do inc(j);
         try
-          t:=Copy(s,1,i-2);
+          t:=Copy(s,1,i-6);
+          u:=Copy(s,k+1,i-k-6);
           map.Load(ChangeFileExt(FSrcFolder+t,LinesMapExtension));
-          s:=VarToStr(JSON(JSON(Data['files'])[Copy(s,k+1,i-k-6)])['path'])
-            +'['+map.GetXxmLines(StrToInt(Copy(s,i,j-i)))+
-            ']'+Copy(s,j+1,Length(s)-j);
+          e:=JSONEnum(Data['files']);
+          while (e<>nil) and (e.Next) do
+           begin
+            d:=JSON(e.Value);
+            if (VarToStr(d['unitName'])=t) then //and (VarToStr(d['unitPath'])=) then
+             begin
+              s:=VarToStr(d['path'])+
+                '['+map.GetXxmLines(StrToInt(Copy(s,i,j-i)))+
+                ']'+Copy(s,j+1,Length(s)-j);
+              e:=nil;
+             end;
+           end;
         except
           //silent
         end;
