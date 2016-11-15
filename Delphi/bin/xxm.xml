@@ -1,19 +1,33 @@
 <ProjectRegistry>
-	<Project Name="xxm" Alias="proto"/>
+	<Project Name="xxm" Signature="01D04255D412492D_418"><ModulePath>D:\Data\xxm\Delphi\demo2\listprojects\listprojects.xxl</ModulePath></Project>
 	<Project Name="proto"><ModulePath>D:\Data\xxm\Delphi\bin\xxmProto.xxl</ModulePath></Project>
 	<Project Name="xd2" Signature="01CE1C344A89EC5D_538"><ModulePath>D:\Data\xxm\Delphi\demo2\02 Session\demo.xxl</ModulePath></Project>
-	<Project Name="demo" Signature="01D0369FADF91C82_675"><ModulePath>D:\Data\xxm\Delphi\demo\demo.xxl</ModulePath></Project>
+	<Project Name="demo" LoadCopy="0" Signature="01D10F73922DE0E7_403"><ModulePath>D:\Data\xxm\Delphi\demo2\13 WebSockets\demo.xxl</ModulePath></Project>
 	<Project Name="demoADO" LoadCopy="0" Signature="01CF5F2BBE888372_692"><ModulePath>D:\Data\xxm\Delphi\demo2\03 Data ADO\demo.xxl</ModulePath></Project>
-	<Project Name="tx" Signature="01D0042A84633494_17186"><ModulePath>D:\Data\xxm\Delphi\tx\txSQLite\tx.xxl</ModulePath></Project>
-	<Project Name="btcmud" Signature="01CFE96B0FFD8028_1076"><ModulePath>D:\Data\2014\btcmud\btcmud.xxl</ModulePath></Project>
-	<Project Name="vdrg" LoadCopy="0" Signature="01CF22BB5F476A2D_2131"><ModulePath>D:\Data\2014\vdrg2014\vdrg.xxl</ModulePath></Project>
-	<Project Name="vdrg2013" LoadCopy="0" Signature="01CF50A8597C9717_1500"><ModulePath>D:\Data\2012\vdrg2013\vdrg.xxl</ModulePath></Project>
-	<Project Name="primes" LoadCopy="0" Signature="01CCCB252280DA00_444"><ModulePath>D:\Data\2014\primes\primesWeb\primes.xxl</ModulePath></Project>
+	<Project Name="tx" LoadCopy="0" Signature="01D1C5C0E59D816D_18533"><ModulePath>D:\Data\2016\tx\tx.xxl</ModulePath></Project>
+	<Project Name="btcmud" LoadCopy="0" Signature="01D08A66DB3D11C6_1164"><ModulePath>D:\Data\2015\btcmud\btcmud.xxl</ModulePath></Project>
+	<Project Name="vdrg" LoadCopy="0" Signature="01D1B14985ECB5A1_2131"><ModulePath>D:\Data\2016\vdrg\vdrg.xxl</ModulePath></Project>
+	<Project Name="primes" LoadCopy="0" Signature="01CF5CC7E3D5A10F_444"><ModulePath>D:\Data\2014\primes\primesWeb\primes.xxl</ModulePath></Project>
 	<Project Name="ImgSrv" Signature="01CEBAE88C88AA85_367"><ModulePath>D:\Data\2013\ImgSrv\xxm\ImgSrv.xxl</ModulePath></Project>
 	<Project Name="statblog" Signature="01CF04C9E973F57A_1730"><ModulePath>D:\Data\2012\prutsmama\statblog.xxl</ModulePath></Project>
-	<Project Name="ws" Signature="01CF2DC4C96DCD47_510"><ModulePath>D:\Data\2014\ws\ws.xxl</ModulePath></Project>
+	<Project Name="ws" LoadCopy="0" Signature="01D0C0DA1A08391B_457"><ModulePath>D:\Data\2015\ws\ws.xxl</ModulePath></Project>
 	<Project Name="sd1" Signature="01CF7F6199F42DD7_376"><ModulePath>D:\Data\2014\sd1\sd1.xxl</ModulePath></Project>
-	<Project Name="yoy" Signature="01CFFA156EECA6A9_1564"><ModulePath>D:\Data\2014\yoy.be\statblog.xxl</ModulePath></Project>
+	<Project Name="yoy" LoadCopy="0" Signature="01D13DD74EDBB979_2101"><ModulePath>D:\Data\2015\yoy.be\statblog.xxl</ModulePath></Project>
 	<Project Name="xxmsvn" Signature="01D00A9303465976_618"><ModulePath>D:\Data\xxm\Delphi\xxmsvn\xxmsvn.xxl</ModulePath></Project>
 	<Project Name="demo11" Signature="01D00DB5138263AB_470"><ModulePath>D:\Data\xxm\Delphi\demo2\11 Basic Authentication\demo11.xxl</ModulePath></Project>
+	<Project Name="listprojects" LoadCopy="0" Signature="01D04255D412492D_418"><ModulePath>D:\Data\xxm\Delphi\demo2\listprojects\listprojects.xxl</ModulePath></Project>
+	<Project Name="demo12" LoadCopy="0" Signature="01D170D77A6EBB6B_833"><ModulePath>D:\Data\xxm\Delphi\demo2\12 Long Polling\demo.xxl</ModulePath></Project>
+	<Project Name="m" Signature="01D060E811DC73CF_550"><ModulePath>D:\Data\2016\m\m.xxl</ModulePath></Project>
+	<Project Name="comments" Signature="01D111B60DFE29FA_443"><ModulePath>D:\Data\2015\yoy.be\comments\comments.xxl</ModulePath></Project>
+	<Project Name="opener" Signature="01D119B405EACC71_702"><ModulePath>D:\Data\2015\opener\opener.xxl</ModulePath></Project>
+	<Project Name="xxmrel" Signature="01D12DDD3DFB3A95_379"><ModulePath>D:\Data\xxm\Delphi\demo2\xxmrel\xxmrel.xxl</ModulePath></Project>
+	<Project Name="store" Signature="01D13DC06E0AAF98_378"><ModulePath>D:\Data\2015\store\store.xxl</ModulePath></Project>
+	<Project Name="demo7" LoadCopy="0" Signature="01D18493AA3B51F4_677"><ModulePath>D:\Data\xxm\Delphi\demo2\07 Resources\demo.xxl</ModulePath></Project>
+	<Project Name="rider" LoadCopy="0" Signature="01D1BDC66D7AA5F7_378"><ModulePath>D:\Data\2016\rider\rider.xxl</ModulePath></Project>
+	<Project Name="EK2016" Signature="01D1C0D6420A459F_557"><ModulePath>D:\Data\2016\EK2016\EK2016.xxl</ModulePath></Project>
+	<Project Name="amud" Signature="01D1C4246B65E46E_468"><ModulePath>D:\Data\2016\amud\amud.xxl</ModulePath></Project>
+	<Project Name="demo14a" LoadCopy="0" Signature="01D1C72EF964DFBC_468"><ModulePath>D:\Data\xxm\Delphi\demo2\14 Cross-Project Include\a\demo14a.xxl</ModulePath></Project>
+	<Project Name="demo14b" LoadCopy="0" Signature="01D1C67CBE8F4A52_468"><ModulePath>D:\Data\xxm\Delphi\demo2\14 Cross-Project Include\b\demo14b.xxl</ModulePath></Project>
+	<Project Name="ys" Signature="01D202292814CDE0_938"><ModulePath>D:\Data\2016\ys\ys.xxl</ModulePath></Project>
+	<Project Name="opine"><ModulePath>D:\Data\2017\opine\opine.xxl</ModulePath></Project>
 </ProjectRegistry>
