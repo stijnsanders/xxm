@@ -711,8 +711,11 @@ end;
 procedure TEditProjectMainForm.btnRegisterFileClick(Sender: TObject);
 var
   fn,s,t,u:AnsiString;
+  i:integer;
   f:TFileStream;
   d,d1:IJSONDocument;
+const
+  Utf8ByteOrderMark=#$EF#$BB#$BF;
 begin
   if CheckModified then
    begin
@@ -737,18 +740,22 @@ begin
        begin
         f:=TFileStream.Create(fn,fmOpenRead or fmShareDenyWrite);
         try
-          //TODO: support unicode UTF8, UTF16?
-          SetLength(s,f.Size);
-          f.Read(s[1],f.Size);
+          i:=f.Size;
+          SetLength(u,i);
+          if i<>f.Read(u[1],i) then RaiseLastOSError;
+          if (i>=3) and (u[1]=#$EF) and (u[2]=#$BB) and (u[3]=#$BF) then
+            d.Parse(UTF8Decode(Copy(u,4,i-3)))
+          else
+          if (i>=2) and (u[1]=#$FF) and (u[2]=#$FE) then
+            d.Parse(PWideChar(@u[1]))
+          else
+            d.Parse(WideString(u));
         finally
           f.Free;
         end;
-        d.Parse(s);
        end
       else
-       begin
         d['projects']:=JSON;
-       end;
       d1:=JSON(JSON(d['projects'])[t]);
       if d1=nil then u:='' else u:=VarToStr(d1['path']);
       if (u='') or (u=s) or (MessageBoxA(GetDesktopWindow,PAnsiChar('Project "'+t+
@@ -767,7 +774,7 @@ begin
           d1['alias']:=Null;//?
          end;
         d1['path']:=s;
-        s:=d.ToString;//TODO: UTF
+        s:=Utf8ByteOrderMark+UTF8Encode(d.ToString);
         f:=TFileStream.Create(fn,fmCreate);
         try
           f.Write(s[1],Length(s));
