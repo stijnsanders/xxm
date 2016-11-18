@@ -18,7 +18,12 @@ interface
 uses xxm;
 
 type
-  TXxmdemo=class(TXxmProject)
+  TXxmdemo=class(TXxmProject, IXxmProjectEvents1)
+  protected
+    function HandleException(Context: IXxmContext; PageClass,
+      ExceptionClass, ExceptionMessage: WideString): boolean;
+    procedure ReleasingContexts;
+    procedure ReleasingProject;
   public
     function LoadPage(Context: IXxmContext; Address: WideString): IXxmFragment; override;
     function LoadFragment(Context: IXxmContext; Address, RelativeTo: WideString): IXxmFragment; override;
@@ -26,6 +31,9 @@ type
   end;
 
 function XxmProjectLoad(AProjectName:WideString): IXxmProject; stdcall;
+
+var
+  ClosingDown:boolean;
 
 implementation
 
@@ -58,6 +66,24 @@ begin
   //Fragment.Free;
 end;
 
+function TXxmdemo.HandleException(Context: IXxmContext; PageClass,
+  ExceptionClass, ExceptionMessage: WideString): boolean;
+begin
+  Result:=false;
+end;
+
+procedure TXxmdemo.ReleasingContexts;
+begin
+  //cause current WebSockets to close, see ws1: TDemoThread.Execute
+  ClosingDown:=true;
+end;
+
+procedure TXxmdemo.ReleasingProject;
+begin
+  //
+end;
+
 initialization
   IsMultiThread:=true;
+  ClosingDown:=false;
 end.

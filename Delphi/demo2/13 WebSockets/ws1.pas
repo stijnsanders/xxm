@@ -24,7 +24,7 @@ type
 
 implementation
 
-uses SysUtils, Windows, xxmFReg;
+uses SysUtils, Windows, xxmFReg, xxmp;
 
 { TMyWebSocket }
 
@@ -67,6 +67,11 @@ begin
     if j=i then
       MyWebSocket.SendText(Format('%d + %d + %d = %d is prime',[th,tm,ts,th+tm+ts]));
     Sleep(1000);
+    if ClosingDown then
+     begin
+      MyWebSocket.SendText('Service shutting down...');
+      MyWebSocket.Disconnect;
+     end;
    end;
 end;
 

@@ -8,12 +8,14 @@
 Use <i>xxmProject.exe</i> to edit and manage project settings.<br />
 For this demonstration project, unit <code>ws1.pas</code> was added.</dd>
 <dt>xxmp.pas</dt>
-<dd>The project's main unit. When this file is missing form the project, xxm creates one for you.</dd>
+<dd>The project's main unit. When this file is missing form the project, xxm creates one for you.<br/>
+This one has been modified so that the project class implements <code>IXxmProjectEvents1</code> to listen in on when the project needs to 'release its contexts' prior to shutting down. Without this, existing WebSocket connections would stall the auto-update or auto-update feature of the xxm handler.</dd>
 <dt>Default.xxm</dt>
 <dd>The website's default page. Attempts to create a <code>WebSocket</code> instance (if your browser supports this), shows incoming messages, and provides a way to send messages.</dd>
 <dt>ws1.pas</dt>
 <dd>Defines a class <code>TMyWebSocket</code> that inherits from <code>TXxmWebSocket</code>.<br />
 It responds to incoming messages after a fixed delay.<br />
 It also uses a thread to check periodically when the sum of hours, minutes and seconds is a prime number, then sends a message.<br />
-<code>TXxmWebSocket</code> implements <code>IXxmPage</code> and is added to the fragment registry to map it to a local URL.</dd>
+<code>TXxmWebSocket</code> implements <code>IXxmPage</code> and is added to the fragment registry to map it to a local URL.<br />
+A global variable is used to let the project object signal if it's going to shut down. In larger projects it's advised to use a registry of existing (connected) instances of <code>TXxmWebSocket</code>.</dd>
 </dl>
