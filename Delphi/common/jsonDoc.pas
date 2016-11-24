@@ -6,7 +6,7 @@ Copyright 2015-2016 Stijn Sanders
 Made available under terms described in file "LICENSE"
 https://github.com/stijnsanders/jsonDoc
 
-v1.0.4
+v1.0.5
 
 }
 unit jsonDoc;
@@ -67,6 +67,7 @@ type
     procedure Clear; stdcall;
     property Item[const Key: WideString]: OleVariant
       read Get_Item write Set_Item; default;
+    procedure Delete(const Key: WideString); stdcall;
   end;
 
 {
@@ -145,6 +146,7 @@ type
     property Item[const Key: WideString]: OleVariant
       read Get_Item write Set_Item; default;
     function NewEnumerator: IJSONEnumerator; stdcall;
+    procedure Delete(const Key: WideString); stdcall;
   end;
 
 {
@@ -1093,6 +1095,32 @@ begin
     else
       VarClear(FElements[i].Value);
   FGotMatch:=false;
+  inc(FLoadIndex);
+end;
+
+procedure TJSONDocument.Delete(const Key: WideString);
+var
+  i:integer;
+  uu:IUnknown;
+  d:IJSONDocument;
+begin
+  if GetKeyIndex(Key) then
+   begin
+    i:=FGotIndex;
+    if VarType(FElements[i].Value)=varUnknown then
+     begin
+      uu:=IUnknown(FElements[i].Value);
+      if uu.QueryInterface(IID_IJSONDocument,d)=S_OK then
+        d.Clear
+      else
+        VarClear(FElements[i].Value);
+     end
+    else
+      VarClear(FElements[i].Value);
+    FElements[i].LoadIndex:=FLoadIndex-1;
+   end;
+  //else raise?
+  //FDirty:=true;
 end;
 
 function TJSONDocument.NewEnumerator: IJSONEnumerator;
@@ -1194,7 +1222,7 @@ end;
 
 function JSONEnum(x: IJSONEnumerator): IJSONEnumerator;
 begin
-  if VarIsNull(x.Value) then
+  if (x=nil) or VarIsNull(x.Value) then
     Result:=TJSONEnumerator.Create(nil)
   else
     Result:=(IUnknown(x.Value) as IJSONEnumerable).NewEnumerator;

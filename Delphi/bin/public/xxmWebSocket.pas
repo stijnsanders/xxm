@@ -12,9 +12,11 @@ It implements IXxmPage, so you can call xxmFReg's
 with your inheriting class (or any alternative fragment registry you use)
 to determine which URL the WebSocket will be available with.
 
-  $Rev: 401 $ $Date: 2015-11-04 00:05:54 +0100 (wo, 04 nov 2015) $
+  $Rev: 442 $ $Date: 2016-11-24 21:34:24 +0100 (do, 24 nov 2016) $
 
 }
+{$D-}
+{$L-}
 
 interface
 
@@ -53,8 +55,8 @@ type
     procedure IXxmRawSocket.Disconnect=ClosingSocket;
     
     //
-    procedure SendText(const Data:UTF8String);
-    procedure SendBinary(const Data:UTF8String);
+    procedure SendText(const Data:UTF8String); virtual;
+    procedure SendBinary(const Data:UTF8String); virtual;
 
     property MaxFragmentSize:int64 read FMaxFragmentSize write FMaxFragmentSize;
   end;

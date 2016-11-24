@@ -534,7 +534,7 @@ begin
   OleCheck(SHFileOperationA(so));
   if not(so.fAnyOperationsAborted) then
    begin
-    JSON(ProjectData[(nx as TFileNode).Col])[(nx as TFileNode).Key]:=Null;
+    JSON(ProjectData[(nx as TFileNode).Col]).Delete((nx as TFileNode).Key);
     nx.Delete;
    end;
 end;
@@ -605,7 +605,7 @@ begin
   case n.ImageIndex of
     iiPasIncluded,iiFileIncluded:
      begin
-      JSON(ProjectData[n.Col])[n.Key]:=Null;
+      JSON(ProjectData[n.Col]).Delete(n.Key);
       n.Doc:=nil;
       n.ImageIndex:=n.ImageIndex-1;
       n.SelectedIndex:=n.ImageIndex;
@@ -772,8 +772,8 @@ begin
          end
         else
          begin
-          d1['signature']:=Null;
-          d1['alias']:=Null;//?
+          d1.Delete('signature');
+          d1.Delete('alias');//?
          end;
         d1['path']:=StringReplace(s,PathDelim,'/',[rfReplaceAll]);
         s:=Utf8ByteOrderMark+UTF8Encode(d.ToString);
@@ -812,6 +812,11 @@ begin
    begin
     SaveParserValue;
     d:=JSON(ProjectData['parserValues']);
+    if d=nil then
+     begin
+      d:=JSON;
+      ProjectData['parserValues']:=d;
+     end;
     txtParserValue.Text:=VarToStr(
       d[ParserValueElement[cbParserValue.ItemIndex]]);
    end;
@@ -832,7 +837,7 @@ begin
    begin
     d:=JSON(ProjectData['parserValues']);
     if txtParserValue.Text='' then
-      d[ParserValueElement[LastParserValue]]:=Null
+      d.Delete(ParserValueElement[LastParserValue])
     else
       d[ParserValueElement[LastParserValue]]:=txtParserValue.Text;
    end;

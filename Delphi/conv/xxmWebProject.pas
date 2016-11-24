@@ -430,13 +430,16 @@ begin
        begin
         cid:=sl1[sl_i];
         d:=JSON(DataFiles[cid]);
-        //TODO: setting keep pas?
-        uname:=VarToStr(d['unitName']);
-        upath:=VarToStr(d['unitPath']);
-        DeleteFile(FSrcFolder+upath+uname+DelphiExtension);
-        DeleteFile(FSrcFolder+upath+uname+LinesMapExtension);
-        //remove file tag
-        DataFiles[cid]:=Null;
+        if d<>nil then
+         begin
+          //TODO: setting keep pas?
+          uname:=VarToStr(d['unitName']);
+          upath:=VarToStr(d['unitPath']);
+          DeleteFile(FSrcFolder+upath+uname+DelphiExtension);
+          DeleteFile(FSrcFolder+upath+uname+LinesMapExtension);
+          //remove file tag
+         end;
+        DataFiles.Delete(cid);
         Modified:=true;
         if not Result then
           Signatures.Values[SignaturesUpdateReasonKey]:='<'+uname;

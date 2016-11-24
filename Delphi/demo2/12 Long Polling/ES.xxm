@@ -31,7 +31,7 @@ if ("EventSource" in window) {
 	};
 	
 } else {
-	LogMsg("This browser doesn't support WebSocket!");
+	LogMsg("This browser doesn't support EventSource!");
 }
 
 </script>

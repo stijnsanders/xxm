@@ -37,6 +37,9 @@ See also <a href="https://msdn.microsoft.com/en-us/library/ms525937%28v=vs.90%29
 using <code>xxmConv.exe</code> and one of the alternative templates from the <code>conv\proto_*</code> folders.
 These combine xxm source with the generated source of the xxm project into a dedicated dll or exe.</dd>
 
+<dt>add "xxmp.pas" to "resources"</dt>
+<dd>the auto-generated <code>xxmp.pas</code> unit contains by default the very least: your project's object class definition, that just maps incoming requests to the default fragment registry (<code>xxmFReg.pas</code>). It's there for you to extend, and is the best suitable spot for code to run at load-time of the project/website and/or start of a new user session. (See <code>xxmSession.pas</code> for an example session object in demo "02 Session".) In general, once the logic in <code>xxmp.pas</code> does what it's supposed to do, it doesn't need to change (much), and xxm by default doesn't trigger an auto-re-compile on a change to <code>xxmp.pas</code> alone. When you need to test changes to <code>xxmp.pas</code> (by hitting refresh in your browser), you can add <code>xxmp.pas</code> to the resources section of Web.xxmp, so changes will trigger a re-compile on next page load.</dd>
+
 </dl>
 
 </body>
