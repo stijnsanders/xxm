@@ -239,7 +239,6 @@ begin
   SectionsSize:=0;
   FIndex:=0;
   FDefaultParserValues:=ParserValues;
-  FParserValues:=FDefaultParserValues;
   //TODO: flag enable/disable keep line-numbers?
 end;
 
@@ -269,6 +268,7 @@ begin
   SectionsSize:=0;
   //SetLength(Sections,0);
   FData:=Data;
+  FParserValues:=FDefaultParserValues;
   FIndex:=0;
   TagInCode:=0;
   l:=Length(FData);

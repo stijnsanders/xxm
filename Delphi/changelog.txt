@@ -11,6 +11,7 @@ v1.2.5.?
     coexist on the same installation(s).
     This procedure (and all code using XML) is scheduled to be removed at a
     later, currently undetermined, version.
+- fixed issue with custom parserValues spilling into next file processed
 
 v1.2.4.430
 - xxmISAPI: fixed issue with open connections not accepting new requests
