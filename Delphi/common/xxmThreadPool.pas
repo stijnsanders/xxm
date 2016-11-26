@@ -422,6 +422,7 @@ var
   i,j,x,y,z,tc:cardinal;
   pe:IXxmProjectEvents2;
   c,c1:TXxmQueueContext;
+  b:boolean;
 begin
   x:=0;
   while not Terminated do
@@ -460,8 +461,15 @@ begin
             c:=FEvents[j].Queue;
             try
               //check event
-              pe:=FEvents[j].ProjectEntry.Project as IXxmProjectEvents2;
-              if pe.CheckEvent(FEvents[j].Key,FEvents[j].CheckInterval) then
+              if FEvents[j].ProjectEntry.Project.
+                QueryInterface(IXxmProjectEvents2,pe)=S_OK then
+               begin
+                b:=pe.CheckEvent(FEvents[j].Key,FEvents[j].CheckInterval);
+                pe:=nil;
+               end
+              else
+                b:=true;//
+              if b then
                begin
                 //resume
                 FEvents[j].Queue:=nil;
