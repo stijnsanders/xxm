@@ -90,6 +90,8 @@ end;
 { TxxmSession }
 
 constructor TXxmSession.Create(const ID: WideString; Context: IXxmContext);
+var
+  s:AnsiString;
 begin
   inherited Create;
   FID:=ID;
