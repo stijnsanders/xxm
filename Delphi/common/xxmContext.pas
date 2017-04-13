@@ -535,6 +535,7 @@ begin
             'R':
              begin
               t:=ContextString(csReferer);
+              if (t<>'') and (t=FURL) then t:='';
               if t='' then
                begin
                 tt:=tt+'#';
