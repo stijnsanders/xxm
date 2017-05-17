@@ -438,7 +438,8 @@ begin
                   ft_Unknown:
                    begin
                     dx:=StringReplace(d,PathDelim,'/',[rfReplaceAll])+fn;
-                    x:=JSON(JSON(ProjectData['resources'])[dx]);
+                    x:=JSON(ProjectData['resources']);
+                    if x<>nil then x:=JSON(x[dx]);
                     n.Col:='resources';
                     n.Key:=dx;
                     n.Doc:=x;
