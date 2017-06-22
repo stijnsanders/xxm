@@ -21,6 +21,7 @@ uses
   xxmAutoBuild in '..\common\xxmAutoBuild.pas',
   xxmWebProject in '..\conv\xxmWebProject.pas',
   MSXML2_TLB in '..\common\MSXML2_TLB.pas',
+  xxmConvert2 in '..\conv\xxmConvert2.pas',
   jsonDoc in '..\common\jsonDoc.pas',
   xxmUtilities in '..\conv\xxmUtilities.pas',
   xxmPageParse in '..\conv\xxmPageParse.pas',

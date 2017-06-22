@@ -17,6 +17,7 @@ uses
   xxmContext in '..\common\xxmContext.pas',
   xxmReadHandler in 'xxmReadHandler.pas',
   MSXML2_TLB in '..\common\MSXML2_TLB.pas',
+  xxmConvert2 in '..\conv\xxmConvert2.pas',
   jsonDoc in '..\common\jsonDoc.pas',
   xxmSock in 'xxmSock.pas',
   xxmThreadPool in '..\common\xxmThreadPool.pas',

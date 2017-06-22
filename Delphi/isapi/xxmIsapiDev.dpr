@@ -19,6 +19,7 @@ uses
   xxmContext in '..\common\xxmContext.pas',
   xxmIsapiStream in 'xxmIsapiStream.pas',
   MSXML2_TLB in '..\common\MSXML2_TLB.pas',
+  xxmConvert2 in '..\conv\xxmConvert2.pas',
   jsonDoc in '..\common\jsonDoc.pas',
   xxmAutoBuild in '..\common\xxmAutoBuild.pas',
   xxmWebProject in '..\conv\xxmWebProject.pas',

@@ -355,13 +355,15 @@ type
     function Get_Item(Index: integer): Variant; stdcall;
     procedure Set_Item(Index: integer; const Value: Variant); stdcall;
     function Count: integer; stdcall;
-    function ToString: WideString; stdcall;
+    function JSONToString: WideString; stdcall;
+    function IJSONArray.ToString=JSONToString;
     function v0(Index: integer): pointer; stdcall;
     //function IJSONArray.ToString=JSONToString;
     //IJSONDocArray
     function Add(const Doc: IJSONDocument): integer; stdcall;
     function AddJson(const Data: WideString): integer; stdcall;
     procedure LoadItem(Index: integer; const Doc: IJSONDocument); stdcall;
+    function IJSONDocArray.ToString=JSONToString;
     procedure Clear; stdcall;
   public
     constructor Create;
@@ -1248,7 +1250,7 @@ begin
       //Result:=FloatToStr(VarToDateTime(v));//?
       Result:='"'+FormatDateTime('yyyy-mm-dd"T"hh:nn:ss.zzz',
         VarToDateTime(v))+'"';
-    varOleStr,varString:
+    varOleStr,varString,$0102:
       Result:=JSONEncodeStr(VarToWideStr(v));
     varBoolean:
       if v then Result:='true' else Result:='false';
@@ -1435,7 +1437,7 @@ begin
                 w(FormatDateTime('yyyy-mm-dd"T"hh:nn:ss.zzz',VarToDateTime(PVariant(e.v0)^)));
                 w('"');
                end;
-              varOleStr,varString:
+              varOleStr,varString,$0102:
                 w(JSONEncodeStr(VarToWideStr(PVariant(e.v0)^)));
               varBoolean:
                 if PVariant(e.v0)^ then w('true') else w('false');
@@ -2262,7 +2264,7 @@ begin
   {$ENDIF}
 end;
 
-function TJSONDocArray.ToString: WideString;
+function TJSONDocArray.JSONToString: WideString;
 var
   i,x,l:integer;
 begin
@@ -2363,7 +2365,7 @@ function JSON(const x: Variant): IJSONDocument; overload;
 begin
   case TVarData(x).VType of
     varNull,varEmpty:Result:=nil;//raise?
-    varOleStr,varString:
+    varOleStr,varString,$0102:
      begin
       Result:=TJSONDocument.Create as IJSONDocument;
       Result.Parse(VarToWideStr(x));

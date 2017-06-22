@@ -23,6 +23,7 @@ uses
   xxmProtoParse in '..\conv\xxmProtoParse.pas',
   xxmUtilities in '..\conv\xxmUtilities.pas',
   MSXML2_TLB in '..\common\MSXML2_TLB.pas',
+  xxmConvert2 in '..\conv\xxmConvert2.pas',
   jsonDoc in '..\common\jsonDoc.pas',
   xxmConvertXML in '..\common\xxmConvertXML.pas';
 

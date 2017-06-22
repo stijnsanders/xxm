@@ -20,6 +20,7 @@ uses
   xxmContext in '..\common\xxmContext.pas',
   xxmAutoUpdate in '..\common\xxmAutoUpdate.pas',
   MSXML2_TLB in '..\common\MSXML2_TLB.pas',
+  xxmConvert2 in '..\conv\xxmConvert2.pas',
   jsonDoc in '..\common\jsonDoc.pas',
   xxmHSysHeaders in 'xxmHSysHeaders.pas';
 

@@ -1,6 +1,6 @@
-v1.2.5.?
+v1.2.5.444
 - xxmHttpAU: added manifest to avoid default UAC elevation request
-- project registry "xxm.json" (conversion tool for "xxm.xml")
+- project registry "xxm.json" (auto-conversion of "xxm.xml")
 - project file "Web.xxmp" JSON (auto-conversion from XML)
     ### ATTENTION ### ATTENTION ### ATTENTION ###
     xxmProject and xxm handlers are fitted with a transitional
