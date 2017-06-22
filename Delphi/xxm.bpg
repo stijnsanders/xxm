@@ -10,15 +10,14 @@ DCC = $(ROOT)\bin\dcc32.exe $**
 BRCC = $(ROOT)\bin\brcc32.exe $**
 #------------------------------------------------------------------------------
 PROJECTS = xxmConv.exe xxmProto.xxl xxmProject.exe xxmRun.exe xxmLocal.dll \
-  xxmLocalAU.dll xxmLocalDev.dll xxmGecko.dll xxmGeckoAU.dll xxmGeckoDev.dll \
-  xxmIsapiEx.dll xxmIsapiAU.dll xxmIsapiDev.dll xxmHttp.exe xxmHttpAU.exe \
-  xxmHttpDev.exe xxmHttpSvc.exe xxmHttpSvcAU.exe xxmCGI.exe xxmHost.exe \
-  xxmHostAU.exe xxmHostDev.exe xxmHostSvc.exe xxmHostSvcAU.exe xxmSCGI.exe \
-  xxmSCGIAU.exe xxmSCGIDev.exe xxmSCGISvc.exe xxmSCGISvcAU.exe xxmAhttpd.dll \
-  xxmAhttpdAU.dll xxmAhttpdDev.dll xxmHSys1.exe xxmHSys1AU.exe xxmHSys1Dev.exe \
-  xxmHSys1Svc.exe xxmHSys1SvcAU.exe xxmHSys2.exe xxmHSys2AU.exe xxmHSys2Dev.exe \
-  xxmHSys2Svc.exe xxmHSys2SvcAU.exe xxmSyna.exe xxmSynaAU.exe xxmSynaDev.exe \
-  xxmSynaSvc.exe xxmSynaSvcAU.exe
+  xxmLocalAU.dll xxmLocalDev.dll xxmIsapiEx.dll xxmIsapiAU.dll xxmIsapiDev.dll \
+  xxmHttp.exe xxmHttpAU.exe xxmHttpDev.exe xxmHttpSvc.exe xxmHttpSvcAU.exe \
+  xxmCGI.exe xxmHost.exe xxmHostAU.exe xxmHostDev.exe xxmHostSvc.exe \
+  xxmHostSvcAU.exe xxmSCGI.exe xxmSCGIAU.exe xxmSCGIDev.exe xxmSCGISvc.exe \
+  xxmSCGISvcAU.exe xxmAhttpd.dll xxmAhttpdAU.dll xxmAhttpdDev.dll xxmHSys1.exe \
+  xxmHSys1AU.exe xxmHSys1Dev.exe xxmHSys1Svc.exe xxmHSys1SvcAU.exe xxmHSys2.exe \
+  xxmHSys2AU.exe xxmHSys2Dev.exe xxmHSys2Svc.exe xxmHSys2SvcAU.exe xxmSyna.exe \
+  xxmSynaAU.exe xxmSynaDev.exe xxmSynaSvc.exe xxmSynaSvcAU.exe
 #------------------------------------------------------------------------------
 default: $(PROJECTS)
 #------------------------------------------------------------------------------
@@ -84,15 +83,6 @@ xxmHostSvcAU.exe: cgi\xxmHostSvcAU.dpr
   $(DCC)
 
 xxmAhttpd.dll: apache\xxmAhttpd.dpr
-  $(DCC)
-
-xxmGecko.dll: gecko\xxmGecko.dpr
-  $(DCC)
-
-xxmGeckoAU.dll: gecko\xxmGeckoAU.dpr
-  $(DCC)
-
-xxmGeckoDev.dll: gecko\xxmGeckoDev.dpr
   $(DCC)
 
 xxmAhttpd.dll: apache\xxmAhttpd.dpr
