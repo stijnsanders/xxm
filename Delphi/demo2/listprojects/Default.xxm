@@ -1,9 +1,10 @@
-[[@MSXML2_TLB,Windows,Classes,Variants]][[!var
+[[@jsonDoc,Windows,Classes,Variants]][[!var
 i:integer;
 s:string;
-x:DOMDocument;
-xl:IXMLDOMNodeList;
-p:IXMLDOMElement;
+f:TFileStream;
+u:UTF8String;
+d,d1:IJSONDocument;
+e:IJSONEnumerator;
 sl:TStringList;
 <<!doctype html>
 <html>
@@ -25,25 +26,39 @@ i:=Length(s)+1;
 repeat
   dec(i);
   while (i<>0) and (s[i]<>'\') do dec(i);
-until (i=0) or (FileExists(Copy(s,1,i)+'xxm.xml'));
+until (i=0) or (FileExists(Copy(s,1,i)+'xxm.json'));
 
 sl:=TStringList.Create;
 try
   sl.Sorted:=true;
-  x:=CoDOMDocument.Create;
-  x.async:=false;
-  if not(x.load(Copy(s,1,i)+'xxm.xml')) then
-    raise Exception.Create(x.parseError.reason);
-  xl:=x.documentElement.selectNodes('Project');
-  p:=xl.nextNode as IXMLDOMElement;
-  while p<>nil do
+  
+  d:=JSON;
+
+  f:=TFileStream.Create(Copy(s,1,i)+'xxm.json',fmOpenRead or fmShareDenyWrite);
+  try
+    i:=f.Size;
+    SetLength(u,i);
+    if i<>f.Read(u[1],i) then RaiseLastOSError;
+    if (i>=3) and (u[1]=#$EF) and (u[2]=#$BB) and (u[3]=#$BF) then
+  	  d.Parse(UTF8Decode(Copy(u,4,i-3)))
+    else
+      if (i>=2) and (u[1]=#$FF) and (u[2]=#$FE) then
+  	    d.Parse(PWideChar(@u[1]))
+      else
+  	    d.Parse(WideString(u));
+  finally
+    f.Free;
+  end;
+  
+  e:=JSONEnum(d['projects']);
+  while e.Next do
    begin
-    if VarToStr(p.getAttribute('Alias'))='' then
+    d1:=JSON(e.Value);
+	if VarToStr(d1['alias'])='' then
 	 begin
-      s:=VarToStr(p.getAttribute('Name'));
+	  s:=e.Key;
 	  if LowerCase(s)<>'xxm' then sl.Add(s);
 	 end;
-    p:=xl.nextNode as IXMLDOMElement;
    end;
    
   for i:=0 to sl.Count-1 do
@@ -55,6 +70,6 @@ finally
 end;
 
 <</ul>
-<p>>=Context[csVersion]]] | <a href="http://xxm.sf.net/">about xxm...</a></p>
+<p>>=Context[csVersion]]] | <a href="http://yoy.be/xxm/">about xxm...</a></p>
 </body>
 </html>
