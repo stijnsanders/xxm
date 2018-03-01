@@ -65,7 +65,6 @@ resourcestring
 const
   XxmRegFileName_XML='xxm.xml';
   XxmRegFileName='xxm.json';
-  XxmFavIconFileName='favicon.ico';//'xxm.ico'?
   XxmRegCheckIntervalMS=1000;
 
 {
@@ -373,7 +372,7 @@ begin
               FProjects[i].Alias:='';
               FreeAndNil(FProjects[i].Entry);
              end;
-          LoadFavIcon(VarToStr(d['singleProject']));
+          LoadFavIcon(VarToStr(d['singleProject'])+'.ico');
          end;
       end;
     finally
@@ -511,17 +510,19 @@ var
   i:integer;
 begin
   if FilePath<>'' then
-   begin
-    f:=TFileStream.Create(FilePath,fmOpenRead or fmShareDenyWrite);
     try
-      i:=f.Size;
-      FFavIcon:=VarArrayCreate([0,i-1],varByte);
-      f.Read(VarArrayLock(FFavIcon)^,i);
-      VarArrayUnlock(FFavIcon);
-    finally
-      f.Free;
+      f:=TFileStream.Create(FilePath,fmOpenRead or fmShareDenyWrite);
+      try
+        i:=f.Size;
+        FFavIcon:=VarArrayCreate([0,i-1],varByte);
+        f.Read(VarArrayLock(FFavIcon)^,i);
+        VarArrayUnlock(FFavIcon);
+      finally
+        f.Free;
+      end;
+    except
+      on EFOpenError do ;//silent
     end;
-   end;
 end;
 
 initialization
