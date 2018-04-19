@@ -727,7 +727,7 @@ var
       else
         cl.Add(prefix+VarToStr(v));
   end;
-  function DoCommand(cmd,fld:AnsiString):boolean;
+  function DoCommand(const cmd,fld:AnsiString):boolean;
   var
     c:cardinal;
     running:boolean;

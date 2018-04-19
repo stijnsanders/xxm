@@ -506,7 +506,8 @@ begin
    end
   else
     s:=RedirectURL;
-  //utf?
+  if FResHeaders['Cache-Control']='' then
+    AddResponseHeader('Cache-Control','no-cache');
   ServerFunction(HSE_REQ_SEND_URL_REDIRECT_RESP,PAnsiChar(UTF8Encode(s)),nil,nil);
   raise EXxmPageRedirected.Create(s);
 end;

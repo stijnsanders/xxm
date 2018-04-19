@@ -12,6 +12,7 @@ v1.2.5.444
     This procedure (and all code using XML) is scheduled to be removed at a
     later, currently undetermined, version.
 - fixed issue with custom parserValues spilling into next file processed
+- xxmIsapi*: Redirect: set 'Cache-control' to 'nocache' unless it was set already
 
 v1.2.4.430
 - xxmISAPI: fixed issue with open connections not accepting new requests
