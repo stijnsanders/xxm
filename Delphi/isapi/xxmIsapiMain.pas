@@ -30,20 +30,20 @@ type
       Size, DataType: LPDWORD);
   protected
     function GetSessionID: WideString; override;
-    procedure DispositionAttach(FileName: WideString); override;
+    procedure DispositionAttach(const FileName: WideString); override;
     function SendData(const Buffer; Count: LongInt): LongInt;
     function ContextString(cs: TXxmContextString): WideString; override;
     function Connected: Boolean; override;
     procedure BeginRequest; override;
     procedure HandleRequest; override;
     procedure EndRequest; override;
-    procedure Redirect(RedirectURL: WideString; Relative:boolean); override;
-    function GetCookie(Name: WideString): WideString; override;
+    procedure Redirect(const RedirectURL: WideString; Relative:boolean); override;
+    function GetCookie(const Name: WideString): WideString; override;
 
     function GetProjectEntry: TXxmProjectEntry; override;
-    function GetProjectPage(FragmentName: WideString):IXxmFragment; override;
+    function GetProjectPage(const FragmentName: WideString):IXxmFragment; override;
     procedure SendHeader; override;
-    procedure SetStatus(Code: Integer; Text: WideString); override;
+    procedure SetStatus(Code: Integer; const Text: WideString); override;
     function GetRequestHeader(const Name: WideString): WideString; override;
     procedure AddResponseHeader(const Name, Value: WideString); override;
 
@@ -156,7 +156,7 @@ begin
           pContext.FIOState:=IOState_None
         else
          begin
-          DWORD(pContext.FIOStream):=dwError;
+          pContext.FIOStream:=TStream(pointer(dwError));
           pContext.FIOState:=IOState_Error;
          end;
        end;
@@ -219,7 +219,7 @@ const
 procedure TXxmIsapiContext.Load(pecb: PEXTENSION_CONTROL_BLOCK);
 begin
   ecb:=pecb;
-  FURI:=GetVar(ecb,'HTTP_URL');
+  FURI:=GetVar(ecb,AnsiString('HTTP_URL'));
   FURL:=
     httpScheme[UpperCase(GetVar(ecb,'HTTPS'))='ON']+
     GetVar(ecb,'HTTP_HOST')+FURI;//TODO: unicode?
@@ -259,7 +259,7 @@ begin
   try
     ServerFunction(HSE_REQ_IO_COMPLETION,@ContextIOCompletion,nil,PDWORD(Self));
     //parse url
-    x:=FURI;//GetVar(ecb,'HTTP_URL');
+    x:=AnsiString(FURI);//GetVar(ecb,'HTTP_URL');
     y:=GetVar(ecb,'SCRIPT_NAME');
     if y=ecb.lpszPathInfo then
      begin
@@ -278,11 +278,11 @@ begin
     //project name
     i:=1;
     if i>Length(x) then Redirect('/',true) else
-      if x[i]<>'/' then Redirect('/'+Copy(x,i,Length(x)-i+1),true);
+      if x[i]<>'/' then Redirect(AnsiString('/'+Copy(x,i,Length(x)-i+1)),true);
     //redirect raises EXxmPageRedirected
     inc(i);
     if XxmProjectCache.ProjectFromURI(Self,x,i,FProjectName,FFragmentName) then
-      FRedirectPrefix:=FRedirectPrefix+'/'+FProjectName;
+      FRedirectPrefix:=FRedirectPrefix+'/'+AnsiString(FProjectName);
     FPageClass:='['+FProjectName+']';
 
     BuildPage;
@@ -299,7 +299,7 @@ begin
            begin
             //TODO: consider HSE_REQ_SEND_CUSTOM_ERROR?
             try
-              if FPostData=nil then y:='none' else y:=IntToStr(FPostData.Size)+' bytes';
+              if FPostData=nil then y:='none' else y:=AnsiString(IntToStr(FPostData.Size)+' bytes');
             except
               y:='unknown';
             end;
@@ -323,7 +323,7 @@ begin
   Result:=XxmProjectCache.GetProject(FProjectName);
 end;
 
-function TXxmIsapiContext.GetProjectPage(FragmentName: WideString):IXxmFragment;
+function TXxmIsapiContext.GetProjectPage(const FragmentName: WideString):IXxmFragment;
 var
   p:IXxmPage;
 begin
@@ -343,7 +343,8 @@ begin
          begin
           SetLength(FPostTempFile,$400);
           SetLength(FPostTempFile,GetTempPathA($400,PAnsiChar(FPostTempFile)));//TODO: setting
-          FPostTempFile:=FPostTempFile+'xxm_'+IntToHex(GetCurrentThreadId,4)+'_'+IntToHex(ecb.ConnID,8)+'.dat';
+          FPostTempFile:=FPostTempFile+AnsiString('xxm_'+
+            IntToHex(GetCurrentThreadId,4)+'_'+IntToHex(ecb.ConnID,8)+'.dat');
           FPostData:=TXxmIsapiStreamAdapter.Create(ecb,TFileStream.Create(FPostTempFile,fmCreate));
          end;
         FPostData.Seek(0,soFromBeginning);
@@ -361,11 +362,11 @@ begin
     csVersion:Result:=SelfVersion+', '+GetVar(ecb,'SERVER_SOFTWARE');
       //'IIS '+IntToStr(HiWord(ecb.dwVersion))+'.'+IntToStr(LoWord(ecb.dwVersion));
     csExtraInfo:         Result:='';//TODO
-    csVerb:              Result:=ecb.lpszMethod;
-    csQueryString:       Result:=ecb.lpszQueryString;
+    csVerb:              Result:=WideString(ecb.lpszMethod);
+    csQueryString:       Result:=WideString(ecb.lpszQueryString);
     csUserAgent:         Result:=GetVar(ecb,'HTTP_USER_AGENT');
     csAcceptedMimeTypes: Result:=GetVar(ecb,'HTTP_ACCEPT');
-    csPostMimeType:      Result:=ecb.lpszContentType;
+    csPostMimeType:      Result:=WideString(ecb.lpszContentType);
     csURL:               Result:=GetURL;//'HTTP_URL'?
     csProjectName:       Result:=FProjectName;
     csLocalURL:          Result:=FFragmentName;
@@ -391,10 +392,17 @@ begin
   //ecb.lpszPathTranslated;
 end;
 
-procedure TXxmIsapiContext.DispositionAttach(FileName: WideString);
+procedure TXxmIsapiContext.DispositionAttach(const FileName: WideString);
+var
+  s:WideString;
+  i:integer;
 begin
-  FResHeaders.SetComplex('Content-disposition','attachment')
-    ['filename']:=FileName;
+  s:=FileName;
+  for i:=1 to Length(s) do
+    if AnsiChar(s[i]) in ['\','/',':','*','?','"','<','>','|'] then
+      s[i]:='_';
+  AddResponseHeader('Content-disposition','attachment; filename="'+s+'"');
+  FResHeaders.SetComplex('Content-disposition','attachment')['filename']:=s;
 end;
 
 function TXxmIsapiContext.SendData(const Buffer; Count: LongInt): LongInt;
@@ -442,7 +450,7 @@ begin
   ecb.ServerSupportFunction(ecb.ConnID,HSE_REQ_SET_FLUSH_FLAG,pointer(true),nil,nil);
 
   //send header
-  s:=IntToStr(StatusCode)+' '+StatusText;
+  s:=AnsiString(IntToStr(StatusCode)+' '+StatusText);
   head.pszStatus:=PAnsiChar(s);
   head.cchStatus:=Length(s);
   //use FResHeader.Complex?
@@ -454,7 +462,7 @@ begin
       aeIso8859:t:='; charset="iso-8859-15"';
       else t:='';
     end;
-    FResHeaders['Content-Type']:=FContentType+t;
+    FResHeaders['Content-Type']:=AnsiString(FContentType)+t;
    end;
   t:=FResHeaders.Build+#13#10;
   //TODO cookies? redirect?
@@ -473,7 +481,7 @@ begin
   Result:=b;
 end;
 
-procedure TXxmIsapiContext.SetStatus(Code: Integer; Text: WideString);
+procedure TXxmIsapiContext.SetStatus(Code: Integer; const Text: WideString);
 begin
   inherited;
   //TODO
@@ -481,7 +489,7 @@ begin
   //ecb.
 end;
 
-procedure TXxmIsapiContext.Redirect(RedirectURL: WideString;
+procedure TXxmIsapiContext.Redirect(const RedirectURL: WideString;
   Relative: Boolean);
 var
   s:WideString;
@@ -512,7 +520,7 @@ begin
   raise EXxmPageRedirected.Create(s);
 end;
 
-function TXxmIsapiContext.GetCookie(Name: WideString): WideString;
+function TXxmIsapiContext.GetCookie(const Name: WideString): WideString;
 begin
   if not(FCookieParsed) then
    begin
@@ -520,7 +528,7 @@ begin
     SplitHeaderValue(FCookie,0,Length(FCookie),FCookieIdx);
     FCookieParsed:=true;
    end;
-  Result:=GetParamValue(FCookie,FCookieIdx,Name);
+  Result:=GetParamValue(FCookie,FCookieIdx,AnsiString(Name));
 end;
 
 function TXxmIsapiContext.GetSessionID: WideString;
@@ -529,10 +537,10 @@ const
 begin
   if FSessionID='' then
    begin
-    FSessionID:=GetCookie(SessionCookie);
+    FSessionID:=AnsiString(GetCookie(SessionCookie));
     if FSessionID='' then
      begin
-      FSessionID:=Copy(CreateClassID,2,32);
+      FSessionID:=AnsiString(Copy(CreateClassID,2,32));
       SetCookie(SessionCookie,FSessionID);//expiry?
      end;
    end;

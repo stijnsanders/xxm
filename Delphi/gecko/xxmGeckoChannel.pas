@@ -35,12 +35,12 @@ type
 
     { IxxmContext }
     function GetSessionID: WideString; override;
-    procedure DispositionAttach(FileName: WideString); override;
+    procedure DispositionAttach(const FileName: WideString); override;
     function SendData(const Buffer; Count: LongInt): LongInt;
     function ContextString(cs: TXxmContextString): WideString; override;
     function Connected: Boolean; override;
-    procedure Redirect(RedirectURL: WideString; Relative:boolean); override;
-    function GetCookie(Name: WideString): WideString; override;
+    procedure Redirect(const RedirectURL: WideString; Relative:boolean); override;
+    function GetCookie(const Name: WideString): WideString; override;
 
     { IxxmHttpHeaders }
     function GetRequestHeaders:IxxmDictionaryEx;
@@ -406,17 +406,19 @@ begin
   end;
 end;
 
-procedure TxxmChannel.DispositionAttach(FileName: WideString);
+procedure TxxmChannel.DispositionAttach(const FileName: WideString);
 var
-  x:WideString;
+  s:WideString;
   i:integer;
 begin
-  x:=FileName;
-  for i:=1 to Length(x) do if x[i]='"' then x[i]:='_';
-  FResHeaders['Content-Disposition']:='attachment; filname="'+x+'"';
+  s:=FileName;
+  for i:=1 to Length(s) do
+    if AnsiChar(s[i]) in ['\','/',':','*','?','"','<','>','|'] then
+      s[i]:='_';
+  FResHeaders['Content-Disposition']:='attachment; filname="'+s+'"';
 end;
 
-function TxxmChannel.GetCookie(Name: WideString): WideString;
+function TxxmChannel.GetCookie(const Name: WideString): WideString;
 begin
   if not(FCookieParsed) then
    begin
@@ -434,7 +436,7 @@ begin
   Result:=IntToHex(HInstance,8)+IntToHex(GetCurrentProcessId,8);
 end;
 
-procedure TxxmChannel.Redirect(RedirectURL: WideString; Relative: boolean);
+procedure TxxmChannel.Redirect(const RedirectURL: WideString; Relative: boolean);
 begin
   //TODO:
   //if 307 then forward as POST else as GET? (see RedirectSync)

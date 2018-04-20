@@ -20,25 +20,25 @@ uses xxm;
 type
   TXxmxxm=class(TXxmProject)
   public
-    function LoadPage(Context: IXxmContext; Address: WideString): IXxmFragment; override;
-    function LoadFragment(Context: IXxmContext; Address, RelativeTo: WideString): IXxmFragment; override;
+    function LoadPage(Context: IXxmContext; const Address: WideString): IXxmFragment; override;
+    function LoadFragment(Context: IXxmContext; const Address, RelativeTo: WideString): IXxmFragment; override;
     procedure UnloadFragment(Fragment: IXxmFragment); override;
   end;
 
-function XxmProjectLoad(AProjectName:WideString): IXxmProject; stdcall;
+function XxmProjectLoad(const AProjectName:WideString): IXxmProject; stdcall;
 
 implementation
 
 uses xxmFReg;
 
-function XxmProjectLoad(AProjectName:WideString): IXxmProject;
+function XxmProjectLoad(const AProjectName:WideString): IXxmProject;
 begin
   Result:=TXxmxxm.Create(AProjectName);
 end;
 
 { TXxmxxm }
 
-function TXxmxxm.LoadPage(Context: IXxmContext; Address: WideString): IXxmFragment;
+function TXxmxxm.LoadPage(Context: IXxmContext; const Address: WideString): IXxmFragment;
 begin
   inherited;
   //TODO: link session to request
@@ -47,7 +47,7 @@ begin
   //TODO: if Context.ContextString(csVerb)='OPTION' then...
 end;
 
-function TXxmxxm.LoadFragment(Context: IXxmContext; Address, RelativeTo: WideString): IXxmFragment;
+function TXxmxxm.LoadFragment(Context: IXxmContext; const Address, RelativeTo: WideString): IXxmFragment;
 begin
   Result:=XxmFragmentRegistry.GetFragment(Self,Address,RelativeTo);
 end;

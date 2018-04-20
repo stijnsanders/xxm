@@ -20,20 +20,20 @@ type
     FCookieIdx: TParamIndexes;
   protected
     function GetSessionID:WideString; override;
-    procedure DispositionAttach(FileName: WideString); override;
+    procedure DispositionAttach(const FileName: WideString); override;
     function ContextString(cs:TXxmContextString):WideString; override;
     function Connected:boolean; override;
     procedure BeginRequest; override;
     procedure HandleRequest; override;
     procedure EndRequest; override;
-    procedure Redirect(RedirectURL:WideString; Relative:boolean); override;
-    function GetCookie(Name:WideString):WideString; override;
+    procedure Redirect(const RedirectURL:WideString; Relative:boolean); override;
+    function GetCookie(const Name:WideString):WideString; override;
     procedure SendHeader; override;
     function SendData(const Buffer; Count: LongInt): LongInt;
     function GetProjectEntry:TXxmProjectEntry; override;
     function GetRequestHeader(const Name: WideString): WideString; override;
     procedure AddResponseHeader(const Name, Value: WideString); override;
-    procedure SetStatus(Code:integer;Text:WideString); override;
+    procedure SetStatus(Code:integer;const Text:WideString); override;
     function GetRawSocket: IStream; override;
     { IxxmHttpHeaders }
     function GetRequestHeaders:IxxmDictionaryEx;
@@ -176,7 +176,7 @@ begin
   end;
 end;
 
-procedure TxxmAhttpdContext.DispositionAttach(FileName: WideString);
+procedure TxxmAhttpdContext.DispositionAttach(const FileName: WideString);
 begin
   if FileName='' then
     AddResponseHeader('Content-Disposition','attachment')
@@ -184,7 +184,7 @@ begin
     AddResponseHeader('Content-Disposition','attachment; filename="'+FileName+'"');
 end;
 
-function TxxmAhttpdContext.GetCookie(Name: WideString): WideString;
+function TxxmAhttpdContext.GetCookie(const Name: WideString): WideString;
 begin
   if not(FCookieParsed) then
    begin
@@ -223,7 +223,7 @@ begin
   Result:=FSessionID;
 end;
 
-procedure TxxmAhttpdContext.Redirect(RedirectURL: WideString;
+procedure TxxmAhttpdContext.Redirect(const RedirectURL: WideString;
   Relative: boolean);
 var
   NewURL,RedirBody:WideString;
@@ -254,7 +254,7 @@ begin
     Result:=ap_rwrite(pointer(@Buffer)^,Count,rq);
 end;
 
-procedure TxxmAhttpdContext.SetStatus(Code: integer; Text: WideString);
+procedure TxxmAhttpdContext.SetStatus(Code: integer; const Text: WideString);
 begin
   inherited;
   rq.status:=Code;

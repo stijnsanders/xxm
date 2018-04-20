@@ -372,7 +372,8 @@ begin
               FProjects[i].Alias:='';
               FreeAndNil(FProjects[i].Entry);
              end;
-          LoadFavIcon(VarToStr(d['singleProject'])+'.ico');
+          if FSingleProject<>'' then
+            LoadFavIcon(FSingleProject+'.ico');
          end;
       end;
     finally

@@ -17,27 +17,27 @@ type
     FResult:WideString;
     FAutoEncoding:TXxmAutoEncoding;
     function GetResult:WideString;
-    procedure WriteString(Value:WideString);
+    procedure WriteString(const Value:WideString);
   protected
     function Connected: Boolean;
     function ContextString(cs: TXxmContextString): WideString;
-    procedure DispositionAttach(FileName: WideString);
+    procedure DispositionAttach(const FileName: WideString);
     function GetAutoEncoding: TXxmAutoEncoding;
     function GetContentType: WideString;
-    function GetCookie(Name: WideString): WideString;
+    function GetCookie(const Name: WideString): WideString;
     function GetPage: IXxmFragment;
     function GetParameter(Key: OleVariant): IXxmParameter;
     function GetParameterCount: Integer;
     function GetSessionID: WideString;
     function GetURL: WideString;
     function PostData: IStream;
-    procedure Redirect(RedirectURL: WideString; Relative: Boolean);
+    procedure Redirect(const RedirectURL: WideString; Relative: Boolean);
     procedure SetAutoEncoding(const Value: TXxmAutoEncoding);
     procedure SetContentType(const Value: WideString);
-    procedure SetCookie(Name,Value:WideString); overload;
-    procedure SetCookie(Name,Value:WideString; KeepSeconds:cardinal;
-      Comment,Domain,Path:WideString; Secure,HttpOnly:boolean); overload;
-    procedure SetStatus(Code: Integer; Text: WideString);
+    procedure SetCookie(const Name,Value:WideString); overload;
+    procedure SetCookie(const Name,Value:WideString; KeepSeconds:cardinal;
+      const Comment,Domain,Path:WideString; Secure,HttpOnly:boolean); overload;
+    procedure SetStatus(Code: Integer; const Text: WideString);
     function GetBufferSize: integer;
     procedure SetBufferSize(ABufferSize: integer);
     procedure Flush;
@@ -49,14 +49,14 @@ type
     procedure Send(Value: int64); overload;
     procedure Send(Value: cardinal); overload;
     procedure Send(const Values:array of OleVariant); overload;
-    procedure SendFile(FilePath: WideString);
+    procedure SendFile(const FilePath: WideString);
     procedure SendHTML(Data: OleVariant); overload;
     procedure SendHTML(const Values:array of OleVariant); overload;
     procedure SendStream(s: IStream);
-    procedure Include(Address: WideString); overload;
-    procedure Include(Address: WideString;
+    procedure Include(const Address: WideString); overload;
+    procedure Include(const Address: WideString;
       const Values: array of OleVariant); overload;
-    procedure Include(Address: WideString;
+    procedure Include(const Address: WideString;
       const Values: array of OleVariant;
       const Objects: array of TObject); overload;
   	procedure Reset;
@@ -103,7 +103,7 @@ begin
   Result:=Copy(FResult,1,FIndex);
 end;
 
-procedure TStringContext.WriteString(Value: WideString);
+procedure TStringContext.WriteString(const Value: WideString);
 const
   GrowStep=$10000;
 var
@@ -177,7 +177,7 @@ begin
   Result:=FContext.ContentType;
 end;
 
-function TStringContext.GetCookie(Name: WideString): WideString;
+function TStringContext.GetCookie(const Name: WideString): WideString;
 begin
   Result:=FContext.Cookie[Name];
 end;
@@ -212,12 +212,12 @@ begin
   Result:=FContext.PostData;
 end;
 
-procedure TStringContext.DispositionAttach(FileName: WideString);
+procedure TStringContext.DispositionAttach(const FileName: WideString);
 begin
   raise EXxmUnsupported.Create('StringContext doesn''t support DispositionAttach');
 end;
 
-procedure TStringContext.Redirect(RedirectURL: WideString;
+procedure TStringContext.Redirect(const RedirectURL: WideString;
   Relative: Boolean);
 begin
   raise EXxmUnsupported.Create('StringContext doesn''t support Redirect');
@@ -233,23 +233,23 @@ begin
   raise EXxmUnsupported.Create('StringContext doesn''t support ContentType');
 end;
 
-procedure TStringContext.SetStatus(Code: Integer; Text: WideString);
+procedure TStringContext.SetStatus(Code: Integer; const Text: WideString);
 begin
   raise EXxmUnsupported.Create('StringContext doesn''t support Status');
 end;
 
-procedure TStringContext.Include(Address: WideString);
+procedure TStringContext.Include(const Address: WideString);
 begin
   Include(Address, [], []);
 end;
 
-procedure TStringContext.Include(Address: WideString;
+procedure TStringContext.Include(const Address: WideString;
   const Values: array of OleVariant);
 begin
   Include(Address, Values, []);
 end;
 
-procedure TStringContext.Include(Address: WideString;
+procedure TStringContext.Include(const Address: WideString;
   const Values: array of OleVariant;
   const Objects: array of TObject);
 var
@@ -293,7 +293,7 @@ begin
   WriteString(VarToStr(Data));
 end;
 
-procedure TStringContext.SendFile(FilePath: WideString);
+procedure TStringContext.SendFile(const FilePath: WideString);
 begin
   raise EXxmUnsupported.Create('StringContext doesn''t support SendFile');
 end;
@@ -303,13 +303,13 @@ begin
   raise EXxmUnsupported.Create('StringContext doesn''t support SendStream');
 end;
 
-procedure TStringContext.SetCookie(Name, Value: WideString);
+procedure TStringContext.SetCookie(const Name, Value: WideString);
 begin
   FContext.SetCookie(Name, Value);
 end;
 
-procedure TStringContext.SetCookie(Name, Value: WideString;
-  KeepSeconds: cardinal; Comment, Domain, Path: WideString; Secure,
+procedure TStringContext.SetCookie(const Name, Value: WideString;
+  KeepSeconds: cardinal; const Comment, Domain, Path: WideString; Secure,
   HttpOnly: boolean);
 begin
   FContext.SetCookie(Name, Value, KeepSeconds, Comment, Domain, Path,

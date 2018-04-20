@@ -16,13 +16,13 @@ type
     ['{78786D00-0000-0002-C000-000000000002}']
     function GetProjectName: WideString;
     property Name: WideString read GetProjectName;
-    function LoadPage(Context: IXxmContext; Address: WideString): IXxmFragment;
+    function LoadPage(Context: IXxmContext; const Address: WideString): IXxmFragment;
     function LoadFragment(Context: IXxmContext;
-      Address, RelativeTo: WideString):IXxmFragment;
+      const Address, RelativeTo: WideString):IXxmFragment;
     procedure UnloadFragment(Fragment: IXxmFragment);
   end;
 
-  TXxmProjectLoadProc = function(AProjectName: WideString): IXxmProject; stdcall;
+  TXxmProjectLoadProc = function(const AProjectName: WideString): IXxmProject; stdcall;
 
   TXxmContextString = integer;//enumeration values see below
 
@@ -61,7 +61,7 @@ type
     function GetMimeType: WideString;
     property Size: integer read GetSize;
     property MimeType: WideString read GetMimeType;
-    procedure SaveToFile(FilePath: AnsiString);//TODO: WideString
+    procedure SaveToFile(const FilePath: AnsiString);//TODO: WideString
     function SaveToStream(Stream: IStream): integer;
   end;
 
@@ -79,27 +79,27 @@ type
 
     procedure Send(Data: OleVariant); overload;
     procedure SendHTML(Data: OleVariant); overload;
-    procedure SendFile(FilePath: WideString);
+    procedure SendFile(const FilePath: WideString);
     procedure SendStream(s:IStream);
-    procedure Include(Address: WideString); overload;
-    procedure Include(Address: WideString;
+    procedure Include(const Address: WideString); overload;
+    procedure Include(const Address: WideString;
       const Values: array of OleVariant); overload;
-    procedure Include(Address: WideString;
+    procedure Include(const Address: WideString;
       const Values: array of OleVariant;
       const Objects: array of TObject); overload;
-    procedure DispositionAttach(FileName: WideString);
+    procedure DispositionAttach(const FileName: WideString);
 
     function ContextString(cs: TXxmContextString): WideString;
     function PostData: IStream;
     function Connected: boolean;
 
     //(local:)progress
-    procedure SetStatus(Code: integer; Text: WideString);
-    procedure Redirect(RedirectURL: WideString; Relative: boolean);
-    function GetCookie(Name: WideString): WideString;
-    procedure SetCookie(Name, Value: WideString); overload;
-    procedure SetCookie(Name, Value: WideString; KeepSeconds: cardinal;
-      Comment, Domain, Path: WideString; Secure, HttpOnly: boolean); overload;
+    procedure SetStatus(Code: integer; const Text: WideString);
+    procedure Redirect(const RedirectURL: WideString; Relative: boolean);
+    function GetCookie(const Name: WideString): WideString;
+    procedure SetCookie(const Name, Value: WideString); overload;
+    procedure SetCookie(const Name, Value: WideString; KeepSeconds: cardinal;
+      const Comment, Domain, Path: WideString; Secure, HttpOnly: boolean); overload;
     //procedure SetCookie2();
 
     procedure Send(Value: integer); overload;
@@ -121,7 +121,7 @@ type
       read GetParameter; default;
     property ParameterCount:integer read GetParameterCount;
     property SessionID:WideString read GetSessionID;
-    property Cookie[Name: WideString]: WideString read GetCookie;
+    property Cookie[const Name: WideString]: WideString read GetCookie;
     property BufferSize: integer read GetBufferSize write SetBufferSize;
   end;
 
@@ -147,13 +147,13 @@ type
 
   IXxmProjectEvents = interface
     ['{78786D00-0000-0013-C000-000000000013}']
-    function HandleException(Context: IXxmContext; PageClass: WideString;
+    function HandleException(Context: IXxmContext; const PageClass: WideString;
       Ex: Exception): boolean;
   end;
 
   IXxmProjectEvents1 = interface
     ['{78786D00-0000-0014-C000-000000000014}']
-    function HandleException(Context: IXxmContext; PageClass,
+    function HandleException(Context: IXxmContext; const PageClass,
       ExceptionClass, ExceptionMessage: WideString): boolean;
     procedure ReleasingContexts;
     procedure ReleasingProject;
@@ -227,12 +227,12 @@ type
     FProjectName: WideString;
     function GetProjectName: WideString;
   public
-    constructor Create(AProjectName: WideString);
+    constructor Create(const AProjectName: WideString);
     destructor Destroy; override;
     function LoadPage(Context: IXxmContext;
-      Address: WideString): IXxmFragment; virtual; abstract;
+      const Address: WideString): IXxmFragment; virtual; abstract;
     function LoadFragment(Context: IXxmContext;
-      Address, RelativeTo: WideString): IXxmFragment; virtual; abstract;
+      const Address, RelativeTo: WideString): IXxmFragment; virtual; abstract;
     procedure UnloadFragment(Fragment: IXxmFragment); virtual; abstract;
     property Name:WideString read GetProjectName;
   end;
@@ -453,13 +453,13 @@ function XxmVersion: TXxmVersion;
 begin
   Result.Major:=1;
   Result.Minor:=2;
-  Result.Release:=4;
+  Result.Release:=5;
   Result.Build:=StrToInt(Copy(XxmRevision,7,Length(XxmRevision)-8));
 end;
 
 { TXxpProject }
 
-constructor TXxmProject.Create(AProjectName: WideString);
+constructor TXxmProject.Create(const AProjectName: WideString);
 begin
   inherited Create;
   FProjectName:=AProjectName;

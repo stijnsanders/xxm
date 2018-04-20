@@ -59,7 +59,7 @@ type
       const MimeType: AnsiString; Stream: TStream; Pos, Len: integer);
     property Size:integer read GetSize;
     property MimeType:WideString read GetMimeType;
-    procedure SaveToFile(FilePath: AnsiString);
+    procedure SaveToFile(const FilePath: AnsiString);
     function SaveToStream(Stream: IStream):integer;
   end;
 
@@ -397,7 +397,7 @@ begin
   Result:=FLen;
 end;
 
-procedure TXxmReqParPostFile.SaveToFile(FilePath: AnsiString);
+procedure TXxmReqParPostFile.SaveToFile(const FilePath: AnsiString);
 begin
   SaveToStream(TStreamAdapter.Create(TFileStream.Create(FilePath,fmCreate),soOwned));
 end;

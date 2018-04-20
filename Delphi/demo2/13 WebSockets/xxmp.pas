@@ -20,17 +20,17 @@ uses xxm;
 type
   TXxmdemo=class(TXxmProject, IXxmProjectEvents1)
   protected
-    function HandleException(Context: IXxmContext; PageClass,
+    function HandleException(Context: IXxmContext; const PageClass,
       ExceptionClass, ExceptionMessage: WideString): boolean;
     procedure ReleasingContexts;
     procedure ReleasingProject;
   public
-    function LoadPage(Context: IXxmContext; Address: WideString): IXxmFragment; override;
-    function LoadFragment(Context: IXxmContext; Address, RelativeTo: WideString): IXxmFragment; override;
+    function LoadPage(Context: IXxmContext; const Address: WideString): IXxmFragment; override;
+    function LoadFragment(Context: IXxmContext; const Address, RelativeTo: WideString): IXxmFragment; override;
     procedure UnloadFragment(Fragment: IXxmFragment); override;
   end;
 
-function XxmProjectLoad(AProjectName:WideString): IXxmProject; stdcall;
+function XxmProjectLoad(const AProjectName:WideString): IXxmProject; stdcall;
 
 var
   ClosingDown:boolean;
@@ -39,14 +39,14 @@ implementation
 
 uses xxmFReg;
 
-function XxmProjectLoad(AProjectName:WideString): IXxmProject;
+function XxmProjectLoad(const AProjectName:WideString): IXxmProject;
 begin
   Result:=TXxmdemo.Create(AProjectName);
 end;
 
 { TXxmdemo }
 
-function TXxmdemo.LoadPage(Context: IXxmContext; Address: WideString): IXxmFragment;
+function TXxmdemo.LoadPage(Context: IXxmContext; const Address: WideString): IXxmFragment;
 begin
   inherited;
   //TODO: link session to request
@@ -54,7 +54,7 @@ begin
   //TODO: if Context.ContextString(csVerb)='OPTION' then...
 end;
 
-function TXxmdemo.LoadFragment(Context: IXxmContext; Address, RelativeTo: WideString): IXxmFragment;
+function TXxmdemo.LoadFragment(Context: IXxmContext; const Address, RelativeTo: WideString): IXxmFragment;
 begin
   Result:=XxmFragmentRegistry.GetFragment(Self,Address,RelativeTo);
 end;
@@ -66,7 +66,7 @@ begin
   //Fragment.Free;
 end;
 
-function TXxmdemo.HandleException(Context: IXxmContext; PageClass,
+function TXxmdemo.HandleException(Context: IXxmContext; const PageClass,
   ExceptionClass, ExceptionMessage: WideString): boolean;
 begin
   Result:=false;

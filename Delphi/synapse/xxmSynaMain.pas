@@ -38,12 +38,12 @@ type
   protected
 
     function GetSessionID: WideString; override;
-    procedure DispositionAttach(FileName: WideString); override;
+    procedure DispositionAttach(const FileName: WideString); override;
     function SendData(const Buffer; Count: LongInt): LongInt;
     function ContextString(cs: TXxmContextString): WideString; override;
     function Connected: Boolean; override;
-    procedure Redirect(RedirectURL: WideString; Relative:boolean); override;
-    function GetCookie(Name: WideString): WideString; override;
+    procedure Redirect(const RedirectURL: WideString; Relative:boolean); override;
+    function GetCookie(const Name: WideString): WideString; override;
 
     function GetProjectEntry:TXxmProjectEntry; override;
     procedure SendHeader; override;
@@ -66,7 +66,7 @@ type
 
     {  }
 
-    function GetProjectPage(FragmentName: WideString):IXxmFragment; override;
+    function GetProjectPage(const FragmentName: WideString):IXxmFragment; override;
 
     procedure ProcessRequestHeaders; virtual;
     procedure PreProcessRequest; virtual;
@@ -512,7 +512,7 @@ begin
   Result:=XxmProjectCache.GetProject(FProjectName);
 end;
 
-function TXxmSynaContext.GetProjectPage(FragmentName: WideString):IXxmFragment;
+function TXxmSynaContext.GetProjectPage(const FragmentName: WideString):IXxmFragment;
 begin
   Result:=inherited GetProjectPage(FragmentName);
   PreProcessRequestPage;
@@ -547,13 +547,20 @@ begin
   end;
 end;
 
-procedure TXxmSynaContext.DispositionAttach(FileName: WideString);
+procedure TXxmSynaContext.DispositionAttach(const FileName: WideString);
+var
+  s:WideString;
+  i:integer;
 begin
-  FResHeaders.SetComplex('Content-disposition','attachment')
-    ['filename']:=FileName;
+  s:=FileName;
+  for i:=1 to Length(s) do
+    if AnsiChar(s[i]) in ['\','/',':','*','?','"','<','>','|'] then
+      s[i]:='_';
+  AddResponseHeader('Content-disposition','attachment; filename="'+s+'"');
+  FResHeaders.SetComplex('Content-disposition','attachment')['filename']:=s;
 end;
 
-function TXxmSynaContext.GetCookie(Name: WideString): WideString;
+function TXxmSynaContext.GetCookie(const Name: WideString): WideString;
 begin
   if not(FCookieParsed) then
    begin
@@ -580,7 +587,7 @@ begin
   Result:=FSessionID;
 end;
 
-procedure TXxmSynaContext.Redirect(RedirectURL: WideString;
+procedure TXxmSynaContext.Redirect(const RedirectURL: WideString;
   Relative: boolean);
 var
   NewURL,RedirBody:WideString;

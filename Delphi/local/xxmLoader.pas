@@ -27,16 +27,16 @@ type
     procedure SendHeader; override;
     function SendData(const Buffer; Count: LongInt): LongInt;
     function Connected: Boolean; override;
-    procedure Redirect(RedirectURL: WideString; Relative:boolean); override;
+    procedure Redirect(const RedirectURL: WideString; Relative:boolean); override;
     function ContextString(cs: TXxmContextString): WideString; override;
     function GetSessionID: WideString; override;
-    procedure DispositionAttach(FileName: WideString); override;
-    function GetCookie(Name: WideString): WideString; override;
-    procedure SetCookie(Name: WideString; Value: WideString); overload; override;
-    procedure SetCookie(Name,Value:WideString; KeepSeconds:cardinal;
-      Comment,Domain,Path:WideString; Secure,HttpOnly:boolean); overload; override;
+    procedure DispositionAttach(const FileName: WideString); override;
+    function GetCookie(const Name: WideString): WideString; override;
+    procedure SetCookie(const Name,Value:WideString); overload; override;
+    procedure SetCookie(const Name,Value:WideString; KeepSeconds:cardinal;
+      const Comment,Domain,Path:WideString; Secure,HttpOnly:boolean); overload; override;
     function GetProjectEntry:TXxmProjectEntry; override;
-    function GetProjectPage(FragmentName: WideString):IXxmFragment; override;
+    function GetProjectPage(const FragmentName: WideString):IXxmFragment; override;
     function GetRequestHeader(const Name: WideString): WideString; override;
     procedure AddResponseHeader(const Name, Value: WideString); override;
     procedure BeginRequest; override;
@@ -175,7 +175,7 @@ begin
   OleCheck(ProtSink.ReportProgress(BINDSTATUS_ENCODING, PWideChar(FProjectName)));//?
 end;
 
-function TXxmLocalContext.GetProjectPage(FragmentName: WideString): IXxmFragment;
+function TXxmLocalContext.GetProjectPage(const FragmentName: WideString): IXxmFragment;
 begin
   Result:=inherited GetProjectPage(FragmentName);
   OleCheck(ProtSink.ReportProgress(BINDSTATUS_SENDINGREQUEST, PWideChar(FFragmentName)));
@@ -328,12 +328,13 @@ begin
   end;
 end;
 
-procedure TXxmLocalContext.DispositionAttach(FileName: WideString);
+procedure TXxmLocalContext.DispositionAttach(const FileName: WideString);
 const
   BINDSTATUS_CONTENTDISPOSITIONATTACH=BINDSTATUS_LOADINGMIMEHANDLER+1;
   BINDSTATUS_CONTENTDISPOSITIONFILENAME = 49;
 var
-  fn:WideString;
+  fn,s:WideString;
+  i:integer;
 begin
   inherited;
   //CheckSendStart/FMimeTypeSent?
@@ -350,6 +351,12 @@ begin
     raise EXxmResponseHeaderAlreadySent.Create(SXxmResponseHeaderAlreadySent);
 
   ProtSink.ReportProgress(BINDSTATUS_CACHEFILENAMEAVAILABLE,PWideChar(fn));
+
+  s:=FileName;
+  for i:=1 to Length(s) do
+    if AnsiChar(s[i]) in ['\','/',':','*','?','"','<','>','|'] then
+      s[i]:='_';
+  AddResponseHeader('Content-disposition','attachment; filename="'+s+'"');
 
   ProtSink.ReportProgress(BINDSTATUS_CONTENTDISPOSITIONATTACH,'');
   ProtSink.ReportProgress(BINDSTATUS_CONTENTDISPOSITIONFILENAME,PWideChar(FileName));
@@ -576,7 +583,7 @@ begin
   Result:=not(Terminated);
 end;
 
-procedure TXxmLocalContext.Redirect(RedirectURL: WideString; Relative:boolean);
+procedure TXxmLocalContext.Redirect(const RedirectURL: WideString; Relative:boolean);
 var
   l:cardinal;
   s:WideString;
@@ -661,7 +668,7 @@ begin
   Result:=EncodeDate(dy,dm,dd)+EncodeTime(th,tm,ts,0);
 end;
 
-function TXxmLocalContext.GetCookie(Name: WideString): WideString;
+function TXxmLocalContext.GetCookie(const Name: WideString): WideString;
 var
   fn,s:AnsiString;
   f:TFileStream;
@@ -724,7 +731,7 @@ begin
   if b then Result:=(ProjectEntry as TXxmProjectCacheEntry).GetSessionCookie(Name);
 end;
 
-procedure TXxmLocalContext.SetCookie(Name, Value: WideString);
+procedure TXxmLocalContext.SetCookie(const Name, Value: WideString);
 var
   pce:TXxmProjectCacheEntry;
 begin
@@ -736,8 +743,8 @@ begin
   DeleteFile(pce.CookieFile(Name));
 end;
 
-procedure TXxmLocalContext.SetCookie(Name,Value:WideString;
-  KeepSeconds:cardinal; Comment,Domain,Path:WideString;
+procedure TXxmLocalContext.SetCookie(const Name,Value:WideString;
+  KeepSeconds:cardinal; const Comment,Domain,Path:WideString;
   Secure,HttpOnly:boolean);
 var
   fn,s:AnsiString;

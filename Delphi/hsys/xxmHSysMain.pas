@@ -52,16 +52,16 @@ type
     procedure SetResponseHeaderIndex(Idx:integer;const Value:WideString);
   protected
     function SendData(const Buffer; Count: LongInt): LongInt;
-    procedure DispositionAttach(FileName: WideString); override;
+    procedure DispositionAttach(const FileName: WideString); override;
     function ContextString(cs:TXxmContextString):WideString; override;
-    procedure Redirect(RedirectURL:WideString; Relative:boolean); override;
+    procedure Redirect(const RedirectURL:WideString; Relative:boolean); override;
     procedure BeginRequest; override;
     procedure HandleRequest; override;
     procedure EndRequest; override;
     function Connected:boolean; override;
     function GetSessionID:WideString; override;
     procedure SendHeader; override;
-    function GetCookie(Name:WideString):WideString; override;
+    function GetCookie(const Name:WideString):WideString; override;
 
     function GetProjectEntry:TXxmProjectEntry; override;
     function GetRequestHeader(const Name: WideString): WideString; override;
@@ -261,13 +261,19 @@ begin
   if x<>THTTP_HEADER_ID(-1) then Result:=FReq.Headers.KnownHeaders[x].pRawValue;
 end;
 
-procedure TXxmHSysContext.DispositionAttach(FileName: WideString);
+procedure TXxmHSysContext.DispositionAttach(const FileName: WideString);
+var
+  s:WideString;
+  i:integer;
 begin
-  AddResponseHeader('Content-disposition',
-    'attachment; filename="'+FileName+'"');
+  s:=FileName;
+  for i:=1 to Length(s) do
+    if AnsiChar(s[i]) in ['\','/',':','*','?','"','<','>','|'] then
+      s[i]:='_';
+  AddResponseHeader('Content-disposition','attachment; filename="'+s+'"');
 end;
 
-function TXxmHSysContext.GetCookie(Name: WideString): WideString;
+function TXxmHSysContext.GetCookie(const Name: WideString): WideString;
 begin
   if not(FCookieParsed) then
    begin
@@ -294,7 +300,7 @@ begin
   Result:=FSessionID;
 end;
 
-procedure TXxmHSysContext.Redirect(RedirectURL: WideString;
+procedure TXxmHSysContext.Redirect(const RedirectURL: WideString;
   Relative: boolean);
 var
   NewURL,RedirBody:WideString;

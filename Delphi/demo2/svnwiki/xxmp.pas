@@ -7,25 +7,25 @@ uses xxm;
 type
   TXxmsvnwiki=class(TXxmProject)
   public
-    function LoadPage(Context: IXxmContext; Address: WideString): IXxmFragment; override;
-    function LoadFragment(Context: IXxmContext; Address, RelativeTo: WideString): IXxmFragment; override;
+    function LoadPage(Context: IXxmContext; const Address: WideString): IXxmFragment; override;
+    function LoadFragment(Context: IXxmContext; const Address, RelativeTo: WideString): IXxmFragment; override;
     procedure UnloadFragment(Fragment: IXxmFragment); override;
   end;
 
-function XxmProjectLoad(AProjectName:WideString): IXxmProject; stdcall;
+function XxmProjectLoad(const AProjectName:WideString): IXxmProject; stdcall;
 
 implementation
 
 uses xxmFReg, wikiObj;
 
-function XxmProjectLoad(AProjectName:WideString): IXxmProject;
+function XxmProjectLoad(const AProjectName:WideString): IXxmProject;
 begin
   Result:=TXxmsvnwiki.Create(AProjectName);
 end;
 
 { TXxmsvnwiki }
 
-function TXxmsvnwiki.LoadPage(Context: IXxmContext; Address: WideString): IXxmFragment;
+function TXxmsvnwiki.LoadPage(Context: IXxmContext; const Address: WideString): IXxmFragment;
 begin
   inherited;
   //SetSession(Context);
@@ -42,7 +42,7 @@ begin
 	    Result:=XxmFragmentRegistry.GetFragment(Self,'Search.xxm','');
 end;
 
-function TXxmsvnwiki.LoadFragment(Context: IXxmContext; Address, RelativeTo: WideString): IXxmFragment;
+function TXxmsvnwiki.LoadFragment(Context: IXxmContext; const Address, RelativeTo: WideString): IXxmFragment;
 begin
   Result:=XxmFragmentRegistry.GetFragment(Self,Address,RelativeTo);
   //TODO: cache created instance, incease ref count

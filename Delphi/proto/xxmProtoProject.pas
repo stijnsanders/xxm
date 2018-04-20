@@ -11,12 +11,14 @@ uses xxm;
 type
   TXxmProject1=class(TXxmProject)
   public
-    function LoadPage(Context: IXxmContext; Address: WideString): IXxmFragment; override;
-    function LoadFragment(Context: IXxmContext; Address, RelativeTo: WideString): IXxmFragment; override;
+    function LoadPage(Context: IXxmContext;
+      const Address: WideString): IXxmFragment; override;
+    function LoadFragment(Context: IXxmContext;
+      const Address, RelativeTo: WideString): IXxmFragment; override;
     procedure UnloadFragment(Fragment: IXxmFragment); override;
   end;
 
-function XxmProjectLoad(AProjectName:WideString): IXxmProject; stdcall;
+function XxmProjectLoad(const AProjectName:WideString): IXxmProject; stdcall;
 
 exports
   XxmProjectLoad;
@@ -25,7 +27,7 @@ implementation
 
 uses xxmFReg, xxmSession;
 
-function XxmProjectLoad(AProjectName:WideString): IXxmProject;
+function XxmProjectLoad(const AProjectName:WideString): IXxmProject;
 begin
   Result:=TXxmProject1.Create(AProjectName);
 end;
@@ -33,13 +35,14 @@ end;
 { TXxmProject1 }
 
 function TXxmProject1.LoadPage(Context: IXxmContext;
-  Address: WideString): IXxmFragment;
+  const Address: WideString): IXxmFragment;
 begin
   if Session=nil then SetSession(Context);
   Result:=LoadFragment(Context,Address,'') as IXxmPage;
 end;
 
-function TXxmProject1.LoadFragment(Context: IXxmContext; Address, RelativeTo: WideString): IXxmFragment;
+function TXxmProject1.LoadFragment(Context: IXxmContext;
+  const Address, RelativeTo: WideString): IXxmFragment;
 begin
   Result:=XxmFragmentRegistry.GetFragment(Self,Address,RelativeTo);
   if Result<>nil then Result._AddRef;

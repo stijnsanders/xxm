@@ -63,27 +63,27 @@ type
     procedure Send(const Values:array of OleVariant); overload;
     procedure SendHTML(Data: OleVariant); overload;
     procedure SendHTML(const Values:array of OleVariant); overload;
-    procedure SendFile(FilePath: WideString);
+    procedure SendFile(const FilePath: WideString);
     function PostData: IStream;
-    procedure SetStatus(Code: Integer; Text: WideString); virtual;
-    procedure Include(Address: WideString); overload;
-    procedure Include(Address: WideString;
+    procedure SetStatus(Code: Integer; const Text: WideString); virtual;
+    procedure Include(const Address: WideString); overload;
+    procedure Include(const Address: WideString;
       const Values: array of OleVariant); overload;
-    procedure Include(Address: WideString;
+    procedure Include(const Address: WideString;
       const Values: array of OleVariant;
       const Objects: array of TObject); overload;
 
     //abstract methods, inheriters need to implement these
     function GetSessionID: WideString; virtual; abstract;
-    procedure DispositionAttach(FileName: WideString); virtual; abstract;
+    procedure DispositionAttach(const FileName: WideString); virtual; abstract;
     //function SendDirect(const Buffer; Count: LongInt): LongInt; virtual; abstract;
     function ContextString(cs: TXxmContextString): WideString; virtual; abstract;
     function Connected: Boolean; virtual; abstract;
-    procedure Redirect(RedirectURL: WideString; Relative:boolean); virtual; abstract;
-    function GetCookie(Name: WideString): WideString; virtual; abstract;
-    procedure SetCookie(Name,Value: WideString); overload; virtual;
-    procedure SetCookie(Name,Value:WideString; KeepSeconds:cardinal;
-      Comment,Domain,Path:WideString; Secure,HttpOnly:boolean); overload; virtual;
+    procedure Redirect(const RedirectURL: WideString; Relative:boolean); virtual; abstract;
+    function GetCookie(const Name: WideString): WideString; virtual; abstract;
+    procedure SetCookie(const Name,Value: WideString); overload; virtual;
+    procedure SetCookie(const Name,Value:WideString; KeepSeconds:cardinal;
+      const Comment,Domain,Path:WideString; Secure,HttpOnly:boolean); overload; virtual;
 
     procedure SendStr(const Data:WideString);
     procedure SendStream(s: IStream);
@@ -107,7 +107,7 @@ type
     function GetRequestHeader(const Name: WideString): WideString; virtual; abstract;
     procedure AddResponseHeader(const Name, Value: WideString); virtual; abstract;
 
-    function GetProjectPage(FragmentName: WideString):IXxmFragment; virtual;
+    function GetProjectPage(const FragmentName: WideString):IXxmFragment; virtual;
     procedure CheckHeaderNotSent;
     function CheckSendStart(NoOnNextFlush:boolean):boolean;
     function AuthValue(cs:TXxmContextString):AnsiString;
@@ -277,7 +277,7 @@ begin
   Result:=FURL;
 end;
 
-function TXxmGeneralContext.GetProjectPage(FragmentName: WideString): IXxmFragment;
+function TXxmGeneralContext.GetProjectPage(const FragmentName: WideString): IXxmFragment;
 begin
   Result:=FProjectEntry.Project.LoadPage(Self,FragmentName);
 end;
@@ -601,7 +601,7 @@ begin
   FAutoEncoding:=Value;
 end;
 
-procedure TXxmGeneralContext.SetStatus(Code: Integer; Text: WideString);
+procedure TXxmGeneralContext.SetStatus(Code: Integer; const Text: WideString);
 begin
   CheckHeaderNotSent;
   FStatusCode:=Code;
@@ -615,12 +615,12 @@ begin
   FStatusText:=Text;
 end;
 
-procedure TXxmGeneralContext.Include(Address: WideString);
+procedure TXxmGeneralContext.Include(const Address: WideString);
 begin
   Include(Address, [], []);
 end;
 
-procedure TXxmGeneralContext.Include(Address: WideString;
+procedure TXxmGeneralContext.Include(const Address: WideString;
   const Values: array of OleVariant);
 begin
   Include(Address, Values, []);
@@ -635,7 +635,7 @@ type
       ANext: TXxmCrossProjectIncludeCheck);
   end;
 
-procedure TXxmGeneralContext.Include(Address: WideString;
+procedure TXxmGeneralContext.Include(const Address: WideString;
   const Values: array of OleVariant; const Objects: array of TObject);
 var
   f,fb:IXxmFragment;
@@ -825,7 +825,7 @@ begin
   SendStr(HTMLEncode(VarToWideStrX(Data)));
 end;
 
-procedure TXxmGeneralContext.SendFile(FilePath: WideString);
+procedure TXxmGeneralContext.SendFile(const FilePath: WideString);
 begin
   inherited;
   //TODO: auto mimetype by extension?
@@ -1004,7 +1004,7 @@ begin
   end;
 end;
 
-procedure TXxmGeneralContext.SetCookie(Name, Value: WideString);
+procedure TXxmGeneralContext.SetCookie(const Name, Value: WideString);
 begin
   CheckHeaderNotSent;
   AddResponseHeader('Cache-Control','no-cache="set-cookie"');
@@ -1012,8 +1012,8 @@ begin
   AddResponseHeader('Set-Cookie',Name+'='+Value);
 end;
 
-procedure TXxmGeneralContext.SetCookie(Name, Value: WideString;
-  KeepSeconds: cardinal; Comment, Domain, Path: WideString; Secure,
+procedure TXxmGeneralContext.SetCookie(const Name, Value: WideString;
+  KeepSeconds: cardinal; const Comment, Domain, Path: WideString; Secure,
   HttpOnly: boolean);
 var
   x:WideString;

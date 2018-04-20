@@ -8,7 +8,7 @@ Extend the TXxmSession class definition with extra data to store with the sessio
 
 Add this unit to the uses clause of the project source file (xxmp.pas) and add this line to the LoadPage function of the project object:
 
-function TXxmSomeProject.LoadPage(Context: IXxmContext; Address: WideString): IXxmFragment;
+function TXxmSomeProject.LoadPage(Context: IXxmContext; const Address: WideString): IXxmFragment;
 begin
   inherited;
 >>>  SetSession(Context);  <<<

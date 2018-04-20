@@ -18,8 +18,8 @@ type
     ResModSince:string;
   public
     procedure AfterConstruction; override;
-    function LoadPage(Context: IXxmContext; Address: WideString): IXxmFragment; override;
-    function LoadFragment(Context: IXxmContext; Address, RelativeTo: WideString): IXxmFragment; override;
+    function LoadPage(Context: IXxmContext; const Address: WideString): IXxmFragment; override;
+    function LoadFragment(Context: IXxmContext; const Address, RelativeTo: WideString): IXxmFragment; override;
     procedure UnloadFragment(Fragment: IXxmFragment); override;
   end;
 
@@ -38,13 +38,13 @@ type
       const Values: array of OleVariant; const Objects: array of TObject); override;
   end;
 
-function XxmProjectLoad(AProjectName:WideString): IXxmProject; stdcall;
+function XxmProjectLoad(const AProjectName:WideString): IXxmProject; stdcall;
 
 implementation
 
 uses Windows, SysUtils, Classes, xxmFReg, xxmHeaders;
 
-function XxmProjectLoad(AProjectName:WideString): IXxmProject;
+function XxmProjectLoad(const AProjectName:WideString): IXxmProject;
 begin
   Result:=TXxmdemo.Create(AProjectName);
 end;
@@ -101,7 +101,7 @@ begin
   ResModSince:=RFC822DateGMT(Now);
 end;
 
-function TXxmdemo.LoadPage(Context: IXxmContext; Address: WideString): IXxmFragment;
+function TXxmdemo.LoadPage(Context: IXxmContext; const Address: WideString): IXxmFragment;
 var
   rn:AnsiString;
 begin
@@ -126,7 +126,7 @@ begin
     Result:=XxmFragmentRegistry.GetFragment(Self,Address,'');
 end;
 
-function TXxmdemo.LoadFragment(Context: IXxmContext; Address, RelativeTo: WideString): IXxmFragment;
+function TXxmdemo.LoadFragment(Context: IXxmContext; const Address, RelativeTo: WideString): IXxmFragment;
 begin
   Result:=XxmFragmentRegistry.GetFragment(Self,Address,RelativeTo);
 end;

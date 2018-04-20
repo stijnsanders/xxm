@@ -13,6 +13,13 @@ v1.2.5.444
     later, currently undetermined, version.
 - fixed issue with custom parserValues spilling into next file processed
 - xxmIsapi*: Redirect: set 'Cache-control' to 'nocache' unless it was set already
+- IXxm* interfaces: all string arguments now with 'const'
+	### ATTENTION ### ATTENTION ### ATTENTION ###
+	This may cause errors on generated xxmp.pas:
+		xxmp.pas() Error: Declaration of 'LoadPage' differs from previous declaration
+		xxmp.pas() Error: Declaration of 'LoadFragment' differs from previous declaration
+	Please update both methods by adding 'const' to the argument.
+- DispositionAttach: replace unacceptable characters (\/:*?"<>|) with '_'
 
 v1.2.4.430
 - xxmISAPI: fixed issue with open connections not accepting new requests

@@ -2,11 +2,11 @@
 
 jsonDoc.pas
 
-Copyright 2015-2017 Stijn Sanders
+Copyright 2015-2018 Stijn Sanders
 Made available under terms described in file "LICENSE"
 https://github.com/stijnsanders/jsonDoc
 
-v1.1.1
+v1.1.2
 
 }
 unit jsonDoc;
@@ -705,12 +705,38 @@ var
           'n':Result[ii]:=#10;
           'f':Result[ii]:=#12;
           'r':Result[ii]:=#13;
+          'x':
+           begin
+            inc(di);
+            if di=i2 then raise EJSONDecodeException.Create(
+              'JSON Incomplete espace sequence'+ExVicinity(di));
+            v:=word(jsonData[di]);
+            case v of
+              $30..$39:w:=(v and $F) shl 4;
+              $41..$5A,$61..$7A:w:=((v and $1F)+9) shl 4;
+              else raise EJSONDecodeException.Create(
+                'JSON Invalid espace sequence'+ExVicinity(di));
+            end;
+            inc(di);
+            if di=i2 then raise EJSONDecodeException.Create(
+              'JSON Incomplete espace sequence'+ExVicinity(di));
+            v:=word(jsonData[di]);
+            case v of
+              $30..$39:w:=w or (v and $F);
+              $41..$5A,$61..$7A:w:=w or ((v and $1F)+9);
+              else raise EJSONDecodeException.Create(
+                'JSON Invalid espace sequence'+ExVicinity(di));
+            end;
+            Result[ii]:=WideChar(w);
+           end;
           'u':
            begin
             w:=0;
             for u:=0 to 3 do
              begin
               inc(di);
+              if di=i2 then raise EJSONDecodeException.Create(
+                'JSON Incomplete espace sequence'+ExVicinity(di));
               v:=word(jsonData[di]);
               case v of
                 $30..$39:w:=(w shl 4) or (v and $F);
@@ -1173,7 +1199,7 @@ begin
    begin
     w:=word(xx[i]);
     case w of
-      0..31,word('"'),word('\'),word('/'):
+      0..31,word('"'),word('\'):
        begin
         if j+3>k then
          begin
@@ -1189,7 +1215,7 @@ begin
           10:Result[j]:='n';
           12:Result[j]:='f';
           13:Result[j]:='r';
-          word('"'),word('\'),word('/'):Result[j]:=xx[i];
+          word('"'),word('\'):Result[j]:=xx[i];
           else
            begin
             Result[j]:='u';
