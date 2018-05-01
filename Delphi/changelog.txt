@@ -19,9 +19,8 @@ v1.2.5.444
 	Please update both methods by adding 'const' to the argument.
 - xxmIsapi*: Redirect: set 'Cache-control' to 'nocache' unless it was set already
 - xxmHttpAU: added manifest to avoid default UAC elevation request
-- xxmHttp: Transfer-Encoding chunked (set Context.BufferSize to something >0 !!!)
-- xxmHttp: NTLM authentication (using SSPI, add "ntlm":true to the project in xxm.json)
-- xxmHSys: NTLM authentication (HTTPAPI 2.0 only, add "ntlm":true to the project in xxm.json)
+- xxmHttp,xxmHSys: Transfer-Encoding chunked (set Context.BufferSize to something >0 !!!)
+- xxmHttp,xxmHSys: NTLM authentication (using SSPI, add "ntlm":true to the project in xxm.json)
 - DispositionAttach: replace unacceptable characters (\/:*?"<>|) with '_'
 - SendFile, SendStream before header sent, will by default have ContentType
   application/octet-stream instead of text/html, unless already set before

@@ -151,15 +151,17 @@ end;
 procedure TXxmHSysContext.EndRequest;
 var
   f:cardinal;
-  s:AnsiString;
 begin
+  inherited;
   //assert HttpSendHttpResponse done
-  s:=FRes.Headers.KnownHeaders[HttpHeaderContentLength].pRawValue;
-  if s='' then f:=HTTP_SEND_RESPONSE_FLAG_DISCONNECT else f:=0;
+  if (FRes.Headers.KnownHeaders[HttpHeaderContentLength].RawValueLength=0) and
+    (FRes.Headers.KnownHeaders[HttpHeaderTransferEncoding].pRawValue<>'chunked') then
+    f:=HTTP_SEND_RESPONSE_FLAG_DISCONNECT
+  else
+    f:=0;
   //HttpCheck(
   HttpSendResponseEntityBody(FHSysQueue,FReq.RequestId,
     f,0,nil,cardinal(nil^),nil,0,nil,nil);
-  inherited;
 end;
 
 procedure TXxmHSysContext.HandleRequest;
@@ -170,6 +172,8 @@ begin
   try
     FURL:=FReq.CookedUrl.pFullUrl;
     FURI:=FReq.pRawUrl;
+    AllowChunked:=//FReq.Version=HTTP_VERSION_1_1;
+      (FReq.Version.MajorVersion=1) and (FReq.Version.MinorVersion=1);
 
     //AddResponseHeader('X-Powered-By',SelfVersion);
 

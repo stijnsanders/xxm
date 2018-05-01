@@ -25,7 +25,7 @@ type
 
 var
   HttpListenPort:Word;
-  HttpBindIPv4,HttpBindIpV6:string;
+  HttpBindIPv4,HttpBindIPv6:string;
     
 procedure XxmRunServer;
 
@@ -172,7 +172,7 @@ initialization
   //defaults
   HttpListenPort:=80;
   HttpBindIPv4:='';
-  HttpBindIpV6:='';
+  HttpBindIPv6:='';
 
 
 end.
