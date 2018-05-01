@@ -1,5 +1,4 @@
 v1.2.5.444
-- xxmHttpAU: added manifest to avoid default UAC elevation request
 - project registry "xxm.json" (auto-conversion of "xxm.xml")
 - project file "Web.xxmp" JSON (auto-conversion from XML)
     ### ATTENTION ### ATTENTION ### ATTENTION ###
@@ -12,14 +11,21 @@ v1.2.5.444
     This procedure (and all code using XML) is scheduled to be removed at a
     later, currently undetermined, version.
 - fixed issue with custom parserValues spilling into next file processed
-- xxmIsapi*: Redirect: set 'Cache-control' to 'nocache' unless it was set already
 - IXxm* interfaces: all string arguments now with 'const'
 	### ATTENTION ### ATTENTION ### ATTENTION ###
 	This may cause errors on generated xxmp.pas:
 		xxmp.pas() Error: Declaration of 'LoadPage' differs from previous declaration
 		xxmp.pas() Error: Declaration of 'LoadFragment' differs from previous declaration
 	Please update both methods by adding 'const' to the argument.
+- xxmIsapi*: Redirect: set 'Cache-control' to 'nocache' unless it was set already
+- xxmHttpAU: added manifest to avoid default UAC elevation request
+- xxmHttp: Transfer-Encoding chunked (set Context.BufferSize to something >0 !!!)
+- xxmHttp: NTLM authentication (using SSPI, add "ntlm":true to the project in xxm.json)
+- xxmHSys: NTLM authentication (HTTPAPI 2.0 only, add "ntlm":true to the project in xxm.json)
 - DispositionAttach: replace unacceptable characters (\/:*?"<>|) with '_'
+- SendFile, SendStream before header sent, will by default have ContentType
+  application/octet-stream instead of text/html, unless already set before
+  (with Context.ContentType!)
 
 v1.2.4.430
 - xxmISAPI: fixed issue with open connections not accepting new requests

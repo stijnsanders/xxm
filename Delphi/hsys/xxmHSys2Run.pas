@@ -110,6 +110,8 @@ begin
   ContextPool:=TXxmContextPool.Create(TXxmHSysContext);
   PageLoaderPool:=TXxmPageLoaderPool.Create(Threads);
 
+  //HTTP_AUTH_ENABLE_NTLM here? tried but a drag to get csAuthUser
+
   hrq.Flags:=HTTP_PROPERTY_FLAG_PRESENT;
   HttpCheck(HttpCreateRequestQueue(HTTPAPI_VERSION_2_0,nil,nil,0,hrq.RequestQueueHandle));
   HttpCheck(HttpSetUrlGroupProperty(hrg,HttpServerBindingProperty,@hrq,SizeOf(hrq)));

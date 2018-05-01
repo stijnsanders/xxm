@@ -45,11 +45,12 @@ type
     FReqHeaders:TRequestHeaders;
     procedure SetResponseHeader(id:THTTP_HEADER_ID;const Value:AnsiString);
     procedure CacheString(const x: AnsiString; var xLen: USHORT; var xPtr: PCSTR);
-    function GetResponseHeader(const Name:WideString):WideString;
     function GetResponseHeaderCount:integer;
     function GetResponseHeaderName(Idx:integer):WideString;
     function GetResponseHeaderIndex(Idx:integer):WideString;
     procedure SetResponseHeaderIndex(Idx:integer;const Value:WideString);
+    procedure ResponseStr(const Body,RedirMsg:WideString);
+    procedure AuthNTLM;
   protected
     function SendData(const Buffer; Count: LongInt): LongInt;
     procedure DispositionAttach(const FileName: WideString); override;
@@ -65,11 +66,16 @@ type
 
     function GetProjectEntry:TXxmProjectEntry; override;
     function GetRequestHeader(const Name: WideString): WideString; override;
+    function GetResponseHeader(const Name:WideString):WideString; override;
     procedure AddResponseHeader(const Name, Value: WideString); override;
 
     { IXxmHttpHeaders }
     function GetRequestHeaders:IxxmDictionaryEx;
     function GetResponseHeaders:IxxmDictionaryEx;
+
+    {  }
+    function GetProjectPage(const FragmentName: WideString):IXxmFragment; override;
+
   public
     procedure AfterConstruction; override;
     destructor Destroy; override;
@@ -85,7 +91,7 @@ type
 implementation
 
 uses Windows, Variants, ComObj, xxmCommonUtils, xxmHSysHeaders, WinSock,
-  Math;
+  Math, xxmSSPI;
 
 resourcestring
   SXxmMaximumHeaderLines='Maximum header lines exceeded.';
@@ -143,12 +149,16 @@ begin
 end;
 
 procedure TXxmHSysContext.EndRequest;
+var
+  f:cardinal;
+  s:AnsiString;
 begin
   //assert HttpSendHttpResponse done
+  s:=FRes.Headers.KnownHeaders[HttpHeaderContentLength].pRawValue;
+  if s='' then f:=HTTP_SEND_RESPONSE_FLAG_DISCONNECT else f:=0;
   //HttpCheck(
   HttpSendResponseEntityBody(FHSysQueue,FReq.RequestId,
-    HTTP_SEND_RESPONSE_FLAG_DISCONNECT,//if keep-alive?
-    0,nil,cardinal(nil^),nil,0,nil,nil);
+    f,0,nil,cardinal(nil^),nil,0,nil,nil);
   inherited;
 end;
 
@@ -193,6 +203,85 @@ begin
         SendError('error',e.ClassName,e.Message);
        end;
   end;
+end;
+
+procedure TXxmHsysContext.AuthNTLM;
+var
+  s,t:AnsiString;
+  c:PCredHandle;
+  p,p1:PCtxtHandle;
+  r,f:cardinal;
+  d1,d2:TSecBufferDesc;
+  d:array of TSecBuffer;
+  n:TSecPkgContextNames;
+begin
+  s:=AuthParse('NTLM');
+  if s='' then
+   begin
+    SetStatus(401,'Unauthorized');
+    SetResponseHeader(HttpHeaderConnection,'keep-alive');
+    SetResponseHeader(HttpHeaderWwwAuthenticate,'NTLM');
+    ResponseStr('<h1>Authorization required</h1>','401');
+   end
+  else
+   begin
+    SSPICache.GetContext(FReq.ConnectionId,c,p);
+
+    SetLength(d,3);
+    SetLength(t,$10000);
+
+    d1.ulVersion:=SECBUFFER_VERSION;
+    d1.cBuffers:=2;
+    d1.pBuffers:=@d[0];
+
+    d[0].cbBuffer:=Length(s);
+    d[0].BufferType:=SECBUFFER_TOKEN;
+    d[0].pvBuffer:=@s[1];
+
+    d[1].cbBuffer:=0;
+    d[1].BufferType:=SECBUFFER_EMPTY;
+    d[1].pvBuffer:=nil;
+
+    d2.ulVersion:=SECBUFFER_VERSION;
+    d2.cBuffers:=1;
+    d2.pBuffers:=@d[2];
+
+    d[2].cbBuffer:=$10000;;
+    d[2].BufferType:=SECBUFFER_TOKEN;
+    d[2].pvBuffer:=@t[1];
+
+    if (p.dwLower=nil) and (p.dwUpper=nil) then p1:=nil else p1:=p;
+    r:=AcceptSecurityContext(c,p1,@d1,
+      ASC_REQ_REPLAY_DETECT or ASC_REQ_SEQUENCE_DETECT,SECURITY_NATIVE_DREP,
+      p,@d2,@f,nil);
+
+    if r=SEC_E_OK then
+     begin
+      r:=QueryContextAttributes(p,SECPKG_ATTR_NAMES,@n);
+      if r=0 then
+        AuthSet(n.sUserName,'')
+      else
+        AuthSet('???'+SysErrorMessage(r),'');//raise?
+      SSPICache.Clear(FReq.ConnectionId);
+     end
+    else
+    if r=SEC_I_CONTINUE_NEEDED then
+     begin
+      SetLength(t,d[2].cbBuffer);
+      SetStatus(401,'Unauthorized');
+      AddResponseHeader('Connection','keep-alive');
+      AddResponseHeader('WWW-Authenticate','NTLM '+Base64Encode(t));
+      ResponseStr('<h1>Authorization required</h1>','401.1');
+     end
+    else
+      raise Exception.Create(SysErrorMessage(r));
+   end;
+end;
+
+function TXxmHSysContext.GetProjectPage(const FragmentName: WideString):IXxmFragment;
+begin
+  if (ProjectEntry as TXxmProjectCacheEntry).NTLM then AuthNTLM;
+  Result:=inherited GetProjectPage(FragmentName);
 end;
 
 function TXxmHSysContext.GetProjectEntry: TXxmProjectEntry;
@@ -303,7 +392,7 @@ end;
 procedure TXxmHSysContext.Redirect(const RedirectURL: WideString;
   Relative: boolean);
 var
-  NewURL,RedirBody:WideString;
+  NewURL:WideString;
 begin
   inherited;
   SetStatus(301,'Moved Permanently');//does CheckHeaderNotSent;
@@ -311,20 +400,9 @@ begin
   NewURL:=RedirectURL;
   if Relative and (NewURL<>'') and (NewURL[1]='/') then
     NewURL:=FRedirectPrefix+NewURL;
-  RedirBody:='<a href="'+HTMLEncode(NewURL)+'">'
-    +HTMLEncode(NewURL)+'</a>'#13#10;
   SetResponseHeader(HttpHeaderLocation,NewURL);
-  case FAutoEncoding of
-    aeUtf8:SetResponseHeader(HttpHeaderContentLength,
-      IntToStr(Length(UTF8Encode(RedirBody))+3));
-    aeUtf16:SetResponseHeader(HttpHeaderContentLength,
-      IntToStr(Length(RedirBody)*2+2));
-    aeIso8859:SetResponseHeader(HttpHeaderContentLength,
-      IntToStr(Length(AnsiString(RedirBody))));
-  end;
-  SendStr(RedirBody);
-  if BufferSize<>0 then Flush;  
-  raise EXxmPageRedirected.Create(RedirectURL);
+  ResponseStr('<h1>Object moved</h1><a href="'+
+    HTMLEncode(NewURL)+'">'+HTMLEncode(NewURL)+'</a>'#13#10,RedirectURL);
 end;
 
 function TXxmHSysContext.SendData(const Buffer; Count: LongInt): LongInt;
@@ -342,6 +420,21 @@ begin
       HTTP_SEND_RESPONSE_FLAG_MORE_DATA,
       1,@c,cardinal(Result),nil,0,nil,nil));
    end;
+end;
+
+procedure TXxmHsysContext.ResponseStr(const Body,RedirMsg:WideString);
+begin
+  case FAutoEncoding of
+    aeUtf8:SetResponseHeader(HttpHeaderContentLength,
+      IntToStr(Length(UTF8Encode(Body))+3));
+    aeUtf16:SetResponseHeader(HttpHeaderContentLength,
+      IntToStr(Length(Body)*2+2));
+    aeIso8859:SetResponseHeader(HttpHeaderContentLength,
+      IntToStr(Length(AnsiString(Body))));
+  end;
+  SendStr(Body);
+  if BufferSize<>0 then Flush;
+  raise EXxmPageRedirected.Create(RedirMsg);
 end;
 
 procedure TXxmHSysContext.SendHeader;

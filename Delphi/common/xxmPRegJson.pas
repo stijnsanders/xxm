@@ -7,15 +7,15 @@ uses Windows, SysUtils, xxm, xxmPReg, jsonDoc;
 type
   TXxmProjectCacheEntry=class(TXxmProjectEntry)
   private
-    FAllowInclude:boolean;
+    FAllowInclude,FNTLM:boolean;
   protected
     procedure SetSignature(const Value: AnsiString); override;
     function GetExtensionMimeType(const x: AnsiString): AnsiString; override;
     function GetAllowInclude: boolean; override;
   public
-    constructor Create(const Name, FilePath: WideString;
-      LoadCopy, AllowInclude: boolean);
+    constructor Create(const Name, FilePath: WideString; LoadCopy: boolean);
     destructor Destroy; override;
+    property NTLM:boolean read FNTLM;
   end;
 
   TXxmProjectCacheJson=class(TXxmProjectCache)
@@ -77,11 +77,12 @@ function PathCombine(lpszDest,lpszDir,lpszFile:PWideChar):PWideChar;
 { TXxmProjectCacheEntry }
 
 constructor TXxmProjectCacheEntry.Create(const Name, FilePath: WideString;
-  LoadCopy, AllowInclude: boolean);
+  LoadCopy: boolean);
 begin
   inherited Create(Name);
-  FAllowInclude:=AllowInclude;
   SetFilePath(FilePath,LoadCopy);
+  FAllowInclude:=false;//default
+  FNTLM:=false;//default
 end;
 
 destructor TXxmProjectCacheEntry.Destroy;
@@ -344,22 +345,14 @@ begin
                 p:=FRegFilePath+p;
               if FProjects[i].Entry=nil then
                 FProjects[i].Entry:=TXxmProjectCacheEntry.Create(e.Key,p,
-                  VarToBool(d1['loadCopy']),
-                  VarToBool(d1['allowInclude']))
+                  VarToBool(d1['loadCopy']))
               else
-               begin
                 if p<>FProjects[i].Entry.FilePath then
-                 begin
-                  FProjects[i].Entry.SetFilePath(p,
-                    VarToBool(d1['loadCopy']));
-                  FProjects[i].Entry.FAllowInclude:=
-                    VarToBool(d1['allowInclude']);
-                 end;
-               end;
-              FProjects[i].Entry.FSignature:=
-                VarToStr(d1['signature']);
-              FProjects[i].Entry.FBufferSize:=
-                BSize(VarToStr(d1['bufferSize']));
+                  FProjects[i].Entry.SetFilePath(p,VarToBool(d1['loadCopy']));
+              FProjects[i].Entry.FAllowInclude:=VarToBool(d1['allowInclude']);
+              FProjects[i].Entry.FSignature:=VarToStr(d1['signature']);
+              FProjects[i].Entry.FBufferSize:=BSize(VarToStr(d1['bufferSize']));
+              FProjects[i].Entry.FNTLM:=VarToBool(d1['ntlm']);
              end
             else
               FreeAndNil(FProjects[i].Entry);

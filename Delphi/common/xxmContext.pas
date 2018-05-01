@@ -36,7 +36,7 @@ type
     FStatusText, FSingleFileSent: WideString;
     FParams: TXxmReqPars;
     FIncludeCheck: pointer;//see Include
-    FAuthParsed: boolean;
+    FChunked, FAuthParsed: boolean;
     FAuthUserName, FAuthPassword: AnsiString;
   protected
     FURL, FContentType, FProjectName, FPageClass, FFragmentName: WideString;
@@ -45,7 +45,7 @@ type
     FPostData: TStream;
     FPostTempFile: AnsiString;
     SendBuf, SendDirect: TXxmSendBufHandler;
-    SettingCookie: boolean;
+    AllowChunked, ContentTypeSet, SettingCookie: boolean;
 
     { IXxmContext }
     function GetURL: WideString;
@@ -87,6 +87,7 @@ type
 
     procedure SendStr(const Data:WideString);
     procedure SendStream(s: IStream);
+    function SendChunked(const Buf; Count: LongInt): LongInt;
     function GetBufferSize: integer;
     procedure SetBufferSize(ABufferSize: integer);
     procedure Flush;
@@ -105,12 +106,15 @@ type
     function GetProjectEntry:TXxmProjectEntry; virtual; abstract;
     procedure SendHeader; virtual;
     function GetRequestHeader(const Name: WideString): WideString; virtual; abstract;
+    function GetResponseHeader(const Name: WideString): WideString; virtual; abstract;
     procedure AddResponseHeader(const Name, Value: WideString); virtual; abstract;
 
     function GetProjectPage(const FragmentName: WideString):IXxmFragment; virtual;
     procedure CheckHeaderNotSent;
     function CheckSendStart(NoOnNextFlush:boolean):boolean;
+    function AuthParse(const Scheme:string):AnsiString;
     function AuthValue(cs:TXxmContextString):AnsiString;
+    procedure AuthSet(const Name,Pwd:AnsiString);
     procedure IncludeX(const Fragment:WideString; Value:OleVariant);
 
     procedure SendError(const res,val1,val2:string);
@@ -137,6 +141,7 @@ type
     property StatusCode:integer read FStatusCode;
     property StatusText:WideString read FStatusText;
     property SingleFileSent:WideString read FSingleFileSent;
+    property Chunked: boolean read FChunked;
   end;
 
   TXxmContextClass=class of TXxmGeneralContext;
@@ -210,6 +215,7 @@ begin
   FParams:=nil;//see GetParameter
   FPostData:=nil;
   FPostTempFile:='';
+  FChunked:=false;
   FAuthParsed:=false;
   FAuthUserName:='';
   FAuthPassword:='';
@@ -221,6 +227,8 @@ begin
   FIncludeCheck:=nil;
   FStatusCode:=200;//default
   FStatusText:='OK';//default
+  AllowChunked:=false;
+  ContentTypeSet:=false;
   SettingCookie:=false;
   FProjectName:='';//parsed from URL later
   FFragmentName:='';//parsed from URL later
@@ -230,7 +238,15 @@ begin
 end;
 
 procedure TXxmGeneralContext.EndRequest;
+const
+  Chunk0:array[0..4] of AnsiChar='0'#13#10#13#10;
 begin
+  try
+    if FChunked and Connected then
+      SendDirect(Chunk0[0],5);
+  except
+    //silent
+  end;
   FBuilding:=nil;
   if FPage<>nil then
    begin
@@ -305,6 +321,7 @@ begin
   if FContentBuffer<>nil then FContentBuffer.Position:=0;
 
   LoadPage;
+
   if FPage=nil then
     SingleFile
   else
@@ -328,7 +345,7 @@ begin
         if FBufferSize=0 then i:=0 else i:=FContentBuffer.Position;
         if (i=0) and (FStatusCode=200) then
           ForceStatus(204,'No Content');
-        if FStatusCode<>304 then
+        if (FStatusCode<>304) and not(FChunked) then //if State<>ctHeaderOnly then
           AddResponseHeader('Content-Length',IntToStr(i));
         if i=0 then
          begin
@@ -343,11 +360,17 @@ end;
 
 procedure TXxmGeneralContext.SendHeader;
 begin
-  //if State=ctResponding then raise?
-  if State=ctHeaderOnly then
-    raise EXxmPageRedirected.Create(ContextString(csVerb))
-  else
-    State:=ctResponding;
+  case State of
+    ctHeaderNotSent,ctHeaderOnNextFlush:
+     begin
+      //inheritants perform actual sending of response header data
+      State:=ctResponding;
+     end;
+    ctHeaderOnly:
+      raise EXxmPageRedirected.Create(ContextString(csVerb))
+    //ctResponding:raise 'Header already sent'?
+    //else raise?
+  end;
 end;
 
 procedure TXxmGeneralContext.SingleFile;
@@ -382,6 +405,7 @@ begin
        end;
       FAutoEncoding:=aeContentDefined;
       FContentType:=x;
+      ContentTypeSet:=true;
       //TODO: Cache-Control max-age (and others?), other 'If-'s?
       if (y<>'') and (GetRequestHeader('If-Modified-Since')=y) then
        begin
@@ -443,6 +467,13 @@ begin
     else
       if State=ctHeaderNotSent then
        begin
+        if (FBufferSize<>0) and AllowChunked and
+          (GetResponseHeader('Content-Length')='') and
+          (GetResponseHeader('Transfer-Encoding')='') then
+         begin
+          FChunked:=true;
+          AddResponseHeader('Transfer-Encoding','chunked');
+         end;
         State:=ctHeaderOnNextFlush;
         Result:=true;
        end
@@ -571,6 +602,7 @@ begin
        begin
         FContentType:='text/html';
         FAutoEncoding:=aeContentDefined;//?
+        ContentTypeSet:=true;
        end;
      end;
     SendStr(WideString(tt));
@@ -588,6 +620,8 @@ begin
   CheckHeaderNotSent;
   FContentType:=Value;
   FAutoEncoding:=aeContentDefined;//parse from value? (charset)
+  ContentTypeSet:=true;
+  //AddResponseHeader('Content-Type'): see SendHeader
 end;
 
 function TXxmGeneralContext.GetAutoEncoding: TXxmAutoEncoding;
@@ -775,19 +809,81 @@ end;
 procedure TXxmGeneralContext.SendStream(s: IStream);
 const
   dSize=$10000;
+  hex:array[0..15] of AnsiChar='0123456789ABCDEF';
 var
   d:array[0..dSize-1] of byte;
-  l:integer;
+  i,k,l:integer;
 begin
+  if (State=ctHeaderNotSent) and not(ContentTypeSet) then
+   begin
+    FContentType:='application/octet-stream';
+    FAutoEncoding:=aeContentDefined;
+    ContentTypeSet:=true;
+   end;
   CheckSendStart(true);
   Flush;
-  repeat
-    l:=dSize;
-    OleCheck(s.Read(@d[0],dSize,@l));
-    if l<>0 then
-      if SendDirect(d[0],l)<>l then
-        raise EXxmTransferError.Create(SysErrorMessage(GetLastError));
-  until l=0;
+  if FChunked then
+    repeat
+      l:=dSize-12;
+      OleCheck(s.Read(@d[10],l,@l));
+      if l<>0 then
+       begin
+        d[8]:=13;//CR
+        d[9]:=10;//LF
+        i:=8;
+        k:=l;
+        repeat
+          dec(i);
+          d[i]:=byte(hex[k and $F]);
+          k:=k shr 4;
+        until k=0;
+        d[l+10]:=13;//CR
+        d[l+11]:=10;//LF
+        l:=l+12-i;
+        if SendDirect(d[i],l)<>l then
+          raise EXxmTransferError.Create(SysErrorMessage(GetLastError));
+       end;
+    until l=0
+  else
+    repeat
+      l:=dSize;
+      OleCheck(s.Read(@d[0],dSize,@l));
+      if l<>0 then
+        if SendDirect(d[0],l)<>l then
+          raise EXxmTransferError.Create(SysErrorMessage(GetLastError));
+    until l=0;
+end;
+
+function TXxmGeneralContext.SendChunked(const Buf; Count:LongInt):LongInt;
+const
+  hex:array[0..15] of AnsiChar='0123456789ABCDEF';
+var
+  d:array of byte;
+  i,k,l:integer;
+begin
+  //assert FChunked
+  //assert BufferSize=0 (unless called by Flush)
+  //assert header sent
+  if Count<>0 then
+   begin
+    SetLength(d,Count+12);
+    d[8]:=13;//CR
+    d[9]:=10;//LF
+    i:=8;
+    k:=Count;
+    repeat
+      dec(i);
+      d[i]:=byte(hex[k and $F]);
+      k:=k shr 4;
+    until k=0;
+    Move(Buf,d[10],Count);
+    d[Count+10]:=13;//CR
+    d[Count+11]:=10;//LF
+    l:=Count+12-i;
+    if SendDirect(d[i],l)<>l then
+      raise EXxmTransferError.Create(SysErrorMessage(GetLastError));
+   end;
+  Result:=Count;
 end;
 
 function VarToWideStrX(const V: Variant): WideString;
@@ -952,7 +1048,12 @@ begin
     raise EXxmBufferSizeInvalid.Create(SXxmBufferSizeInvalid);
   if FBufferSize>ABufferSize then Flush;
   FBufferSize:=ABufferSize;
-  if FBufferSize=0 then SendBuf:=SendDirect else
+  if FBufferSize=0 then
+    if FChunked then
+      SendBuf:=SendChunked
+    else
+      SendBuf:=SendDirect
+  else
    begin
     BufferStore.GetBuffer(FContentBuffer);
     if FContentBuffer.Position>ABufferSize then Flush;
@@ -976,8 +1077,11 @@ begin
     i:=FContentBuffer.Position;
     if i<>0 then
      begin
-      if SendDirect(FContentBuffer.Memory^,i)<>i then
-        raise EXxmTransferError.Create(SysErrorMessage(GetLastError));
+      if FChunked then
+        SendChunked(FContentBuffer.Memory^,i)
+      else
+        if SendDirect(FContentBuffer.Memory^,i)<>i then
+          raise EXxmTransferError.Create(SysErrorMessage(GetLastError));
       FContentBuffer.Position:=0;
      end;
    end;
@@ -1039,16 +1143,104 @@ begin
   //TODO: Set-Cookie2
 end;
 
-function TXxmGeneralContext.AuthValue(cs:TXxmContextString):AnsiString;
+function TXxmGeneralContext.AuthParse(const Scheme:string):AnsiString;
 var
-  s,t:AnsiString;
+  s:AnsiString;
   i,j,l:integer;
   a,b:byte;
 begin
+  //Base64Decode see http://www.faqs.org/rfcs/rfc2045.html #6.8
+  s:=AnsiString(GetRequestHeader('Authorization'));
+  l:=Length(s);
+  if l=0 then
+    Result:=''
+  else
+   begin
+    i:=Length(Scheme);
+    if (l<i) or (Copy(s,1,i+1)<>Scheme+' ') then
+      raise Exception.Create('Unexpected authorization method');
+    inc(i,2);
+    j:=0;
+    SetLength(Result,l*3 div 4);
+    while i<=l do
+     begin
+      case s[i] of
+        'A'..'Z':a:=byte(s[i])-65;
+        'a'..'z':a:=byte(s[i])-71;
+        '0'..'9':a:=byte(s[i])+4;
+        '+':a:=62;
+        '/':a:=63;
+        //'=':;
+        else raise Exception.Create('Authorization: invalid base64 character');
+      end;
+      inc(i);
+      if i<=l then
+       begin
+        case s[i] of
+          'A'..'Z':b:=byte(s[i])-65;
+          'a'..'z':b:=byte(s[i])-71;
+          '0'..'9':b:=byte(s[i])+4;
+          '+':b:=62;
+          '/':b:=63;
+          //'=':;
+          else raise Exception.Create('Authorization: invalid base64 character');
+        end;
+        inc(j);
+        Result[j]:=AnsiChar((a shl 2) or (b shr 4));
+        inc(i);
+       end
+      else
+        b:=0;//counter warning
+      if i<=l then
+       begin
+        case s[i] of
+          'A'..'Z':a:=byte(s[i])-65;
+          'a'..'z':a:=byte(s[i])-71;
+          '0'..'9':a:=byte(s[i])+4;
+          '+':a:=62;
+          '/':a:=63;
+          '=':a:=$FF;
+          else raise Exception.Create('Authorization: invalid base64 character');
+        end;
+        if a<>$FF then
+         begin
+          inc(j);
+          Result[j]:=AnsiChar((b shl 4) or (a shr 2));
+         end;
+        inc(i);
+       end;
+      if i<=l then
+       begin
+        case s[i] of
+          'A'..'Z':b:=byte(s[i])-65;
+          'a'..'z':b:=byte(s[i])-71;
+          '0'..'9':b:=byte(s[i])+4;
+          '+':b:=62;
+          '/':b:=63;
+          '=':b:=$FF;
+          else raise Exception.Create('Authorization: invalid base64 character');
+        end;
+        if b<>$FF then
+         begin
+          inc(j);
+          Result[j]:=AnsiChar((a shl 6) or b);
+         end;
+        inc(i);
+       end;
+     end;
+    SetLength(Result,j);
+   end;
+end;
+
+
+function TXxmGeneralContext.AuthValue(cs:TXxmContextString):AnsiString;
+var
+  s:AnsiString;
+  i,l:integer;
+begin
   if not FAuthParsed then
    begin
-    //base64 decode see http://www.faqs.org/rfcs/rfc2045.html #6.8
-    s:=AnsiString(GetRequestHeader('Authorization'));
+    s:=AuthParse('Basic');
     l:=Length(s);
     if l=0 then
      begin
@@ -1057,88 +1249,24 @@ begin
      end
     else
      begin
-      if (l<6) or (Copy(s,1,6)<>'Basic ') then
-        raise Exception.Create('Unsupported authorization method');
-      i:=7;
-      j:=0;
-      SetLength(t,l div 2);
-      while i<=l do
-       begin
-        case s[i] of
-          'A'..'Z':a:=byte(s[i])-65;
-          'a'..'z':a:=byte(s[i])-71;
-          '0'..'9':a:=byte(s[i])+4;
-          '+':a:=62;
-          '/':a:=63;
-          //'=':;
-          else raise Exception.Create('Authorization: invalid base64 character');
-        end;
-        inc(i);
-        if i<=l then
-         begin
-          case s[i] of
-            'A'..'Z':b:=byte(s[i])-65;
-            'a'..'z':b:=byte(s[i])-71;
-            '0'..'9':b:=byte(s[i])+4;
-            '+':b:=62;
-            '/':b:=63;
-            //'=':;
-            else raise Exception.Create('Authorization: invalid base64 character');
-          end;
-          inc(j);
-          t[j]:=AnsiChar((a shl 2) or (b shr 4));
-          inc(i);
-         end
-        else
-          b:=0;//counter warning
-        if i<=l then
-         begin
-          case s[i] of
-            'A'..'Z':a:=byte(s[i])-65;
-            'a'..'z':a:=byte(s[i])-71;
-            '0'..'9':a:=byte(s[i])+4;
-            '+':a:=62;
-            '/':a:=63;
-            '=':a:=$FF;
-            else raise Exception.Create('Authorization: invalid base64 character');
-          end;
-          if a<>$FF then
-           begin
-            inc(j);
-            t[j]:=AnsiChar((b shl 4) or (a shr 2));
-           end;
-          inc(i);
-         end;
-        if i<=l then
-         begin
-          case s[i] of
-            'A'..'Z':b:=byte(s[i])-65;
-            'a'..'z':b:=byte(s[i])-71;
-            '0'..'9':b:=byte(s[i])+4;
-            '+':b:=62;
-            '/':b:=63;
-            '=':b:=$FF;
-            else raise Exception.Create('Authorization: invalid base64 character');
-          end;
-          if b<>$FF then
-           begin
-            inc(j);
-            t[j]:=AnsiChar((a shl 6) or b);
-           end;
-          inc(i);
-         end;
-       end;
-      //SetLength(t,j);
       i:=1;
-      while (i<=j) and (t[i]<>':') do inc(i);
-      //if i>j then raise?
+      while (i<=l) and (s[i]<>':') do inc(i);
+      //if i>l then raise?
       //TODO: encoding: utf8?
-      FAuthUserName:=Copy(t,1,i-1);
-      FAuthPassword:=Copy(t,i+1,j-i);
+      FAuthUserName:=Copy(s,1,i-1);
+      FAuthPassword:=Copy(s,i+1,l-i);
      end;
     FAuthParsed:=true;
    end;
+  //TODO: case cs of?
   if cs=csAuthPassword then Result:=FAuthPassword else Result:=FAuthUserName;
+end;
+
+procedure TXxmGeneralContext.AuthSet(const Name,Pwd:AnsiString);
+begin
+  FAuthParsed:=true;//done by inheritant
+  FAuthUserName:=Name;
+  FAuthPassword:=Pwd;
 end;
 
 procedure TXxmGeneralContext.FlushFinal;

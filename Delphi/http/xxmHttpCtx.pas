@@ -20,6 +20,8 @@ type
     FCookie: AnsiString;
     FCookieIdx: TParamIndexes;
     FQueryStringIndex:integer;
+    procedure ResponseStr(const Body,RedirMsg:WideString);
+    procedure AuthNTLM;
   protected
     function GetSessionID: WideString; override;
     procedure DispositionAttach(const FileName: WideString); override;
@@ -31,6 +33,7 @@ type
     function GetProjectEntry:TXxmProjectEntry; override;
     procedure SendHeader; override;
     function GetRequestHeader(const Name: WideString): WideString; override;
+    function GetResponseHeader(const Name: WideString): WideString; override;
     procedure AddResponseHeader(const Name, Value: WideString); override;
 
     procedure BeginRequest; override;
@@ -152,8 +155,8 @@ procedure TXxmHttpContext.Recycle;
 var
   i:integer;
 begin
-  if (State<>ctSocketDisconnect)
-    and ((FResHeaders['Content-Length']<>'') or (State=ctHeaderOnly)) then
+  if (State<>ctSocketDisconnect) and (Chunked or (State=ctHeaderOnly) or
+     (FResHeaders['Content-Length']<>'')) then
    begin
     try
       EndRequest;
@@ -182,6 +185,7 @@ procedure TXxmHttpContext.FlushFinal;
 begin
   //no inherited! override default behaviour:
   if (BufferSize<>0) //and (ContentBuffer.Position<>0) then
+    and not(Chunked)
     and (FContentBuffer.Position>SpoolingThreshold) then
    begin
     CheckSendStart(true);
@@ -256,6 +260,7 @@ begin
           i:=j;
           while (j<=l) and (x[j]<>#13) and (x[j]<>#10) do inc(j);
           FHTTPVersion:=Copy(x,i,j-i);
+          AllowChunked:=FHTTPVersion='HTTP/1.1';
           inc(m);
          end
         else
@@ -358,7 +363,7 @@ begin
         SendError('error',e.ClassName,e.Message);
        end;
   end;
-  
+
   try
     PostProcessRequest;
   except
@@ -371,15 +376,95 @@ begin
   Result:=XxmProjectCache.GetProject(FProjectName);
 end;
 
+procedure TXxmHttpContext.AuthNTLM;
+var
+  s,t:AnsiString;
+  p:PCtxtHandle;
+  r,f:cardinal;
+  d1,d2:TSecBufferDesc;
+  d:array of TSecBuffer;
+  n:TSecPkgContextNames;
+begin
+  s:=AuthParse('NTLM');
+  if s='' then
+   begin
+    SetStatus(401,'Unauthorized');
+    AddResponseHeader('Connection','keep-alive');
+    AddResponseHeader('WWW-Authenticate','NTLM');
+    ResponseStr('<h1>Authorization required</h1>','401');
+   end
+  else
+   begin
+    if FSocket.Cred.dwLower=nil then
+      if AcquireCredentialsHandle(nil,'NTLM',SECPKG_CRED_INBOUND,
+        nil,nil,nil,nil,@FSocket.Cred,nil)<>0 then RaiseLastOSError;
+
+    SetLength(d,3);
+    SetLength(t,$10000);
+
+    d1.ulVersion:=SECBUFFER_VERSION;
+    d1.cBuffers:=2;
+    d1.pBuffers:=@d[0];
+
+    d[0].cbBuffer:=Length(s);
+    d[0].BufferType:=SECBUFFER_TOKEN;
+    d[0].pvBuffer:=@s[1];
+
+    d[1].cbBuffer:=0;
+    d[1].BufferType:=SECBUFFER_EMPTY;
+    d[1].pvBuffer:=nil;
+
+    d2.ulVersion:=SECBUFFER_VERSION;
+    d2.cBuffers:=1;
+    d2.pBuffers:=@d[2];
+
+    d[2].cbBuffer:=$10000;;
+    d[2].BufferType:=SECBUFFER_TOKEN;
+    d[2].pvBuffer:=@t[1];
+
+    if (FSocket.Ctxt.dwLower=nil) and (FSocket.Ctxt.dwUpper=nil) then
+      p:=nil
+    else
+      p:=@FSocket.Ctxt;
+    r:=AcceptSecurityContext(@FSocket.Cred,p,@d1,
+      ASC_REQ_REPLAY_DETECT or ASC_REQ_SEQUENCE_DETECT,SECURITY_NATIVE_DREP,
+      @FSocket.Ctxt,@d2,@f,nil);
+
+    if r=SEC_E_OK then
+     begin
+      r:=QueryContextAttributes(@FSocket.Ctxt,SECPKG_ATTR_NAMES,@n);
+      if r=0 then
+        AuthSet(n.sUserName,'')
+      else
+        AuthSet('???'+SysErrorMessage(r),'');//raise?
+      DeleteSecurityContext(@FSocket.Ctxt);
+      FSocket.Ctxt.dwLower:=nil;
+      FSocket.Ctxt.dwUpper:=nil;
+     end
+    else
+    if r=SEC_I_CONTINUE_NEEDED then
+     begin
+      SetLength(t,d[2].cbBuffer);
+      SetStatus(401,'Unauthorized');
+      AddResponseHeader('Connection','keep-alive');
+      AddResponseHeader('WWW-Authenticate','NTLM '+Base64Encode(t));
+      ResponseStr('<h1>Authorization required</h1>','401.1');
+     end
+    else
+      raise Exception.Create(SysErrorMessage(r));
+   end;
+end;
+
 function TXxmHttpContext.GetProjectPage(const FragmentName: WideString):IXxmFragment;
 begin
+  if (ProjectEntry as TXxmProjectCacheEntry).NTLM then AuthNTLM;
   Result:=inherited GetProjectPage(FragmentName);
   PreProcessRequestPage;
 end;
 
 function TXxmHttpContext.Connected: boolean;
 begin
-  Result:=FSocket.Connected;
+  Result:=(FSocket<>nil) and FSocket.Connected;
 end;
 
 function TXxmHttpContext.ContextString(cs: TXxmContextString): WideString;
@@ -399,7 +484,7 @@ begin
     csLanguage:Result:=FReqHeaders['Accept-Language'];
     csRemoteAddress:Result:=FSocket.Address;
     csRemoteHost:Result:=FSocket.HostName;
-    csAuthUser,csAuthPassword:Result:=AuthValue(cs);
+    csAuthUser,csAuthPassword:Result:=AuthValue(cs);//?
     else
       raise EXxmContextStringUnknown.Create(StringReplace(
         SXxmContextStringUnknown,'__',IntToHex(integer(cs),8),[]));
@@ -448,7 +533,7 @@ end;
 
 procedure TXxmHttpContext.Redirect(const RedirectURL: WideString; Relative: boolean);
 var
-  NewURL,RedirBody:WideString;
+  NewURL:WideString;
 begin
   inherited;
   SetStatus(302,'Object moved');//SetStatus(301,'Moved Permanently');
@@ -456,15 +541,20 @@ begin
   // FResHeaders['Cache-Control']:='no-cache, no-store';
   NewURL:=RedirectURL;
   if Relative and (NewURL<>'') and (NewURL[1]='/') then NewURL:=FRedirectPrefix+NewURL;
-  RedirBody:='<h1>Object moved</h1><p><a href="'+HTMLEncode(NewURL)+'">'+HTMLEncode(NewURL)+'</a></p>'#13#10;
   FResHeaders['Location']:=NewURL;
+  ResponseStr('<h1>Object moved</h1><p><a href="'+
+    HTMLEncode(NewURL)+'">'+HTMLEncode(NewURL)+'</a></p>'#13#10,RedirectURL);
+end;
+
+procedure TXxmHttpContext.ResponseStr(const Body,RedirMsg:WideString);
+begin
   case FAutoEncoding of
-    aeUtf8:FResHeaders['Content-Length']:=IntToStr(Length(UTF8Encode(RedirBody))+3);
-    aeUtf16:FResHeaders['Content-Length']:=IntToStr(Length(RedirBody)*2+2);
-    aeIso8859:FResHeaders['Content-Length']:=IntToStr(Length(AnsiString(RedirBody)));
+    aeUtf8:FResHeaders['Content-Length']:=IntToStr(Length(UTF8Encode(Body))+3);
+    aeUtf16:FResHeaders['Content-Length']:=IntToStr(Length(Body)*2+2);
+    aeIso8859:FResHeaders['Content-Length']:=IntToStr(Length(AnsiString(Body)));
   end;
-  SendStr(RedirBody);
-  raise EXxmPageRedirected.Create(RedirectURL);
+  SendStr(Body);
+  raise EXxmPageRedirected.Create(RedirMsg);
 end;
 
 procedure TXxmHttpContext.SendHeader;
@@ -495,6 +585,11 @@ end;
 function TXxmHttpContext.GetRequestHeader(const Name: WideString): WideString;
 begin
   Result:=FReqHeaders[Name];
+end;
+
+function TXxmHttpContext.GetResponseHeader(const Name: WideString): WideString;
+begin
+  Result:=FResHeaders[Name];
 end;
 
 procedure TXxmHttpContext.AddResponseHeader(const Name, Value: WideString);
@@ -559,8 +654,8 @@ begin
   if FReqHeaders['Upgrade']='' then Result:=nil else
    begin
     FContentType:='';
-    CheckSendStart(false);
     SetBufferSize(0);//!
+    CheckSendStart(false);
     Result:=TRawSocketData.Create(FSocket);
    end;
 end;

@@ -265,13 +265,17 @@ end;
 procedure TxxmAhttpdContext.SendHeader;
 begin
   //rq.status_line Sent by first ap_rwrite?
-  rq.content_type:=apr_pstrdup(rq.pool,PAnsiChar(AnsiString(FContentType)));
-  case FAutoEncoding of
-    aeUtf8:   rq.content_encoding:=apr_pstrdup(rq.pool,PAnsiChar('utf-8'));
-    aeUtf16:  rq.content_encoding:=apr_pstrdup(rq.pool,PAnsiChar('utf-16'));
-    aeIso8859:rq.content_encoding:=apr_pstrdup(rq.pool,PAnsiChar('iso-8859-15'));
-    else      ;//rq.content_encoding:=apr_pstrdup(rq.pool,PAnsiChar('?
-  end;
+  if FContentType<>'' then
+   begin
+    rq.content_type:=apr_pstrdup(rq.pool,PAnsiChar(AnsiString(FContentType)));
+    case FAutoEncoding of
+      aeUtf8:   rq.content_encoding:=apr_pstrdup(rq.pool,PAnsiChar('utf-8'));
+      aeUtf16:  rq.content_encoding:=apr_pstrdup(rq.pool,PAnsiChar('utf-16'));
+      aeIso8859:rq.content_encoding:=apr_pstrdup(rq.pool,PAnsiChar('iso-8859-15'));
+      else      ;//rq.content_encoding:=apr_pstrdup(rq.pool,PAnsiChar('?
+    end;
+   end;
+  //TODO: else get from response headers?
   //rq.connection.keepalive?//TODO
   //ap_rflush? ap_send_interim_response?
   inherited;

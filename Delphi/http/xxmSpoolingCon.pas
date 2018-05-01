@@ -14,7 +14,7 @@ type
       KeptCount:cardinal;
       DataLeft:int64;
       Buffer:TStream;
-      BufferFreeWhenDone:boolean;
+      BufferFreeWhenDone,Chunked:boolean;
       WasState:TXxmContextState;
     end;
     FContextIndex,FContextSize:integer;
@@ -86,6 +86,7 @@ begin
     FContexts[i].DataLeft:=Buffer.Position;
     FContexts[i].Buffer:=Buffer;
     FContexts[i].BufferFreeWhenDone:=FreeWhenDone;
+    FContexts[i].Chunked:=Context.Chunked;
     FContexts[i].WasState:=s;
     Buffer.Position:=0;
     SetEvent(FAddEvent);
@@ -112,10 +113,12 @@ end;
 procedure TXxmSpoolingConnections.Execute;
 const
   dSize=$10000;
+  Chunk0:array[0..4] of AnsiChar='0'#13#10#13#10;
+  hex:array[0..15] of AnsiChar='0123456789ABCDEF';
 var
   d:array[0..dSize-1] of byte;
   w,x:TFDSet;
-  i,j,k,l:integer;
+  i,j,k,l,i1,k1,l1:integer;
   t:TTimeVal;
   h:THandle;
 begin
@@ -191,18 +194,54 @@ begin
               if j<FContextIndex then
                begin
                 //forward a chunk
-                if FContexts[j].DataLeft>dSize then l:=dSize
-                  else l:=FContexts[j].DataLeft;
-                if l<>0 then l:=FContexts[j].Buffer.Read(d[0],l);
-                if l<>0 then
-                  try
-                    if (FContexts[j].Context as TXxmHttpContext).Socket.
-                      SendBuf(d[0],l)<>l then l:=0;
-                  except
-                    on ETcpSocketError do l:=0;
-                  end;
+                if FContexts[j].Chunked then
+                 begin
+                  l:=dSize-12;
+                  if FContexts[j].DataLeft<l then l:=FContexts[j].DataLeft;
+                  if l<>0 then l:=FContexts[j].Buffer.Read(d[10],l);
+                  if l<>0 then
+                   begin
+                    d[8]:=13;//CR
+                    d[9]:=10;//LR
+                    i1:=8;
+                    k1:=l;
+                    repeat
+                      dec(i1);
+                      d[i1]:=byte(hex[k1 and $F]);
+                      k1:=k1 shr 4;
+                    until k1=0;
+                    d[l+10]:=13;//CR
+                    d[l+11]:=10;//LF
+                    l1:=l+12-i1;
+                    try
+                      if (FContexts[j].Context as TXxmHttpContext).Socket.
+                        SendBuf(d[i1],l1)<>l1 then l:=0;
+                    except
+                      on ETcpSocketError do l:=0;
+                    end;
+                   end;
+                 end
+                else
+                 begin
+                  l:=dSize;
+                  if FContexts[j].DataLeft<dSize then l:=FContexts[j].DataLeft;
+                  if l<>0 then l:=FContexts[j].Buffer.Read(d[0],l);
+                  if l<>0 then
+                    try
+                      if (FContexts[j].Context as TXxmHttpContext).Socket.
+                        SendBuf(d[0],l)<>l then l:=0;
+                    except
+                      on ETcpSocketError do l:=0;
+                    end;
+                 end;
                 //done?
                 dec(FContexts[j].DataLeft,l);
+                try
+                  if FContexts[j].Chunked and (FContexts[j].DataLeft=0) then
+                    (FContexts[j].Context as TXxmHttpContext).Socket.SendBuf(Chunk0[0],5);
+                except
+                  //silent
+                end;
                 if (l=0) or (FContexts[j].DataLeft=0) then
                   DropContext(j)
                 else

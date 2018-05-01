@@ -643,7 +643,7 @@ end;
 
 procedure TEditProjectMainForm.actIncludePasExecute(Sender: TObject);
 var
-  x:IJSONDocument;
+  x,z:IJSONDocument;
   y:IJSONEnumerator;
   s,t,u:AnsiString;
   i,j,l,fi,fl,fc:integer;
@@ -699,7 +699,13 @@ begin
         x:=JSON;
         if j<>0 then x['unitPath']:=u;
         //(n as TFileNode).Doc:=x;
-        JSON(ProjectData['units'])[t]:=x;
+        z:=JSON(ProjectData['units']);
+        if z=nil then
+         begin
+          z:=JSON;
+          ProjectData['units']:=z;
+         end;
+        z[t]:=x;
         Modified:=true;
         inc(fc);
         if fl=1 then MessageBoxA(Handle,PAnsiChar('Unit "'+s+'" added'),
