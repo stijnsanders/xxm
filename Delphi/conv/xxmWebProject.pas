@@ -292,7 +292,7 @@ var
   e:IJSONEnumerator;
   v:OleVariant;
   fn,fnu,s,cid,uname,upath,uext:AnsiString;
-  sl,sl1:TStringList;
+  sl,sl1,sl2:TStringList;
   sl_i,i,cPathIndex,fExtIndex,fPathIndex:integer;
 begin
   Result:=false;
@@ -320,9 +320,18 @@ begin
   try
     sl:=TStringList.Create;
     sl1:=TStringList.Create;
+    sl2:=TStringList.Create;
     try
+      sl1.Sorted:=true;
+      sl2.Sorted:=true;
+
       e:=JSONEnum(DataFiles);
-      while e.Next do sl1.Add(e.Key);
+      while e.Next do
+       begin
+        sl1.Add(e.Key);
+        v:=JSON(e.Value)['unitName'];
+        if not(VarIsNull(v)) then sl2.Add(VarToStr(v));
+       end;
       e:=nil;
 
       ListFilesInPath(sl,FRootFolder);
@@ -357,10 +366,10 @@ begin
           repeat
             inc(i);
             s:=uname+IntToStr(i);
-            v:=DataFiles[s];
-          until VarIsNull(v);
+          until sl2.IndexOf(s)=-1;
           uname:=s;
           d['unitName']:=uname;
+          sl2.Add(uname);
           Modified:=true;
          end;
         if upath='' then
@@ -449,6 +458,7 @@ begin
     finally
       sl.Free;
       sl1.Free;
+      sl2.Free;
     end;
 
     //check units
