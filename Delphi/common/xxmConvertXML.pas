@@ -107,10 +107,17 @@ begin
     d['files']:=d1;
     while x<>nil do
      begin
-      d1[x.getAttribute('ID')]:=JSON([
+      d2:=JSON([
         'path',StringReplace(
           x.selectSingleNode('Path').text,PathDelim,'/',[rfReplaceAll])
       ]);
+      if not(VarIsNull(x.getAttribute('UnitName'))) then
+        d2['unitName']:=StringReplace(
+          x.getAttribute('UnitName'),PathDelim,'/',[rfReplaceAll]);
+      if not(VarIsNull(x.getAttribute('UnitPath'))) then
+        d2['unitPath']:=StringReplace(
+          x.getAttribute('UnitPath'),PathDelim,'/',[rfReplaceAll]);
+      d1[x.getAttribute('ID')]:=d2;
       x:=xl.nextNode as IXMLDOMElement;
      end;
    end;
