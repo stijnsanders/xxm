@@ -3,10 +3,10 @@ unit xxmHSysMain;
 interface
 
 uses
-  SysUtils, ActiveX, xxm, Classes, xxmContext, xxmPReg, xxmThreadPool,
+  Windows, SysUtils, ActiveX, Classes, xxm, xxmContext, xxmThreadPool,
   {$IFDEF HSYS1}httpapi1,{$ENDIF}
   {$IFDEF HSYS2}httpapi2,{$ENDIF}
-  xxmPRegJson, xxmParams, xxmParUtils, xxmHeaders;
+  xxmPReg, xxmPRegJson, xxmParams, xxmParUtils, xxmHeaders;
 
 const
   XxmHSysContextDataSize=$1000;
@@ -96,7 +96,9 @@ type
     FHSysQueue:THandle;
     FRequestID:THTTP_REQUEST_ID;
     FBuffer:array[0..RawSocketBufferSize-1] of byte;
-    FBuffer1,FBuffer2:integer;
+    FBuffer1,FBuffer2:cardinal;
+    FCallOut:boolean;
+    FCall:TOverlapped;
   public
     constructor Create(HSysQueue:THandle;RequestID:THTTP_REQUEST_ID);
     destructor Destroy; override;
@@ -133,7 +135,7 @@ type
 
 implementation
 
-uses Windows, Variants, ComObj, xxmCommonUtils, xxmHSysHeaders, WinSock,
+uses Variants, ComObj, xxmCommonUtils, xxmHSysHeaders, WinSock,
   Math, xxmSSPI;
 
 resourcestring
@@ -777,12 +779,20 @@ begin
   FRequestID:=RequestID;
   FBuffer1:=0;
   FBuffer2:=0;
+  FCallOut:=false;
+  FCall.Internal:=0;
+  FCall.InternalHigh:=0;
+  FCall.Offset:=0;
+  FCall.OffsetHigh:=0;
+  FCall.hEvent:=CreateEvent(nil,true,false,nil);
 end;
 
 destructor TRawSocketData.Destroy;
 begin
   FHSysQueue:=0;
   FRequestID:=0;
+  //if FCallOut then abort?
+  CloseHandle(FCall.hEvent);
   inherited;
 end;
 
@@ -840,32 +850,53 @@ function TRawSocketData.DataReady(TimeoutMS: cardinal): boolean;
 var
   r,l:cardinal;
 begin
-  if FBuffer2=0 then
+  if not FCallOut then
    begin
     FBuffer1:=0;
+    ResetEvent(FCall.hEvent);
     r:=HttpReceiveRequestEntityBody(FHSysQueue,FRequestId,0,
-      @FBuffer[0],RawSocketBufferSize,l,nil);
-    if r=0 then
-      inc(FBuffer2,l)
+      @FBuffer[0],RawSocketBufferSize,l,@FCall);
+    if r=ERROR_IO_PENDING then
+      FCallOut:=true
     else
-      if r=ERROR_HANDLE_EOF then
-        //
-      else
-        HttpCheck(r);
+      HttpCheck(r);
    end;
-  Result:=FBuffer1<>FBuffer2;
+  r:=WaitForSingleObject(FCall.hEvent,TimeoutMS);
+  case r of
+    WAIT_OBJECT_0:
+     begin
+      FCallOut:=false;
+      if not GetOverlappedResult(FHSysQueue,FCall,FBuffer2,false) then
+        RaiseLastOSError;
+      Result:=true;//Result:=FBuffer2<>0;
+     end;
+    WAIT_TIMEOUT:
+      Result:=false;
+    //WAIT_FAILED
+    else
+     begin
+      RaiseLastOSError;
+      Result:=false;//counter warning
+     end;
+  end;
 end;
 
 function TRawSocketData.Read(pv: Pointer; cb: Integer; pcbRead: PLongint): HResult;
 var
   l:cardinal;
 begin
+  if FCallOut then
+   begin
+    if not GetOverlappedResult(FHSysQueue,FCall,FBuffer2,true) then
+      RaiseLastOSError;
+    FCallOut:=false;
+   end;
   if FBuffer2=0 then
     HttpCheck(HttpReceiveRequestEntityBody(FHSysQueue,FRequestId,0,pv,cb,l,nil))
   else
    begin
     l:=FBuffer2-FBuffer1;
-    if cb<=FBuffer2-FBuffer1 then l:=cb;
+    if cardinal(cb)<=FBuffer2-FBuffer1 then l:=cardinal(cb);
     Move(FBuffer[FBuffer1],pv^,l);
     inc(l,FBuffer1);
     if FBuffer1=FBuffer2 then
@@ -889,8 +920,7 @@ begin
   c.BufferLength:=cb;
   l:=cb;
   HttpCheck(HttpSendResponseEntityBody(FHSysQueue,FRequestID,
-    HTTP_SEND_RESPONSE_FLAG_MORE_DATA or
-    HTTP_SEND_RESPONSE_FLAG_OPAQUE,1,@c,l,nil,0,nil,nil));
+    HTTP_SEND_RESPONSE_FLAG_MORE_DATA,1,@c,l,nil,0,nil,nil));
   if pcbWritten<>nil then pcbWritten^:=l;
   Result:=S_OK;
 end;
