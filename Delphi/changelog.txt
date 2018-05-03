@@ -1,4 +1,4 @@
-v1.2.5.444
+v1.2.5.450
 - project registry "xxm.json" (auto-conversion of "xxm.xml")
 - project file "Web.xxmp" JSON (auto-conversion from XML)
     ### ATTENTION ### ATTENTION ### ATTENTION ###
@@ -21,6 +21,7 @@ v1.2.5.444
 - xxmHttpAU: added manifest to avoid default UAC elevation request
 - xxmHttp,xxmHSys: Transfer-Encoding chunked (set Context.BufferSize to something >0 !!!)
 - xxmHttp,xxmHSys: NTLM authentication (using SSPI, add "ntlm":true to the project in xxm.json)
+- xxmHSys2: WebSocket support
 - DispositionAttach: replace unacceptable characters (\/:*?"<>|) with '_'
 - SendFile, SendStream before header sent, will by default have ContentType
   application/octet-stream instead of text/html, unless already set before
