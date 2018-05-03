@@ -22,11 +22,10 @@ uses
   xxm in '[[XxmSourcePath]]\bin\public\xxm.pas',
   xxmIsapiMain in '[[XxmSourcePath]]\isapi\xxmIsapiMain.pas',
   xxmPReg in '[[XxmSourcePath]]\common\xxmPReg.pas',
-  xxmPRegXml in '[[XxmSourcePath]]\conv\xxmPRegXml.pas', //ATTENTION: rigged for single project
+  xxmPRegJson in '[[XxmSourcePath]]\conv\xxmPRegJson.pas', //ATTENTION: rigged for single project
   xxmParams in '[[XxmSourcePath]]\common\xxmParams.pas',
   xxmParUtils in '[[XxmSourcePath]]\common\xxmParUtils.pas',
   xxmHeaders in '[[XxmSourcePath]]\bin\public\xxmHeaders.pas',
-  MSXML2_TLB in '[[XxmSourcePath]]\common\MSXML2_TLB.pas',
   xxmCommonUtils in '[[XxmSourcePath]]\common\xxmCommonUtils.pas',
   xxmContext in '[[XxmSourcePath]]\common\xxmContext.pas',
   xxmIsapiStream in '[[XxmSourcePath]]\isapi\xxmIsapiStream.pas',

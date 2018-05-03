@@ -27,10 +27,9 @@ uses
   xxmHeaders in '[[XxmSourcePath]]\bin\public\xxmHeaders.pas',
   xxmThreadPool in '[[XxmSourcePath]]\common\xxmThreadPool.pas',
   xxmPReg in '[[XxmSourcePath]]\common\xxmPReg.pas',
-  xxmPRegXml in '[[XxmSourcePath]]\conv\xxmPRegXml.pas', //ATTENTION: rigged for single project
+  xxmPRegJson in '[[XxmSourcePath]]\conv\xxmPRegJson.pas', //ATTENTION: rigged for single project
   xxmCommonUtils in '[[XxmSourcePath]]\common\xxmCommonUtils.pas',
   xxmContext in '[[XxmSourcePath]]\common\xxmContext.pas',
-  MSXML2_TLB in '[[XxmSourcePath]]\common\MSXML2_TLB.pas',
   xxmHSysHeaders in '[[XxmSourcePath]]\hsys\xxmHSysHeaders.pas',
   [[@Include]][[IncludeUnit]] in '[[ProjectPath]][[IncludePath]][[IncludeUnit]].pas',
   [[@]][[@Fragment]][[FragmentUnit]] in '[[FragmentPath]][[FragmentUnit]].pas', {[[FragmentAddress]]}

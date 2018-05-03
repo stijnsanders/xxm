@@ -24,7 +24,7 @@ uses
   xxmParUtils in '[[XxmSourcePath]]\common\xxmParUtils.pas',
   xxmHeaders in '[[XxmSourcePath]]\bin\public\xxmHeaders.pas',
   xxmPReg in '[[XxmSourcePath]]\common\xxmPReg.pas',
-  xxmPRegXml in '[[XxmSourcePath]]\conv\xxmPRegXml.pas', //ATTENTION: rigged for single project
+  xxmPRegJson in '[[XxmSourcePath]]\conv\xxmPRegJson.pas', //ATTENTION: rigged for single project
   xxmCommonUtils in '[[XxmSourcePath]]\common\xxmCommonUtils.pas',
   xxmContext in '[[XxmSourcePath]]\common\xxmContext.pas',
   xxmReadHandler in '[[XxmSourcePath]]\http\xxmReadHandler.pas',

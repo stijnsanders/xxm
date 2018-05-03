@@ -1,11 +1,11 @@
-unit xxmPRegXml;
+unit xxmPRegJson;
 
 {
 
 ATTENTION:
-  this is an alternative xxmPRegXml unit
+  this is an alternative xxmPRegJson unit
   to serve only a single xxm project
-  (the real xxmPRegXml is in the folder "common")
+  (the real xxmPRegJson is in the folder "common")
 
 }
 
@@ -25,7 +25,7 @@ type
     destructor Destroy; override;
   end;
 
-  TXxmProjectCacheXml=class(TXxmProjectCache)
+  TXxmProjectCacheJson=class(TXxmProjectCache)
   private
     FProject:TXxmProjectCacheEntry;
   public
@@ -40,7 +40,7 @@ type
 
 var
   XxmProjectName:string;
-  XxmProjectCache:TXxmProjectCacheXml;
+  XxmProjectCache:TXxmProjectCacheJson;
   GlobalAllowLoadCopy:boolean;
 
 implementation
@@ -89,21 +89,21 @@ begin
   raise Exception.Create('SetSignature: not implemented');
 end;
 
-{ TXxmProjectCacheXml }
+{ TXxmProjectCacheJson }
 
-constructor TXxmProjectCacheXml.Create;
+constructor TXxmProjectCacheJson.Create;
 begin
   inherited Create;
   FProject:=TXxmProjectCacheEntry.Create(XxmProjectName);
 end;
 
-destructor TXxmProjectCacheXml.Destroy;
+destructor TXxmProjectCacheJson.Destroy;
 begin
   FProject.Free;
   inherited;
 end;
 
-function TXxmProjectCacheXml.GetProject(
+function TXxmProjectCacheJson.GetProject(
   const Name: WideString): TXxmProjectCacheEntry;
 begin
   Result:=FProject;
@@ -112,7 +112,7 @@ end;
 {$IFDEF HSYS1}{$DEFINE IgnoreProjectNameInURL}{$ENDIF}
 {$IFDEF HSYS2}{$DEFINE IgnoreProjectNameInURL}{$ENDIF}
 
-function TXxmProjectCacheXml.ProjectFromURI(Context: IXxmContext;
+function TXxmProjectCacheJson.ProjectFromURI(Context: IXxmContext;
   const URI: AnsiString; var i: integer; var ProjectName,
   FragmentName: WideString): boolean;
 var

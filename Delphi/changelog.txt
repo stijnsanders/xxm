@@ -16,7 +16,7 @@ v1.2.5.450
 	This may cause errors on generated xxmp.pas:
 		xxmp.pas() Error: Declaration of 'LoadPage' differs from previous declaration
 		xxmp.pas() Error: Declaration of 'LoadFragment' differs from previous declaration
-	Please update both methods by adding 'const' to the argument.
+	Please update both methods by adding 'const' to the arguments with a string type.
 - xxmIsapi*: Redirect: set 'Cache-control' to 'nocache' unless it was set already
 - xxmHttpAU: added manifest to avoid default UAC elevation request
 - xxmHttp,xxmHSys: Transfer-Encoding chunked (set Context.BufferSize to something >0 !!!)

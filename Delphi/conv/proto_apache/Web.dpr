@@ -26,10 +26,9 @@ uses
   xxmCommonUtils in '[[XxmSourcePath]]\common\xxmCommonUtils.pas',
   xxmContext in '[[XxmSourcePath]]\common\xxmContext.pas',
   xxmPReg in '[[XxmSourcePath]]\common\xxmPReg.pas',
-  xxmPRegXml in '[[XxmSourcePath]]\conv\xxmPRegXml.pas', //ATTENTION: rigged for single project
+  xxmPRegJson in '[[XxmSourcePath]]\conv\xxmPRegJson.pas', //ATTENTION: rigged for single project
   xxmAhttpdClientStream in '[[XxmSourcePath]]\apache\xxmAhttpdClientStream.pas',
   xxmAhttpdPars in '[[XxmSourcePath]]\apache\xxmAhttpdPars.pas',
-  MSXML2_TLB in '[[XxmSourcePath]]\common\MSXML2_TLB.pas',
   [[@Include]][[IncludeUnit]] in '[[ProjectPath]][[IncludePath]][[IncludeUnit]].pas',
   [[@]][[@Fragment]][[FragmentUnit]] in '[[FragmentPath]][[FragmentUnit]].pas', {[[FragmentAddress]]}
   [[@]][[UsesClause]]
