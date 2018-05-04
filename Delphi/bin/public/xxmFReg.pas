@@ -9,7 +9,7 @@ or create a new one for your project.
 The TxxmProject (xxmp.pas) calls GetClass with the page section
 of the URL, or can pre-process the URL.
 
-  $Rev: 394 $ $Date: 2015-07-30 00:31:51 +0200 (do, 30 jul 2015) $
+  $Rev: 456 $ $Date: 2018-05-04 23:45:27 +0200 (vr, 04 mei 2018) $
 
 }
 
@@ -26,16 +26,16 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-    procedure RegisterClass(const FName: AnsiString; FType: TXxmFragmentClass);
+    procedure RegisterClass(const FName: string; FType: TXxmFragmentClass);
     function GetFragment(Project: TxxmProject;
-	  const FName, RelativeTo: AnsiString): IxxmFragment;
+	  const FName, RelativeTo: WideString): IxxmFragment;
   end;
 
 var
   XxmFragmentRegistry:TXxmFragmentRegistry;
 
 const
-  XxmDefaultPage:AnsiString='default.xxm';
+  XxmDefaultPage='default.xxm';
 
 implementation
 
@@ -59,17 +59,17 @@ begin
   inherited;
 end;
 
-procedure TXxmFragmentRegistry.RegisterClass(const FName: AnsiString;
+procedure TXxmFragmentRegistry.RegisterClass(const FName: string;
   FType: TXxmFragmentClass);
 begin
-  Registry.AddObject(string(FName),TObject(FType));
+  Registry.AddObject(FName,TObject(FType));
 end;
 
 function TXxmFragmentRegistry.GetFragment(Project: TxxmProject;
-  const FName, RelativeTo: AnsiString): IxxmFragment;
+  const FName, RelativeTo: WideString): IxxmFragment;
 var
   i,j,l:integer;
-  a,b:AnsiString;
+  a,b:WideString;
   f:TxxmFragment;
 begin
   l:=Length(FName);
@@ -103,7 +103,7 @@ begin
      end;
    end;
   //get fragment class
-  i:=Registry.IndexOf(a);
+  i:=Registry.IndexOf(a);            
   //folder? add index page name
   if i=-1 then
     if (FName='') or (FName[Length(FName)]='/') then 
