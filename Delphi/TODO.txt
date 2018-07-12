@@ -53,7 +53,6 @@ local
 - history by xxm project
 
 grand rework
-- transfer-encoding chunked?
 - content-encoding gzip, other?
 - Accept-Ranges: bytes on files ('Range' request header?)
 - IPv6 support? http://[::]/

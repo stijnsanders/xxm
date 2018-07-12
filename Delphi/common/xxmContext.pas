@@ -927,7 +927,7 @@ begin
   //TODO: auto mimetype by extension?
   if State=ctHeaderNotSent then FSingleFileSent:=FilePath;
   SendStream(TStreamAdapter.Create(TFileStream.Create(
-    FilePath,fmOpenRead or fmShareDenyNone),soOwned));
+    FilePath,fmOpenRead or fmShareDenyWrite),soOwned));
 end;
 
 procedure TXxmGeneralContext.Send(Value: integer);

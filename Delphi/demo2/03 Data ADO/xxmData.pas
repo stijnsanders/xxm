@@ -179,7 +179,9 @@ begin
     inc(i);
    end;
   //process final query
-  if r1<>0 then
+  if r1=0 then
+    SetLength(FQueries,q)
+  else
    begin
     //skip trailing whitespace
     dec(i);
@@ -193,7 +195,6 @@ begin
     FQueries[q].SQL:=Copy(s,r1,i-r1+1);
     inc(q);
    end;
-  SetLength(FQueries,q);
 end;
 
 procedure CmdParameters(Cmd:Command;const Values:array of Variant);

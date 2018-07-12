@@ -36,14 +36,31 @@ begin
   Result:=TXxm[[ProjectName]].Create(AProjectName);
 end;
 
+type
+  TRespondNotImplemented=class(TXxmPage)
+  public
+    procedure Build(const Context: IXxmContext; const Caller: IXxmFragment;
+      const Values: array of OleVariant; const Objects: array of TObject); override;
+  end;
+
 { TXxm[[ProjectName]] }
 
 function TXxm[[ProjectName]].LoadPage(Context: IXxmContext; const Address: WideString): IXxmFragment;
+var
+  verb:WideString;
 begin
   inherited;
+  Context.BufferSize:=$10000;
+
   //TODO: link session to request
-  Result:=XxmFragmentRegistry.GetFragment(Self,Address,'');
-  //TODO: if Context.ContextString(csVerb)='OPTION' then...
+  //  see demo project "02 Session"
+  //SetSession(Context);
+  
+  verb:=Context.ContextString(csVerb);
+  if (verb='OPTIONS') or (verb='TRACE') then
+    Result:=TRespondNotImplemented.Create(Self)
+  else
+    Result:=XxmFragmentRegistry.GetFragment(Self,Address,'');
 end;
 
 function TXxm[[ProjectName]].LoadFragment(Context: IXxmContext; const Address, RelativeTo: WideString): IXxmFragment;
@@ -56,6 +73,15 @@ begin
   inherited;
   //TODO: set cache TTL, decrease ref count
   //Fragment.Free;
+end;
+
+{ TRespondNotImplemented }
+
+procedure TRespondNotImplemented.Build(const Context: IXxmContext; const Caller: IXxmFragment;
+  const Values: array of OleVariant; const Objects: array of TObject);
+begin
+  inherited;
+  Context.SetStatus(501,'Not Implemented');
 end;
 
 initialization
