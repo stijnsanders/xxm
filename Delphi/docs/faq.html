@@ -86,10 +86,14 @@ If <code>Context.BufferSize</code> is set to something more than 0, this excepti
 when the buffer is full, or when <code>Context.Flush</code> is called, and an attempt is made to transmit data.<br />
 If you want to maintain a long-running process with the client disconnected, check <code>Context.Connected</code> whether it is safe to send data.<br />
 (Though this will keep one of the threads in the thread-pool occupied and unavailable to process incoming requests.<br />
-For long-running processes please use threads you manage yourself, or use another server process with IPC like COM, named pipes or network connections.)</dd>
+For long-running processes please use <a href="#threads">threads you manage yourself</a>, or use another server process with IPC like COM, named pipes or network connections.)</dd>
 
 <dt><a name="send"></a>why do I get this error: <code>There is no overloaded version of 'Send' that can be called with these arguments</code>?</dt>
 <dd><code>IXxmContext</code> has a few overloads of <code>Send</code> and <code>SendHTML</code> so that in most cases you can use the <code>[[=x]]</code> syntax without much thinking about type, but some types are unclear or ambiguous between the available overloads. In this case use an explicit type cast or an extra local variable</dd>
+
+<dt><a name="threads"></a>can I start background threads from the <code>XxmProjectLoad</code> function call (i.e. when my xxm project starts) to do background work and/or scheduled tasks?</dt>
+<dd>you could but you shouldn't. The threads would run from within the web-server context and may impact performance. It's advisable to use COM or other IPC to outside processes running on the web-server (or another server) to have the work done.
+<br />If you do though, be sure to also implement the <a href="ref.html#projectintf"><code>IXxmProjectEvents1</code></a> interface on your <code>IXxmProject</code> implementation (see your project's <code>xxmp.pas</code> unit) and shut down any worker threads from the <code>ReleasingContexts</code> method.</dd>
 
 <dt><a name="debug"></a>how do I debug an xxm project</dt>
 <dd>an xxm project is still a Delphi project, so you can open the project's dpr in Delphi, just remember to edit the xxm and xxmi files, and not the pas files directly (unless for temporary debugging behaviour).<br />
