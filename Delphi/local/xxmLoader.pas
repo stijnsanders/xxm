@@ -21,7 +21,7 @@ type
     FResumeFragment,FDropFragment:WideString;
     FResumeValue,FDropValue:OleVariant;
     function StgMediumAsStream(stgmed:TStgMedium):TStream;
-    function LocaleLanguage: AnsiString;
+    function LocaleLanguage: WideString;
     procedure CheckReqHeaders;
   protected
     procedure SendHeader; override;
@@ -72,7 +72,7 @@ type
 
 var
   //see xxmSettings
-  DefaultProjectName:AnsiString;
+  DefaultProjectName:WideString;
 
 implementation
 
@@ -186,7 +186,6 @@ var
   i,j,l:integer;
   ba:TBindInfoF;
   bi:TBindInfo;
-  x:AnsiString;
   DoBuild:boolean;
 begin
   try
@@ -316,12 +315,6 @@ begin
       if not HandleException(e) then
        begin
         ForceStatus(StatusException,'ERROR');
-        try
-          if FPostData=nil then x:='none' else
-            x:=IntToStr(FPostData.Size)+' bytes';
-        except
-          x:='unknown';
-        end;
         SendError('error',e.ClassName,e.Message);
        end;
 
@@ -422,7 +415,7 @@ begin
       if ObtainUserAgentString(0,PAnsiChar(def),c)=0 then
        begin
         SetLength(def,c-1);
-        Result:=def;
+        Result:=WideString(def);
        end
       else
        begin
@@ -459,7 +452,9 @@ begin
   if st<>0 then
    begin
     r:=BindInfo.GetBindString(st,@d,256,c);
-    if r=INET_E_USE_DEFAULT_SETTING then Result:=def else
+    if r=INET_E_USE_DEFAULT_SETTING then
+      Result:=WideString(def)
+    else
      begin
       OleCheck(r);
       if c=0 then Result:='' else
@@ -501,7 +496,7 @@ begin
   if FHttpNegotiate=nil then
     OleCheck((ProtSink as IServiceProvider).QueryService(
       IID_IHttpNegotiate,IID_IHttpNegotiate,FHttpNegotiate));
-  px:=FResHeaders.Build+#13#10;
+  px:=WideString(FResHeaders.Build)+#13#10;
   py:=nil;
   OleCheck(FHttpNegotiate.OnResponse(StatusCode ,PWideChar(px),nil,py));
 
@@ -546,7 +541,7 @@ begin
         if l=StreamThreshold then
          begin
           SetLength(FPostTempFile,$400);
-          SetLength(FPostTempFile,GetTempPathA($400,PAnsiChar(FPostTempFile)));//TODO: setting
+          SetLength(FPostTempFile,GetTempPath($400,PChar(FPostTempFile)));//TODO: setting
           FPostTempFile:=FPostTempFile+'xxm_'+IntToHex(integer(Self),8)+'.dat';
           f:=TFileStream.Create(FPostTempFile,fmCreate);
           f.Write(m.Memory^,l);
@@ -608,17 +603,17 @@ begin
   raise EXxmPageRedirected.Create(s);
 end;
 
-function TXxmLocalContext.LocaleLanguage: AnsiString;
+function TXxmLocalContext.LocaleLanguage: WideString;
 var
   i:integer;
-  s,t:AnsiString;
+  s,t:WideString;
 begin
   i:=$10;
   SetLength(s,i);
-  SetLength(s,GetLocaleInfoA(GetThreadLocale,LOCALE_SISO639LANGNAME,PAnsiChar(s),i));
+  SetLength(s,GetLocaleInfoW(GetThreadLocale,LOCALE_SISO639LANGNAME,PWideChar(s),i));
   i:=$10;
   SetLength(t,i);
-  SetLength(t,GetLocaleInfoA(GetThreadLocale,LOCALE_SISO3166CTRYNAME,PAnsiChar(t),i));
+  SetLength(t,GetLocaleInfoW(GetThreadLocale,LOCALE_SISO3166CTRYNAME,PWideChar(t),i));
   Result:=LowerCase(s+'-'+t);
 end;
 
@@ -634,10 +629,10 @@ begin
       OleCheck((ProtSink as IServiceProvider).QueryService(
         IID_IHttpNegotiate,IID_IHttpNegotiate,FHttpNegotiate));
     OleCheck(FHttpNegotiate.BeginningTransaction(PWideChar(FURL),nil,0,px));
-    ps:=px;//TODO: encoding?
+    ps:=AnsiString(string(px));//TODO: encoding?
     CoTaskMemFree(px);
     if FPostData<>nil then
-      ps:=ps+'Content-Length: '+IntToStr(FPostData.Size)+#13#10;
+      ps:=ps+AnsiString('Content-Length: '+IntToStr(FPostData.Size)+#13#10);
     FReqHeaders.Load(ps);
    end;
 end;
@@ -670,7 +665,8 @@ end;
 
 function TXxmLocalContext.GetCookie(const Name: WideString): WideString;
 var
-  fn,s:AnsiString;
+  fn:string;
+  s:AnsiString;
   f:TFileStream;
   b,b1:boolean;
   i,j,l:integer;
@@ -696,7 +692,7 @@ begin
         l:=(f.Size div 2)-1;
         SetLength(Result,l);
         f.Read(Result[1],l*2);
-        s:=UTF8Decode(Result);
+        s:=UTF8Encode(Result);
         l:=Length(s);
        end
       else
@@ -747,13 +743,49 @@ procedure TXxmLocalContext.SetCookie(const Name,Value:WideString;
   KeepSeconds:cardinal; const Comment,Domain,Path:WideString;
   Secure,HttpOnly:boolean);
 var
-  fn,s:AnsiString;
+  fn:string;
+  s:AnsiString;
   f:TFileStream;
   pce:TXxmProjectCacheEntry;
   function CookieEncode(x:WideString):AnsiString;
+  var
+    i,j,l:integer;
+    y:AnsiString;
   begin
-    Result:=StringReplace(StringReplace(UTF8Encode(x),
-      '%','%_',[rfReplaceAll]),#13#10,'%|',[rfReplaceAll])+#13#10;
+    y:=UTF8Encode(x);
+    l:=Length(y);
+    j:=0;
+    for i:=1 to l do if y[i] in ['%',#13,#10] then inc(j);
+    SetLength(Result,l+j);
+    i:=1;
+    j:=0;
+    while i<=l do
+     begin
+      case y[i] of
+        '%':
+         begin
+          inc(j); Result[j]:='%';
+          inc(j); Result[j]:='_';
+         end;
+        #13:
+         begin
+          inc(j); Result[j]:='%';
+          inc(j); Result[j]:='|';
+          if (i<l) and (y[i+1]=#10) then inc(i);
+         end;
+        #10:
+         begin
+          inc(j); Result[j]:='%';
+          inc(j); Result[j]:='|';
+         end;
+        else
+         begin
+          inc(j); Result[j]:=y[i];
+         end;
+      end;
+      inc(i);
+     end;
+    SetLength(Result,j);
   end;
 begin
   CheckHeaderNotSent;
@@ -768,8 +800,9 @@ begin
    begin
     f:=TFileStream.Create(fn,fmCreate);
     try
-      s:=CookieEncode(Value)+
-        FormatDateTime('yyyy-mm-dd.hh:nn:ss',Now+KeepSeconds/86400)+#13#10+
+      s:=
+        CookieEncode(Value)+
+        AnsiString(FormatDateTime('yyyy-mm-dd.hh:nn:ss',Now+KeepSeconds/86400)+#13#10)+
         CookieEncode(Domain)+
         CookieEncode(Path)+
         CookieEncode(Comment);

@@ -14,7 +14,7 @@ uses Windows, SysUtils, xxmCommonUtils;
 function AutoUpdate(Entry: TXxmProjectEntry; Context: IXxmContext;
   const ProjectName: WideString): boolean;
 var
-  fn,fn1,s,s1:AnsiString;
+  fn,fn1,s,s1:string;
   i,lc:integer;
 const
   NoNextUpdateAfter=5000;//TODO: setting!
@@ -42,8 +42,8 @@ begin
             if GetFileSignature(fn1)<>'' then
              begin
               //switcheroo
-              if not(DeleteFileA(PAnsiChar(fn))) then MoveFileA(PAnsiChar(fn),PAnsiChar(fn+'.bak'));
-              if not(MoveFileA(PAnsiChar(fn1),PAnsiChar(fn))) then
+              if not(DeleteFile(PChar(fn))) then MoveFile(PChar(fn),PChar(fn+'.bak'));
+              if not(MoveFile(PChar(fn1),PChar(fn))) then
                 raise Exception.Create('MoveFile xxu failed: '+SysErrorMessage(GetLastError));
               //TODO: non-xxmIsapi handlers could still have xxl locked? take xxu as update?
              end;

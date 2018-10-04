@@ -12,36 +12,36 @@ type
     Data:IJSONDocument;
     DataStartSize:integer;
     DataFileName,FProjectName,FRootFolder,FSrcFolder,
-    FHandlerPath,FProtoPathDef,FProtoPath:AnsiString;
+    FHandlerPath,FProtoPathDef,FProtoPath:string;
     Modified,DoLineMaps:boolean;
     Signatures:TStringList;
     FOnOutput:TXxmWebProjectOutput;
     FParserValues:TXxmPageParserValueList;
 
-    function KeyText(const Key:WideString):AnsiString;
+    function KeyText(const Key: WideString): AnsiString;
 
-    function ReadString(const FilePath:AnsiString):AnsiString;
-    procedure BuildOutput(const Msg:AnsiString);
+    function ReadString(const FilePath: string): AnsiString;
+    procedure BuildOutput(const Msg: AnsiString);
   public
 
-    constructor Create(const SourcePath:AnsiString;
-      OnOutput:TXxmWebProjectOutput; CanCreate:boolean);
+    constructor Create(const SourcePath: string;
+      OnOutput: TXxmWebProjectOutput; CanCreate:boolean);
     destructor Destroy; override;
 
     function CheckFiles(Rebuild:boolean;ExtraFields:TStrings):boolean;
     function GenerateProjectFiles(Rebuild:boolean;ExtraFields:TStrings):boolean;
-    function ResolveErrorLines(const BuildOutput:AnsiString):AnsiString;
+    function ResolveErrorLines(const BuildOutput:WideString):WideString;
 
-    function Compile:boolean;
+    function Compile: boolean;
     procedure Update;
 
-    property ProjectName:AnsiString read FProjectName;
-    property RootFolder:AnsiString read FRootFolder;
-    property ProjectFile:AnsiString read DataFileName;
+    property ProjectName: string read FProjectName;
+    property RootFolder: string read FRootFolder;
+    property ProjectFile: string read DataFileName;
 
-    property SrcFolder:AnsiString read FSrcFolder write FSrcFolder;
-    property ProtoFolder:AnsiString read FProtoPath write FProtoPath;
-    property LineMaps:boolean read DoLineMaps write DoLineMaps;
+    property SrcFolder: string read FSrcFolder write FSrcFolder;
+    property ProtoFolder: string read FProtoPath write FProtoPath;
+    property LineMaps: boolean read DoLineMaps write DoLineMaps;
   end;
 
   EXxmWebProjectNotFound=class(Exception);
@@ -92,8 +92,8 @@ const
   SXxmWebProjectNotFound='Web Project File not found for "__"';
   SXxmWebProjectLoad='Could not read "__"';
 
-constructor TXxmWebProject.Create(const SourcePath: AnsiString;
-  OnOutput:TXxmWebProjectOutput; CanCreate:boolean);
+constructor TXxmWebProject.Create(const SourcePath: string;
+  OnOutput: TXxmWebProjectOutput; CanCreate: boolean);
 var
   v:OleVariant;
   i,j,l:integer;
@@ -147,7 +147,7 @@ begin
         i:=Length(FRootFolder)-1;
         while (i<>0) and (FRootFolder[i]<>PathDelim) do dec(i);
         FProjectName:=Copy(FRootFolder,i+1,Length(FRootFolder)-i-1);
-        s:='{name:"'+FProjectName+
+        s:='{name:"'+AnsiString(FProjectName)+
           '",compileCommand:"dcc32 -U[[HandlerPath]]public'+
           ' -Q [[ProjectName]].dpr"}';
         f:=TFileStream.Create(FRootFolder+DataFileName,fmCreate);
@@ -178,7 +178,7 @@ begin
   //TRANSITIONAL: convert
   if (s<>'') and (s[1]='<') then
    begin
-    s:=ConvertProjectFile(s);
+    s:=AnsiString(ConvertProjectFile(string(s)));
     //CopyFile(,'.bak')?
     if not(CopyFile(PChar(FRootFolder+DataFileName),PChar(FRootFolder+
       StringReplace(DataFileName,'.','_',[rfReplaceAll])+'.bak'),false)) then
@@ -193,7 +193,7 @@ begin
    end;
 
   Data:=JSON;
-  Data.Parse(s);
+  Data.Parse(WideString(s));
   v:=Data['uuid'];
   if VarIsNull(v) then Data['uuid']:=CreateClassID;//other random info?
 
@@ -226,9 +226,10 @@ begin
       v:=d[ParserValueElement[pv]];
       if not(VarIsNull(v)) then
        begin
-        s:=StringReplace(StringReplace(v,
-          '$v',FParserValues[pv].Code,[rfReplaceAll]),
-          '$d',FParserValues[pv].Code,[rfReplaceAll]);
+        s:=AnsiString(StringReplace(StringReplace(
+          v,
+          '$v',string(FParserValues[pv].Code),[rfReplaceAll]),
+          '$d',string(FParserValues[pv].Code),[rfReplaceAll]));
         l:=Length(s);
         j:=0;
         for i:=1 to l-1 do if (s[i]=#13) and (s[i+1]=#10) then inc(j);
@@ -251,7 +252,8 @@ end;
 procedure TXxmWebProject.Update;
 var
   f:TFileStream;
-  fn,s:AnsiString;
+  fn:string;
+  s:AnsiString;
 begin
   if Modified then
    begin
@@ -273,9 +275,9 @@ begin
     //save signatures
     try
       fn:=FSrcFolder+SignaturesFileName;
-      SetFileAttributesA(PAnsiChar(fn),0);
+      SetFileAttributes(PChar(fn),0);
       Signatures.SaveToFile(fn);
-      //SetFileAttributesA(PAnsiChar(fn),FILE_ATTRIBUTE_HIDDEN or FILE_ATTRIBUTE_SYSTEM);
+      //SetFileAttributes(PChar(fn),FILE_ATTRIBUTE_HIDDEN or FILE_ATTRIBUTE_SYSTEM);
     except
       //silent?
     end;
@@ -291,7 +293,7 @@ var
   DataFiles,d:IJSONDocument;
   e:IJSONEnumerator;
   v:OleVariant;
-  fn,fnu,s,cid,uname,upath,uext:AnsiString;
+  fn,fnu,s,cid,uname,upath,uext:string;
   sl,sl1,sl2:TStringList;
   sl_i,i,cPathIndex,fExtIndex,fPathIndex:integer;
 begin
@@ -361,7 +363,7 @@ begin
          begin
           //unique counter for project
           uname:=Copy(cid,cPathIndex,Length(cid)-cPathIndex+1);
-          if not(uname[1] in ['A'..'Z','a'..'z']) then uname:='x'+uname;
+          if not(AnsiChar(uname[1]) in ['A'..'Z','a'..'z']) then uname:='x'+uname;
           i:=0;
           repeat
             inc(i);
@@ -387,7 +389,7 @@ begin
          begin
           Signatures.Values[uname]:=s;
           Modified:=true;
-          BuildOutput(':'+FProjectName+':'+fn+':'+uname+':'+cid+#13#10);
+          BuildOutput(AnsiString(':'+FProjectName+':'+fn+':'+uname+':'+cid+#13#10));
 
           try
             //TODO: alternate proto? either XML tag or default file.
@@ -400,19 +402,20 @@ begin
             repeat
               m.MapLine(p.NextEOLs,0);
               case p.GetNext of
-                ptProjectName:p.Output(FProjectName);
-                ptProjectPath:p.Output(FRootFolder);
-                ptProtoFile:p.Output(FProtoPath+uext+DelphiExtension);
-                ptFragmentID:p.Output(cid);
-                ptFragmentUnit:p.Output(uname);
-                ptFragmentAddress:p.Output(fnu);
+                ptProjectName:p.Output(AnsiString(FProjectName));
+                ptProjectPath:p.Output(AnsiString(FRootFolder));
+                ptProtoFile:p.Output(AnsiString(FProtoPath+uext+DelphiExtension));
+                ptFragmentID:p.Output(AnsiString(cid));
+                ptFragmentUnit:p.Output(AnsiString(uname));
+                ptFragmentAddress:p.Output(AnsiString(fnu));
                 ptUsesClause:p.Output(q.AllSectionsCheckComma(psUses,m));
                 ptFragmentDefinitions:p.Output(q.AllSections(psDefinitions,m));
                 ptFragmentHeader:p.Output(q.AllSections(psHeader,m));
                 ptFragmentBody:p.Output(q.BuildBody(m));
                 ptFragmentFooter:p.Output(q.AllSections(psFooter,m));
                 pt_Unknown:
-                  if not p.Done then p.Output(ExtraFields.Values[p.GetTagLabel]);
+                  if not p.Done then
+                    p.Output(AnsiString(ExtraFields.Values[string(p.GetTagLabel)]));
                 //else raise?
               end;
             until p.Done;
@@ -515,8 +518,8 @@ var
   e:IJSONEnumerator;
   d:IJSONDocument;
   fh:THandle;
-  fd:TWin32FindDataA;
-  fn1,fn2,s:AnsiString;
+  fd:TWin32FindData;
+  fn1,fn2,s:string;
   i:integer;
 begin
   Result:=false;
@@ -528,15 +531,15 @@ begin
     p:=TXxmProtoParser.Create;
     try
       //[[ProjectName]].dpr
-      BuildOutput(FProjectName+DelphiProjectExtension+#13#10);
+      BuildOutput(AnsiString(FProjectName+DelphiProjectExtension+#13#10));
       s:=FProtoPath+ProtoProjectDpr;
       if not(FileExists(s)) then s:=FProtoPathDef+ProtoProjectDpr;
       p.Parse(ReadString(s),ExtraFields);
       repeat
         case p.GetNext of
-          ptProjectName:p.Output(FProjectName);
-          ptProjectPath:p.Output(FRootFolder);
-          ptProtoFile:p.Output(FProtoPath+ProtoProjectDpr);
+          ptProjectName:p.Output(AnsiString(FProjectName));
+          ptProjectPath:p.Output(AnsiString(FRootFolder));
+          ptProtoFile:p.Output(AnsiString(FProtoPath+ProtoProjectDpr));
           ptIterateFragment:
            begin
             e:=JSONEnum(Data['files']);
@@ -549,14 +552,14 @@ begin
             if e.Next then d:=JSON(e.Value) else d:=nil;
             p.IterateBegin(d<>nil);
            end;
-          ptFragmentUnit:p.Output(VarToStr(d['unitName']));
-          ptFragmentPath:p.Output(StringReplace(
-            VarToStr(d['unitPath']),'/',PathDelim,[rfReplaceAll]));
-          ptFragmentAddress:p.Output(StringReplace(
-            VarToStr(d['path']),'/',PathDelim,[rfReplaceAll]));
-          ptIncludeUnit:p.Output(e.Key);
-          ptIncludePath:p.Output(StringReplace(
-            VarToStr(d['unitPath']),'/',PathDelim,[rfReplaceAll]));
+          ptFragmentUnit:p.Output(AnsiString(VarToStr(d['unitName'])));
+          ptFragmentPath:p.Output(AnsiString(StringReplace(
+            VarToStr(d['unitPath']),'/',PathDelim,[rfReplaceAll])));
+          ptFragmentAddress:p.Output(AnsiString(StringReplace(
+            VarToStr(d['path']),'/',PathDelim,[rfReplaceAll])));
+          ptIncludeUnit:p.Output(AnsiString(e.Key));
+          ptIncludePath:p.Output(AnsiString(StringReplace(
+            VarToStr(d['unitPath']),'/',PathDelim,[rfReplaceAll])));
           ptIterateEnd:
            begin
             if e.Next then d:=JSON(e.Value) else d:=nil;
@@ -567,7 +570,8 @@ begin
           ptProjectBody:    p.Output(KeyText('body'));
           ptProjectSwitches:p.Output(KeyText('switches'));
           pt_Unknown:
-            if not p.Done then p.Output(ExtraFields.Values[p.GetTagLabel]);
+            if not p.Done then
+              p.Output(AnsiString(ExtraFields.Values[string(p.GetTagLabel)]));
         end;
       until p.Done;
       ForceDirectories(FSrcFolder+'dcu');//TODO: setting "create dcu folder"?
@@ -582,11 +586,12 @@ begin
         p.Parse(ReadString(s),ExtraFields);
         repeat
           case p.GetNext of
-            ptProjectName:p.Output(FProjectName);
-            ptProjectPath:p.Output(FRootFolder);
-            ptProtoFile:p.Output(FProtoPath+ProtoProjectPas);
+            ptProjectName:p.Output(AnsiString(FProjectName));
+            ptProjectPath:p.Output(AnsiString(FRootFolder));
+            ptProtoFile:p.Output(AnsiString(FProtoPath+ProtoProjectPas));
             pt_Unknown:
-              if not p.Done then p.Output(ExtraFields.Values[p.GetTagLabel]);
+              if not p.Done then
+                p.Output(AnsiString(ExtraFields.Values[string(p.GetTagLabel)]));
             //else raise?
           end;
         until p.Done;
@@ -594,7 +599,7 @@ begin
        end;
 
       //copy other files the first time (cfg,dof,res...)
-      fh:=FindFirstFileA(PAnsiChar(FProtoPath+ProtoProjectMask),fd);
+      fh:=FindFirstFile(PChar(FProtoPath+ProtoProjectMask),fd);
       if fh<>INVALID_HANDLE_VALUE then
        begin
         repeat
@@ -606,16 +611,16 @@ begin
             fn1:=FSrcFolder+FProjectName+Copy(s,i,Length(s)-i+1);
             if not(FileExists(fn1)) then
              begin
-              BuildOutput(fn1+#13#10);
-              CopyFileA(PAnsiChar(FProtoPath+s),PAnsiChar(fn1),false);
+              BuildOutput(AnsiString(fn1+#13#10));
+              CopyFile(PChar(FProtoPath+s),PChar(fn1),false);
              end;
            end;
-        until not(FindNextFileA(fh,fd));
+        until not(FindNextFile(fh,fd));
         Windows.FindClose(fh);
        end;
 
       //proto\Web.*
-      fh:=FindFirstFileA(PAnsiChar(FProtoPathDef+ProtoProjectMask),fd);
+      fh:=FindFirstFile(PChar(FProtoPathDef+ProtoProjectMask),fd);
       if fh<>INVALID_HANDLE_VALUE then
        begin
         repeat
@@ -627,11 +632,11 @@ begin
             fn1:=FSrcFolder+FProjectName+Copy(s,i,Length(s)-i+1);
             if not(FileExists(fn1)) then
              begin
-              BuildOutput(fn1+#13#10);
-              CopyFileA(PAnsiChar(FProtoPathDef+s),PAnsiChar(fn1),false);
+              BuildOutput(AnsiString(fn1+#13#10));
+              CopyFile(PChar(FProtoPathDef+s),PChar(fn1),false);
              end;
            end;
-        until not(FindNextFileA(fh,fd));
+        until not(FindNextFile(fh,fd));
         Windows.FindClose(fh);
        end;
 
@@ -642,7 +647,7 @@ begin
    end;
 end;
 
-function TXxmWebProject.ReadString(const FilePath: AnsiString): AnsiString;
+function TXxmWebProject.ReadString(const FilePath: string): AnsiString;
 var
   f:TFileStream;
   l:int64;
@@ -657,7 +662,7 @@ begin
   end;
 end;
 
-function TXxmWebProject.KeyText(const Key: WideString):AnsiString;
+function TXxmWebProject.KeyText(const Key: WideString): AnsiString;
 var
   v:OleVariant;
   v1,v2:integer;
@@ -682,12 +687,12 @@ begin
        end
       else
         s.WriteString(VarToStr(v));
-      Result:=
+      Result:=AnsiString(
         StringReplace(
         StringReplace(
           s.DataString,
           #13#10,#10,[rfReplaceAll]),
-          #10,#13#10,[rfReplaceAll]);
+          #10,#13#10,[rfReplaceAll]))
     finally
       s.Free;
     end;
@@ -703,14 +708,14 @@ function TXxmWebProject.Compile:boolean;
 var
   cl:TStringList;
   cli:integer;
-  clx,cld,d1:AnsiString;
+  clx,cld,d1:string;
   pi:TProcessInformation;
-  si:TStartupInfoA;
+  si:TStartupInfo;
   h1,h2:THandle;
   sa:TSecurityAttributes;
   f:TFileStream;
   d:array[0..$FFF] of AnsiChar;
-  procedure GetKeys(const Key: WideString; const Prefix: AnsiString);
+  procedure GetKeys(const Key: WideString; const Prefix: string);
   var
     v,vx:OleVariant;
     v1,v2:integer;
@@ -737,26 +742,27 @@ var
       else
         cl.Add(prefix+VarToStr(v));
   end;
-  function DoCommand(const cmd,fld:AnsiString):boolean;
+  function DoCommand(const cmd,fld:string):boolean;
   var
     c:cardinal;
     running:boolean;
   begin
-    if not(CreateProcessA(nil,PAnsiChar(AnsiString(
+    if not(CreateProcess(nil,PChar(
       StringReplace(
       StringReplace(
       StringReplace(
       StringReplace(
-        cmd,
+        string(cmd),
           '[[ProjectName]]',FProjectName,[rfReplaceAll]),
           '[[SrcPath]]',FSrcFolder,[rfReplaceAll]),
           '[[ProjectPath]]',FRootFolder,[rfReplaceAll]),
           '[[HandlerPath]]',FHandlerPath,[rfReplaceAll])
           //more?
-      )),
-      nil,nil,true,NORMAL_PRIORITY_CLASS,nil,PAnsiChar(fld),si,pi)) then
+      ),
+      nil,nil,true,NORMAL_PRIORITY_CLASS,nil,PChar(fld),si,pi)) then
       //RaiseLastOSError;
-      raise EXxmWebProjectCompile.Create('Error performing'#13#10'"'+cmd+'":'#13#10+SysErrorMessage(GetLastError));
+      raise EXxmWebProjectCompile.Create('Error performing'#13#10'"'+string(cmd)
+        +'":'#13#10+SysErrorMessage(GetLastError));
     CloseHandle(pi.hThread);
     try
       running:=true;
@@ -781,12 +787,14 @@ var
         else
          begin
           Result:=false;
-          BuildOutput('Command "'+cmd+'" failed with code '+IntToStr(integer(c)));
+          BuildOutput(AnsiString(
+            'Command "'+string(cmd)+'" failed with code '+IntToStr(integer(c))));
          end
       else
        begin
         Result:=false;
-        BuildOutput('GetExitCodeProcess('+cmd+'):'+SysErrorMessage(GetLastError));
+        BuildOutput(AnsiString(
+          'GetExitCodeProcess('+string(cmd)+'):'+SysErrorMessage(GetLastError)));
        end;
     finally
       CloseHandle(pi.hProcess);
@@ -855,7 +863,7 @@ begin
 end;
 
 function TXxmWebProject.ResolveErrorLines(
-  const BuildOutput: AnsiString): AnsiString;
+  const BuildOutput: WideString): WideString;
 var
   sl_in,sl_out:TStringList;
   sl_x:integer;
@@ -870,7 +878,7 @@ begin
   sl_in:=TStringList.Create;
   sl_out:=TStringList.Create;
   try
-    sl_in.Text:=BuildOutput;
+    sl_in.Text:=string(BuildOutput);
     for sl_x:=0 to sl_in.Count-1 do
      begin
       s:=sl_in[sl_x];

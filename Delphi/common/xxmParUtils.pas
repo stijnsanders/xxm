@@ -306,8 +306,8 @@ var
 begin
   l:=Length(Params);
   i:=0;
-  while (i<l) and (CompareText(
-    Copy(Data,Params[i].NameStart,Params[i].NameLength),Name)<>0) do inc(i);
+  while (i<l) and (CompareText(string(
+    Copy(Data,Params[i].NameStart,Params[i].NameLength)),string(Name))<>0) do inc(i);
   if i<l then
     Result:=Copy(Data,Params[i].ValueStart,Params[i].ValueLength)
   else
@@ -599,12 +599,12 @@ begin
    begin
     i:=integer(Name);
     if (i>=0) and (i<Length(FIdx)) then
-      Result:=Copy(FData,FIdx[i].ValueStart,FIdx[i].ValueLength)
+      Result:=WideString(Copy(FData,FIdx[i].ValueStart,FIdx[i].ValueLength))
     else
       raise ERangeError.Create('TRequestHeaders.GetItem: Out of range');
    end
   else
-    Result:=GetParamValue(FData,FIdx,Name);
+    Result:=WideString(GetParamValue(FData,FIdx,AnsiString(Name)));
 end;
 
 function TRequestHeaders.Complex(Name: OleVariant;
@@ -617,11 +617,11 @@ begin
   if VarIsNumeric(Name) then i:=integer(Name) else
    begin
     i:=0;
-    while (i<l) and (CompareText(Copy(
-      FData,FIdx[i].NameStart,FIdx[i].NameLength),Name)<>0) do inc(i);//lower?
+    while (i<l) and (CompareText(string(Copy(
+      FData,FIdx[i].NameStart,FIdx[i].NameLength)),string(Name))<>0) do inc(i);//lower?
    end;
   if (i>=0) and (i<l) then
-    sv:=TRequestSubValues.Create(FData,
+    sv:=TRequestSubValues.Create(WideString(FData),
       FIdx[i].ValueStart,FIdx[i].ValueLength,Result)
   else
     sv:=TRequestSubValues.Create('',1,0,Result);//raise?
@@ -636,7 +636,7 @@ end;
 function TRequestHeaders.GetName(Idx: integer): WideString;
 begin
   if (Idx>=0) and (Idx<Length(FIdx)) then
-    Result:=Copy(FData,FIdx[Idx].NameStart,FIdx[Idx].NameLength)
+    Result:=WideString(Copy(FData,FIdx[Idx].NameStart,FIdx[Idx].NameLength))
   else
     raise ERangeError.Create('TRequestHeaders.GetName: Out of range');
 end;
@@ -653,7 +653,7 @@ constructor TRequestSubValues.Create(const Data: WideString; ValueStart,
 begin
   inherited Create;
   FData:=Data;//assert reference counting, full copy is senseless
-  FirstValue:=SplitHeaderValue(FData,ValueStart,ValueLength,FIdx);
+  FirstValue:=WideString(SplitHeaderValue(AnsiString(FData),ValueStart,ValueLength,FIdx));
 end;
 
 destructor TRequestSubValues.Destroy;
@@ -681,7 +681,7 @@ begin
       raise ERangeError.Create('TRequestSubValues.GetItem: Out of range');
    end
   else
-    Result:=GetParamValue(FData,FIdx,Name);
+    Result:=WideString(GetParamValue(AnsiString(FData),FIdx,AnsiString(VarToStr(Name))));
 end;
 
 function TRequestSubValues.GetName(Idx: integer): WideString;
@@ -834,7 +834,7 @@ begin
         FItems[i].SubValues.Build(ss);
       ss.WriteString(#13#10);
      end;
-    Result:=ss.DataString;
+    Result:=AnsiString(ss.DataString);
   finally
     ss.Free;
   end;

@@ -11,7 +11,7 @@ procedure XxmReadSettings;
 var
   r:TRegistry;
 
-  function ReadBool(Key:AnsiString;Def:boolean):boolean;
+  function ReadBool(const Key:string;Def:boolean):boolean;
   begin
     if r.ValueExists(Key) then Result:=r.ReadBool(Key) else
      begin
@@ -20,7 +20,7 @@ var
      end;
   end;
 
-  function ReadInt(Key:AnsiString;Def:integer):integer;
+  function ReadInt(const Key:string;Def:integer):integer;
   begin
     if r.ValueExists(Key) then Result:=r.ReadInteger(Key) else
      begin
@@ -29,7 +29,7 @@ var
      end;
   end;
 
-  function ReadString(Key,Def:AnsiString):AnsiString;
+  function ReadString(const Key,Def:string):string;
   begin
     if r.ValueExists(Key) then Result:=r.ReadString(Key) else
      begin

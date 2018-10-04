@@ -4,11 +4,11 @@ interface
 
 uses Windows, SysUtils, Classes;
 
-procedure ListFilesInPath(FileList:TStringList;const Path:AnsiString);
-function GetInternalIdentifier(const FileName:AnsiString;
-  var cPathIndex,fExtIndex,fPathIndex:integer):AnsiString;
-function GetFileSize(const Path:AnsiString):integer;
-function GetSelfPath:AnsiString;
+procedure ListFilesInPath(FileList: TStringList;const Path: string);
+function GetInternalIdentifier(const FileName: string;
+  var cPathIndex,fExtIndex,fPathIndex:integer): string;
+function GetFileSize(const Path: string): integer;
+function GetSelfPath: string;
 
 const
   Hex:array[0..15] of char='0123456789ABCDEF';
@@ -38,7 +38,7 @@ type
   );
 
 const
-  XxmFileExtension:array[TXxmFileType] of AnsiString=(
+  XxmFileExtension:array[TXxmFileType] of string=(
     '.xxm',
     '.xxmi',
     '.xxmp',
@@ -50,15 +50,15 @@ implementation
 
 uses Registry;
 
-procedure ListFilesInPath(FileList:TStringList;const Path:AnsiString);
+procedure ListFilesInPath(FileList: TStringList;const Path: string);
 var
   Dirs:TStringList;
   fh:THandle;
-  fd:TWin32FindDataA;
-  CDir,s:AnsiString;
+  fd:TWin32FindData;
+  CDir,s:string;
   i:integer;
   FirstLevel,AbandonDirectory:boolean;
-  ft:TXxmFileType;                              
+  ft:TXxmFileType;
 begin
   Dirs:=TStringList.Create;
   try
@@ -69,14 +69,14 @@ begin
       CDir:=Dirs[0];
       AbandonDirectory:=false;
       Dirs.Delete(0);
-      fh:=FindFirstFileA(PAnsiChar(Path+CDir+'*.*'),fd);
+      fh:=FindFirstFile(PChar(Path+CDir+'*.*'),fd);
       if fh=INVALID_HANDLE_VALUE then RaiseLastOSError;
       repeat
-        if (AnsiString(fd.cFileName)<>'.') and (AnsiString(fd.cFileName)<>'..') then
+        s:=fd.cFileName;
+        if (s<>'.') and (s<>'..') then
          begin
           if (fd.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY)=0 then
            begin
-            s:=fd.cFileName;
             i:=Length(s);
             while (i<>0) and (s[i]<>'.') do dec(i);
             s:=LowerCase(Copy(s,i,Length(s)-i+1));
@@ -108,9 +108,9 @@ begin
             end;
            end
           else
-            Dirs.Add(CDir+fd.cFileName+PathDelim);
+            Dirs.Add(CDir+s+PathDelim);
          end;
-      until not(FindNextFileA(fh,fd)) or AbandonDirectory;
+      until not(FindNextFile(fh,fd)) or AbandonDirectory;
       Windows.FindClose(fh);
       FirstLevel:=false;
      end;
@@ -120,10 +120,10 @@ begin
 end;
 
 
-function IsReservedWord(x:AnsiString):boolean;
+function IsReservedWord(const x:AnsiString):boolean;
 const
   ResWordsCount=65;
-  ResWords:array[0..ResWordsCount-1] of AnsiString=(
+  ResWords:array[0..ResWordsCount-1] of string=(
     'and', 'array', 'as', 'asm',
     'begin', 'case', 'class', 'const',
     'constructor', 'destructor', 'dispinterface', 'div',
@@ -142,30 +142,32 @@ const
     'uses', 'var', 'while', 'with',
     'xor'
   );
-  ResWordMaxLength:array['A'..'Z'] of byte=(5,5,11,13,7,12,4,0,14,0,0,7,3,3,6,9,0,14,6,9,5,3,5,3,0,0);
+  ResWordMaxLength:array[1..26] of byte=(5,5,11,13,7,12,4,0,14,0,0,7,3,3,6,9,0,14,6,9,5,3,5,3,0,0);
 var
-  c:char;
-  y:AnsiString;
+  c:AnsiChar;
+  y:string;
   i:integer;
 begin
   //assert x<>''
-  c:=char(UpCase(x[1]));
+  c:=x[1];
   //skip anything longer than longest word
-  if not(c in ['A'..'Z']) or (Length(x)>ResWordMaxLength[c]) then Result:=false else
+  if not(c in ['A'..'Z','a'..'z']) or (Length(x)>ResWordMaxLength[byte(c) and $1F]) then
+    Result:=false
+  else
    begin
-    y:=LowerCase(x);
+    y:=LowerCase(string(x));
     i:=0;
     while (i<ResWordsCount) and (y<>ResWords[i]) do inc(i);
     Result:=i<ResWordsCount;
    end;
 end;
 
-function GetFileSize(const Path:AnsiString):integer;
+function GetFileSize(const Path: string): integer;
 var
   fh:THandle;
-  fd:TWin32FindDataA;
+  fd:TWin32FindData;
 begin
-  fh:=FindFirstFileA(PAnsiChar(Path),fd);
+  fh:=FindFirstFile(PChar(Path),fd);
   if fh=INVALID_HANDLE_VALUE then Result:=-1 else
    begin
     //assert(fd.nFileSizeHigh=0
@@ -174,20 +176,20 @@ begin
    end;
 end;
 
-function GetSelfPath:AnsiString;
+function GetSelfPath: string;
 var
   i:integer;
 begin
   SetLength(Result,$400);
-  SetLength(Result,GetModuleFileNameA(HInstance,PAnsiChar(Result),$400));
+  SetLength(Result,GetModuleFileName(HInstance,PChar(Result),$400));
   i:=Length(Result);
   while (i<>0) and (Result[i]<>PathDelim) do dec(i);
   Result:=Copy(Result,1,i);
   if Copy(Result,1,4)='\\?\' then Result:=Copy(Result,5,Length(Result)-4);
 end;
 
-function GetInternalIdentifier(const FileName:AnsiString;
-  var cPathIndex,fExtIndex,fPathIndex:integer):AnsiString;
+function GetInternalIdentifier(const FileName: string;
+  var cPathIndex,fExtIndex,fPathIndex:integer): string;
 var
   i:integer;
 begin
@@ -209,15 +211,15 @@ begin
         fExtIndex:=i;
        end;
       'A'..'Z':
-        Result:=Result+AnsiChar(byte(FileName[i])+$20);
+        Result:=Result+char(byte(FileName[i])+$20);
       '0'..'9','_','a'..'z':
         Result:=Result+FileName[i];
       else
         Result:=Result+'x'+Hex[byte(FileName[i]) shr 4]+Hex[byte(FileName[i]) and $F];
     end;
   //assert CID<>''
-  if not(Result[1] in ['A'..'Z','a'..'z']) then Result:='x'+Result;
-  if IsReservedWord(Result) then
+  if not(AnsiChar(Result[1]) in ['A'..'Z','a'..'z']) then Result:='x'+Result;
+  if IsReservedWord(AnsiString(Result)) then
     if LowerCase(Result)='or' then
       Result:='x_'+Result
     else

@@ -17,8 +17,7 @@ type
     ecb: PEXTENSION_CONTROL_BLOCK;
     FIOState: integer;
     FIOStream: TStream;
-    FURI: WideString;
-    FRedirectPrefix, FSessionID: AnsiString;
+    FURI, FRedirectPrefix, FSessionID: WideString;
     FReqHeaders: TRequestHeaders;
     FResHeaders: TResponseHeaders;
     FCookieParsed: boolean;
@@ -91,23 +90,31 @@ var
   r:TResourceStream;
   p:PAnsiChar;
 begin
-  r:=TResourceStream.CreateFromID(HInstance,1,RT_VERSION);
   try
-    r.Read(d[0],dSize);
-  finally
-    r.Free;
+    r:=TResourceStream.CreateFromID(HInstance,1,RT_VERSION);
+    try
+      r.Read(d[0],dSize);
+    finally
+      r.Free;
+    end;
+    if VerQueryValueA(@d[0],'\',pointer(verblock),verlen) then
+      Ver.dwExtensionVersion:=verblock.dwFileVersionMS;
+    if VerQueryValueA(@d[0],'\StringFileInfo\040904E4\FileDescription',pointer(p),verlen) then
+      Move(p^,Ver.lpszExtensionDesc[0],verlen);
+    if ContextPool=nil then
+      ContextPool:=TXxmContextPool.Create(TXxmIsapiContext);
+    if PageLoaderPool=nil then
+      PageLoaderPool:=TXxmPageLoaderPool.Create(PoolMaxThreads);
+    if XxmProjectCache=nil then
+      XxmProjectCache:=TXxmProjectCacheJson.Create;
+    Result:=true;
+  except
+    on e:Exception do
+     begin
+      XxmProjectCacheError:='['+e.ClassName+']'+e.Message;
+      Result:=false;
+     end;
   end;
-  if VerQueryValueA(@d[0],'\',pointer(verblock),verlen) then
-    Ver.dwExtensionVersion:=verblock.dwFileVersionMS;
-  if VerQueryValueA(@d[0],'\StringFileInfo\040904E4\FileDescription',pointer(p),verlen) then
-    Move(p^,Ver.lpszExtensionDesc[0],verlen);
-  if ContextPool=nil then
-    ContextPool:=TXxmContextPool.Create(TXxmIsapiContext);
-  if PageLoaderPool=nil then
-    PageLoaderPool:=TXxmPageLoaderPool.Create(PoolMaxThreads);
-  if XxmProjectCache=nil then
-    XxmProjectCache:=TXxmProjectCacheJson.Create;
-  Result:=true;
 end;
 
 function HttpExtensionProc(PECB: PEXTENSION_CONTROL_BLOCK): DWORD; stdcall;
@@ -219,10 +226,10 @@ const
 procedure TXxmIsapiContext.Load(pecb: PEXTENSION_CONTROL_BLOCK);
 begin
   ecb:=pecb;
-  FURI:=GetVar(ecb,AnsiString('HTTP_URL'));
+  FURI:=WideString(GetVar(ecb,AnsiString('HTTP_URL')));
   FURL:=
-    httpScheme[UpperCase(GetVar(ecb,'HTTPS'))='ON']+
-    GetVar(ecb,'HTTP_HOST')+FURI;//TODO: unicode?
+    httpScheme[UpperCase(string(GetVar(ecb,'HTTPS')))='ON']+
+    WideString(GetVar(ecb,'HTTP_HOST'))+FURI;//TODO: unicode?
   SendDirect:=SendData;
   BeginRequest;
   PageLoaderPool.Queue(Self,ctHeaderNotSent);
@@ -269,7 +276,7 @@ begin
     else
      begin
       //called directly
-      FRedirectPrefix:=y;
+      FRedirectPrefix:=WideString(y);
       x:=Copy(x,Length(y)+1,Length(x)-Length(y));
      end;
 
@@ -278,11 +285,14 @@ begin
     //project name
     i:=1;
     if i>Length(x) then Redirect('/',true) else
-      if x[i]<>'/' then Redirect(AnsiString('/'+Copy(x,i,Length(x)-i+1)),true);
+      if x[i]<>'/' then Redirect('/'+WideString(Copy(x,i,Length(x)-i+1)),true);
     //redirect raises EXxmPageRedirected
     inc(i);
+    if XxmProjectCache=nil then
+      raise Exception.Create('Failed loading project registry:'#13#10+
+        XxmProjectCacheError);
     if XxmProjectCache.ProjectFromURI(Self,x,i,FProjectName,FFragmentName) then
-      FRedirectPrefix:=FRedirectPrefix+'/'+AnsiString(FProjectName);
+      FRedirectPrefix:=FRedirectPrefix+'/'+FProjectName;
     FPageClass:='['+FProjectName+']';
 
     BuildPage;
@@ -342,9 +352,9 @@ begin
         else
          begin
           SetLength(FPostTempFile,$400);
-          SetLength(FPostTempFile,GetTempPathA($400,PAnsiChar(FPostTempFile)));//TODO: setting
-          FPostTempFile:=FPostTempFile+AnsiString('xxm_'+
-            IntToHex(GetCurrentThreadId,4)+'_'+IntToHex(ecb.ConnID,8)+'.dat');
+          SetLength(FPostTempFile,GetTempPath($400,PChar(FPostTempFile)));//TODO: setting
+          FPostTempFile:=FPostTempFile+'xxm_'+
+            IntToHex(GetCurrentThreadId,4)+'_'+IntToHex(ecb.ConnID,8)+'.dat';
           FPostData:=TXxmIsapiStreamAdapter.Create(ecb,TFileStream.Create(FPostTempFile,fmCreate));
          end;
         FPostData.Seek(0,soFromBeginning);
@@ -359,31 +369,31 @@ function TXxmIsapiContext.ContextString(cs: TXxmContextString): WideString;
 begin
   //TODO
   case cs of
-    csVersion:Result:=SelfVersion+', '+GetVar(ecb,'SERVER_SOFTWARE');
+    csVersion:Result:=SelfVersion+', '+WideString(GetVar(ecb,'SERVER_SOFTWARE'));
       //'IIS '+IntToStr(HiWord(ecb.dwVersion))+'.'+IntToStr(LoWord(ecb.dwVersion));
     csExtraInfo:         Result:='';//TODO
     csVerb:              Result:=WideString(ecb.lpszMethod);
     csQueryString:       Result:=WideString(ecb.lpszQueryString);
-    csUserAgent:         Result:=GetVar(ecb,'HTTP_USER_AGENT');
-    csAcceptedMimeTypes: Result:=GetVar(ecb,'HTTP_ACCEPT');
+    csUserAgent:         Result:=WideString(GetVar(ecb,'HTTP_USER_AGENT'));
+    csAcceptedMimeTypes: Result:=WideString(GetVar(ecb,'HTTP_ACCEPT'));
     csPostMimeType:      Result:=WideString(ecb.lpszContentType);
     csURL:               Result:=GetURL;//'HTTP_URL'?
     csProjectName:       Result:=FProjectName;
     csLocalURL:          Result:=FFragmentName;
-    csReferer:           Result:=GetVar(ecb,'HTTP_REFERER');
-    csLanguage:          Result:=GetVar(ecb,'HTTP_ACCEPT_LANGUAGE');
-    csRemoteAddress:     Result:=GetVar(ecb,'REMOTE_ADDR');
-    csRemoteHost:        Result:=GetVar(ecb,'REMOTE_HOST');
+    csReferer:           Result:=WideString(GetVar(ecb,'HTTP_REFERER'));
+    csLanguage:          Result:=WideString(GetVar(ecb,'HTTP_ACCEPT_LANGUAGE'));
+    csRemoteAddress:     Result:=WideString(GetVar(ecb,'REMOTE_ADDR'));
+    csRemoteHost:        Result:=WideString(GetVar(ecb,'REMOTE_HOST'));
     csAuthUser://TODO: setting?
      begin
-      Result:=GetVar(ecb,'AUTH_USER');
-      if Result='' then Result:=AuthValue(cs);
+      Result:=WideString(GetVar(ecb,'AUTH_USER'));
+      if Result='' then Result:=WideString(AuthValue(cs));
      end;
     csAuthPassword:
       if GetVar(ecb,'AUTH_USER')='' then
-        Result:=AuthValue(cs)
+        Result:=WideString(AuthValue(cs))
       else
-        Result:=GetVar(ecb,'AUTH_PASSWORD');
+        Result:=WideString(GetVar(ecb,'AUTH_PASSWORD'));
     else
       raise EXxmContextStringUnknown.Create(StringReplace(
         SXxmContextStringUnknown,'__',IntToHex(integer(cs),8),[]));
@@ -462,7 +472,7 @@ begin
       aeIso8859:t:='; charset="iso-8859-15"';
       else t:='';
     end;
-    FResHeaders['Content-Type']:=AnsiString(FContentType)+t;
+    FResHeaders['Content-Type']:=FContentType+WideString(t);
    end;
   t:=FResHeaders.Build+#13#10;
   //TODO cookies? redirect?
@@ -501,14 +511,16 @@ begin
    begin
     //TODO: proper combine?
     if (RedirectURL<>'') and (RedirectURL[1]='/') then
-      s:=httpScheme[UpperCase(GetVar(ecb,'HTTPS'))='ON']+GetVar(ecb,'HTTP_HOST')+
+      s:=httpScheme[UpperCase(string(GetVar(ecb,'HTTPS')))='ON']+
+        WideString(GetVar(ecb,'HTTP_HOST'))+
         FRedirectPrefix+RedirectURL
     else
      begin
       s:=FURI;
       i:=Length(s);
       while (i<>0) and (s[i]<>'/') do dec(i);
-      s:=httpScheme[UpperCase(GetVar(ecb,'HTTPS'))='ON']+GetVar(ecb,'HTTP_HOST')+
+      s:=httpScheme[UpperCase(string(GetVar(ecb,'HTTPS')))='ON']+
+        WideString(GetVar(ecb,'HTTP_HOST'))+
         Copy(s,1,i)+RedirectURL;
      end;
    end
@@ -528,7 +540,7 @@ begin
     SplitHeaderValue(FCookie,0,Length(FCookie),FCookieIdx);
     FCookieParsed:=true;
    end;
-  Result:=GetParamValue(FCookie,FCookieIdx,AnsiString(Name));
+  Result:=WideString(GetParamValue(FCookie,FCookieIdx,AnsiString(Name)));
 end;
 
 function TXxmIsapiContext.GetSessionID: WideString;
@@ -537,10 +549,10 @@ const
 begin
   if FSessionID='' then
    begin
-    FSessionID:=AnsiString(GetCookie(SessionCookie));
+    FSessionID:=GetCookie(SessionCookie);
     if FSessionID='' then
      begin
-      FSessionID:=AnsiString(Copy(CreateClassID,2,32));
+      FSessionID:=Copy(CreateClassID,2,32);
       SetCookie(SessionCookie,FSessionID);//expiry?
      end;
    end;
@@ -661,6 +673,7 @@ initialization
   StatusBuildError:=503;
   StatusFileNotFound:=404;
   XxmProjectCache:=nil;//TXxmProjectCache.Create;//see Execute above
+  XxmProjectCacheError:='';
 finalization
   //assert PageLoaderPool=nil by TerminateExtension
 end.

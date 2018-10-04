@@ -11,17 +11,17 @@ type
     FProject:IXxmProject;
     FContextCount,FLoadCount:integer;
     FHandle:THandle;
-    FLoadSignature:AnsiString;
+    FLoadSignature:string;
     FCheckMutex:THandle;
     FFilePath,FLoadPath:WideString;
     FLoadCopy:boolean;
   protected
-    FSignature:AnsiString;
+    FSignature:string;
     FBufferSize:integer;
     function GetProject: IXxmProject;
     function LoadProject: IXxmProject; virtual;
     function GetModulePath:WideString; virtual;
-    procedure SetSignature(const Value: AnsiString); virtual; abstract;
+    procedure SetSignature(const Value: string); virtual; abstract;
     procedure SetFilePath(const FilePath: WideString; LoadCopy: boolean);
     function ProjectLoaded:boolean;
     function GetExtensionMimeType(const x:AnsiString): AnsiString; virtual;
@@ -30,7 +30,7 @@ type
   public
     //used by auto-build/auto-update
     LastCheck:cardinal;
-    LastResult:AnsiString;
+    LastResult:WideString;
 
     constructor Create(const Name: WideString);
     destructor Destroy; override;
@@ -40,8 +40,8 @@ type
     procedure Release; //virtual;?
     procedure AfterConstruction; override; //creates the lock mutex
     property ModulePath:WideString read GetModulePath;
-    property Signature:AnsiString read FSignature write SetSignature;
-    property LoadSignature:AnsiString read FLoadSignature;
+    property Signature:string read FSignature write SetSignature;
+    property LoadSignature:string read FLoadSignature;
     property LoadCount:integer read FLoadCount;
     property AllowInclude:boolean read GetAllowInclude;
 
@@ -114,7 +114,7 @@ end;
 
 procedure TXxmProjectEntry.AfterConstruction;
 var
-  mn:AnsiString;
+  mn:WideString;
   i,l:integer;
 begin
   inherited;
@@ -128,10 +128,10 @@ begin
       mn:=Copy(mn,1,120)+'('+IntToStr(l-240)+')'+Copy(mn,l-119,120);
       l:=Length(mn);
      end;
-    for i:=1 to l do if mn[i] in ['\',':','/',' ','.'] then mn[i]:='|';
+    for i:=1 to l do if AnsiChar(mn[i]) in ['\',':','/',' ','.'] then mn[i]:='|';
     mn:='Global\'+mn;
     //get mutex
-    FCheckMutex:=CreateMutexA(nil,false,PAnsiChar(mn));
+    FCheckMutex:=CreateMutexW(nil,false,PWideChar(mn));
     if FCheckMutex=0 then RaiseLastOSError;//?
    end;
 end;
@@ -338,7 +338,8 @@ begin
   //find a MIME-type from registry
   i:=Length(sf)-1;
   while (i>0) and (sf[i]<>'.') do dec(i);
-  MimeType:=GetExtensionMimeType(LowerCase(copy(sf,i,Length(sf)-i+1)));
+  MimeType:=WideString(GetExtensionMimeType(AnsiString(
+    LowerCase(Copy(sf,i,Length(sf)-i+1)))));
 end;
 
 function TXxmProjectEntry.GetExtensionMimeType(const x: AnsiString): AnsiString;
@@ -348,8 +349,8 @@ begin
   r:=TRegistry.Create;
   try
     r.RootKey:=HKEY_CLASSES_ROOT;
-    if r.OpenKeyReadOnly(x) and r.ValueExists('Content Type') then
-      Result:=r.ReadString('Content Type')
+    if r.OpenKeyReadOnly(string(x)) and r.ValueExists('Content Type') then
+      Result:=AnsiString(r.ReadString('Content Type'))
     else
       if (x='.log') or (x='.ini') then //override default for a few known types
         Result:='text/plain'

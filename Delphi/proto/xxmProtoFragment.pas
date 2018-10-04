@@ -22,8 +22,7 @@ procedure TXxmFragment1.Build(const Context: IXxmContext;
   const Caller: IXxmFragment;  const Values:array of OleVariant;
   const Objects: array of TObject);
 var
-  s:AnsiString;
-  w:WideString;
+  s:WideString;
   i,j:integer;
   p,q:IXxmParameter;
   f:IxxmParameterPostFile;
@@ -40,8 +39,7 @@ begin
 
   s:=Context.ContextString(csQueryString);
   Context.SendHTML('<p><b>[</b>');
-  w:=URLDecode(StringReplace(s,'&','&amp;',[rfReplaceAll]));
-  Context.SendHTML(w);
+  Context.SendHTML(StringReplace(s,'&','&amp;',[rfReplaceAll]));
   Context.SendHTML('<b>]</b></p>');
 
   if Context.PostData=nil then

@@ -59,7 +59,7 @@ type
     procedure IterateBegin(Condition:boolean);
     procedure IterateNext(Condition:boolean);
     function Done:boolean;
-    procedure Save(const FilePath:AnsiString);
+    procedure Save(const FilePath: string);
   end;
 
   EXxmParseUnknownTag=class(Exception);
@@ -179,9 +179,9 @@ begin
         pt:=TXxmProtoParseTag(0);
         while (pt<>pt_Unknown) and (ProtoParseTag[pt]<>s) do inc(pt);
         if (pt=pt_Unknown)
-          and ((ExtraFields=nil) or (ExtraFields.IndexOfName(s)=-1)) then
+          and ((ExtraFields=nil) or (ExtraFields.IndexOfName(string(s))=-1)) then
           raise EXxmParseUnknownTag.Create(
-            StringReplace(SXxmParseUnknownTag,'__',s,[]));
+            StringReplace(SXxmParseUnknownTag,'__',string(s),[]));
         AddPoint(a,i-a-1,nx,pt);
         i:=j+1;
         nx:=0;
@@ -271,7 +271,7 @@ begin
   if Data<>'' then FOutput.Write(Data[1],Length(Data));
 end;
 
-procedure TXxmProtoParser.Save(const FilePath: AnsiString);
+procedure TXxmProtoParser.Save(const FilePath: string);
 begin
   FOutput.Position:=0;
   FOutput.SaveToFile(FilePath);

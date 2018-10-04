@@ -43,7 +43,7 @@ type
     FAutoEncoding: TXxmAutoEncoding;
     FContentBuffer: TMemoryStream;
     FPostData: TStream;
-    FPostTempFile: AnsiString;
+    FPostTempFile: string;
     SendBuf, SendDirect: TXxmSendBufHandler;
     AllowChunked, ContentTypeSet, SettingCookie: boolean;
 
@@ -673,8 +673,7 @@ procedure TXxmGeneralContext.Include(const Address: WideString;
   const Values: array of OleVariant; const Objects: array of TObject);
 var
   f,fb:IXxmFragment;
-  pc:AnsiString;
-  pn:WideString;
+  pc,pn:WideString;
   pe:TXxmProjectEntry;
   px:TXxmCrossProjectIncludeCheck;
   i,j,l:integer;
@@ -796,7 +795,7 @@ begin
        end;
       else
        begin
-        s:=Data;
+        s:=AnsiString(Data);
         l:=Length(s);
         if SendBuf(s[1],l)<>l then
           raise EXxmTransferError.Create(SysErrorMessage(GetLastError));
@@ -1145,12 +1144,12 @@ end;
 
 function TXxmGeneralContext.AuthParse(const Scheme:string):AnsiString;
 var
-  s:AnsiString;
+  s:WideString;
   i,j,l:integer;
   a,b:byte;
 begin
   //Base64Decode see http://www.faqs.org/rfcs/rfc2045.html #6.8
-  s:=AnsiString(GetRequestHeader('Authorization'));
+  s:=GetRequestHeader('Authorization');
   l:=Length(s);
   if l=0 then
     Result:=''

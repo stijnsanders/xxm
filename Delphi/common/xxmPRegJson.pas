@@ -9,7 +9,7 @@ type
   private
     FAllowInclude,FNTLM:boolean;
   protected
-    procedure SetSignature(const Value: AnsiString); override;
+    procedure SetSignature(const Value: string); override;
     function GetExtensionMimeType(const x: AnsiString): AnsiString; override;
     function GetAllowInclude: boolean; override;
   public
@@ -22,18 +22,17 @@ type
   private
     FProjectsLength,FProjectsCount:integer;
     FProjects:array of record
-      Name,Alias:AnsiString;
+      Name,Alias:string;
       Entry:TXxmProjectCacheEntry;
       LoadCheck:boolean;
     end;
-    FRegFilePath,FRegSignature,FDefaultProject,FSingleProject:AnsiString;
+    FRegFilePath,FRegSignature,FDefaultProject,FSingleProject:string;
     FRegLastCheckTC:cardinal;
     FFavIcon:OleVariant;
-    function FindProject(const Name:WideString):integer;
-    function GetRegistrySignature: AnsiString;
+    function FindProject(const Name: string): integer;
+    function GetRegistrySignature: string;
     function GetRegistry: IJSONDocument;
-    procedure SetSignature(const Name: WideString;
-      const Value: AnsiString);
+    procedure SetSignature(const Name: WideString; const Value: string);
     procedure LoadFavIcon(const FilePath: string);
   public
     constructor Create;
@@ -52,6 +51,7 @@ type
 
 var
   XxmProjectCache:TXxmProjectCacheJson;
+  XxmProjectCacheError:string;
 
 implementation
 
@@ -73,6 +73,13 @@ function PathIsRelative(lpszPath:PWideChar):LongBool;
 function PathCombine(lpszDest,lpszDir,lpszFile:PWideChar):PWideChar;
   stdcall; external 'shlwapi.dll' name 'PathRelativePathToW';
 }
+
+{$IF not Declared(UTF8ToWideString)}
+function UTF8ToWideString(const s: UTF8String): WideString;
+begin
+  Result:=UTF8Decode(s);
+end;
+{$IFEND}
 
 { TXxmProjectCacheEntry }
 
@@ -101,7 +108,7 @@ begin
   Result:=inherited GetExtensionMimeType(x);
 end;
 
-procedure TXxmProjectCacheEntry.SetSignature(const Value: AnsiString);
+procedure TXxmProjectCacheEntry.SetSignature(const Value: string);
 begin
   FSignature:=Value;
   XxmProjectCache.SetSignature(Name,Value);
@@ -119,6 +126,7 @@ constructor TXxmProjectCacheJson.Create;
 var
   i:integer;
   r:TResourceStream;
+  p:pointer;
 const
   RT_HTML = MakeIntResource(23);
 begin
@@ -130,8 +138,8 @@ begin
   FRegLastCheckTC:=GetTickCount-XxmRegCheckIntervalMS-1;
 
   SetLength(FRegFilePath,MAX_PATH);
-  SetLength(FRegFilePath,GetModuleFileNameA(HInstance,
-    PAnsiChar(FRegFilePath),MAX_PATH));
+  SetLength(FRegFilePath,GetModuleFileName(HInstance,
+    PChar(FRegFilePath),MAX_PATH));
   if Copy(FRegFilePath,1,4)='\\?\' then
     FRegFilePath:=Copy(FRegFilePath,5,Length(FRegFilePath)-4);
   i:=Length(FRegFilePath);
@@ -146,8 +154,12 @@ begin
   try
     i:=r.Size;
     FFavIcon:=VarArrayCreate([0,i-1],varByte);
-    r.Read(VarArrayLock(FFavIcon)^,i);
-    VarArrayUnlock(FFavIcon);
+    p:=VarArrayLock(FFavIcon);
+    try
+      r.Read(p^,i);
+    finally
+      VarArrayUnlock(FFavIcon);
+    end;
   finally
     r.Free;
   end;
@@ -162,9 +174,9 @@ begin
   inherited;
 end;
 
-function TXxmProjectCacheJson.FindProject(const Name: WideString): integer;
+function TXxmProjectCacheJson.FindProject(const Name: string): integer;
 var
-  n:AnsiString;
+  n:string;
 begin
   n:=LowerCase(Name);
   //assert cache stores ProjectName already LowerCase!
@@ -174,17 +186,18 @@ begin
   if Result=FProjectsCount then Result:=-1;
 end;
 
-function TXxmProjectCacheJson.GetRegistrySignature:AnsiString;
+function TXxmProjectCacheJson.GetRegistrySignature: string;
 var
   fh:THandle;
-  fd:TWin32FindDataA;
+  fd:TWin32FindData;
 begin
   //assert in FLock
   FRegLastCheckTC:=GetTickCount;
-  fh:=FindFirstFileA(PAnsiChar(FRegFilePath+XxmRegFileName),fd);
+  fh:=FindFirstFile(PChar(FRegFilePath+XxmRegFileName),fd);
   if fh=INVALID_HANDLE_VALUE then Result:='' else
    begin
-    Result:=IntToHex(fd.ftLastWriteTime.dwHighDateTime,8)+
+    Result:=
+      IntToHex(fd.ftLastWriteTime.dwHighDateTime,8)+
       IntToHex(fd.ftLastWriteTime.dwLowDateTime,8)+
       IntToStr(fd.nFileSizeLow);
     Windows.FindClose(fh);
@@ -221,7 +234,7 @@ begin
     SetLength(s,i);
     if f.Read(s[1],i)<>i then RaiseLastOSError;
     if (i>=3) and (s[1]=#$EF) and (s[2]=#$BB) and (s[3]=#$BF) then
-      Result.Parse(UTF8Decode(Copy(s,4,i-3)))
+      Result.Parse(UTF8ToWideString(Copy(s,4,i-3)))
     else
     if (i>=2) and (s[1]=#$FF) and (s[2]=#$FE) then
      begin
@@ -283,7 +296,7 @@ end;
 
 procedure TXxmProjectCacheJson.CheckRegistry;
 var
-  s:AnsiString;
+  s:string;
   p:WideString;
   i:integer;
   d,d1:IJSONDocument;
@@ -376,7 +389,7 @@ begin
 end;
 
 procedure TXxmProjectCacheJson.SetSignature(const Name:WideString;
-  const Value:AnsiString);
+  const Value:string);
 var
   d,d1:IJSONDocument;
   s:AnsiString;
@@ -410,8 +423,9 @@ function TXxmProjectCacheJson.GetProject(const Name: WideString):
 var
   i,d:integer;
   found:boolean;
+  e:TXxmProjectCacheEntry;
 begin
-  Result:=nil;//counter warning;
+  e:=nil;//default
   CheckRegistry;
   EnterCriticalSection(FLock);
   try
@@ -426,12 +440,15 @@ begin
           SXxmProjectAliasDepth,'__',Name,[]));
         i:=FindProject(FProjects[i].Alias);
        end;
-    if i=-1 then raise EXxmProjectNotFound.Create(StringReplace(
-      SXxmProjectNotFound,'__',Name,[]));
-    Result:=FProjects[i].Entry;
+    if i=-1 then
+      raise EXxmProjectNotFound.Create(StringReplace(
+        SXxmProjectNotFound,'__',Name,[]))
+    else
+      e:=FProjects[i].Entry;
   finally
     LeaveCriticalSection(FLock);
   end;
+  Result:=e;
 end;
 
 procedure TXxmProjectCacheJson.ReleaseProject(const Name: WideString);
@@ -466,11 +483,11 @@ begin
   if FSingleProject='' then
    begin
     while (i<=l) and not(URI[i] in ['/','?','&','$','#']) do inc(i);
-    ProjectName:=Copy(URI,2,i-2);
+    ProjectName:=WideString(Copy(URI,2,i-2));
     if ProjectName='' then
      begin
       if (i<=l) and (URI[i]='/') then x:='' else x:='/';
-      Context.Redirect('/'+FDefaultProject+x+Copy(URI,i,l-i+1),true);
+      Context.Redirect('/'+FDefaultProject+WideString(x+Copy(URI,i,l-i+1)),true);
      end;
     if (i>l) and (l>1) then
       if URI='/favicon.ico' then
@@ -479,10 +496,10 @@ begin
         (Context as IxxmHttpHeaders).ResponseHeaders['Content-Length']:=
           IntToStr(VarArrayHighBound(FFavIcon,1)+1);
         Context.SendHTML(FFavIcon);
-        raise EXxmPageRedirected.Create(URI);
+        raise EXxmPageRedirected.Create(string(URI));
        end
       else
-        Context.Redirect(URI+'/',true)
+        Context.Redirect(WideString(URI)+'/',true)
     else
       if (URI[i]='/') then inc(i);
     Result:=true;
@@ -502,6 +519,7 @@ procedure TXxmProjectCacheJson.LoadFavIcon(const FilePath:string);
 var
   f:TFileStream;
   i:integer;
+  p:pointer;
 begin
   if FilePath<>'' then
     try
@@ -509,8 +527,12 @@ begin
       try
         i:=f.Size;
         FFavIcon:=VarArrayCreate([0,i-1],varByte);
-        f.Read(VarArrayLock(FFavIcon)^,i);
-        VarArrayUnlock(FFavIcon);
+        p:=VarArrayLock(FFavIcon);
+        try
+          f.Read(p^,i);
+        finally
+          VarArrayUnlock(FFavIcon);
+        end;
       finally
         f.Free;
       end;

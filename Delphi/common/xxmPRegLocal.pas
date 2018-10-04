@@ -7,8 +7,7 @@ uses Windows, SysUtils, xxm, xxmPReg, Registry;
 type
   TXxmProjectCacheEntry=class(TXxmProjectEntry)
   private
-    FCookiePath:WideString;
-    FUserName:AnsiString;
+    FCookiePath,FUserName:string;
     FCookies:array of record
       Name,Value:WideString;
       //TODO: expiry, domain, path...
@@ -18,13 +17,13 @@ type
   protected
     function LoadProject: IXxmProject; override;
     function GetModulePath:WideString; override;
-    procedure SetSignature(const Value: AnsiString); override;
+    procedure SetSignature(const Value: string); override;
     function GetAllowInclude: Boolean; override;
   public
     constructor Create(const Name:WideString);
     function GetSessionCookie(const Name: WideString): WideString; virtual;
     procedure SetSessionCookie(const Name, Value: WideString);
-    function CookieFile(const Name:AnsiString):AnsiString;
+    function CookieFile(const Name:string):string;
   end;
 
   TXxmProjectCacheLocal=class(TXxmProjectCache)
@@ -65,7 +64,7 @@ procedure XxmProjectRegister(
 ); stdcall;
 var
   r:TRegistry;
-  s,t,u:AnsiString;
+  s,t,u:string;
   i,j:integer;
 begin
   s:=lpCmdLine;
@@ -77,7 +76,7 @@ begin
   inc(j);
   t:=Copy(s,j,i-j);
 
-  if MessageBoxA(GetDesktopWindow,PAnsiChar('Register xxm project "'+t+'" for local handler?'),
+  if MessageBox(GetDesktopWindow,PChar('Register xxm project "'+t+'" for local handler?'),
     'xxm Local Handler',MB_OKCANCEL or MB_ICONQUESTION or MB_SYSTEMMODAL)=idOk then
    begin
     r:=TRegistry.Create;
@@ -85,14 +84,14 @@ begin
       r.RootKey:=HKEY_CURRENT_USER;
       r.OpenKey('\Software\xxm\local\'+t,true);
       u:=r.ReadString('');
-      if (u='') or (u=s) or (MessageBoxA(GetDesktopWindow,PAnsiChar('Project "'+t+
+      if (u='') or (u=s) or (MessageBox(GetDesktopWindow,PChar('Project "'+t+
         '" was already registered as'#13#10'  '+u+
         #13#10'Do you want to overwrite this registration?'#13#10'  '+s),
         'xxm Local Handler',MB_OKCANCEL or MB_ICONQUESTION or MB_SYSTEMMODAL)=idOK) then
        begin
         r.WriteString('',s);
         r.DeleteValue('Signature');
-        MessageBoxA(GetDesktopWindow,PAnsiChar('Project "'+t+'" registered.'),
+        MessageBox(GetDesktopWindow,PChar('Project "'+t+'" registered.'),
           'xxm Local Handler',MB_OK or MB_ICONINFORMATION or MB_SYSTEMMODAL);
        end;
     finally
@@ -140,7 +139,7 @@ begin
    end;
 end;
 
-function TXxmProjectCacheEntry.CookieFile(const Name: AnsiString): AnsiString;
+function TXxmProjectCacheEntry.CookieFile(const Name: string): string;
 var
   l:cardinal;
   i:integer;
@@ -149,14 +148,15 @@ begin
    begin
     l:=1024;
     SetLength(FUserName,l);
-    if GetUserNameA(PAnsiChar(FUserName),l) then
+    if GetUserName(PChar(FUserName),l) then
       SetLength(FUserName,l-1)
     else
       FUserName:=GetEnvironmentVariable('USERNAME');
    end;
   Result:=FCookiePath+FUserName+'_'+Name+'.txt';
   for i:=1 to Length(Result) do
-    if Result[i] in ['\','/',':','*','?','"','<','>','|'] then Result[i]:='_';
+    if AnsiChar(Result[i]) in ['\','/',':','*','?','"','<','>','|'] then
+      Result[i]:='_';
 end;
 
 procedure TXxmProjectCacheEntry.OpenReg(r:TRegistry);
@@ -174,7 +174,7 @@ begin
    end;
 end;
 
-procedure TXxmProjectCacheEntry.SetSignature(const Value: AnsiString);
+procedure TXxmProjectCacheEntry.SetSignature(const Value: string);
 var
   r:TRegistry;
 begin
@@ -288,7 +288,7 @@ end;
 
 function TXxmProjectCacheLocal.FindProject(const Name: WideString): integer;
 var
-  l:AnsiString;
+  l:string;
 begin
   Result:=0;
   l:=Name;

@@ -3,13 +3,13 @@ unit xxmConvertXML;
 interface
 
 //TRANSITIONAL:
-function ConvertProjectFile(const XmlData: AnsiString): AnsiString;
+function ConvertProjectFile(const XmlData: string): string;
 
 implementation
 
 uses SysUtils, Variants, jsonDoc, MSXML2_TLB;
 
-function ConvertProjectFile(const XmlData: AnsiString): AnsiString;
+function ConvertProjectFile(const XmlData: string): string;
 var
   Data:DOMDocument;
   RootNode:IXMLDOMElement;
@@ -73,7 +73,7 @@ begin
   Data:=CoDOMDocument.Create;
   Data.async:=false;
   Data.preserveWhiteSpace:=true;
-  if not(Data.loadXML(XmlData)) then
+  if not(Data.loadXML(string(XmlData))) then
     {
     raise EXxmWebProjectLoad.Create(StringReplace(
       SXxmWebProjectLoad,'__',FRootFolder+DataFileName,[])+

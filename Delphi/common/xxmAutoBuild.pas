@@ -17,20 +17,20 @@ var
 
 procedure DoBuildOutput(const Msg:AnsiString);
 begin
-  BuildOutput.WriteString(Msg);
+  BuildOutput.WriteString(string(Msg));
 end;
 
 function AutoBuild(Entry: TXxmProjectEntry; Context: IXxmContext;
   const ProjectName: WideString):boolean;
 var
   WebProject:TXxmWebProject;
-  wsig,fn:AnsiString;
+  wsig,fn:string;
   b:boolean;
 const
   RT_HTML=PChar(23);//MakeIntResource(23);
   NoNextBuildAfter=5000;//TODO: setting!
 
-  function BuildError(const res, val1, val2: AnsiString): AnsiString;
+  function BuildError(const res, val1, val2: string): WideString;
   var
     i,j,l:integer;
     s:AnsiString;
@@ -52,7 +52,7 @@ const
       j:=i;
       while (j<l) and (s[j]<>'$') do inc(j);
       if j=l then inc(j);
-      Result:=Result+Copy(s,i,j-i);
+      Result:=Result+string(Copy(s,i,j-i));
       if j<l then
        begin
         inc(j);
@@ -85,7 +85,7 @@ begin
           //TODO: bidirectional xxl/xxmp mapping?
           BuildOutput:=TStringStream.Create('');
           try
-            DoBuildOutput(Context.ContextString(csVersion)+#13#10);
+            DoBuildOutput(AnsiString(Context.ContextString(csVersion))+#13#10);
             //CanCreate would disturb standalone xxl
             WebProject:=TXxmWebProject.Create(fn,DoBuildOutput,false);
             try

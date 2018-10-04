@@ -17,9 +17,9 @@ var
   d:array[0..dSize-1] of byte;
   verblock:PVSFIXEDFILEINFO;
   verlen:cardinal;
-  p:PAnsiChar;
+  p:PChar;
   r:TResourceStream;
-  s:AnsiString;
+  s:string;
 begin
   r:=TResourceStream.CreateFromID(HInstance,1,RT_VERSION);
   try
@@ -35,7 +35,7 @@ begin
       IntToStr(LoWord(verblock.dwFileVersionLS))
   else
     s:='v???';
-  if VerQueryValueA(@d[0],'\StringFileInfo\040904E4\FileDescription',pointer(p),verlen) then
+  if VerQueryValue(@d[0],'\StringFileInfo\040904E4\FileDescription',pointer(p),verlen) then
     s:=p+' '+s;
   Writeln(s);
 end;

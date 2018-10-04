@@ -288,11 +288,11 @@ begin
         case dwOption and $0FFFFFFF of
           HTTP_QUERY_LAST_MODIFIED:
            begin
-            s:=FContext.SingleFileSent;
+            s:=AnsiString(FContext.SingleFileSent);
             Result:=S_FALSE;//default
             if s<>'' then
              begin
-              f:=CreateFileA(PAnsiChar(s),GENERIC_READ,7,nil,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,0);
+              f:=CreateFileA(@s[1],GENERIC_READ,7,nil,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,0);
               if f<>INVALID_HANDLE_VALUE then
                begin
                 if GetFileTime(f,@dt1,@dt2,@dt3) and FileTimeToSystemTime(dt3,st) then
@@ -324,11 +324,11 @@ begin
           HTTP_QUERY_REFRESH:
             Result:=S_FALSE;
           HTTP_QUERY_STATUS_TEXT:
-            s:=FContext.StatusText+#0;
+            s:=AnsiString(FContext.StatusText)+#0;
           HTTP_QUERY_REQUEST_METHOD:
-            s:=(FContext as TXxmLocalContext).Verb+#0;
+            s:=AnsiString((FContext as TXxmLocalContext).Verb)+#0;
           HTTP_QUERY_CONTENT_TYPE:
-            s:=FContext.ContentType+#0;
+            s:=AnsiString(FContext.ContentType)+#0;
           else
             Result:=E_INVALIDARG;
         end;
@@ -427,9 +427,9 @@ end;
 procedure TXxmLocalHandlerFactory.UpdateRegistry(Register: Boolean);
 var
   r:TRegistry;
-  fn,fn1:AnsiString;
+  fn,fn1:string;
   i:integer;
-  procedure SimpleAdd(Key,Value:AnsiString);
+  procedure SimpleAdd(const Key,Value:string);
   begin
     r.OpenKey(Key,true);
     r.WriteString('',Value);

@@ -106,10 +106,10 @@ begin
         try
           s:=ExpandFileName(s);
           Writeln('--- '+s);
-          with TXxmWebProject.Create(AnsiString(s),DoWrite,true) do
+          with TXxmWebProject.Create(s,DoWrite,true) do
             try
-              if protodir<>'' then ProtoFolder:=AnsiString(protodir);
-              if srcdir<>'' then SrcFolder:=AnsiString(srcdir);
+              if protodir<>'' then ProtoFolder:=protodir;
+              if srcdir<>'' then SrcFolder:=srcdir;
               LineMaps:=dolinemaps;
               CheckFiles(rebuild,extra);
               if docompile then

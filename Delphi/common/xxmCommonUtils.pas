@@ -7,7 +7,7 @@ uses SysUtils, Classes;
 function RFC822DateGMT(dd: TDateTime): string;
 function GetFileModifiedDateTime(const FilePath:AnsiString;
   var FileSize:Int64):TDateTime;
-function GetFileSignature(const Path:AnsiString):AnsiString;
+function GetFileSignature(const Path: string): string;
 function Base64Encode(const x:AnsiString):AnsiString;
 
 type
@@ -69,12 +69,12 @@ begin
    end;
 end;
 
-function GetFileSignature(const Path:AnsiString):AnsiString;
+function GetFileSignature(const Path: string): string;
 var
   fh:THandle;
-  fd:TWin32FindDataA;
+  fd:TWin32FindData;
 begin
-  fh:=FindFirstFileA(PAnsiChar(Path),fd);
+  fh:=FindFirstFile(PChar(Path),fd);
   if fh=INVALID_HANDLE_VALUE then Result:='' else
    begin
     //assert(fd.nFileSizeHigh=0

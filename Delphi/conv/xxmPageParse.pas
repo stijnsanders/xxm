@@ -38,10 +38,10 @@ type
     constructor Create;
     destructor Destroy; override;
     procedure MapLine(AdvancePasLines, XxmLineNr:integer);
-    procedure Save(const FilePath:AnsiString);
+    procedure Save(const FilePath: string);
     procedure Clear;
-    procedure Load(const FilePath:AnsiString);
-    function GetXxmLines(PasLineNr:integer):AnsiString;
+    procedure Load(const FilePath: string);
+    function GetXxmLines(PasLineNr:integer):string;
   end;
 
   TXxmPageParserValues=(
@@ -176,21 +176,21 @@ begin
   inc(PasLineNr,AdvancePasLines);
 end;
 
-procedure TXxmLineNumbersMap.Save(const FilePath: AnsiString);
+procedure TXxmLineNumbersMap.Save(const FilePath: string);
 var
   f:TFileStream;
 begin
-  SetFileAttributesA(PAnsiChar(FilePath),0);//strange, hidden files throw exception on overwrite
+  SetFileAttributes(PChar(FilePath),0);//strange, hidden files throw exception on overwrite
   f:=TFileStream.Create(FilePath,fmCreate);
   try
     f.Write(LineNrs[0],LineNrsIndex*4);
   finally
     f.Free;
   end;
-  SetFileAttributesA(PAnsiChar(FilePath),FILE_ATTRIBUTE_HIDDEN);// or FILE_ATTRIBUTE_SYSTEM);//?
+  SetFileAttributes(PChar(FilePath),FILE_ATTRIBUTE_HIDDEN);// or FILE_ATTRIBUTE_SYSTEM);//?
 end;
 
-procedure TXxmLineNumbersMap.Load(const FilePath: AnsiString);
+procedure TXxmLineNumbersMap.Load(const FilePath: string);
 var
   f:TFileStream;
   s:Int64;
@@ -207,7 +207,7 @@ begin
   end;
 end;
 
-function TXxmLineNumbersMap.GetXxmLines(PasLineNr:integer):AnsiString;
+function TXxmLineNumbersMap.GetXxmLines(PasLineNr:integer):string;
 var
   i:integer;
 begin
@@ -527,7 +527,8 @@ var
   begin
     if not InSend then
      begin
-      ss.WriteString('  '+StringReplace(FParserValues[pvSendHTML].Code,
+      ss.WriteString('  '+StringReplace(
+        string(FParserValues[pvSendHTML].Code),
         '$l',IntToStr(LineNr),[rfReplaceAll]));
       map.MapLine(FParserValues[pvSendHTML].EOLs,0);
       InSend:=true;
@@ -544,7 +545,8 @@ var
     if InSend then
      begin
       CloseString;
-      ss.WriteString(StringReplace(SendCloseCode,
+      ss.WriteString(StringReplace(
+        string(SendCloseCode),
         '$l',IntToStr(LineNr+SendCloseEOLs),[rfReplaceAll])+#13#10);
       map.MapLine(1+SendCloseEOLs,0);
       InSend:=false;
@@ -588,8 +590,8 @@ var
         end;
         FParserValues[pv].Code:=AnsiString(StringReplace(StringReplace(
           string(Copy(Code,3,Length(Code)-2)),
-          '$v',FParserValues[pv].Code,[rfReplaceAll]),
-          '$d',FDefaultParserValues[pv].Code,[rfReplaceAll]));
+          '$v',string(FParserValues[pv].Code),[rfReplaceAll]),
+          '$d',string(FDefaultParserValues[pv].Code),[rfReplaceAll]));
         FParserValues[pv].EOLs:=CountEOLs(FParserValues[pv].Code);
        end;
      end;
@@ -602,8 +604,8 @@ var
   begin
     sl:=TStringList.Create;
     try
-      sl.Text:=Copy(FData,Sections[Index].Index,Sections[Index].Length);
-      for i:=0 to sl.Count-1 do ParseParserValue(Trim(sl[i]));
+      sl.Text:=string(Copy(FData,Sections[Index].Index,Sections[Index].Length));
+      for i:=0 to sl.Count-1 do ParseParserValue(AnsiString(Trim(sl[i])));
     finally
       sl.Free;
     end;
@@ -627,15 +629,16 @@ begin
            begin
             CloseSend(Sections[Section].LineNr);
             r:=FParserValues[pvSendHTML].EOLs;
-            ss.WriteString('  '+StringReplace(FParserValues[pvSendHTML].Code,
+            ss.WriteString('  '+StringReplace(
+              string(FParserValues[pvSendHTML].Code),
               '$l',IntToStr(r+Sections[Section].LineNr),[rfReplaceAll]));
             if Sections[Section].SectionType=psSquareBracketsOpen then
               ss.WriteString('''[[''')
             else
               ss.WriteString(''']]''');
             inc(r,FParserValues[pvSendHTMLClose].EOLs);
-            ss.WriteString(
-              StringReplace(FParserValues[pvSendHTMLClose].Code,
+            ss.WriteString(StringReplace(
+              string(FParserValues[pvSendHTMLClose].Code),
               '$l',IntToStr(r+Sections[Section].LineNr),[rfReplaceAll])+#13#10);
             inc(r);
             map.MapLine(r,Sections[Section].LineNr);//assert EOLs(Section)=0
@@ -666,19 +669,19 @@ begin
                   case byte(FData[p]) of
                     0..9:
                      begin
-                      ss.WriteString('#'+AnsiChar($30+b));
+                      ss.WriteString('#'+char($30+b));
                       inc(l,2);
                      end;
                     10..99:
                      begin
-                      ss.WriteString('#'+AnsiChar($30+(b div 10))+
-                        AnsiChar($30+(b mod 10)));
+                      ss.WriteString('#'+char($30+(b div 10))+
+                        char($30+(b mod 10)));
                       inc(l,3);
                      end;
                     100..255:
                      begin
-                      ss.WriteString('#'+AnsiChar($30+(b div 100))+
-                        AnsiChar($30+(b div 10 mod 10))+AnsiChar($30+(b mod 10)));
+                      ss.WriteString('#'+char($30+(b div 100))+
+                        char($30+(b div 10 mod 10))+char($30+(b mod 10)));
                       inc(l,4);
                      end;
                   end;
@@ -709,13 +712,15 @@ begin
             CloseSend(Sections[Section].LineNr);
             pv:=SectionParserValue[Sections[Section].SectionType];
             r:=FParserValues[pv].EOLs;
-            ss.WriteString('  '+StringReplace(FParserValues[pv].Code,
+            ss.WriteString('  '+StringReplace(
+              string(FParserValues[pv].Code),
               '$l',IntToStr(r+Sections[Section].LineNr),[rfReplaceAll]));
             inc(r,EOLs(Section));
             ss.Write(FData[Sections[Section].Index],Sections[Section].Length);
             inc(pv);//pvXxxClose
             inc(r,FParserValues[pv].EOLs);
-            ss.WriteString(StringReplace(FParserValues[pv].Code,
+            ss.WriteString(StringReplace(
+              string(FParserValues[pv].Code),
               '$l',IntToStr(r+Sections[Section].LineNr),[rfReplaceAll])+#13#10);
             inc(r);
             map.MapLine(r,Sections[Section].LineNr);
@@ -753,7 +758,7 @@ begin
          end;
       end;
     CloseSend(TotalLines);
-    Result:=ss.DataString;
+    Result:=AnsiString(ss.DataString);
   finally
     ss.Free;
   end;

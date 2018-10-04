@@ -15,12 +15,12 @@ var
   sl:TStringList;
   Actions:array of record
     ActionType:TActionType;
-    Param,FileName:AnsiString;
+    Param,FileName:string;
     Cleanup:boolean;
     Handle:cardinal;
   end;
   i,j,k:integer;
-  s:AnsiString;
+  s:string;
   r:TRegistry;
   si:TStartupInfo;
   pi:TProcessInformation;
@@ -33,7 +33,7 @@ begin
     for i:=0 to sl.Count-1 do
      begin
       s:=sl[i];
-      if (s<>'') and not(s[1] in [';','#']) then
+      if (s<>'') and not(AnsiChar(s[1]) in [';','#']) then
        begin
         SetLength(Actions,j+1);
         case char(s[1]) of

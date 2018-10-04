@@ -80,11 +80,11 @@ type
     procedure txtParserValueChange(Sender: TObject);
   private
     Modified:boolean;
-    ProjectPath,ProjectFolder:AnsiString;
+    ProjectPath,ProjectFolder:string;
     ProjectData:IJSONDocument;
     LastParserValue:integer;
     function CheckModified:boolean;
-    function LoadProject(const Path:AnsiString;CreateNew:boolean):boolean;
+    function LoadProject(const Path:string;CreateNew:boolean):boolean;
     procedure SaveProject;
     procedure ExpandNode(node:TTreeNode);
     procedure SaveParserValue;
@@ -115,9 +115,16 @@ uses DateUtils, xxmUtilities, Registry, ShellAPI, ComObj, xxmConvertXML,
 
 {$R *.dfm}
 
+{$IF not Declared(UTF8ToWideString)}
+function UTF8ToWideString(const s: UTF8String): WideString;
+begin
+  Result:=UTF8Decode(s);
+end;
+{$IFEND}
+
 procedure TEditProjectMainForm.DoCreate;
 var
-  s:AnsiString;
+  s:string;
 begin
   inherited;
   ProjectData:=JSON;
@@ -151,11 +158,11 @@ begin
     end;
 end;
 
-function TEditProjectMainForm.LoadProject(const Path: AnsiString;
+function TEditProjectMainForm.LoadProject(const Path: string;
   CreateNew: boolean): boolean;
 var
   f:TFileStream;
-  fn,fd:AnsiString;
+  fn,fd:string;
   fe:boolean;
   i,j:integer;
 begin
@@ -244,7 +251,7 @@ begin
   ProjectData['lastModified']:=
     FormatDateTime('yyyy-mm-dd"T"hh:nn:ss',Now);//timezone?
   //TODO: files?
-  s:=ProjectData.ToString;
+  s:=AnsiString(ProjectData.ToString);
   f:=TFileStream.Create(ProjectPath,fmCreate);
   try
     f.Write(s[1],Length(s));//TODO: UTF8
@@ -289,7 +296,7 @@ end;
 procedure TEditProjectMainForm.btnRegisterLocalClick(Sender: TObject);
 var
   r:TRegistry;
-  s,t,u:AnsiString;
+  s,t,u:string;
 begin
   if CheckModified then
    begin
@@ -301,7 +308,7 @@ begin
       r.RootKey:=HKEY_CURRENT_USER;//HKEY_LOCAL_MACHINE;
       r.OpenKey('\Software\xxm\local\'+t,true);
       u:=r.ReadString('');
-      if (u='') or (u=s) or (MessageBoxA(GetDesktopWindow,PAnsiChar('Project "'+t+
+      if (u='') or (u=s) or (MessageBox(GetDesktopWindow,PChar('Project "'+t+
         '" was already registered as'#13#10'  '+u+
         #13#10'Do you want to overwrite this registration?'#13#10'  '+s),
         'xxm Project',MB_OKCANCEL or MB_ICONQUESTION or MB_SYSTEMMODAL)=idOK) then
@@ -309,7 +316,7 @@ begin
         r.WriteString('',s);
         r.DeleteValue('Signature');
         //TODO: default settings?
-        MessageBoxA(GetDesktopWindow,PAnsiChar('Project "'+t+'" registered.'),
+        MessageBox(GetDesktopWindow,PChar('Project "'+t+'" registered.'),
           'xxm Project',MB_OK or MB_ICONINFORMATION);
        end;
     finally
@@ -337,8 +344,8 @@ const
 procedure TEditProjectMainForm.ExpandNode(node: TTreeNode);
 var
   fh:THandle;
-  fd:TWin32FindDataA;
-  d,fn,fe,dx,fx:AnsiString;
+  fd:TWin32FindData;
+  d,fn,fe,dx,fx:string;
   ft:TXxmFileType;
   nn:TTreeNode;
   n:TFileNode;
@@ -357,7 +364,7 @@ begin
       d:=nn.Text+PathDelim+d;
       nn:=nn.Parent;
      end;
-    fh:=FindFirstFileA(PAnsiChar(ProjectFolder+d+'*.*'),fd);
+    fh:=FindFirstFile(PChar(ProjectFolder+d+'*.*'),fd);
     if fh<>INVALID_HANDLE_VALUE then
       try
         repeat
@@ -479,7 +486,7 @@ begin
                 n.SelectedIndex:=n.ImageIndex;
                end;
              end;
-        until not(FindNextFileA(fh,fd));
+        until not(FindNextFile(fh,fd));
       finally
         Windows.FindClose(fh);
       end;
@@ -512,9 +519,9 @@ end;
 
 procedure TEditProjectMainForm.actDeleteExecute(Sender: TObject);
 var
-  so:TSHFileOpStructA;
+  so:TSHFileOpStruct;
   n,nx:TTreeNode;
-  s:AnsiString;
+  s:string;
 begin
   nx:=tvFiles.Selected;
   n:=nx;
@@ -526,13 +533,13 @@ begin
    end;
   so.Wnd:=Handle;
   so.wFunc:=FO_DELETE;
-  so.pFrom:=PAnsiChar(ProjectFolder+Copy(s,2,Length(s)-1));
+  so.pFrom:=PChar(ProjectFolder+Copy(s,2,Length(s)-1));
   so.pTo:=nil;
   so.fFlags:=FOF_ALLOWUNDO;
   so.fAnyOperationsAborted:=false;
   so.hNameMappings:=nil;
   so.lpszProgressTitle:=nil;
-  OleCheck(SHFileOperationA(so));
+  OleCheck(SHFileOperation(so));
   if not(so.fAnyOperationsAborted) then
    begin
     JSON(ProjectData[(nx as TFileNode).Col]).Delete((nx as TFileNode).Key);
@@ -554,7 +561,7 @@ procedure TEditProjectMainForm.actIncludeExecute(Sender: TObject);
 var
   n,nx:TTreeNode;
   nn:TFileNode;
-  s:AnsiString;
+  s:string;
   i,j:integer;
 begin
   n:=tvFiles.Selected;
@@ -617,8 +624,7 @@ begin
   tvFilesChange(tvFiles,n);
 end;
 
-procedure TEditProjectMainForm.tvFilesChange(Sender: TObject;
-  Node: TTreeNode);
+procedure TEditProjectMainForm.tvFilesChange(Sender: TObject; Node: TTreeNode);
 var
   n:TTreeNode;
   s:string;
@@ -645,7 +651,7 @@ procedure TEditProjectMainForm.actIncludePasExecute(Sender: TObject);
 var
   x,z:IJSONDocument;
   y:IJSONEnumerator;
-  s,t,u:AnsiString;
+  s,t,u:string;
   i,j,l,fi,fl,fc:integer;
 begin
   if odIncludeUnit.Execute then
@@ -660,8 +666,10 @@ begin
       //build relative to ProjectFolder
       l:=Length(ProjectFolder);
       j:=Length(s);
+      t:=LowerCase(s);
+      u:=LowerCase(ProjectFolder);
       i:=1;
-      while (i<=l) and (i<=j) and (UpCase(s[i])=UpCase(ProjectFolder[i])) do inc(i);
+      while (i<=l) and (i<=j) and (t[i]=u[i]) do inc(i);
       while (i>0) and (s[i]<>PathDelim) do dec(i);
       //assert (i<=l)
       s:=Copy(s,i+1,j-i);
@@ -687,7 +695,7 @@ begin
         x:=JSON(y.Value);
         if (y.Key=t) and ((j=0) or (VarToStr(x['unitPath'])=u)) then
          begin
-          if fl=1 then MessageBoxA(Handle,PAnsiChar(
+          if fl=1 then MessageBox(Handle,PChar(
             'Unit "'+s+'" is aready added to the project'),
             'xxm Project',MB_OK or MB_ICONERROR);
          end
@@ -708,18 +716,19 @@ begin
         z[t]:=x;
         Modified:=true;
         inc(fc);
-        if fl=1 then MessageBoxA(Handle,PAnsiChar('Unit "'+s+'" added'),
+        if fl=1 then MessageBox(Handle,PChar('Unit "'+s+'" added'),
           'xxm Project',MB_OK or MB_ICONINFORMATION);
        end;
      end;
-    if fl>1 then MessageBoxA(Handle,PAnsiChar(IntToStr(fc)+' units added'),
+    if fl>1 then MessageBox(Handle,PChar(IntToStr(fc)+' units added'),
       'xxm Project',MB_OK or MB_ICONINFORMATION);
    end;
 end;
 
 procedure TEditProjectMainForm.btnRegisterFileClick(Sender: TObject);
 var
-  fn,s,t,u:AnsiString;
+  fn,s,t,u:string;
+  v:AnsiString;
   i:integer;
   f:TFileStream;
   d,d1:IJSONDocument;
@@ -750,15 +759,15 @@ begin
         f:=TFileStream.Create(fn,fmOpenRead or fmShareDenyWrite);
         try
           i:=f.Size;
-          SetLength(u,i);
-          if i<>f.Read(u[1],i) then RaiseLastOSError;
-          if (i>=3) and (u[1]=#$EF) and (u[2]=#$BB) and (u[3]=#$BF) then
-            d.Parse(UTF8Decode(Copy(u,4,i-3)))
+          SetLength(v,i);
+          if i<>f.Read(v[1],i) then RaiseLastOSError;
+          if (i>=3) and (v[1]=#$EF) and (v[2]=#$BB) and (v[3]=#$BF) then
+            d.Parse(UTF8ToWideString(Copy(v,4,i-3)))
           else
-          if (i>=2) and (u[1]=#$FF) and (u[2]=#$FE) then
-            d.Parse(PWideChar(@u[1]))
+          if (i>=2) and (v[1]=#$FF) and (v[2]=#$FE) then
+            d.Parse(PWideChar(@v[1]))
           else
-            d.Parse(WideString(u));
+            d.Parse(WideString(v));
         finally
           f.Free;
         end;
@@ -767,7 +776,7 @@ begin
         d['projects']:=JSON;
       d1:=JSON(JSON(d['projects'])[t]);
       if d1=nil then u:='' else u:=VarToStr(d1['path']);
-      if (u='') or (u=s) or (MessageBoxA(GetDesktopWindow,PAnsiChar('Project "'+t+
+      if (u='') or (u=s) or (MessageBox(GetDesktopWindow,PChar('Project "'+t+
         '" was already registered as'#13#10'  '+u+
         #13#10'Do you want to overwrite this registration?'#13#10'  '+s),
         'xxm Project',MB_OKCANCEL or MB_ICONQUESTION or MB_SYSTEMMODAL)=idOK) then
@@ -783,14 +792,14 @@ begin
           d1.Delete('alias');//?
          end;
         d1['path']:=StringReplace(s,PathDelim,'/',[rfReplaceAll]);
-        s:=Utf8ByteOrderMark+UTF8Encode(d.ToString);
+        v:=Utf8ByteOrderMark+UTF8Encode(d.ToString);
         f:=TFileStream.Create(fn,fmCreate);
         try
-          f.Write(s[1],Length(s));
+          f.Write(v[1],Length(v));
         finally
           f.Free;
         end;
-        MessageBoxA(GetDesktopWindow,PAnsiChar('Project "'+t+'" registered with "'+fn+'".'),
+        MessageBox(GetDesktopWindow,PChar('Project "'+t+'" registered with "'+fn+'".'),
           'xxm Project',MB_OK or MB_ICONINFORMATION);
        end;
      end;

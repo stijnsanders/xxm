@@ -55,8 +55,8 @@ type
     function GetSize: Integer;
     function GetMimeType: WideString;
   public
-    constructor Create(Owner: TXxmReqPars; const Name, Origin: WideString;
-      const MimeType: AnsiString; Stream: TStream; Pos, Len: integer);
+    constructor Create(Owner: TXxmReqPars; const Name, Origin,
+      MimeType: WideString; Stream: TStream; Pos, Len: integer);
     property Size:integer read GetSize;
     property MimeType:WideString read GetMimeType;
     procedure SaveToFile(const FilePath: AnsiString);
@@ -80,7 +80,7 @@ type
   EXxmUnknownPostMime=class(Exception);
 
 var
-  SelfVersion:AnsiString;
+  SelfVersion:string;
 
 const
   MimeFormUrlEncoded='application/x-www-form-urlencoded';
@@ -123,7 +123,7 @@ begin
       else
         SelfVersion:='v???';
       if VerQueryValueA(@d[0],'\StringFileInfo\040904E4\FileDescription',pointer(p),verlen) then
-        SelfVersion:=p+' '+SelfVersion;
+        SelfVersion:=string(p)+' '+SelfVersion;
      end;
    end;
 end;
@@ -188,7 +188,7 @@ begin
   if ps<>nil then
    begin
     ps.Seek(0,soFromBeginning);
-    pm:=Context.ContextString(csPostMimeType);
+    pm:=AnsiString(Context.ContextString(csPostMimeType));
     pn:=SplitHeaderValue(pm,1,Length(pm),pa);//lower?
 
     //pm='' with redirect in response to POST request, but StgMed prevails! drop it
@@ -243,7 +243,7 @@ begin
           pd:=sn.GetHeader(pa);
           for i:=0 to Length(pa)-1 do
            begin
-            pn:=LowerCase(Copy(pd,pa[i].NameStart,pa[i].NameLength));
+            pn:=AnsiString(LowerCase(string(Copy(pd,pa[i].NameStart,pa[i].NameLength))));
             if pn='content-disposition' then
              begin
               pn:=SplitHeaderValue(pd,pa[i].ValueStart,pa[i].ValueLength,pax);
@@ -259,12 +259,14 @@ begin
 
           //TODO: transfer encoding?
 
-          if pm='' then Add(TXxmReqParPost.Create(Self,px,sn.GetString(pb))) else
+          if pm='' then
+            Add(TXxmReqParPost.Create(Self,WideString(px),UTF8ToWideString(sn.GetString(pb))))
+          else
            begin
             sn.GetData(pb,px,pf,p,q);
-            Add(TXxmReqParPostFile.Create(Self,px,
+            Add(TXxmReqParPostFile.Create(Self,WideString(px),
               UTF8ToWideString(pf),//TODO: encoding from header?
-              pm,ps,p,q));
+              WideString(pm),ps,p,q));
            end;
 
          end;
@@ -276,7 +278,7 @@ begin
      end
     else
       raise EXxmUnknownPostMime.Create(StringReplace(
-        SXxmUnknownPostMime,'__',pm,[]));
+        SXxmUnknownPostMime,'__',string(pm),[]));
 
     ps.Seek(0,soFromBeginning);
    end;
@@ -376,9 +378,8 @@ end;
 
 { TXxmReqParPostFile }
 
-constructor TXxmReqParPostFile.Create(Owner: TXxmReqPars;
-  const Name, Origin: WideString; const MimeType: AnsiString;
-  Stream: TStream; Pos, Len: integer);
+constructor TXxmReqParPostFile.Create(Owner: TXxmReqPars; const Name,
+  Origin, MimeType: WideString; Stream: TStream; Pos, Len: integer);
 begin
   inherited Create(Owner,Name,Origin);
   FMimeType:=MimeType;
@@ -399,7 +400,7 @@ end;
 
 procedure TXxmReqParPostFile.SaveToFile(const FilePath: AnsiString);
 begin
-  SaveToStream(TStreamAdapter.Create(TFileStream.Create(FilePath,fmCreate),soOwned));
+  SaveToStream(TStreamAdapter.Create(TFileStream.Create(string(FilePath),fmCreate),soOwned));
 end;
 
 function TXxmReqParPostFile.SaveToStream(Stream: IStream): integer;
