@@ -10,7 +10,7 @@ implementation
 uses SysUtils, Classes, Variants, MSXML2_TLB, jsonDoc;
 
 const
-  Utf8ByteOrderMark=#$EF#$BB#$BF;
+  Utf8ByteOrderMark:array[0..2] of AnsiChar=#$EF#$BB#$BF;
 
 procedure ConvertProjectReg;
 var
@@ -73,7 +73,7 @@ begin
     x:=xl.nextNode as IXMLDOMElement;
    end;
 
-  s:=Utf8ByteOrderMark+UTF8Encode(rj.ToString);
+  s:=UTF8String(Utf8ByteOrderMark)+UTF8Encode(rj.ToString);
   f:=TFileStream.Create('xxm.json',fmCreate);
   try
     f.Write(s[1],Length(s));

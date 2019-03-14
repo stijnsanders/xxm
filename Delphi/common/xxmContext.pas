@@ -189,8 +189,8 @@ var
   BufferStore:TXxmBufferStore;
 
 const
-  Utf8ByteOrderMark=#$EF#$BB#$BF;
-  Utf16ByteOrderMark=#$FF#$FE;
+  Utf8ByteOrderMark:array[0..2] of byte=($EF,$BB,$BF);
+  Utf16ByteOrderMark:array[0..1] of byte=($FF,$FE);
 
 implementation
 
@@ -773,10 +773,10 @@ begin
     if CheckSendStart(false) then
       case FAutoEncoding of
         aeUtf8:
-          if SendBuf(Utf8ByteOrderMark[1],3)<>3 then
+          if SendBuf(Utf8ByteOrderMark[0],3)<>3 then
             raise EXxmTransferError.Create(SysErrorMessage(GetLastError));
         aeUtf16:
-          if SendBuf(Utf16ByteOrderMark[1],2)<>2 then
+          if SendBuf(Utf16ByteOrderMark[0],2)<>2 then
             raise EXxmTransferError.Create(SysErrorMessage(GetLastError));
       end;
     case FAutoEncoding of

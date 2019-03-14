@@ -405,7 +405,11 @@ begin
         SXxmProjectNotFound,'__',Name,[]));
     d1['signature']:=Value;
     //save
-    s:=Utf8ByteOrderMark+UTF8Encode(d.ToString);
+    s:=
+      AnsiChar(Utf8ByteOrderMark[0])+
+      AnsiChar(Utf8ByteOrderMark[1])+
+      AnsiChar(Utf8ByteOrderMark[2])+
+      UTF8Encode(d.ToString);
     f:=TFileStream.Create(FRegFilePath+XxmRegFileName,fmCreate);
     try
       f.Write(s[1],Length(s));
@@ -425,7 +429,6 @@ var
   found:boolean;
   e:TXxmProjectCacheEntry;
 begin
-  e:=nil;//default
   CheckRegistry;
   EnterCriticalSection(FLock);
   try

@@ -453,7 +453,7 @@ function XxmVersion: TXxmVersion;
 begin
   Result.Major:=1;
   Result.Minor:=2;
-  Result.Release:=5;
+  Result.Release:=6;
   Result.Build:=StrToInt(Copy(XxmRevision,7,Length(XxmRevision)-8));
 end;
 

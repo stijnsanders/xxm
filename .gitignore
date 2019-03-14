@@ -1,3 +1,7 @@
 .svn
 *.dcu
 *.dsk
+**/__history/
+*.local
+*.identcache
+*.stat

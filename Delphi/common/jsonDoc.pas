@@ -2,11 +2,11 @@
 
 jsonDoc.pas
 
-Copyright 2015-2018 Stijn Sanders
+Copyright 2015-2019 Stijn Sanders
 Made available under terms described in file "LICENSE"
 https://github.com/stijnsanders/jsonDoc
 
-v1.1.7
+v1.2.0
 
 }
 unit jsonDoc;
@@ -28,6 +28,9 @@ Define here or in the project settings
 
   JSONDOC_JSON_PASCAL_STRINGS
     to allow pascal-style strings
+
+  JSONDOC_P2
+    to combine JSONDOC_JSON_LOOSE and JSONDOC_JSON_PASCAL_STRINGS
 
   JSONDOC_STOREINDENTING
     to make ToString write indentation EOL's and tabs
@@ -66,8 +69,8 @@ type
   IJSONDocument interface
   the base JSON document interface that provides access to a set of
   key-value pairs.
-  use ToString and Parse to convert JSON to and from string values.
-  use ToVarArray to access the key-value pairs as a [x,2] variant array.
+  use AsString and Parse to convert JSON to and from string values.
+  use AsVarArray to access the key-value pairs as a [x,2] variant array.
   use Clear to re-use a JSON doc for parsing or building a new similar
   document and keep the allocated memory for keys and values.
   see also: JSON function
@@ -76,13 +79,14 @@ type
     ['{4A534F4E-0001-0001-C000-000000000001}']
     function Get_Item(const Key: WideString): Variant; stdcall;
     procedure Set_Item(const Key: WideString; const Value: Variant); stdcall;
-    function Parse(const JSONData: WideString): IJSONDocument; stdcall;
+    procedure Parse(const JSONData: WideString); stdcall;
     function ToString: WideString; stdcall;
     function ToVarArray: Variant; stdcall;
     procedure Clear; stdcall;
+    procedure Delete(const Key: WideString); stdcall;
     property Item[const Key: WideString]: Variant
       read Get_Item write Set_Item; default;
-    procedure Delete(const Key: WideString); stdcall;
+    property AsString: WideString read ToString write Parse;
   end;
 
 {
@@ -276,7 +280,7 @@ type
   public
     procedure AfterConstruction; override;
     destructor Destroy; override;
-    function Parse(const JSONData: WideString): IJSONDocument; stdcall;
+    procedure Parse(const JSONData: WideString); stdcall;
     function JSONToString: WideString; stdcall;
     function IJSONDocument.ToString=JSONToString;
     function ToVarArray: Variant; stdcall;
@@ -285,6 +289,7 @@ type
     procedure Delete(const Key: WideString); stdcall;
     property Item[const Key: WideString]: Variant
       read Get_Item write Set_Item; default;
+    property AsString: WideString read JSONToString write Parse;
     property UseIJSONArray:boolean read FUseIJSONArray write FUseIJSONArray;
   end;
 
@@ -652,7 +657,12 @@ begin
   {$ENDIF}
 end;
 
-function TJSONDocument.Parse(const JSONData: WideString): IJSONDocument;
+{$IFDEF JSONDOC_P2}
+{$DEFINE JSONDOC_JSON_LOOSE}
+{$DEFINE JSONDOC_JSON_PASCAL_STRINGS}
+{$ENDIF}
+
+procedure TJSONDocument.Parse(const JSONData: WideString);
 var
   i,l:integer;
   function SkipWhiteSpace:WideChar;
@@ -917,28 +927,72 @@ var
       a[ai]:=v;
       //detect same type elements array
       vt:=TVarData(v).VType;
-      if at=varEmpty then at:=vt else
-        case at of
-          //TODO: what with signed/unsigned mixed?
-          varSmallint://i2
-            if not(vt in [varSmallint,
-              varShortInt,varByte]) then at:=varVariant;
-          varInteger://i4
-            if not(vt in [varSmallint,
-              varInteger,varShortInt,varByte,varWord]) then at:=varVariant;
-          varWord:
-            if not(vt in [varSmallint,
-              varByte,varWord]) then at:=varVariant;
-          varLongWord:
-            if not(vt in [varSmallint,
-              varShortInt,varByte,varWord,varLongWord]) then at:=varVariant;
-          varInt64:
-            if not(vt in [varSmallint,varInteger,varShortInt,
-              varByte,varWord,varLongWord,varInt64]) then at:=varVariant;
-          varVariant:;//Already creating an VarArray of variants
-          //TODO: more?
-          else if at<>vt then at:=varVariant;
-        end;
+      case at of
+        varEmpty:
+          at:=vt;
+        varShortInt,varByte://i1,u1
+          case vt of
+            varSmallInt,varInteger,varSingle,varDouble,
+            varLongWord,varInt64,$0015:
+              at:=vt;
+            varShortInt:
+              ;//at:=varShortInt;
+            else
+              at:=varVariant;
+          end;
+        varSmallint,varWord://i2,u2
+          case vt of
+            varInteger,varSingle,varDouble,varLongWord,varInt64,$0015:
+              at:=vt;
+            varSmallInt,
+            varShortInt,varByte,varWord:
+              ;//at:=varSmallInt;
+            else
+              at:=varVariant;
+          end;
+        varInteger,varLongWord://i4,u4
+          case vt of
+            varSingle,varDouble,varInt64,$0015:
+              at:=vt;
+            varSmallInt,varInteger,
+            varShortInt,varByte,varWord,varLongWord:
+              ;//at:=varInteger;
+            else
+              at:=varVariant;
+          end;
+        varInt64,$0015://i8
+          case vt of
+            varSingle,varDouble:
+              at:=vt;
+            varSmallInt,varInteger,
+            varShortInt,varByte,varWord,varLongWord,varInt64,$0015:
+              ;//at:=varInt64;
+            else
+              at:=varVariant;
+          end;
+        varSingle:
+          case vt of
+            varDouble:
+              at:=vt;
+            varSmallInt,varInteger,varSingle,
+            varShortInt,varByte,varWord,varLongWord:
+              ;//at:=varSingle
+            else
+              at:=varVariant;
+          end;
+        varDouble:
+          case vt of
+            varSmallInt,varInteger,varSingle,varDouble,
+            varShortInt,varByte,varWord,varLongWord:
+              ;//at:=varDouble
+            else
+              at:=varVariant;
+          end;
+        varVariant:
+          ;//Already creating an VarArray of varVariant
+        else
+          if at<>vt then at:=varVariant;
+      end;
       inc(ai);
      end
     else
@@ -1028,7 +1082,7 @@ begin
                 (jsonData[i]=':') or (jsonData[i]='"')
                 {$IFDEF JSONDOC_JSON_LOOSE}
                 or (jsonData[i]='{') or (jsonData[i]='[')
-                or (jsonData[i]='=')
+                or (jsonData[i]='=') or (jsonData[i]=';')
                 {$ENDIF}
                 ) do inc(i);
               k2:=i;
@@ -1232,6 +1286,7 @@ begin
            end;
 
           {$IFDEF JSONDOC_JSON_LOOSE}
+          ';':inc(i);
           else
            begin
             v1:=i;
@@ -1401,7 +1456,6 @@ begin
     LeaveCriticalSection(FLock);
   end;
   {$ENDIF}
-  Result:=Self;
 end;
 
 function JSONEncodeStr(const xx:WideString):WideString;
