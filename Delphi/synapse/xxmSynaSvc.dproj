@@ -77,7 +77,7 @@
         <VerInfo_Build>460</VerInfo_Build>
         <VerInfo_Locale>1033</VerInfo_Locale>
         <DCC_Namespace>System;Xml;Data;Datasnap;Web;Soap;Vcl;Winapi;System.Win;$(DCC_Namespace)</DCC_Namespace>
-        <VerInfo_Keys>CompanyName=;FileDescription=xxm Http Service (Ararat Synapse);FileVersion=1.2.5.450;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductName=xxm;ProductVersion=1.0.0.0;Comments=http://yoy.be/xxm/</VerInfo_Keys>
+        <VerInfo_Keys>CompanyName=;FileDescription=xxm Http Service (Ararat Synapse);FileVersion=1.2.6.460;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductName=xxm;ProductVersion=1.0.0.0;Comments=http://yoy.be/xxm/</VerInfo_Keys>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base_Win32)'!=''">
         <DCC_Namespace>Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;Bde;$(DCC_Namespace)</DCC_Namespace>
@@ -95,9 +95,6 @@
         <Manifest_File>$(BDS)\bin\default_app.manifest</Manifest_File>
         <DCC_ExeOutput>..\bin64</DCC_ExeOutput>
         <DCC_DcuOutput>..\dcu64</DCC_DcuOutput>
-        <VerInfo_MinorVer>0</VerInfo_MinorVer>
-        <VerInfo_Release>0</VerInfo_Release>
-        <VerInfo_Build>0</VerInfo_Build>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_1)'!=''">
         <DCC_Define>RELEASE;$(DCC_Define)</DCC_Define>

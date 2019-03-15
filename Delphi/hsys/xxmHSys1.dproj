@@ -74,7 +74,7 @@
         <BT_BuildType>Debug</BT_BuildType>
         <Icon_MainIcon>xxmHSys1_Icon.ico</Icon_MainIcon>
         <DCC_ExeOutput>..\bin32</DCC_ExeOutput>
-        <DCC_DcuOutput>..\bin32\hsys1</DCC_DcuOutput>
+        <DCC_DcuOutput>..\dcu32\hsys1</DCC_DcuOutput>
         <Manifest_File>(None)</Manifest_File>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base_Win64)'!=''">
