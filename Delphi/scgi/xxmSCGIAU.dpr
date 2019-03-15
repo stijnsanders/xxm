@@ -1,6 +1,7 @@
 program xxmSCGIAU;
 
-{$R '..\common\xxmData.res' '..\common\xxmData.rc'}
+{$R 'xxmData.res' '..\common\xxmData.rc'}
+{$R 'xxmAU_manifest.res' '..\common\xxmAU_manifest.rc'}
 
 uses
   SysUtils,

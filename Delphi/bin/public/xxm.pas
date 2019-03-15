@@ -5,8 +5,8 @@ interface
 uses SysUtils, Classes, ActiveX;
 
 const
-  //$Date: 2018-04-20 23:02:55 +0200 (vr, 20 apr 2018) $
-  XxmRevision = '$Rev: 450 $';
+  //$Date: 2019-03-15 21:54:56 +0100 (vr, 15 mrt 2019) $
+  XxmRevision = '$Rev: 459 $';
 
 type
   IXxmContext = interface;//forward

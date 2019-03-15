@@ -75,9 +75,9 @@
         <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
         <VerInfo_MinorVer>2</VerInfo_MinorVer>
         <VerInfo_Release>6</VerInfo_Release>
-        <VerInfo_Build>456</VerInfo_Build>
+        <VerInfo_Build>460</VerInfo_Build>
         <VerInfo_Locale>1033</VerInfo_Locale>
-        <VerInfo_Keys>CompanyName=;FileDescription=xxm Project Editor;FileVersion=1.2.6.456;InternalName=xxmProject;LegalCopyright=;LegalTrademarks=;OriginalFilename=xxmProject.exe;ProductName=xxm;ProductVersion=1.0.0.0;Comments=http://yoy.be/xxm/</VerInfo_Keys>
+        <VerInfo_Keys>CompanyName=;FileDescription=xxm Project Editor;FileVersion=1.2.6.460;InternalName=xxmProject;LegalCopyright=;LegalTrademarks=;OriginalFilename=xxmProject.exe;ProductName=xxm;ProductVersion=1.0.0.0;Comments=http://yoy.be/xxm/</VerInfo_Keys>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base_Win32)'!=''">
         <DCC_Namespace>Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;Bde;$(DCC_Namespace)</DCC_Namespace>

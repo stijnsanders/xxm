@@ -1,7 +1,7 @@
 program xxmHttpAU;
 
-{$R '..\common\xxmData.res' '..\common\xxmData.rc'}
-{$R 'xxmHttpAU_manifest.res' 'xxmHttpAU_manifest.rc'}
+{$R 'xxmData.res' '..\common\xxmData.rc'}
+{$R 'xxmAU_manifest.res' '..\common\xxmAU_manifest.rc'}
 
 uses
   SysUtils,
