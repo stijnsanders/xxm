@@ -46,10 +46,10 @@ begin
 
   for i:=1 to ParamCount do
    begin
-    s:=ParamStr(i);
+    s:=AnsiString(ParamStr(i));
     j:=1;
     while (j<=Length(s)) and not(s[j]='=') do inc(j);
-    t:=LowerCase(Copy(s,1,j-1));
+    t:=AnsiString(LowerCase(string(Copy(s,1,j-1))));
     par:=TParameters(0);
     while not(par=cp_Unknown) and not(t=ParameterKey[par]) do inc(par);
     case par of
@@ -58,10 +58,10 @@ begin
       cpLoadCopy:
         GlobalAllowLoadCopy:=Copy(s,j+1,Length(s)-j)<>'0';
       cpThreads:
-        Threads:=StrToInt(Copy(s,j+1,Length(s)-j));
+        Threads:=StrToInt(string(Copy(s,j+1,Length(s)-j)));
       //add new here
       cp_Unknown:
-        raise Exception.Create('Unknown setting: '+t);
+        raise Exception.Create('Unknown setting: '+string(t));
     end;
    end;
 

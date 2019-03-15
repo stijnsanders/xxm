@@ -14,7 +14,7 @@ type
   private
     rq: PRequest;
     FConnected: boolean;
-    FRedirectPrefix, FSessionID: AnsiString;
+    FRedirectPrefix, FSessionID: WideString;
     FCookieParsed: boolean;
     FCookie: AnsiString;
     FCookieIdx: TParamIndexes;
@@ -70,7 +70,7 @@ end;
 procedure TxxmAhttpdContext.Perform(r: PRequest);
 begin
   State:=ctHeaderNotSent;
-  FURL:=ap_construct_url(r.pool,r.unparsed_uri,r);
+  FURL:=UTF8ToWideString(ap_construct_url(r.pool,r.unparsed_uri,r));
   rq:=r;
 
   BeginRequest;
@@ -112,7 +112,7 @@ begin
     if XxmProjectCache.ProjectFromURI(Self,x,i,FProjectName,FFragmentName) then
       FRedirectPrefix:=FRedirectPrefix+'/'+FProjectName
     else
-      FRedirectPrefix:=copy(x,1,Length(x)-Length(y));//?
+      FRedirectPrefix:=UTF8ToWideString(Copy(x,1,Length(x)-Length(y)));//?
 
     x:=apr_table_get(rq.headers_in,'Content-Length');
     if x<>'' then FPostData:=TxxmAhttpdClientStream.Create(rq);
@@ -130,7 +130,8 @@ begin
         rq.status:=500;
         rq.status_line:=apr_pstrdup(rq.pool,'500 Internal Server Error');
         try
-          if FPostData=nil then x:='none' else x:=IntToStr(FPostData.Size)+' bytes';
+          if FPostData=nil then x:='none' else
+            x:=AnsiString(IntToStr(FPostData.Size))+' bytes';
         except
           x:='unknown';
         end;
@@ -154,23 +155,23 @@ function TxxmAhttpdContext.ContextString(
   cs: TXxmContextString): WideString;
 begin
   case cs of
-    csVersion:Result:=SelfVersion+', '+ap_get_server_description;//+ap_get_server_banner?
+    csVersion:Result:=SelfVersion+', '+WideString(ap_get_server_description);//+ap_get_server_banner?
     csExtraInfo:Result:='';//TODO?
-    csVerb:Result:=rq.method;
-    csQueryString:Result:=rq.args;
-    csUserAgent:Result:=apr_table_get(rq.headers_in,'User-Agent');
-    csAcceptedMimeTypes:Result:=apr_table_get(rq.headers_in,'Accept');
-    csPostMimeType:Result:=apr_table_get(rq.headers_in,'Content-Type');
+    csVerb:Result:=WideString(rq.method);
+    csQueryString:Result:=WideString(rq.args);
+    csUserAgent:Result:=WideString(apr_table_get(rq.headers_in,'User-Agent'));
+    csAcceptedMimeTypes:Result:=WideString(apr_table_get(rq.headers_in,'Accept'));
+    csPostMimeType:Result:=WideString(apr_table_get(rq.headers_in,'Content-Type'));
     csURL:Result:=GetURL;
-    csReferer:Result:=apr_table_get(rq.headers_in,'Referer');
-    csLanguage:Result:=apr_table_get(rq.headers_in,'Accept-Language');
-    csRemoteAddress:Result:=rq.main.connection.client_id;
+    csReferer:Result:=WideString(apr_table_get(rq.headers_in,'Referer'));
+    csLanguage:Result:=WideString(apr_table_get(rq.headers_in,'Accept-Language'));
+    csRemoteAddress:Result:=WideString(rq.main.connection.client_id);
     csRemoteHost:
       if rq.main.connection.remote_host=nil then
-        Result:=rq.main.connection.client_id //TODO: resolve now?
+        Result:=WideString(rq.main.connection.client_id) //TODO: resolve now?
       else
-        Result:=rq.main.connection.remote_host;
-    csAuthUser,csAuthPassword:Result:=AuthValue(cs);
+        Result:=WideString(rq.main.connection.remote_host);
+    csAuthUser,csAuthPassword:Result:=UTF8ToWideString(AuthValue(cs));
     csProjectName:Result:=FProjectName;
     csLocalURL:Result:=FFragmentName;
   end;
@@ -192,7 +193,7 @@ begin
     SplitHeaderValue(FCookie,0,Length(FCookie),FCookieIdx);
     FCookieParsed:=true;
    end;
-  Result:=GetParamValue(FCookie,FCookieIdx,Name);
+  Result:=UTF8ToWideString(GetParamValue(FCookie,FCookieIdx,UTF8Encode(Name)));
 end;
 
 function TxxmAhttpdContext.GetRequestHeaders: IxxmDictionaryEx;
@@ -259,7 +260,7 @@ begin
   inherited;
   rq.status:=Code;
   rq.status_line:=apr_pstrdup(rq.pool,
-    PAnsiChar(IntToStr(Code)+' '+AnsiString(Text)));
+    PAnsiChar(AnsiString(IntToStr(Code))+' '+AnsiString(Text)));
 end;
 
 procedure TxxmAhttpdContext.SendHeader;

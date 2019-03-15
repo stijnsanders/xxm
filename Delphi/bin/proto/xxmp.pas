@@ -10,7 +10,7 @@ It is advised to link each request to a session here, if you want session manage
 (See  an example xxmSession.pas in the public folder.)
 Use LoadFragment to handle calls made to Context.Include.
 
-  $Rev: 450 $ $Date: 2018-04-20 23:02:55 +0200 (vr, 20 apr 2018) $
+  $Rev: 457 $ $Date: 2018-07-12 22:39:00 +0200 (do, 12 jul 2018) $
 }
 
 interface

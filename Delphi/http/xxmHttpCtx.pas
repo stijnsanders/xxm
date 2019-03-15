@@ -12,10 +12,11 @@ type
     IXxmHttpHeaders,
     IXxmSocketSuspend)
   private
-    FSocket:TTcpSocket;
-    FReqHeaders:TRequestHeaders;
-    FResHeaders:TResponseHeaders;
-    FHTTPVersion,FVerb,FURI,FRedirectPrefix,FSessionID:AnsiString;
+    FSocket: TTcpSocket;
+    FReqHeaders: TRequestHeaders;
+    FResHeaders: TResponseHeaders;
+    FHTTPVersion,FVerb,FURI: AnsiString;
+    FRedirectPrefix,FSessionID: WideString;
     FCookieParsed: boolean;
     FCookie: AnsiString;
     FCookieIdx: TParamIndexes;
@@ -218,8 +219,13 @@ var
   tc:cardinal;
 begin
   try
-    //command line and headers
     tc:=GetTickCount;
+
+    //secure?
+//    if FSocket is TTcpSecureSocket then
+//      (FSocket as TTcpSecureSocket).Negotiate;
+
+    //command line and headers
     y:='';
     k:=0;
     l:=0;
@@ -251,7 +257,7 @@ begin
          begin
           //i:=1;
           while (i<=l) and (x[i]>' ') do inc(i);
-          FVerb:=UpperCase(Copy(x,1,i-1));
+          FVerb:=AnsiUpper(PAnsiChar(Copy(x,1,i-1)));
           inc(i);
           j:=i;
           while (j<=l) and (x[j]>' ') do inc(j);
@@ -298,7 +304,7 @@ begin
       FProjectName:='';
       FFragmentName:='';
       SendError('error','','Bad Request');
-      raise EXxmPageRedirected.Create(FHTTPVersion+' 400 Bad Request');
+      raise EXxmPageRedirected.Create(string(FHTTPVersion)+' 400 Bad Request');
      end;
 
     //assert headers read and parsed
@@ -307,16 +313,16 @@ begin
     PreProcessRequest;
 
     //if Verb<>'GET' then?
-    y:=FReqHeaders['Content-Length'];
+    y:=UTF8Encode(FReqHeaders['Content-Length']);
     if y<>'' then
      begin
-      si:=StrToInt(y);
+      si:=StrToInt(string(y));
       if si<PostDataThreshold then
         s:=THeapStream.Create
       else
        begin
         SetLength(FPostTempFile,$400);
-        SetLength(FPostTempFile,GetTempPathA($400,PAnsiChar(FPostTempFile)));
+        SetLength(FPostTempFile,GetTempPath($400,PChar(FPostTempFile)));
         FPostTempFile:=FPostTempFile+'xxm_'+
           IntToHex(integer(Self),8)+'_'+IntToHex(GetTickCount,8)+'.dat';
         s:=TFileStream.Create(FPostTempFile,fmCreate);
@@ -357,11 +363,14 @@ begin
     on EXxmAutoBuildFailed do ;//assert output done
     on EXxmConnectionLost do ;
     on e:Exception do
+     begin
       if not HandleException(e) then
        begin
         ForceStatus(StatusException,'Internal Server Error');
         SendError('error',e.ClassName,e.Message);
        end;
+      FlushFinal;
+     end;
   end;
 
   try
@@ -436,7 +445,7 @@ begin
       if r=0 then
         AuthSet(n.sUserName,'')
       else
-        AuthSet('???'+SysErrorMessage(r),'');//raise?
+        AuthSet('???'+AnsiString(SysErrorMessage(r)),'');//raise?
       DeleteSecurityContext(@FSocket.Ctxt);
       FSocket.Ctxt.dwLower:=nil;
       FSocket.Ctxt.dwUpper:=nil;
@@ -447,7 +456,7 @@ begin
       SetLength(t,d[2].cbBuffer);
       SetStatus(401,'Unauthorized');
       AddResponseHeader('Connection','keep-alive');
-      AddResponseHeader('WWW-Authenticate','NTLM '+Base64Encode(t));
+      AddResponseHeader('WWW-Authenticate','NTLM '+UTF8ToWideString(Base64Encode(t)));
       ResponseStr('<h1>Authorization required</h1>','401.1');
      end
     else
@@ -472,8 +481,8 @@ begin
   case cs of
     csVersion:Result:=SelfVersion;
     csExtraInfo:Result:='';//???
-    csVerb:Result:=FVerb;
-    csQueryString:Result:=Copy(FURI,FQueryStringIndex,Length(FURI)-FQueryStringIndex+1);
+    csVerb:Result:=UTF8ToWideString(FVerb);
+    csQueryString:Result:=UTF8ToWideString(Copy(FURI,FQueryStringIndex,Length(FURI)-FQueryStringIndex+1));
     csUserAgent:Result:=FReqHeaders['User-Agent'];
     csAcceptedMimeTypes:Result:=FReqHeaders['Accept'];
     csPostMimeType:Result:=FReqHeaders['Content-Type'];
@@ -484,7 +493,7 @@ begin
     csLanguage:Result:=FReqHeaders['Accept-Language'];
     csRemoteAddress:Result:=FSocket.Address;
     csRemoteHost:Result:=FSocket.HostName;
-    csAuthUser,csAuthPassword:Result:=AuthValue(cs);//?
+    csAuthUser,csAuthPassword:Result:=UTF8ToWideString(AuthValue(cs));//?
     else
       raise EXxmContextStringUnknown.Create(StringReplace(
         SXxmContextStringUnknown,'__',IntToHex(integer(cs),8),[]));
@@ -508,11 +517,11 @@ function TXxmHttpContext.GetCookie(const Name: WideString): WideString;
 begin
   if not(FCookieParsed) then
    begin
-    FCookie:=FReqHeaders['Cookie'];
+    FCookie:=UTF8Encode(FReqHeaders['Cookie']);
     SplitHeaderValue(FCookie,0,Length(FCookie),FCookieIdx);
     FCookieParsed:=true;
    end;
-  Result:=GetParamValue(FCookie,FCookieIdx,Name);
+  Result:=UTF8ToWideString(GetParamValue(FCookie,FCookieIdx,UTF8Encode(Name)));
 end;
 
 function TXxmHttpContext.GetSessionID: WideString;
@@ -540,7 +549,8 @@ begin
   //if FResHeaders['Cache-Control']='' then
   // FResHeaders['Cache-Control']:='no-cache, no-store';
   NewURL:=RedirectURL;
-  if Relative and (NewURL<>'') and (NewURL[1]='/') then NewURL:=FRedirectPrefix+NewURL;
+  if Relative and (NewURL<>'') and (NewURL[1]='/') then
+    NewURL:=FRedirectPrefix+NewURL;
   FResHeaders['Location']:=NewURL;
   ResponseStr('<h1>Object moved</h1><p><a href="'+
     HTMLEncode(NewURL)+'">'+HTMLEncode(NewURL)+'</a></p>'#13#10,RedirectURL);
@@ -573,7 +583,7 @@ begin
   if FContentType<>'' then
     FResHeaders['Content-Type']:=FContentType+
       AutoEncodingCharset[FAutoEncoding];
-  x:=FHTTPVersion+' '+IntToStr(StatusCode)+' '+StatusText+#13#10+
+  x:=FHTTPVersion+' '+AnsiString(IntToStr(StatusCode)+' '+StatusText)+#13#10+
     FResHeaders.Build+#13#10;
   l:=Length(x);
   if FSocket.SendBuf(x[1],l)<>l then
@@ -626,7 +636,7 @@ begin
     if (FSocket.Port<>0) and (FSocket.Port<>80) then
       FURL:=FURL+':'+IntToStr(FSocket.Port);
    end;
-  FURL:='http://'+FURL+FURI;//TODO: 'https' if SSL?
+  FURL:='http://'+FURL+UTF8ToWideString(FURI);//TODO: 'https' if SSL?
 
   //FResHeaders['Server']:=HttpSelfVersion; //X-Powered-By?
 end;

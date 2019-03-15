@@ -680,13 +680,16 @@ begin
     try
       SetLength(s,3);
       f.Read(s[1],3);
-      if s=Utf8ByteOrderMark then
+      if (byte(s[1])=Utf8ByteOrderMark[0]) and
+         (byte(s[2])=Utf8ByteOrderMark[1]) and
+         (byte(s[3])=Utf8ByteOrderMark[2]) then
        begin
         l:=f.Size-3;
         SetLength(s,l);
         f.Read(s[1],l);
        end
-      else if Copy(s,1,2)=Utf16ByteOrderMark then
+      else if (byte(s[1])=Utf16ByteOrderMark[0]) and
+              (byte(s[2])=Utf16ByteOrderMark[1]) then
        begin
         f.Position:=2;
         l:=(f.Size div 2)-1;

@@ -3,7 +3,7 @@ unit xxmHostMain;
 interface
 
 uses
-  SysUtils, ActiveX, xxm, Classes, xxmContext, xxmThreadPool,
+  Windows, SysUtils, ActiveX, xxm, Classes, xxmContext, xxmThreadPool,
   xxmPReg, xxmPRegJson, xxmParams, xxmParUtils, xxmHeaders;
 
 type
@@ -31,7 +31,7 @@ type
     FReqHeaders:TRequestHeaders;
     FResHeaders:TResponseHeaders;
     FConnected:boolean;
-    FURI,FRedirectPrefix,FSessionID:AnsiString;
+    FURI,FRedirectPrefix,FSessionID:WideString;
     FCookieParsed: boolean;
     FCookie: AnsiString;
     FCookieIdx: TParamIndexes;
@@ -67,6 +67,12 @@ type
     procedure Load(PipeIn,PipeOut:THandle);
   end;
 
+  {$IF not(Declared(FixedUInt))}
+  FixedUInt=LongInt;
+  PFixedUInt=PLongInt;
+  LargeUInt=LargeInt;
+  {$IFEND}
+
   TRawSocketData=class(TInterfacedObject, IStream, IXxmRawSocket)
   private
     FPipeIn, FPipeOut: THandle;
@@ -74,25 +80,22 @@ type
     constructor Create(PipeIn,PipeOut:THandle);
     destructor Destroy; override;
     { IStream }
-    function Seek(dlibMove: Largeint; dwOrigin: Longint;
-      out libNewPosition: Largeint): HResult; stdcall;
-    function SetSize(libNewSize: Largeint): HResult; stdcall;
-    function CopyTo(stm: IStream; cb: Largeint; out cbRead: Largeint;
-      out cbWritten: Largeint): HResult; stdcall;
-    function Commit(grfCommitFlags: Longint): HResult; stdcall;
+    function Seek(dlibMove: Largeint; dwOrigin: DWORD;
+      out libNewPosition: LargeUInt): HResult; stdcall;
+    function SetSize(libNewSize: LargeUInt): HResult; stdcall;
+    function CopyTo(stm: IStream; cb: LargeUInt; out cbRead: LargeUInt;
+      out cbWritten: LargeUInt): HResult; stdcall;
+    function Commit(grfCommitFlags: DWORD): HResult; stdcall;
     function Revert: HResult; stdcall;
-    function LockRegion(libOffset: Largeint; cb: Largeint;
-      dwLockType: Longint): HResult; stdcall;
-    function UnlockRegion(libOffset: Largeint; cb: Largeint;
-      dwLockType: Longint): HResult; stdcall;
-    function Stat(out statstg: TStatStg; grfStatFlag: Longint): HResult;
-      stdcall;
+    function LockRegion(libOffset, cb: LargeUInt; dwLockType: DWORD): HResult; stdcall;
+    function UnlockRegion(libOffset, cb: LargeUInt; dwLockType: DWORD): HResult; stdcall;
+    function Stat(out statstg: TStatStg; grfStatFlag: DWORD): HResult; stdcall;
     function Clone(out stm: IStream): HResult; stdcall;
     { ISequentialStream }
-    function Read(pv: Pointer; cb: Longint; pcbRead: PLongint): HResult;
-      stdcall;
-    function Write(pv: Pointer; cb: Longint; pcbWritten: PLongint): HResult;
-      stdcall;
+    function Read(pv: Pointer; cb: FixedUInt;
+      pcbRead: PFixedUInt): HResult; stdcall;
+    function Write(pv: Pointer; cb: FixedUInt;
+      pcbWritten: PFixedUInt): HResult; stdcall;
     { IXxmRawSocket }
     function DataReady(TimeoutMS: cardinal): boolean;
     procedure Disconnect;
@@ -105,7 +108,7 @@ type
 
 implementation
 
-uses Windows, Variants, ComObj, xxmCommonUtils;
+uses Variants, ComObj, xxmCommonUtils;
 
 resourcestring
   SXxmMaximumHeaderLines='Maximum header lines exceeded.';
@@ -187,8 +190,8 @@ begin
       while (k<=l) and (x[k]<>#0) do inc(k);
       if (j-i>4) and (Copy(x,i,5)='HTTP_') then
        begin
-        y:=y+x[i+5]+LowerCase(StringReplace(Copy(x,i+6,j-i-6),
-          '_','-',[rfReplaceAll]))+': '+Copy(x,j+1,k-j-1)+#13#10;
+        y:=y+x[i+5]+AnsiString(LowerCase(StringReplace(string(Copy(x,i+6,j-i-6)),
+          '_','-',[rfReplaceAll])))+': '+Copy(x,j+1,k-j-1)+#13#10;
        end
       else
         if j<=l then
@@ -215,21 +218,21 @@ begin
     i:=1;
     l:=Length(x);
     while (i<=l) and (x[i]<>'/') do inc(i);
-    y:=FReqHeaders['Host'];
+    y:=UTF8Encode(FReqHeaders['Host']);
     if y='' then y:='localhost';//if not port=80 then +':'+?
-    FRedirectPrefix:=LowerCase(Copy(x,1,i-1))+'://'+y;
+    FRedirectPrefix:=LowerCase(string(Copy(x,1,i-1)))+'://'+UTF8ToWideString(y);
 
     x:=GetCGIValue('SCRIPT_NAME');
     y:=GetCGIValue('REQUEST_URI');
     l:=Length(x);
     if x=Copy(y,1,l) then
      begin
-      FURI:=Copy(y,l+1,Length(y)-l);
-      FRedirectPrefix:=FRedirectPrefix+x;
+      FURI:=UTF8ToWideString(Copy(y,l+1,Length(y)-l));
+      FRedirectPrefix:=FRedirectPrefix+UTF8ToWideString(x);
      end
     else
      begin
-      FURI:=y;
+      FURI:=UTF8ToWideString(y);
       //FURLPrefix:= should be ok
      end;
 
@@ -243,7 +246,7 @@ begin
 
     FQueryStringIndex:=2;
     if XxmProjectCache.ProjectFromURI(Self,
-      FURI,FQueryStringIndex,FProjectName,FFragmentName) then
+      UTF8Encode(FURI),FQueryStringIndex,FProjectName,FFragmentName) then
       FRedirectPrefix:=FRedirectPrefix+'/'+FProjectName;
     FPageClass:='['+FProjectName+']';
 
@@ -252,7 +255,7 @@ begin
 
     //if Verb<>'GET' then?
     x:=GetCGIValue('CONTENT_LENGTH');
-    if x<>'' then FPostData:=TXxmPostDataStream.Create(FPipeIn,StrToInt(x));
+    if x<>'' then FPostData:=TXxmPostDataStream.Create(FPipeIn,StrToInt(string(x)));
 
     BuildPage;
 
@@ -266,7 +269,7 @@ begin
        begin
         ForceStatus(StatusException,'Internal Server Error');//TODO:setting?
         try
-          if FPostData=nil then x:='none' else x:=IntToStr(FPostData.Size)+' bytes';
+          if FPostData=nil then x:='none' else x:=AnsiString(IntToStr(FPostData.Size))+' bytes';
         except
           x:='unknown';
         end;
@@ -289,21 +292,21 @@ end;
 function TXxmHostedContext.ContextString(cs: TXxmContextString): WideString;
 begin
   case cs of
-    csVersion:Result:=SelfVersion+' '+GetCGIValue('SERVER_SOFTWARE');
+    csVersion:Result:=SelfVersion+' '+string(GetCGIValue('SERVER_SOFTWARE'));
     csExtraInfo:Result:='';//???
-    csVerb:Result:=GetCGIValue('REQUEST_METHOD');
+    csVerb:Result:=string(GetCGIValue('REQUEST_METHOD'));
     csQueryString:Result:=Copy(FURI,FQueryStringIndex,Length(FURI)-FQueryStringIndex+1);
     csUserAgent:Result:=FReqHeaders['User-Agent'];
     csAcceptedMimeTypes:Result:=FReqHeaders['Accept'];//TODO:
-    csPostMimeType:Result:=GetCGIValue('CONTENT_TYPE');//TODO:
+    csPostMimeType:Result:=string(GetCGIValue('CONTENT_TYPE'));//TODO:
     csURL:Result:=GetURL;
     csProjectName:Result:=FProjectName;
     csLocalURL:Result:=FFragmentName;
     csReferer:Result:=FReqHeaders['Referer'];
     csLanguage:Result:=FReqHeaders['Accept-Language'];
-    csRemoteAddress:Result:=GetCGIValue('REMOTE_ADDR');
-    csRemoteHost:Result:=GetCGIValue('REMOTE_HOST');
-    csAuthUser,csAuthPassword:Result:=AuthValue(cs);
+    csRemoteAddress:Result:=string(GetCGIValue('REMOTE_ADDR'));
+    csRemoteHost:Result:=string(GetCGIValue('REMOTE_HOST'));
+    csAuthUser,csAuthPassword:Result:=UTF8ToWideString(AuthValue(cs));
     else
       raise EXxmContextStringUnknown.Create(StringReplace(
         SXxmContextStringUnknown,'__',IntToHex(integer(cs),8),[]));
@@ -326,11 +329,11 @@ function TXxmHostedContext.GetCookie(const Name: WideString): WideString;
 begin
   if not(FCookieParsed) then
    begin
-    FCookie:=FReqHeaders['Cookie'];
+    FCookie:=UTF8Encode(FReqHeaders['Cookie']);
     SplitHeaderValue(FCookie,0,Length(FCookie),FCookieIdx);
     FCookieParsed:=true;
    end;
-  Result:=GetParamValue(FCookie,FCookieIdx,Name);
+  Result:=UTF8ToWideString(GetParamValue(FCookie,FCookieIdx,UTF8Encode(Name)));
 end;
 
 function TXxmHostedContext.GetSessionID: WideString;
@@ -403,7 +406,7 @@ begin
   i:=StatusCode;
   WriteFile(FPipeOut,i,4,l,nil);
   x:=//GetCGIValue('SERVER_PROTOCOL')+' '+
-    'Status: '+IntToStr(i)+' '+StatusText+#13#10+
+    'Status: '+AnsiString(IntToStr(i))+' '+AnsiString(StatusText)+#13#10+
     FResHeaders.Build+#13#10;
   WriteFile(FPipeOut,x[1],Length(x),l,nil);
   inherited;
@@ -488,7 +491,7 @@ begin
     if l<>0 then
      begin
       p:=Memory;
-      inc(cardinal(p),FInputRead);
+      inc(NativeUInt(p),FInputRead);
       if not(ReadFile(FInput,p^,l,l,nil)) then RaiseLastOSError;
       inc(FInputRead,l);
      end;
@@ -527,19 +530,19 @@ begin
   raise Exception.Create('TRawSocketData.Clone not supported');
 end;
 
-function TRawSocketData.Commit(grfCommitFlags: Integer): HResult;
+function TRawSocketData.Commit(grfCommitFlags: DWORD): HResult;
 begin
   raise Exception.Create('TRawSocketData.Commit not supported');
 end;
 
-function TRawSocketData.CopyTo(stm: IStream; cb: Largeint; out cbRead,
-  cbWritten: Largeint): HResult;
+function TRawSocketData.CopyTo(stm: IStream; cb: LargeUInt; out cbRead,
+  cbWritten: LargeUInt): HResult;
 begin
   raise Exception.Create('TRawSocketData.CopyTo not supported');
 end;
 
-function TRawSocketData.LockRegion(libOffset, cb: Largeint;
-  dwLockType: Integer): HResult;
+function TRawSocketData.LockRegion(libOffset, cb: LargeUInt;
+  dwLockType: DWORD): HResult;
 begin
   raise Exception.Create('TRawSocketData.LockRegion not supported');
 end;
@@ -549,31 +552,31 @@ begin
   raise Exception.Create('TRawSocketData.Revert not supported');
 end;
 
-function TRawSocketData.Seek(dlibMove: Largeint; dwOrigin: Integer;
-  out libNewPosition: Largeint): HResult;
+function TRawSocketData.Seek(dlibMove: Largeint; dwOrigin: DWORD;
+  out libNewPosition: LargeUInt): HResult;
 begin
   raise Exception.Create('TRawSocketData.Seek not supported');
 end;
 
-function TRawSocketData.SetSize(libNewSize: Largeint): HResult;
+function TRawSocketData.SetSize(libNewSize: LargeUInt): HResult;
 begin
   raise Exception.Create('TRawSocketData.SetSize not supported');
 end;
 
 function TRawSocketData.Stat(out statstg: TStatStg;
-  grfStatFlag: Integer): HResult;
+  grfStatFlag: DWORD): HResult;
 begin
   raise Exception.Create('TRawSocketData.Stat not supported');
 end;
 
-function TRawSocketData.UnlockRegion(libOffset, cb: Largeint;
-  dwLockType: Integer): HResult;
+function TRawSocketData.UnlockRegion(libOffset, cb: LargeUInt;
+  dwLockType: DWORD): HResult;
 begin
   raise Exception.Create('TRawSocketData.UnlockRegion not supported');
 end;
 
-function TRawSocketData.Read(pv: Pointer; cb: Integer;
-  pcbRead: PLongint): HResult;
+function TRawSocketData.Read(pv: Pointer; cb: FixedUInt;
+  pcbRead: PFixedUInt): HResult;
 var
   l:cardinal;
 begin
@@ -582,8 +585,8 @@ begin
   Result:=S_OK;
 end;
 
-function TRawSocketData.Write(pv: Pointer; cb: Integer;
-  pcbWritten: PLongint): HResult;
+function TRawSocketData.Write(pv: Pointer; cb: FixedUInt;
+  pcbWritten: PFixedUInt): HResult;
 var
   l:cardinal;
 begin

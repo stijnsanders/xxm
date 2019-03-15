@@ -2,7 +2,7 @@ unit xxmReadHandler;
 
 interface
 
-uses Classes, blcksock, xxm, ActiveX;
+uses Windows, Classes, blcksock, xxm, ActiveX;
 
 type
   THandlerReadStreamAdapter=class(TStream)
@@ -24,6 +24,12 @@ type
     function Seek(const Offset: Int64; Origin: TSeekOrigin): Int64; overload; override;
   end;
 
+  {$IF not(Declared(FixedUInt))}
+  FixedUInt=LongInt;
+  PFixedUInt=PLongInt;
+  LargeUInt=LargeInt;
+  {$IFEND}
+
   TRawSocketData=class(TInterfacedObject, IStream, IXxmRawSocket)
   private
     FSocket:TTCPBlockSocket;
@@ -31,25 +37,22 @@ type
     constructor Create(Socket:TTCPBlockSocket);
     destructor Destroy; override;
     { IStream }
-    function Seek(dlibMove: Largeint; dwOrigin: Longint;
-      out libNewPosition: Largeint): HResult; stdcall;
-    function SetSize(libNewSize: Largeint): HResult; stdcall;
-    function CopyTo(stm: IStream; cb: Largeint; out cbRead: Largeint;
-      out cbWritten: Largeint): HResult; stdcall;
-    function Commit(grfCommitFlags: Longint): HResult; stdcall;
+    function Seek(dlibMove: Largeint; dwOrigin: DWORD;
+      out libNewPosition: LargeUInt): HResult; stdcall;
+    function SetSize(libNewSize: LargeUInt): HResult; stdcall;
+    function CopyTo(stm: IStream; cb: LargeUInt; out cbRead: LargeUInt;
+      out cbWritten: LargeUInt): HResult; stdcall;
+    function Commit(grfCommitFlags: DWORD): HResult; stdcall;
     function Revert: HResult; stdcall;
-    function LockRegion(libOffset: Largeint; cb: Largeint;
-      dwLockType: Longint): HResult; stdcall;
-    function UnlockRegion(libOffset: Largeint; cb: Largeint;
-      dwLockType: Longint): HResult; stdcall;
-    function Stat(out statstg: TStatStg; grfStatFlag: Longint): HResult;
-      stdcall;
+    function LockRegion(libOffset, cb: LargeUInt; dwLockType: DWORD): HResult; stdcall;
+    function UnlockRegion(libOffset, cb: LargeUInt; dwLockType: DWORD): HResult; stdcall;
+    function Stat(out statstg: TStatStg; grfStatFlag: DWORD): HResult; stdcall;
     function Clone(out stm: IStream): HResult; stdcall;
     { ISequentialStream }
-    function Read(pv: Pointer; cb: Longint; pcbRead: PLongint): HResult;
-      stdcall;
-    function Write(pv: Pointer; cb: Longint; pcbWritten: PLongint): HResult;
-      stdcall;
+    function Read(pv: Pointer; cb: FixedUInt;
+      pcbRead: PFixedUInt): HResult; stdcall;
+    function Write(pv: Pointer; cb: FixedUInt;
+      pcbWritten: PFixedUInt): HResult; stdcall;
     { IXxmRawSocket }
     function DataReady(TimeoutMS: cardinal): boolean;
     procedure Disconnect;
@@ -57,7 +60,7 @@ type
 
 implementation
 
-uses SysUtils,WinSock;
+uses SysUtils, WinSock;
 
 { THandlerReadStreamAdapter }
 
@@ -179,19 +182,19 @@ begin
   raise Exception.Create('TRawSocketData.Clone not supported');
 end;
 
-function TRawSocketData.Commit(grfCommitFlags: Integer): HResult;
+function TRawSocketData.Commit(grfCommitFlags: DWORD): HResult;
 begin
   raise Exception.Create('TRawSocketData.Commit not supported');
 end;
 
-function TRawSocketData.CopyTo(stm: IStream; cb: Largeint; out cbRead,
-  cbWritten: Largeint): HResult;
+function TRawSocketData.CopyTo(stm: IStream; cb: LargeUInt; out cbRead,
+  cbWritten: LargeUInt): HResult;
 begin
   raise Exception.Create('TRawSocketData.CopyTo not supported');
 end;
 
-function TRawSocketData.LockRegion(libOffset, cb: Largeint;
-  dwLockType: Integer): HResult;
+function TRawSocketData.LockRegion(libOffset, cb: LargeUInt;
+  dwLockType: DWORD): HResult;
 begin
   raise Exception.Create('TRawSocketData.LockRegion not supported');
 end;
@@ -201,31 +204,31 @@ begin
   raise Exception.Create('TRawSocketData.Revert not supported');
 end;
 
-function TRawSocketData.Seek(dlibMove: Largeint; dwOrigin: Integer;
-  out libNewPosition: Largeint): HResult;
+function TRawSocketData.Seek(dlibMove: Largeint; dwOrigin: DWORD;
+  out libNewPosition: LargeUInt): HResult;
 begin
   raise Exception.Create('TRawSocketData.Seek not supported');
 end;
 
-function TRawSocketData.SetSize(libNewSize: Largeint): HResult;
+function TRawSocketData.SetSize(libNewSize: LargeUInt): HResult;
 begin
   raise Exception.Create('TRawSocketData.SetSize not supported');
 end;
 
 function TRawSocketData.Stat(out statstg: TStatStg;
-  grfStatFlag: Integer): HResult;
+  grfStatFlag: DWORD): HResult;
 begin
   raise Exception.Create('TRawSocketData.Stat not supported');
 end;
 
-function TRawSocketData.UnlockRegion(libOffset, cb: Largeint;
-  dwLockType: Integer): HResult;
+function TRawSocketData.UnlockRegion(libOffset, cb: LargeUInt;
+  dwLockType: DWORD): HResult;
 begin
   raise Exception.Create('TRawSocketData.UnlockRegion not supported');
 end;
 
-function TRawSocketData.Read(pv: Pointer; cb: Integer;
-  pcbRead: PLongint): HResult;
+function TRawSocketData.Read(pv: Pointer; cb: FixedUInt;
+  pcbRead: PFixedUInt): HResult;
 var
   l:integer;
 begin
@@ -234,8 +237,8 @@ begin
   Result:=S_OK;
 end;
 
-function TRawSocketData.Write(pv: Pointer; cb: Integer;
-  pcbWritten: PLongint): HResult;
+function TRawSocketData.Write(pv: Pointer; cb: FixedUInt;
+  pcbWritten: PFixedUInt): HResult;
 var
   l:integer;
 begin

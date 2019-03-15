@@ -24,7 +24,7 @@ type
   private
     FTable:TxxmAhttpdTable;
     FIndex:integer;
-    FData:WideString;
+    FData:AnsiString;
     FIdx:TParamIndexes;
     function ParseValue:WideString;
     function GetItem(Name: OleVariant): WideString;
@@ -66,7 +66,7 @@ begin
   if VarIsNumeric(Name) then i:=integer(Name) else
    begin
     i:=0;
-    while (i<l) and not(CompareText(FTable.a.elts[i].key,Name)=0) do inc(i);//lower?
+    while (i<l) and not(CompareText(string(FTable.a.elts[i].key),Name)=0) do inc(i);//lower?
    end;
   if (i>=l) then i:=-1;
   sv:=TxxmAhttpdSubValues.Create(Self,i,Result);
@@ -76,23 +76,27 @@ end;
 function TxxmAhttpdTable.GetItem(Name: OleVariant): WideString;
 var
   i:integer;
+  n:AnsiString;
 begin
   if VarIsNumeric(Name) then
    begin
     i:=integer(Name);
     if (i>=0) and (i<FTable.a.nelts) then
-      Result:=FTable.a.elts[i].val
+      Result:=UTF8ToWideString(FTable.a.elts[i].val)
     else
       raise ERangeError.Create('TxxmAhttpdTable.GetItem: Out of range');
    end
   else
-    Result:=apr_table_get(FTable,PAnsiChar(VarToStr(Name)));
+   begin
+    n:=AnsiString(VarToStr(Name));
+    Result:=UTF8ToWideString(apr_table_get(FTable,PAnsiChar(n)));
+   end;
 end;
 
 function TxxmAhttpdTable.GetName(Idx: integer): WideString;
 begin
   if (Idx>=0) and (Idx<FTable.a.nelts) then
-    Result:=FTable.a.elts[Idx].key
+    Result:=WideString(FTable.a.elts[Idx].key)
   else
     raise ERangeError.Create('TxxmAhttpdTable.GetName: Out of range');
 end;
@@ -146,8 +150,8 @@ end;
 
 function TxxmAhttpdSubValues.ParseValue: WideString;
 begin
-  if FIndex=-1 then FData:='' else FData:=FTable.GetItem(FIndex);
-  Result:=SplitHeaderValue(FData,1,Length(FData),FIdx);
+  if FIndex=-1 then FData:='' else FData:=UTF8Encode(FTable.GetItem(FIndex));
+  Result:=UTF8ToWideString(SplitHeaderValue(FData,1,Length(FData),FIdx));
 end;
 
 function TxxmAhttpdSubValues.GetCount: integer;
@@ -167,10 +171,10 @@ begin
    begin
     n:=VarToStr(Name);
     i:=0;
-    while (i<l) and (CompareText(Copy(FData,FIdx[i].NameStart,FIdx[i].NameLength),n)<>0) do inc(i);
+    while (i<l) and (CompareText(string(Copy(FData,FIdx[i].NameStart,FIdx[i].NameLength)),n)<>0) do inc(i);
    end;
   if (i>=0) and (i<l) then
-    Result:=Copy(FData,FIdx[i].ValueStart,FIdx[i].ValueLength)
+    Result:=UTF8ToWideString(Copy(FData,FIdx[i].ValueStart,FIdx[i].ValueLength))
   else
     Result:='';
 end;
@@ -187,27 +191,27 @@ begin
    begin
     n:=VarToStr(Name);
     i:=0;
-    while (i<l) and (CompareText(Copy(FData,FIdx[i].NameStart,FIdx[i].NameLength),n)<>0) do inc(i);
+    while (i<l) and (CompareText(string(Copy(FData,FIdx[i].NameStart,FIdx[i].NameLength)),n)<>0) do inc(i);
    end;
   if (i>=0) and (i<l) then
    begin
     if Value='' then
      begin
       if i+1=l then l:=Length(FData)+1 else l:=FIdx[i+1].NameStart;
-      FTable.SetItem(FIndex,Copy(FData,1,FIdx[i].NameStart-1)+
-        Copy(FData,l,Length(FData)-l+1));
+      FTable.SetItem(FIndex,UTF8ToWideString(
+        Copy(FData,1,FIdx[i].NameStart-1)+Copy(FData,l,Length(FData)-l+1)));
      end
     else
      begin
       l:=FIdx[i].ValueStart+FIdx[i].ValueLength;
-      FTable.SetItem(FIndex,Copy(FData,1,FIdx[i].ValueStart-1)+Value+
-        Copy(FData,l,Length(FData)-l+1));
+      FTable.SetItem(FIndex,UTF8ToWideString(Copy(FData,1,FIdx[i].ValueStart-1))+
+        Value+UTF8ToWideString(Copy(FData,l,Length(FData)-l+1)));
      end;
    end
   else
    begin
     HeaderCheckName(VarToWideStr(Name));
-    FTable.SetItem(FIndex,FData+'; '+VarToStr(Name)+'='+Value);
+    FTable.SetItem(FIndex,UTF8ToWideString(FData)+'; '+VarToStr(Name)+'='+Value);
    end;
 end;
 
@@ -215,7 +219,7 @@ function TxxmAhttpdSubValues.GetName(Idx: integer): WideString;
 begin
   ParseValue;
   if (Idx>=0) and (Idx<Length(FIdx)) then
-    Result:=Copy(FData,FIdx[Idx].NameStart,FIdx[Idx].NameLength)
+    Result:=WideString(Copy(FData,FIdx[Idx].NameStart,FIdx[Idx].NameLength))
   else
     raise ERangeError.Create('TxxmAhttpdSubValues.GetName: Out of range');
 end;
@@ -229,8 +233,8 @@ begin
   if (Idx>=0) and (Idx<Length(FIdx)) then
    begin
     l:=FIdx[Idx].NameStart+FIdx[Idx].NameLength;
-    FTable.SetItem(FIndex,Copy(FData,1,FIdx[Idx].NameStart-1)+Value+
-      Copy(FData,l,Length(FData)-l+1));
+    FTable.SetItem(FIndex,UTF8ToWideString(Copy(FData,1,FIdx[Idx].NameStart-1))+
+      Value+UTF8ToWideString(Copy(FData,l,Length(FData)-l+1)));
    end
   else
     raise ERangeError.Create('TxxmAhttpdSubValues.SetName: Out of range');

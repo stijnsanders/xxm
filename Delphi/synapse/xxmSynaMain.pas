@@ -29,7 +29,8 @@ type
     FSocket:TTCPBlockSocket;
     FReqHeaders:TRequestHeaders;
     FResHeaders:TResponseHeaders;
-    FHTTPVersion,FVerb,FURI,FRedirectPrefix,FSessionID:AnsiString;
+    FHTTPVersion,FVerb:AnsiString;
+    FURI,FRedirectPrefix,FSessionID:WideString;
     FCookieParsed: boolean;
     FCookie: AnsiString;
     FCookieIdx: TParamIndexes;
@@ -123,7 +124,7 @@ const
 
 procedure XxmRunServer;
 const
-  ParameterKey:array[TXxmSynaRunParameters] of AnsiString=(
+  ParameterKey:array[TXxmSynaRunParameters] of string=(
     'port',
     'silent',
     'loadcopy',
@@ -136,7 +137,7 @@ var
   Server:TxxmSynaServer;
   i,j,Port,Threads:integer;
   Silent:boolean;
-  StartURL,s,t:AnsiString;
+  StartURL,s,t:string;
   Msg:TMsg;
   par:TXxmSynaRunParameters;
 begin
@@ -397,11 +398,11 @@ begin
        begin
         //i:=1;
         while (i<=l) and (x[i]>' ') do inc(i);
-        FVerb:=UpperCase(Copy(x,1,i-1));
+        FVerb:=AnsiString(UpperCase(string(Copy(x,1,i-1))));
         inc(i);
         xi:=i;
         while (xi<=l) and (x[xi]>' ') do inc(xi);
-        FURI:=Copy(x,i,xi-i);
+        FURI:=UTF8ToWideString(Copy(x,i,xi-i));
         inc(xi);
         i:=xi;
         while (xi<=l) and (x[xi]<>#13) and (x[xi]<>#10) do inc(xi);
@@ -430,7 +431,7 @@ begin
     if (FURI<>'') and (FURI[1]='/') then
      begin
       FQueryStringIndex:=2;
-      if XxmProjectCache.ProjectFromURI(Self,FURI,FQueryStringIndex,FProjectName,FFragmentName) then
+      if XxmProjectCache.ProjectFromURI(Self,UTF8Encode(FURI),FQueryStringIndex,FProjectName,FFragmentName) then
         FRedirectPrefix:='/'+FProjectName;
       FPageClass:='['+FProjectName+']';
      end
@@ -440,7 +441,7 @@ begin
       FProjectName:='';
       FFragmentName:='';
       SendError('error','','Bad Request');
-      raise EXxmPageRedirected.Create(FHTTPVersion+' 400 Bad Request');
+      raise EXxmPageRedirected.Create(string(FHTTPVersion)+' 400 Bad Request');
      end;
 
     //assert headers read and parsed
@@ -449,16 +450,16 @@ begin
     PreProcessRequest;
 
     //if Verb<>'GET' then?
-    y:=FReqHeaders['Content-Length'];
+    y:=AnsiString(FReqHeaders['Content-Length']);
     if y<>'' then
      begin
-      si:=StrToInt(y);
+      si:=StrToInt(string(y));
       if si<PostDataThreshold then
         s:=THeapStream.Create
       else
        begin
         SetLength(FPostTempFile,$400);
-        SetLength(FPostTempFile,GetTempPathA($400,PAnsiChar(FPostTempFile)));
+        SetLength(FPostTempFile,GetTempPath($400,PChar(FPostTempFile)));
         FPostTempFile:=FPostTempFile+'xxm_'+
           IntToHex(integer(Self),8)+'_'+IntToHex(GetTickCount,8)+'.dat';
         s:=TFileStream.Create(FPostTempFile,fmCreate);
@@ -528,7 +529,7 @@ begin
   case cs of
     csVersion:Result:=SelfVersion;
     csExtraInfo:Result:='';//???
-    csVerb:Result:=FVerb;
+    csVerb:Result:=WideString(FVerb);
     csQueryString:Result:=Copy(FURI,FQueryStringIndex,Length(FURI)-FQueryStringIndex+1);
     csUserAgent:Result:=FReqHeaders['User-Agent'];
     csAcceptedMimeTypes:Result:=FReqHeaders['Accept'];
@@ -540,7 +541,7 @@ begin
     csLanguage:Result:=FReqHeaders['Accept-Language'];
     csRemoteAddress:Result:=FSocket.GetRemoteSinIP;
     csRemoteHost:Result:=FSocket.ResolveIPToName(FSocket.GetRemoteSinIP);
-    csAuthUser,csAuthPassword:Result:=AuthValue(cs);
+    csAuthUser,csAuthPassword:Result:=UTF8ToWideString(AuthValue(cs));
     else
       raise EXxmContextStringUnknown.Create(StringReplace(
         SXxmContextStringUnknown,'__',IntToHex(integer(cs),8),[]));
@@ -564,11 +565,11 @@ function TXxmSynaContext.GetCookie(const Name: WideString): WideString;
 begin
   if not(FCookieParsed) then
    begin
-    FCookie:=FReqHeaders['Cookie'];
+    FCookie:=UTF8Encode(FReqHeaders['Cookie']);
     SplitHeaderValue(FCookie,0,Length(FCookie),FCookieIdx);
     FCookieParsed:=true;
    end;
-  Result:=GetParamValue(FCookie,FCookieIdx,Name);
+  Result:=UTF8ToWideString(GetParamValue(FCookie,FCookieIdx,UTF8Encode(Name)));
 end;
 
 function TXxmSynaContext.GetSessionID: WideString;
@@ -630,7 +631,7 @@ begin
   if FContentType<>'' then
     FResHeaders['Content-Type']:=FContentType+
       AutoEncodingCharset[FAutoEncoding];
-  x:=FHTTPVersion+' '+IntToStr(StatusCode)+' '+StatusText+#13#10+
+  x:=FHTTPVersion+' '+AnsiString(IntToStr(StatusCode))+' '+AnsiString(StatusText)+#13#10+
     FResHeaders.Build+#13#10;
   l:=Length(x);
   SetLength(d,l);

@@ -101,7 +101,7 @@ const
     'User-Agent');
 
 const
-  HttpResponseHeaderName:array[THTTP_HEADER_ID] of AnsiString=(
+  HttpResponseHeaderName:array[THTTP_HEADER_ID] of WideString=(
     'Cache-Control',
     'Connection',
     'Date',
@@ -214,8 +214,11 @@ end;
 function TxxmHSysResponseSubHeader.ParseValue: WideString;
 begin
   //TODO: detect change, skip when no change?
-  if VarIsNumeric(FPar) then FValue:=FGetIndex(FPar) else FValue:=FGet(FPar);
-  Result:=SplitHeaderValue(FValue,1,Length(FValue),FPars);
+  if VarIsNumeric(FPar) then
+    FValue:=AnsiString(FGetIndex(FPar))
+  else
+    FValue:=AnsiString(FGet(FPar));
+  Result:=WideString(SplitHeaderValue(FValue,1,Length(FValue),FPars));
 end;
 
 function TxxmHSysResponseSubHeader.GetCount: integer;
@@ -234,16 +237,16 @@ begin
   else
    begin
     i:=0;
-    while (i<Length(FPars)) and (CompareText(Name,Copy(FValue,FPars[i].NameStart,FPars[i].NameLength))<>0) do inc(i);
+    while (i<Length(FPars)) and (CompareText(Name,string(Copy(FValue,FPars[i].NameStart,FPars[i].NameLength)))<>0) do inc(i);
    end;
-  if (i<0) or (i>=Length(FPars)) then Result:='' else Result:=Copy(FValue,FPars[i].ValueStart,FPars[i].ValueLength);
+  if (i<0) or (i>=Length(FPars)) then Result:='' else Result:=WideString(Copy(FValue,FPars[i].ValueStart,FPars[i].ValueLength));
 end;
 
 function TxxmHSysResponseSubHeader.GetName(Idx: integer): WideString;
 begin
   ParseValue;
   if (Idx>=0) and (Idx<Length(FPars)) then
-    Result:=Copy(FValue,FPars[Idx].NameStart,FPars[Idx].NameLength)
+    Result:=WideString(Copy(FValue,FPars[Idx].NameStart,FPars[Idx].NameLength))
   else
     raise ERangeError.Create('TxxmHSysResponseSubHeader.GetName: Out of range');
 end;
@@ -259,15 +262,15 @@ begin
   else
    begin
     i:=0;
-    while (i<Length(FPars)) and (CompareText(Name,Copy(FValue,FPars[i].NameStart,FPars[i].NameLength))<>0) do inc(i);
+    while (i<Length(FPars)) and (CompareText(Name,string(Copy(FValue,FPars[i].NameStart,FPars[i].NameLength)))<>0) do inc(i);
    end;
   if (i>=0) and (i<Length(FPars)) then
    begin
     j:=FPars[i].ValueStart+FPars[i].ValueLength;
-    x:=Copy(FValue,1,FPars[i].ValueStart-1)+Value+Copy(FValue,j,Length(FValue)-j+1);
+    x:=WideString(Copy(FValue,1,FPars[i].ValueStart-1))+Value+WideString(Copy(FValue,j,Length(FValue)-j+1));
    end
   else
-    x:=FValue+'; '+VarToWideStr(Name)+'='+Value;
+    x:=WideString(FValue)+'; '+VarToWideStr(Name)+'='+Value;
   if VarIsNumeric(FPar) then FSetIndex(FPar,x) else FSet(FPar,x);
 end;
 
@@ -280,7 +283,7 @@ begin
   if (Idx>=0) and (Idx<Length(FPars)) then
    begin
     j:=FPars[Idx].NameStart+FPars[Idx].NameLength;
-    x:=Copy(FValue,1,FPars[Idx].NameStart-1)+Value+Copy(FValue,j,Length(FValue)-j+1);
+    x:=WideString(Copy(FValue,1,FPars[Idx].NameStart-1))+Value+WideString(Copy(FValue,j,Length(FValue)-j+1));
     if VarIsNumeric(FPar) then FSetIndex(FPar,x) else FSet(FPar,x);
    end
   else

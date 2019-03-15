@@ -36,7 +36,7 @@ uses Windows, ActiveX, ShellApi, xxmParams, xxmPRegJson,
 
 procedure XxmRunServer;
 const
-  ParameterKey:array[TXxmHttpRunParameters] of AnsiString=(
+  ParameterKey:array[TXxmHttpRunParameters] of string=(
     'port',
     'loadcopy',
     'starturl',
@@ -48,7 +48,7 @@ var
   Server,Server6:TTcpServer;
   Listener,Listener6:TXxmHttpServerListener;
   i,j,Threads:integer;
-  StartURL,s,t:AnsiString;
+  StartURL,s,t:string;
   Msg:TMsg;
   par:TXxmHttpRunParameters;
 begin

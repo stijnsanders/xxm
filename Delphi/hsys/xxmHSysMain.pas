@@ -37,7 +37,8 @@ type
     FUnknownHeaders: array of THTTP_UNKNOWN_HEADER;
     FStringCache:array of AnsiString;
     FStringCacheSize,FStringCacheIndex:integer;
-    FURI,FRedirectPrefix,FSessionID:AnsiString;
+    FURI:AnsiString;
+    FRedirectPrefix,FSessionID:WideString;
     FCookieParsed: boolean;
     FCookie: AnsiString;
     FCookieIdx: TParamIndexes;
@@ -91,6 +92,11 @@ const
   RawSocketBufferSize=$10000;
 
 type
+  {$IF not(Declared(FixedUInt))}
+  FixedUInt=LongInt;
+  PFixedUInt=PLongInt;
+  LargeUInt=LargeInt;
+  {$IFEND}
   TRawSocketData=class(TInterfacedObject, IStream, IXxmRawSocket)
   private
     FHSysQueue:THandle;
@@ -103,24 +109,24 @@ type
     constructor Create(HSysQueue:THandle;RequestID:THTTP_REQUEST_ID);
     destructor Destroy; override;
     { IStream }
-    function Seek(dlibMove: Largeint; dwOrigin: Longint;
-      out libNewPosition: Largeint): HResult; stdcall;
-    function SetSize(libNewSize: Largeint): HResult; stdcall;
-    function CopyTo(stm: IStream; cb: Largeint; out cbRead: Largeint;
-      out cbWritten: Largeint): HResult; stdcall;
-    function Commit(grfCommitFlags: Longint): HResult; stdcall;
+    function Seek(dlibMove: Largeint; dwOrigin: DWORD;
+      out libNewPosition: LargeUInt): HResult; stdcall;
+    function SetSize(libNewSize: LargeUInt): HResult; stdcall;
+    function CopyTo(stm: IStream; cb: LargeUInt; out cbRead: LargeUInt;
+      out cbWritten: LargeUInt): HResult; stdcall;
+    function Commit(grfCommitFlags: DWORD): HResult; stdcall;
     function Revert: HResult; stdcall;
-    function LockRegion(libOffset: Largeint; cb: Largeint;
-      dwLockType: Longint): HResult; stdcall;
-    function UnlockRegion(libOffset: Largeint; cb: Largeint;
-      dwLockType: Longint): HResult; stdcall;
-    function Stat(out statstg: TStatStg; grfStatFlag: Longint): HResult;
+    function LockRegion(libOffset: LargeUInt; cb: LargeUInt;
+      dwLockType: DWORD): HResult; stdcall;
+    function UnlockRegion(libOffset: LargeUInt; cb: LargeUInt;
+      dwLockType: DWORD): HResult; stdcall;
+    function Stat(out statstg: TStatStg; grfStatFlag: DWORD): HResult;
       stdcall;
     function Clone(out stm: IStream): HResult; stdcall;
     { ISequentialStream }
-    function Read(pv: Pointer; cb: Longint; pcbRead: PLongint): HResult;
+    function Read(pv: Pointer; cb: FixedUInt; pcbRead: PFixedUInt): HResult;
       stdcall;
-    function Write(pv: Pointer; cb: Longint; pcbWritten: PLongint): HResult;
+    function Write(pv: Pointer; cb: FixedUInt; pcbWritten: PFixedUInt): HResult;
       stdcall;
     { IXxmRawSocket }
     function DataReady(TimeoutMS: cardinal): boolean;
@@ -233,7 +239,7 @@ begin
 
     if FReq.Headers.KnownHeaders[HttpHeaderContentLength].RawValueLength<>0 then
       FPostData:=TXxmPostDataStream.Create(FHSysQueue,FReq.RequestId,
-        StrToInt(FReq.Headers.KnownHeaders[HttpHeaderContentLength].pRawValue));
+        StrToInt(string(FReq.Headers.KnownHeaders[HttpHeaderContentLength].pRawValue)));
 
     BuildPage;
 
@@ -245,7 +251,7 @@ begin
        begin
         ForceStatus(StatusException,'Internal Server Error');//TODO:setting?
         try
-          if FPostData=nil then x:='none' else x:=IntToStr(FPostData.Size)+' bytes';
+          if FPostData=nil then x:='none' else x:=AnsiString(IntToStr(FPostData.Size))+' bytes';
         except
           x:='unknown';
         end;
@@ -310,7 +316,7 @@ begin
       if r=0 then
         AuthSet(n.sUserName,'')
       else
-        AuthSet('???'+SysErrorMessage(r),'');//raise?
+        AuthSet(AnsiString('???'+SysErrorMessage(r)),'');//raise?
       SSPICache.Clear(FReq.ConnectionId);
      end
     else
@@ -319,7 +325,7 @@ begin
       SetLength(t,d[2].cbBuffer);
       SetStatus(401,'Unauthorized');
       AddResponseHeader('Connection','keep-alive');
-      AddResponseHeader('WWW-Authenticate','NTLM '+Base64Encode(t));
+      AddResponseHeader('WWW-Authenticate',WideString('NTLM '+Base64Encode(t)));
       ResponseStr('<h1>Authorization required</h1>','401.1');
      end
     else
@@ -378,26 +384,26 @@ begin
     csExtraInfo:Result:='';//???
     csVerb:
       if FReq.Verb in [HttpVerbUnparsed,HttpVerbUnknown,HttpVerbInvalid] then
-        Result:=FReq.pUnknownVerb
+        Result:=WideString(FReq.pUnknownVerb)
       else
         Result:=HttpVerb[FReq.Verb];
-    csQueryString:Result:=Copy(FURI,FQueryStringIndex,Length(FURI)-FQueryStringIndex+1);
+    csQueryString:Result:=UTF8ToWideString(Copy(FURI,FQueryStringIndex,Length(FURI)-FQueryStringIndex+1));
     csUserAgent:x:=HttpHeaderUserAgent;
     csAcceptedMimeTypes:x:=HttpHeaderAccept;
     csPostMimeType:x:=HttpHeaderContentType;
-    csURL:Result:=FReq.pRawUrl;
+    csURL:Result:=UTF8ToWideString(FReq.pRawUrl);
     csProjectName:Result:=FProjectName;
     csLocalURL:Result:=FFragmentName;
     csReferer:x:=HttpHeaderReferer;
     csLanguage:x:=HttpHeaderAcceptLanguage;//HttpHeaderContentLanguage?
-    csRemoteAddress:Result:=inet_ntoa(FReq.Address.pRemoteAddress.sin_addr);
-    csRemoteHost:Result:=inet_ntoa(FReq.Address.pRemoteAddress.sin_addr);//TODO: resolve name
-    csAuthUser,csAuthPassword:Result:=AuthValue(cs);
+    csRemoteAddress:Result:=WideString(inet_ntoa(FReq.Address.pRemoteAddress.sin_addr));
+    csRemoteHost:Result:=WideString(inet_ntoa(FReq.Address.pRemoteAddress.sin_addr));//TODO: resolve name
+    csAuthUser,csAuthPassword:Result:=UTF8ToWideString(AuthValue(cs));
     else
       raise EXxmContextStringUnknown.Create(StringReplace(
         SXxmContextStringUnknown,'__',IntToHex(integer(cs),8),[]));
   end;
-  if x<>THTTP_HEADER_ID(-1) then Result:=FReq.Headers.KnownHeaders[x].pRawValue;
+  if x<>THTTP_HEADER_ID(-1) then Result:=UTF8ToWideString(FReq.Headers.KnownHeaders[x].pRawValue);
 end;
 
 procedure TXxmHSysContext.DispositionAttach(const FileName: WideString);
@@ -420,7 +426,7 @@ begin
     SplitHeaderValue(FCookie,0,Length(FCookie),FCookieIdx);
     FCookieParsed:=true;
    end;
-  Result:=GetParamValue(FCookie,FCookieIdx,Name);
+  Result:=UTF8ToWideString(GetParamValue(FCookie,FCookieIdx,UTF8Encode(Name)));
 end;
 
 function TXxmHSysContext.GetSessionID: WideString;
@@ -450,7 +456,7 @@ begin
   NewURL:=RedirectURL;
   if Relative and (NewURL<>'') and (NewURL[1]='/') then
     NewURL:=FRedirectPrefix+NewURL;
-  SetResponseHeader(HttpHeaderLocation,NewURL);
+  SetResponseHeader(HttpHeaderLocation,UTF8Encode(NewURL));
   ResponseStr('<h1>Object moved</h1><a href="'+
     HTMLEncode(NewURL)+'">'+HTMLEncode(NewURL)+'</a>'#13#10,RedirectURL);
 end;
@@ -476,11 +482,11 @@ procedure TXxmHsysContext.ResponseStr(const Body,RedirMsg:WideString);
 begin
   case FAutoEncoding of
     aeUtf8:SetResponseHeader(HttpHeaderContentLength,
-      IntToStr(Length(UTF8Encode(Body))+3));
+      AnsiString(IntToStr(Length(UTF8Encode(Body))+3)));
     aeUtf16:SetResponseHeader(HttpHeaderContentLength,
-      IntToStr(Length(Body)*2+2));
+      AnsiString(IntToStr(Length(Body)*2+2)));
     aeIso8859:SetResponseHeader(HttpHeaderContentLength,
-      IntToStr(Length(AnsiString(Body))));
+      AnsiString(IntToStr(Length(AnsiString(Body)))));
   end;
   SendStr(Body);
   if BufferSize<>0 then Flush;
@@ -501,9 +507,9 @@ begin
   //TODO: Content-Length?
   //TODO: Connection keep?
   FRes.StatusCode:=StatusCode;
-  CacheString(StatusText,FRes.ReasonLength,FRes.pReason);
+  CacheString(AnsiString(StatusText),FRes.ReasonLength,FRes.pReason);
   if (FContentType<>'') and (FAutoEncoding<>aeContentDefined) then
-    CacheString(FContentType+AutoEncodingCharset[FAutoEncoding],
+    CacheString(AnsiString(FContentType+AutoEncodingCharset[FAutoEncoding]),
       FRes.Headers.KnownHeaders[HttpHeaderContentType].RawValueLength,
       FRes.Headers.KnownHeaders[HttpHeaderContentType].pRawValue);
   l:=Length(FUnknownHeaders);
@@ -568,12 +574,12 @@ begin
    begin
     i:=0;
     while (i<Length(FUnknownHeaders))
-      and (CompareText(FUnknownHeaders[i].pName,Name)<>0) do inc(i);
+      and (CompareText(string(FUnknownHeaders[i].pName),Name)<>0) do inc(i);
     if i=Length(FUnknownHeaders) then Result:=''
-      else Result:=FUnknownHeaders[i].pRawValue;
+      else Result:=UTF8ToWideString(FUnknownHeaders[i].pRawValue);
    end
   else
-    Result:=FRes.Headers.KnownHeaders[x].pRawValue;
+    Result:=UTF8ToWideString(FRes.Headers.KnownHeaders[x].pRawValue);
 end;
 
 function TXxmHSysContext.GetRequestHeader(const Name: WideString): WideString;
@@ -605,18 +611,18 @@ begin
    begin
     i:=0;
     while (i<Length(FUnknownHeaders))
-      and (CompareText(FUnknownHeaders[i].pName,Name)<>0) do inc(i);
+      and (CompareText(string(FUnknownHeaders[i].pName),Name)<>0) do inc(i);
     if i=Length(FUnknownHeaders) then
      begin
       SetLength(FUnknownHeaders,i+1);
-      CacheString(Name,FUnknownHeaders[i].NameLength,
+      CacheString(AnsiString(Name),FUnknownHeaders[i].NameLength,
         FUnknownHeaders[i].pName);
      end;
-    CacheString(Value,FUnknownHeaders[i].RawValueLength,
+    CacheString(UTF8Encode(Value),FUnknownHeaders[i].RawValueLength,
       FUnknownHeaders[i].pRawValue);
    end
   else
-    CacheString(Value,FRes.Headers.KnownHeaders[x].RawValueLength,
+    CacheString(UTF8Encode(Value),FRes.Headers.KnownHeaders[x].RawValueLength,
       FRes.Headers.KnownHeaders[x].pRawValue);
 end;
 
@@ -656,7 +662,7 @@ begin
     Result:=HttpResponseHeaderName[THTTP_HEADER_ID(Idx)]
   else
     if (Idx>=0) and (Idx<Length(FUnknownHeaders)) then
-      Result:=FUnknownHeaders[Idx-integer(HttpHeaderResponseMaximum)-1].pName
+      Result:=UTF8ToWideString(FUnknownHeaders[Idx-integer(HttpHeaderResponseMaximum)-1].pName)
     else
       raise ERangeError.Create('GetResponseHeaderName: Out of range');
 end;
@@ -664,10 +670,10 @@ end;
 function TXxmHSysContext.GetResponseHeaderIndex(Idx: integer): WideString;
 begin
   if (Idx>=0) and (Idx<=integer(HttpHeaderResponseMaximum)) then
-    Result:=FRes.Headers.KnownHeaders[THTTP_HEADER_ID(Idx)].pRawValue
+    Result:=UTF8ToWideString(FRes.Headers.KnownHeaders[THTTP_HEADER_ID(Idx)].pRawValue)
   else
     if (Idx>=0) and (Idx<Length(FUnknownHeaders)) then
-      Result:=FUnknownHeaders[Idx-integer(HttpHeaderResponseMaximum)-1].pRawValue
+      Result:=UTF8ToWideString(FUnknownHeaders[Idx-integer(HttpHeaderResponseMaximum)-1].pRawValue)
     else
       raise ERangeError.Create('GetResponseHeaderIndex: Out of range');
 end;
@@ -676,12 +682,12 @@ procedure TXxmHSysContext.SetResponseHeaderIndex(Idx: integer;
   const Value: WideString);
 begin
   if (Idx>=0) and (Idx<=integer(HttpHeaderResponseMaximum)) then
-    CacheString(Value,
+    CacheString(UTF8Encode(Value),
       FRes.Headers.KnownHeaders[THTTP_HEADER_ID(Idx)].RawValueLength,
       FRes.Headers.KnownHeaders[THTTP_HEADER_ID(Idx)].pRawValue)
   else
     if (Idx>=0) and (Idx<=Length(FUnknownHeaders)) then
-      CacheString(Value,
+      CacheString(UTF8Encode(Value),
         FUnknownHeaders[Idx-integer(HttpHeaderResponseMaximum)-1].RawValueLength,
         FUnknownHeaders[Idx-integer(HttpHeaderResponseMaximum)-1].pRawValue)
     else
@@ -749,7 +755,7 @@ begin
     if l<>0 then
      begin
       p:=Memory;
-      inc(cardinal(p),FInputRead);
+      inc(NativeUInt(p),FInputRead);
       HttpCheck(HttpReceiveRequestEntityBody(FHSysQueue,FRequestId,0,p,l,l,nil));
       inc(FInputRead,l);
      end;
@@ -801,19 +807,19 @@ begin
   raise Exception.Create('TRawSocketData.Clone not supported');
 end;
 
-function TRawSocketData.Commit(grfCommitFlags: Integer): HResult;
+function TRawSocketData.Commit(grfCommitFlags: DWORD): HResult;
 begin
   raise Exception.Create('TRawSocketData.Commit not supported');
 end;
 
-function TRawSocketData.CopyTo(stm: IStream; cb: Largeint; out cbRead,
-  cbWritten: Largeint): HResult;
+function TRawSocketData.CopyTo(stm: IStream; cb: LargeUInt; out cbRead,
+  cbWritten: LargeUInt): HResult;
 begin
   raise Exception.Create('TRawSocketData.CopyTo not supported');
 end;
 
-function TRawSocketData.LockRegion(libOffset, cb: Largeint;
-  dwLockType: Integer): HResult;
+function TRawSocketData.LockRegion(libOffset, cb: LargeUInt;
+  dwLockType: DWORD): HResult;
 begin
   raise Exception.Create('TRawSocketData.LockRegion not supported');
 end;
@@ -823,25 +829,25 @@ begin
   raise Exception.Create('TRawSocketData.Revert not supported');
 end;
 
-function TRawSocketData.Seek(dlibMove: Largeint; dwOrigin: Integer;
-  out libNewPosition: Largeint): HResult;
+function TRawSocketData.Seek(dlibMove: Largeint; dwOrigin: DWORD;
+  out libNewPosition: LargeUInt): HResult;
 begin
   raise Exception.Create('TRawSocketData.Seek not supported');
 end;
 
-function TRawSocketData.SetSize(libNewSize: Largeint): HResult;
+function TRawSocketData.SetSize(libNewSize: LargeUInt): HResult;
 begin
   raise Exception.Create('TRawSocketData.SetSize not supported');
 end;
 
 function TRawSocketData.Stat(out statstg: TStatStg;
-  grfStatFlag: Integer): HResult;
+  grfStatFlag: DWORD): HResult;
 begin
   raise Exception.Create('TRawSocketData.Stat not supported');
 end;
 
-function TRawSocketData.UnlockRegion(libOffset, cb: Largeint;
-  dwLockType: Integer): HResult;
+function TRawSocketData.UnlockRegion(libOffset, cb: LargeUInt;
+  dwLockType: DWORD): HResult;
 begin
   raise Exception.Create('TRawSocketData.UnlockRegion not supported');
 end;
@@ -881,7 +887,7 @@ begin
   end;
 end;
 
-function TRawSocketData.Read(pv: Pointer; cb: Integer; pcbRead: PLongint): HResult;
+function TRawSocketData.Read(pv: Pointer; cb: FixedUInt; pcbRead: PFixedUInt): HResult;
 var
   l:cardinal;
 begin
@@ -909,7 +915,7 @@ begin
   Result:=S_OK;
 end;
 
-function TRawSocketData.Write(pv: Pointer; cb: Integer; pcbWritten: PLongint): HResult;
+function TRawSocketData.Write(pv: Pointer; cb: FixedUInt; pcbWritten: PFixedUInt): HResult;
 var
   c:THTTP_DATA_CHUNK;
   l:cardinal;

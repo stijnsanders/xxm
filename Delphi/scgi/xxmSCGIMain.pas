@@ -30,7 +30,8 @@ type
       Name,Value:AnsiString;
     end;
     FCGIValuesSize,FCGIValuesCount:integer;
-    FHTTPVersion,FVerb,FURI,FRedirectPrefix,FSessionID:AnsiString;
+    FHTTPVersion,FVerb:AnsiString;
+    FURI,FRedirectPrefix,FSessionID:WideString;
     FCookieParsed: boolean;
     FCookie: AnsiString;
     FCookieIdx: TParamIndexes;
@@ -140,22 +141,22 @@ begin
   //process command line parameters
   for i:=1 to ParamCount do
    begin
-    s:=ParamStr(i);
+    s:=AnsiString(ParamStr(i));
     j:=1;
     while (j<=Length(s)) and (s[j]<>'=') do inc(j);
-    t:=LowerCase(Copy(s,1,j-1));
+    t:=AnsiString(LowerCase(string(Copy(s,1,j-1))));
     par:=TXxmSCGIRunParameters(0);
     while (par<>rp_Unknown) and (t<>ParameterKey[par]) do inc(par);
     case par of
       rpPort:
-        Port:=StrToInt(Copy(s,j+1,Length(s)-j));
+        Port:=StrToInt(string(Copy(s,j+1,Length(s)-j)));
       rpLoadCopy:
         GlobalAllowLoadCopy:=Copy(s,j+1,Length(s)-j)<>'0';
       rpThreads:
-        Threads:=StrToInt(Copy(s,j+1,Length(s)-j));
+        Threads:=StrToInt(string(Copy(s,j+1,Length(s)-j)));
       //add new here
       rp_Unknown:
-        raise Exception.Create('Unknown setting: '+t);
+        raise Exception.Create('Unknown setting: '+string(t));
     end;
    end;
 
@@ -378,8 +379,8 @@ begin
         if (j<=l) and (x[j]=#0) and (o<>0) then
          begin
           if (o-i>4) and (Copy(x,i,5)='HTTP_') then
-            y:=y+x[i+5]+LowerCase(StringReplace(
-              Copy(x,i+6,o-i-6),'_','-',[rfReplaceAll]))+
+            y:=y+x[i+5]+AnsiString(LowerCase(StringReplace(
+              string(Copy(x,i+6,o-i-6)),'_','-',[rfReplaceAll])))+
               ': '+Copy(x,o+1,j-o-1)+#13#10
           else
            begin
@@ -409,21 +410,21 @@ begin
     i:=1;
     l:=Length(x);
     while (i<=l) and (x[i]<>'/') do inc(i);
-    y:=FReqHeaders['Host'];
+    y:=AnsiString(FReqHeaders['Host']);
     if y='' then y:='localhost';//if not port=80 then +':'+?
-    FRedirectPrefix:=LowerCase(Copy(x,1,i-1))+'://'+y;
+    FRedirectPrefix:=LowerCase(string(Copy(x,1,i-1)))+'://'+string(y);
 
     x:='';//GetCGIValue('SCRIPT_NAME');
     y:=GetCGIValue('REQUEST_URI');
     l:=Length(x);
     if x=Copy(y,1,l) then
      begin
-      FURI:=Copy(y,l+1,Length(y)-l);
-      FRedirectPrefix:=FRedirectPrefix+x;
+      FURI:=UTF8ToWideString(Copy(y,l+1,Length(y)-l));
+      FRedirectPrefix:=FRedirectPrefix+UTF8ToWideString(x);
      end
     else
      begin
-      FURI:=y;
+      FURI:=UTF8ToWideString(y);
       //FURLPrefix:= should be ok
      end;
 
@@ -435,7 +436,7 @@ begin
     if (FURI<>'') and (FURI[1]='/') then
      begin
       FQueryStringIndex:=2;
-      if XxmProjectCache.ProjectFromURI(Self,FURI,FQueryStringIndex,FProjectName,FFragmentName) then
+      if XxmProjectCache.ProjectFromURI(Self,UTF8Encode(FURI),FQueryStringIndex,FProjectName,FFragmentName) then
         FRedirectPrefix:='/'+FProjectName;
       FPageClass:='['+FProjectName+']';
      end
@@ -445,7 +446,7 @@ begin
       FProjectName:='';
       FFragmentName:='';
       SendError('error','','Bad Request');
-      raise EXxmPageRedirected.Create(FHTTPVersion+' 400 Bad Request');
+      raise EXxmPageRedirected.Create(string(FHTTPVersion)+' 400 Bad Request');
      end;
 
     //assert headers read and parsed
@@ -454,16 +455,16 @@ begin
     PreProcessRequest;
 
     //if Verb<>'GET' then?
-    y:=FReqHeaders['Content-Length'];
+    y:=AnsiString(FReqHeaders['Content-Length']);
     if y<>'' then
      begin
-      si:=StrToInt(y);
+      si:=StrToInt(string(y));
       if si<PostDataThreshold then
         s:=THeapStream.Create
       else
        begin
         SetLength(FPostTempFile,$400);
-        SetLength(FPostTempFile,GetTempPathA($400,PAnsiChar(FPostTempFile)));
+        SetLength(FPostTempFile,GetTempPath($400,PChar(FPostTempFile)));
         FPostTempFile:=FPostTempFile+'xxm_'+
           IntToHex(integer(Self),8)+'_'+IntToHex(GetTickCount,8)+'.dat';
         s:=TFileStream.Create(FPostTempFile,fmCreate);
@@ -533,7 +534,7 @@ begin
   case cs of
     csVersion:Result:=SelfVersion;
     csExtraInfo:Result:='';//???
-    csVerb:Result:=FVerb;
+    csVerb:Result:=WideString(FVerb);
     csQueryString:Result:=Copy(FURI,FQueryStringIndex,Length(FURI)-FQueryStringIndex+1);
     csUserAgent:Result:=FReqHeaders['User-Agent'];
     csAcceptedMimeTypes:Result:=FReqHeaders['Accept'];
@@ -543,9 +544,9 @@ begin
     csLocalURL:Result:=FFragmentName;
     csReferer:Result:=FReqHeaders['Referer'];
     csLanguage:Result:=FReqHeaders['Accept-Language'];
-    csRemoteAddress:Result:=GetCGIValue('REMOTE_ADDR');
-    csRemoteHost:Result:=GetCGIValue('REMOTE_HOST');
-    csAuthUser,csAuthPassword:Result:=AuthValue(cs);
+    csRemoteAddress:Result:=UTF8ToWideString(GetCGIValue('REMOTE_ADDR'));
+    csRemoteHost:Result:=UTF8ToWideString(GetCGIValue('REMOTE_HOST'));
+    csAuthUser,csAuthPassword:Result:=UTF8ToWideString(AuthValue(cs));
     else
       raise EXxmContextStringUnknown.Create(StringReplace(
         SXxmContextStringUnknown,'__',IntToHex(integer(cs),8),[]));
@@ -569,11 +570,11 @@ function TXxmSCGIContext.GetCookie(const Name: WideString): WideString;
 begin
   if not(FCookieParsed) then
    begin
-    FCookie:=FReqHeaders['Cookie'];
+    FCookie:=UTF8Encode(FReqHeaders['Cookie']);
     SplitHeaderValue(FCookie,0,Length(FCookie),FCookieIdx);
     FCookieParsed:=true;
    end;
-  Result:=GetParamValue(FCookie,FCookieIdx,Name);
+  Result:=UTF8ToWideString(GetParamValue(FCookie,FCookieIdx,UTF8Encode(Name)));
 end;
 
 function TXxmSCGIContext.GetSessionID: WideString;
@@ -627,7 +628,7 @@ begin
   if FContentType<>'' then
     FResHeaders['Content-Type']:=FContentType+
       AutoEncodingCharset[FAutoEncoding];
-  x:='Status: '+IntToStr(StatusCode)+' '+StatusText+#13#10+
+  x:='Status: '+AnsiString(IntToStr(StatusCode))+' '+AnsiString(StatusText)+#13#10+
     FResHeaders.Build+#13#10;
   l:=Length(x);
   if FSocket.SendBuf(x[1],l)<>l then

@@ -935,7 +935,7 @@ begin
      begin
       if l1<>l then //TODO: loop until all sent?
         raise ETcpSocketError.Create('Error sending block');
-      inc(cardinal(p),c1);
+      inc(NativeUInt(p),c1);
       dec(c,c1);
      end;
    end;
