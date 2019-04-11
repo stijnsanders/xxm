@@ -399,8 +399,14 @@ begin
 end;
 
 procedure TXxmReqParPostFile.SaveToFile(const FilePath: AnsiString);
+var
+  fn:string;
+  i:integer;
 begin
-  SaveToStream(TStreamAdapter.Create(TFileStream.Create(string(FilePath),fmCreate),soOwned));
+  //this is strange! string(FilePath) results in ''??!!
+  SetLength(fn,Length(FilePath));
+  for i:=1 to Length(FilePath) do fn[i]:=char(FilePath[i]);
+  SaveToStream(TStreamAdapter.Create(TFileStream.Create(fn,fmCreate),soOwned));
 end;
 
 function TXxmReqParPostFile.SaveToStream(Stream: IStream): integer;

@@ -1,0 +1,552 @@
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <ProjectGuid>{103E3913-6A9D-4A6D-9B59-A80CBB4D8728}</ProjectGuid>
+    </PropertyGroup>
+    <ItemGroup>
+        <Projects Include="conv\xxmConv.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="proto\xxmProto.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="conv\xxmProject.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="run\xxmRun.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="local\xxmLocal.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="local\xxmLocalAU.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="local\xxmLocalDev.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="isapi\xxmIsapiEx.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="isapi\xxmIsapiAU.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="isapi\xxmIsapiDev.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="http\xxmHttp.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="http\xxmHttpAU.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="http\xxmHttpDev.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="http\xxmHttpSvc.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="http\xxmHttpSvcAU.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="cgi\xxmCGI.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="cgi\xxmHost.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="cgi\xxmHostAU.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="cgi\xxmHostDev.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="cgi\xxmHostSvc.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="cgi\xxmHostSvcAU.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="scgi\xxmSCGI.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="scgi\xxmSCGIAU.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="scgi\xxmSCGIDev.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="scgi\xxmSCGISvc.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="scgi\xxmSCGISvcAU.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="apache\xxmAhttpd.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="apache\xxmAhttpdAU.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="apache\xxmAhttpdDev.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="hsys\xxmHSys1.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="hsys\xxmHSys1AU.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="hsys\xxmHSys1Dev.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="hsys\xxmHSys1Svc.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="hsys\xxmHSys1SvcAU.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="hsys\xxmHSys2.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="hsys\xxmHSys2AU.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="hsys\xxmHSys2Dev.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="hsys\xxmHSys2Svc.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="hsys\xxmHSys2SvcAU.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="synapse\xxmSyna.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="synapse\xxmSynaAU.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="synapse\xxmSynaDev.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="synapse\xxmSynaSvc.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="synapse\xxmSynaSvcAU.dproj">
+            <Dependencies/>
+        </Projects>
+    </ItemGroup>
+    <ProjectExtensions>
+        <Borland.Personality>Default.Personality.12</Borland.Personality>
+        <Borland.ProjectType/>
+        <BorlandProject>
+            <Default.Personality/>
+        </BorlandProject>
+    </ProjectExtensions>
+    <Target Name="xxmConv">
+        <MSBuild Projects="conv\xxmConv.dproj"/>
+    </Target>
+    <Target Name="xxmConv:Clean">
+        <MSBuild Projects="conv\xxmConv.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="xxmConv:Make">
+        <MSBuild Projects="conv\xxmConv.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="xxmProto">
+        <MSBuild Projects="proto\xxmProto.dproj"/>
+    </Target>
+    <Target Name="xxmProto:Clean">
+        <MSBuild Projects="proto\xxmProto.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="xxmProto:Make">
+        <MSBuild Projects="proto\xxmProto.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="xxmProject">
+        <MSBuild Projects="conv\xxmProject.dproj"/>
+    </Target>
+    <Target Name="xxmProject:Clean">
+        <MSBuild Projects="conv\xxmProject.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="xxmProject:Make">
+        <MSBuild Projects="conv\xxmProject.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="xxmRun">
+        <MSBuild Projects="run\xxmRun.dproj"/>
+    </Target>
+    <Target Name="xxmRun:Clean">
+        <MSBuild Projects="run\xxmRun.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="xxmRun:Make">
+        <MSBuild Projects="run\xxmRun.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="xxmLocal">
+        <MSBuild Projects="local\xxmLocal.dproj"/>
+    </Target>
+    <Target Name="xxmLocal:Clean">
+        <MSBuild Projects="local\xxmLocal.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="xxmLocal:Make">
+        <MSBuild Projects="local\xxmLocal.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="xxmLocalAU">
+        <MSBuild Projects="local\xxmLocalAU.dproj"/>
+    </Target>
+    <Target Name="xxmLocalAU:Clean">
+        <MSBuild Projects="local\xxmLocalAU.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="xxmLocalAU:Make">
+        <MSBuild Projects="local\xxmLocalAU.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="xxmLocalDev">
+        <MSBuild Projects="local\xxmLocalDev.dproj"/>
+    </Target>
+    <Target Name="xxmLocalDev:Clean">
+        <MSBuild Projects="local\xxmLocalDev.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="xxmLocalDev:Make">
+        <MSBuild Projects="local\xxmLocalDev.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="xxmIsapiEx">
+        <MSBuild Projects="isapi\xxmIsapiEx.dproj"/>
+    </Target>
+    <Target Name="xxmIsapiEx:Clean">
+        <MSBuild Projects="isapi\xxmIsapiEx.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="xxmIsapiEx:Make">
+        <MSBuild Projects="isapi\xxmIsapiEx.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="xxmIsapiAU">
+        <MSBuild Projects="isapi\xxmIsapiAU.dproj"/>
+    </Target>
+    <Target Name="xxmIsapiAU:Clean">
+        <MSBuild Projects="isapi\xxmIsapiAU.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="xxmIsapiAU:Make">
+        <MSBuild Projects="isapi\xxmIsapiAU.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="xxmIsapiDev">
+        <MSBuild Projects="isapi\xxmIsapiDev.dproj"/>
+    </Target>
+    <Target Name="xxmIsapiDev:Clean">
+        <MSBuild Projects="isapi\xxmIsapiDev.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="xxmIsapiDev:Make">
+        <MSBuild Projects="isapi\xxmIsapiDev.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="xxmHttp">
+        <MSBuild Projects="http\xxmHttp.dproj"/>
+    </Target>
+    <Target Name="xxmHttp:Clean">
+        <MSBuild Projects="http\xxmHttp.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="xxmHttp:Make">
+        <MSBuild Projects="http\xxmHttp.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="xxmHttpAU">
+        <MSBuild Projects="http\xxmHttpAU.dproj"/>
+    </Target>
+    <Target Name="xxmHttpAU:Clean">
+        <MSBuild Projects="http\xxmHttpAU.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="xxmHttpAU:Make">
+        <MSBuild Projects="http\xxmHttpAU.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="xxmHttpDev">
+        <MSBuild Projects="http\xxmHttpDev.dproj"/>
+    </Target>
+    <Target Name="xxmHttpDev:Clean">
+        <MSBuild Projects="http\xxmHttpDev.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="xxmHttpDev:Make">
+        <MSBuild Projects="http\xxmHttpDev.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="xxmHttpSvc">
+        <MSBuild Projects="http\xxmHttpSvc.dproj"/>
+    </Target>
+    <Target Name="xxmHttpSvc:Clean">
+        <MSBuild Projects="http\xxmHttpSvc.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="xxmHttpSvc:Make">
+        <MSBuild Projects="http\xxmHttpSvc.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="xxmHttpSvcAU">
+        <MSBuild Projects="http\xxmHttpSvcAU.dproj"/>
+    </Target>
+    <Target Name="xxmHttpSvcAU:Clean">
+        <MSBuild Projects="http\xxmHttpSvcAU.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="xxmHttpSvcAU:Make">
+        <MSBuild Projects="http\xxmHttpSvcAU.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="xxmCGI">
+        <MSBuild Projects="cgi\xxmCGI.dproj"/>
+    </Target>
+    <Target Name="xxmCGI:Clean">
+        <MSBuild Projects="cgi\xxmCGI.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="xxmCGI:Make">
+        <MSBuild Projects="cgi\xxmCGI.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="xxmHost">
+        <MSBuild Projects="cgi\xxmHost.dproj"/>
+    </Target>
+    <Target Name="xxmHost:Clean">
+        <MSBuild Projects="cgi\xxmHost.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="xxmHost:Make">
+        <MSBuild Projects="cgi\xxmHost.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="xxmHostAU">
+        <MSBuild Projects="cgi\xxmHostAU.dproj"/>
+    </Target>
+    <Target Name="xxmHostAU:Clean">
+        <MSBuild Projects="cgi\xxmHostAU.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="xxmHostAU:Make">
+        <MSBuild Projects="cgi\xxmHostAU.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="xxmHostDev">
+        <MSBuild Projects="cgi\xxmHostDev.dproj"/>
+    </Target>
+    <Target Name="xxmHostDev:Clean">
+        <MSBuild Projects="cgi\xxmHostDev.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="xxmHostDev:Make">
+        <MSBuild Projects="cgi\xxmHostDev.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="xxmHostSvc">
+        <MSBuild Projects="cgi\xxmHostSvc.dproj"/>
+    </Target>
+    <Target Name="xxmHostSvc:Clean">
+        <MSBuild Projects="cgi\xxmHostSvc.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="xxmHostSvc:Make">
+        <MSBuild Projects="cgi\xxmHostSvc.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="xxmHostSvcAU">
+        <MSBuild Projects="cgi\xxmHostSvcAU.dproj"/>
+    </Target>
+    <Target Name="xxmHostSvcAU:Clean">
+        <MSBuild Projects="cgi\xxmHostSvcAU.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="xxmHostSvcAU:Make">
+        <MSBuild Projects="cgi\xxmHostSvcAU.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="xxmSCGI">
+        <MSBuild Projects="scgi\xxmSCGI.dproj"/>
+    </Target>
+    <Target Name="xxmSCGI:Clean">
+        <MSBuild Projects="scgi\xxmSCGI.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="xxmSCGI:Make">
+        <MSBuild Projects="scgi\xxmSCGI.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="xxmSCGIAU">
+        <MSBuild Projects="scgi\xxmSCGIAU.dproj"/>
+    </Target>
+    <Target Name="xxmSCGIAU:Clean">
+        <MSBuild Projects="scgi\xxmSCGIAU.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="xxmSCGIAU:Make">
+        <MSBuild Projects="scgi\xxmSCGIAU.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="xxmSCGIDev">
+        <MSBuild Projects="scgi\xxmSCGIDev.dproj"/>
+    </Target>
+    <Target Name="xxmSCGIDev:Clean">
+        <MSBuild Projects="scgi\xxmSCGIDev.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="xxmSCGIDev:Make">
+        <MSBuild Projects="scgi\xxmSCGIDev.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="xxmSCGISvc">
+        <MSBuild Projects="scgi\xxmSCGISvc.dproj"/>
+    </Target>
+    <Target Name="xxmSCGISvc:Clean">
+        <MSBuild Projects="scgi\xxmSCGISvc.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="xxmSCGISvc:Make">
+        <MSBuild Projects="scgi\xxmSCGISvc.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="xxmSCGISvcAU">
+        <MSBuild Projects="scgi\xxmSCGISvcAU.dproj"/>
+    </Target>
+    <Target Name="xxmSCGISvcAU:Clean">
+        <MSBuild Projects="scgi\xxmSCGISvcAU.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="xxmSCGISvcAU:Make">
+        <MSBuild Projects="scgi\xxmSCGISvcAU.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="xxmAhttpd">
+        <MSBuild Projects="apache\xxmAhttpd.dproj"/>
+    </Target>
+    <Target Name="xxmAhttpd:Clean">
+        <MSBuild Projects="apache\xxmAhttpd.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="xxmAhttpd:Make">
+        <MSBuild Projects="apache\xxmAhttpd.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="xxmAhttpdAU">
+        <MSBuild Projects="apache\xxmAhttpdAU.dproj"/>
+    </Target>
+    <Target Name="xxmAhttpdAU:Clean">
+        <MSBuild Projects="apache\xxmAhttpdAU.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="xxmAhttpdAU:Make">
+        <MSBuild Projects="apache\xxmAhttpdAU.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="xxmAhttpdDev">
+        <MSBuild Projects="apache\xxmAhttpdDev.dproj"/>
+    </Target>
+    <Target Name="xxmAhttpdDev:Clean">
+        <MSBuild Projects="apache\xxmAhttpdDev.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="xxmAhttpdDev:Make">
+        <MSBuild Projects="apache\xxmAhttpdDev.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="xxmHSys1">
+        <MSBuild Projects="hsys\xxmHSys1.dproj"/>
+    </Target>
+    <Target Name="xxmHSys1:Clean">
+        <MSBuild Projects="hsys\xxmHSys1.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="xxmHSys1:Make">
+        <MSBuild Projects="hsys\xxmHSys1.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="xxmHSys1AU">
+        <MSBuild Projects="hsys\xxmHSys1AU.dproj"/>
+    </Target>
+    <Target Name="xxmHSys1AU:Clean">
+        <MSBuild Projects="hsys\xxmHSys1AU.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="xxmHSys1AU:Make">
+        <MSBuild Projects="hsys\xxmHSys1AU.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="xxmHSys1Dev">
+        <MSBuild Projects="hsys\xxmHSys1Dev.dproj"/>
+    </Target>
+    <Target Name="xxmHSys1Dev:Clean">
+        <MSBuild Projects="hsys\xxmHSys1Dev.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="xxmHSys1Dev:Make">
+        <MSBuild Projects="hsys\xxmHSys1Dev.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="xxmHSys1Svc">
+        <MSBuild Projects="hsys\xxmHSys1Svc.dproj"/>
+    </Target>
+    <Target Name="xxmHSys1Svc:Clean">
+        <MSBuild Projects="hsys\xxmHSys1Svc.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="xxmHSys1Svc:Make">
+        <MSBuild Projects="hsys\xxmHSys1Svc.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="xxmHSys1SvcAU">
+        <MSBuild Projects="hsys\xxmHSys1SvcAU.dproj"/>
+    </Target>
+    <Target Name="xxmHSys1SvcAU:Clean">
+        <MSBuild Projects="hsys\xxmHSys1SvcAU.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="xxmHSys1SvcAU:Make">
+        <MSBuild Projects="hsys\xxmHSys1SvcAU.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="xxmHSys2">
+        <MSBuild Projects="hsys\xxmHSys2.dproj"/>
+    </Target>
+    <Target Name="xxmHSys2:Clean">
+        <MSBuild Projects="hsys\xxmHSys2.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="xxmHSys2:Make">
+        <MSBuild Projects="hsys\xxmHSys2.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="xxmHSys2AU">
+        <MSBuild Projects="hsys\xxmHSys2AU.dproj"/>
+    </Target>
+    <Target Name="xxmHSys2AU:Clean">
+        <MSBuild Projects="hsys\xxmHSys2AU.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="xxmHSys2AU:Make">
+        <MSBuild Projects="hsys\xxmHSys2AU.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="xxmHSys2Dev">
+        <MSBuild Projects="hsys\xxmHSys2Dev.dproj"/>
+    </Target>
+    <Target Name="xxmHSys2Dev:Clean">
+        <MSBuild Projects="hsys\xxmHSys2Dev.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="xxmHSys2Dev:Make">
+        <MSBuild Projects="hsys\xxmHSys2Dev.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="xxmHSys2Svc">
+        <MSBuild Projects="hsys\xxmHSys2Svc.dproj"/>
+    </Target>
+    <Target Name="xxmHSys2Svc:Clean">
+        <MSBuild Projects="hsys\xxmHSys2Svc.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="xxmHSys2Svc:Make">
+        <MSBuild Projects="hsys\xxmHSys2Svc.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="xxmHSys2SvcAU">
+        <MSBuild Projects="hsys\xxmHSys2SvcAU.dproj"/>
+    </Target>
+    <Target Name="xxmHSys2SvcAU:Clean">
+        <MSBuild Projects="hsys\xxmHSys2SvcAU.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="xxmHSys2SvcAU:Make">
+        <MSBuild Projects="hsys\xxmHSys2SvcAU.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="xxmSyna">
+        <MSBuild Projects="synapse\xxmSyna.dproj"/>
+    </Target>
+    <Target Name="xxmSyna:Clean">
+        <MSBuild Projects="synapse\xxmSyna.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="xxmSyna:Make">
+        <MSBuild Projects="synapse\xxmSyna.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="xxmSynaAU">
+        <MSBuild Projects="synapse\xxmSynaAU.dproj"/>
+    </Target>
+    <Target Name="xxmSynaAU:Clean">
+        <MSBuild Projects="synapse\xxmSynaAU.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="xxmSynaAU:Make">
+        <MSBuild Projects="synapse\xxmSynaAU.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="xxmSynaDev">
+        <MSBuild Projects="synapse\xxmSynaDev.dproj"/>
+    </Target>
+    <Target Name="xxmSynaDev:Clean">
+        <MSBuild Projects="synapse\xxmSynaDev.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="xxmSynaDev:Make">
+        <MSBuild Projects="synapse\xxmSynaDev.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="xxmSynaSvc">
+        <MSBuild Projects="synapse\xxmSynaSvc.dproj"/>
+    </Target>
+    <Target Name="xxmSynaSvc:Clean">
+        <MSBuild Projects="synapse\xxmSynaSvc.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="xxmSynaSvc:Make">
+        <MSBuild Projects="synapse\xxmSynaSvc.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="xxmSynaSvcAU">
+        <MSBuild Projects="synapse\xxmSynaSvcAU.dproj"/>
+    </Target>
+    <Target Name="xxmSynaSvcAU:Clean">
+        <MSBuild Projects="synapse\xxmSynaSvcAU.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="xxmSynaSvcAU:Make">
+        <MSBuild Projects="synapse\xxmSynaSvcAU.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="Build">
+        <CallTarget Targets="xxmConv;xxmProto;xxmProject;xxmRun;xxmLocal;xxmLocalAU;xxmLocalDev;xxmIsapiEx;xxmIsapiAU;xxmIsapiDev;xxmHttp;xxmHttpAU;xxmHttpDev;xxmHttpSvc;xxmHttpSvcAU;xxmCGI;xxmHost;xxmHostAU;xxmHostDev;xxmHostSvc;xxmHostSvcAU;xxmSCGI;xxmSCGIAU;xxmSCGIDev;xxmSCGISvc;xxmSCGISvcAU;xxmAhttpd;xxmAhttpdAU;xxmAhttpdDev;xxmHSys1;xxmHSys1AU;xxmHSys1Dev;xxmHSys1Svc;xxmHSys1SvcAU;xxmHSys2;xxmHSys2AU;xxmHSys2Dev;xxmHSys2Svc;xxmHSys2SvcAU;xxmSyna;xxmSynaAU;xxmSynaDev;xxmSynaSvc;xxmSynaSvcAU"/>
+    </Target>
+    <Target Name="Clean">
+        <CallTarget Targets="xxmConv:Clean;xxmProto:Clean;xxmProject:Clean;xxmRun:Clean;xxmLocal:Clean;xxmLocalAU:Clean;xxmLocalDev:Clean;xxmIsapiEx:Clean;xxmIsapiAU:Clean;xxmIsapiDev:Clean;xxmHttp:Clean;xxmHttpAU:Clean;xxmHttpDev:Clean;xxmHttpSvc:Clean;xxmHttpSvcAU:Clean;xxmCGI:Clean;xxmHost:Clean;xxmHostAU:Clean;xxmHostDev:Clean;xxmHostSvc:Clean;xxmHostSvcAU:Clean;xxmSCGI:Clean;xxmSCGIAU:Clean;xxmSCGIDev:Clean;xxmSCGISvc:Clean;xxmSCGISvcAU:Clean;xxmAhttpd:Clean;xxmAhttpdAU:Clean;xxmAhttpdDev:Clean;xxmHSys1:Clean;xxmHSys1AU:Clean;xxmHSys1Dev:Clean;xxmHSys1Svc:Clean;xxmHSys1SvcAU:Clean;xxmHSys2:Clean;xxmHSys2AU:Clean;xxmHSys2Dev:Clean;xxmHSys2Svc:Clean;xxmHSys2SvcAU:Clean;xxmSyna:Clean;xxmSynaAU:Clean;xxmSynaDev:Clean;xxmSynaSvc:Clean;xxmSynaSvcAU:Clean"/>
+    </Target>
+    <Target Name="Make">
+        <CallTarget Targets="xxmConv:Make;xxmProto:Make;xxmProject:Make;xxmRun:Make;xxmLocal:Make;xxmLocalAU:Make;xxmLocalDev:Make;xxmIsapiEx:Make;xxmIsapiAU:Make;xxmIsapiDev:Make;xxmHttp:Make;xxmHttpAU:Make;xxmHttpDev:Make;xxmHttpSvc:Make;xxmHttpSvcAU:Make;xxmCGI:Make;xxmHost:Make;xxmHostAU:Make;xxmHostDev:Make;xxmHostSvc:Make;xxmHostSvcAU:Make;xxmSCGI:Make;xxmSCGIAU:Make;xxmSCGIDev:Make;xxmSCGISvc:Make;xxmSCGISvcAU:Make;xxmAhttpd:Make;xxmAhttpdAU:Make;xxmAhttpdDev:Make;xxmHSys1:Make;xxmHSys1AU:Make;xxmHSys1Dev:Make;xxmHSys1Svc:Make;xxmHSys1SvcAU:Make;xxmHSys2:Make;xxmHSys2AU:Make;xxmHSys2Dev:Make;xxmHSys2Svc:Make;xxmHSys2SvcAU:Make;xxmSyna:Make;xxmSynaAU:Make;xxmSynaDev:Make;xxmSynaSvc:Make;xxmSynaSvcAU:Make"/>
+    </Target>
+    <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
+</Project>
