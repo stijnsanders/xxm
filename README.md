@@ -7,10 +7,9 @@ xxm enables you to create dynamic websites in Delphi, combining both Delphi and 
 <img src="Delphi/docs/overview1.png" align="right" hspace="8" width="397" height="424" />
 An xxm project contains source-files that hold both HTML and Object Pascal source code. These are converted (e.g. by the auto-compile on refresh feature) into a plain Delphi project, which is compiled into a xxm Library (with the `.xxl` file extension). This xxm Library can be loaded by one of the xxm handlers:
 
-* an IInternetProtocol implementation that plugs into Internet Explorer
 * an ISAPI extension that plugs into IIS
 * an Apache 2 module
-* a process that uses HTTPAPI
+* a process that uses HTTPAPI (http.sys)
 * a stand-alone basic HTTP server
 * an old-fashioned CGI application
 * an SCGI server process

@@ -29,12 +29,12 @@
 <text x="312" y="340" style="fill:black;font-family:sans-serif;">xxl Library</text>
 
 <rect x="5" y="210" width="140" height="50" rx="0" ry="0" style="stroke:black;stroke-width:2;fill:white;"/>
-<text x="12" y="230" style="fill:black;font-family:sans-serif;">Internet Explorer</text>
-<text x="12" y="250" style="fill:black;font-family:sans-serif;">IInternetProtocol</text>
+<text x="12" y="230" style="fill:black;font-family:sans-serif;">IIS</text>
+<text x="12" y="250" style="fill:black;font-family:sans-serif;">ISAPI Extension</text>
 
 <rect x="5" y="270" width="140" height="50" rx="0" ry="0" style="stroke:black;stroke-width:2;fill:white;"/>
-<text x="12" y="290" style="fill:black;font-family:sans-serif;">FireFox</text>
-<text x="12" y="310" style="fill:black;font-family:sans-serif;">nsIProtocolHandler</text>
+<text x="12" y="290" style="fill:black;font-family:sans-serif;">Apache httpd 2.0</text>
+<text x="12" y="310" style="fill:black;font-family:sans-serif;">xxm-handler</text>
 
 <rect x="5" y="330" width="140" height="50" rx="0" ry="0" style="stroke:black;stroke-width:2;fill:white;"/>
 <text x="12" y="360" style="fill:black;font-family:sans-serif;">xxmHttp</text>
@@ -43,12 +43,12 @@
 <text x="12" y="420" style="fill:black;font-family:sans-serif;">xxmCGI (xxmHost)</text>
 
 <rect x="5" y="450" width="140" height="50" rx="0" ry="0" style="stroke:black;stroke-width:2;fill:white;"/>
-<text x="12" y="470" style="fill:black;font-family:sans-serif;">IIS</text>
-<text x="12" y="490" style="fill:black;font-family:sans-serif;">ISAPI Extension</text>
+<text x="12" y="470" style="fill:black;font-family:sans-serif;">http.sys</text>
+<text x="12" y="490" style="fill:black;font-family:sans-serif;">HTTPAPI Extension</text>
 
 <rect x="5" y="510" width="140" height="50" rx="0" ry="0" style="stroke:black;stroke-width:2;fill:white;"/>
-<text x="12" y="530" style="fill:black;font-family:sans-serif;">Apache 2</text>
-<text x="12" y="550" style="fill:black;font-family:sans-serif;">xxm-handler</text>
+<text x="12" y="530" style="fill:black;font-family:sans-serif;">...</text>
+<text x="12" y="550" style="fill:black;font-family:sans-serif;">...</text>
 
 <polyline points="150,210,160,220,160,550,150,560" style="stroke:black;stroke-width:2;fill:none;"/>
 <polygon points="170,335,200,305,200,320,265,320,265,305,295,335,265,365,265,350,200,350,200,365" style="stroke:black;stroke-width:2;fill:white;"/>
