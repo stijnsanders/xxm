@@ -140,7 +140,11 @@ begin
       Entry.Unlock;
     end;
    end;
-  if not Result then Context.SendHTML(Entry.LastResult);
+  if not Result then
+    if Entry.LastResult='' then
+      Context.SendHTML(BuildError('berror','-','AutoCompile failed in an other worker process.'))
+    else
+      Context.SendHTML(Entry.LastResult);
 end;
 
 end.

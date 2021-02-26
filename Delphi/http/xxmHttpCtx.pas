@@ -524,9 +524,10 @@ begin
   Result:=UTF8ToWideString(GetParamValue(FCookie,FCookieIdx,UTF8Encode(Name)));
 end;
 
+var
+  SessionCookie:string;
+
 function TXxmHttpContext.GetSessionID: WideString;
-const
-  SessionCookie='xxmSessionID';
 begin
   if FSessionID='' then
    begin
@@ -534,7 +535,7 @@ begin
     if FSessionID='' then
      begin
       FSessionID:=Copy(CreateClassID,2,32);
-      SetCookie(SessionCookie,FSessionID);//expiry?
+      SetCookie(SessionCookie,FSessionID+'; SameSite=Strict');//expiry?
      end;
    end;
   Result:=FSessionID;
@@ -680,4 +681,5 @@ initialization
   StatusBuildError:=503;//TODO: from settings
   StatusException:=500;
   StatusFileNotFound:=404;
+  SessionCookie:='xxm'+Copy(CreateClassID,2,8);
 end.

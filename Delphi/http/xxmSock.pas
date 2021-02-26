@@ -892,6 +892,7 @@ var
   d:array of TSecBuffer;
   r,l,l1,c,c1:cardinal;
   p:pointer;
+  p1:NativeUInt absolute p;
 begin
   Result:=Count;
   SetLength(d,4);
@@ -935,7 +936,7 @@ begin
      begin
       if l1<>l then //TODO: loop until all sent?
         raise ETcpSocketError.Create('Error sending block');
-      inc(NativeUInt(p),c1);
+      inc(p1,c1);
       dec(c,c1);
      end;
    end;

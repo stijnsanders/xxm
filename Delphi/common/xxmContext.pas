@@ -242,7 +242,7 @@ const
   Chunk0:array[0..4] of AnsiChar='0'#13#10#13#10;
 begin
   try
-    if FChunked and Connected then
+    if FChunked and (State=ctResponding) and Connected then
       SendDirect(Chunk0[0],5);
   except
     //silent
@@ -1137,6 +1137,7 @@ begin
     x:=x+'; Secure';
   if HttpOnly then
     x:=x+'; HttpOnly';
+  x:=x+'; SameSite=Strict';
   SettingCookie:=true;//allow multiple?
   AddResponseHeader('Set-Cookie',x);
   //TODO: Set-Cookie2
