@@ -1092,14 +1092,19 @@ var
   pf:IXxmProjectEvents1;
 begin
   try
-    pe:=FProjectEntry.GetProjectInterface(IXxmProjectEvents) as IXxmProjectEvents;
-    if pe<>nil then Result:=pe.HandleException(Self,FPageClass,Ex) else
+    if FProjectEntry=nil then
+      Result:=false //strange? exception past EndRequest?
+    else
      begin
-      pf:=FProjectEntry.GetProjectInterface(IXxmProjectEvents1) as IXxmProjectEvents1;
-      if pf<>nil then
-        Result:=pf.HandleException(Self,FPageClass,Ex.ClassName,Ex.Message)
-      else
-        Result:=false;
+      pe:=FProjectEntry.GetProjectInterface(IXxmProjectEvents) as IXxmProjectEvents;
+      if pe<>nil then Result:=pe.HandleException(Self,FPageClass,Ex) else
+       begin
+        pf:=FProjectEntry.GetProjectInterface(IXxmProjectEvents1) as IXxmProjectEvents1;
+        if pf<>nil then
+          Result:=pf.HandleException(Self,FPageClass,Ex.ClassName,Ex.Message)
+        else
+          Result:=false;
+       end;
      end;
   except
     //raise?
