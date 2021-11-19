@@ -2,6 +2,7 @@ v1.2.6.?
 - issue converting IPv6 address to string
 - issue with IXxmParameterPostFile.SaveToFile
 - issue with xxmWebSocket.pas: frames recieved in a single packet were not processed
+- issue with xxmISAPI* spooling larger static files
 - xxmHttp: WinSock 2.2 (ws2_32.dll)
 - xxmp.pas: respond to OPTIONS and TRACE with 501 Not Implemented
 - jsonDoc.pas: v1.2.0

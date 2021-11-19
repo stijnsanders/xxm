@@ -175,14 +175,12 @@ begin
        end;
       IOState_Stream:
        begin
-        pContext.FIOState:=IOState_None;
         if dwError=0 then
-         begin
           PageLoaderPool.Queue(pContext,ctSpooling)
-         end
         else
          begin
-          pContext.FIOStream.Free;
+          pContext.FIOState:=IOState_None;
+          FreeAndNil(pContext.FIOStream);
           pContext.Recycle;
          end;
        end;
