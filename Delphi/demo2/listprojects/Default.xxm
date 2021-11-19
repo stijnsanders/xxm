@@ -17,16 +17,19 @@ BODY {font-family: Calibri, Verdana, sans-serif;font-size:12pt;}
 <p>Projects on this host:</p>
 <ul>>
 
+
 SetLength(s,MAX_PATH);
 SetLength(s,GetModuleFileName(HInstance,PChar(s),MAX_PATH));
 
 //TODO: find via context? via config?
 //TODO: list via context from handler?
-i:=Length(s)+1;
-repeat
+i:=Length(s);
+while (i<>0) and (s[i]<>'\') do dec(i);
+while not((i=0) or FileExists(Copy(s,1,i)+'xxm.json')) do
+ begin
   dec(i);
   while (i<>0) and (s[i]<>'\') do dec(i);
-until (i=0) or (FileExists(Copy(s,1,i)+'xxm.json'));
+ end;
 
 sl:=TStringList.Create;
 try

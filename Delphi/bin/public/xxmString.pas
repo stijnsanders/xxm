@@ -124,8 +124,8 @@ end;
 
 procedure TStringContext.SaveToFile(const FileName: string);
 const
-  Utf8ByteOrderMark=#$EF#$BB#$BF;
-  Utf16ByteOrderMark=#$FF#$FE;
+  Utf8ByteOrderMark:AnsiString=#$EF#$BB#$BF;
+  Utf16ByteOrderMark:AnsiString=#$FF#$FE;
 var
   f:TFileStream;
   s:AnsiString;
@@ -137,13 +137,13 @@ begin
         raise EXxmUnsupported.Create('StringContext.SaveToFile doesn''t support AutoEncoding=aeContentDefined');
       aeUtf8:
        begin
-        f.Write(Utf8ByteOrderMark,3);
+        f.Write(Utf8ByteOrderMark[1],3);
         s:=UTF8Encode(Copy(FResult,1,FIndex));
         f.Write(s[1],Length(s));
        end;
       aeUtf16:
        begin
-        f.Write(Utf16ByteOrderMark,2);
+        f.Write(Utf16ByteOrderMark[1],2);
         f.Write(FResult[1],FIndex*2);
        end;
       aeIso8859:

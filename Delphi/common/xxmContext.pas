@@ -1115,7 +1115,7 @@ end;
 procedure TXxmGeneralContext.SetCookie(const Name, Value: WideString);
 begin
   CheckHeaderNotSent;
-  AddResponseHeader('Cache-Control','no-cache="set-cookie"');
+  //AddResponseHeader('Cache-Control','no-cache="set-cookie"');???
   SettingCookie:=true;//allow multiple?
   AddResponseHeader('Set-Cookie',Name+'='+Value);
 end;
@@ -1127,7 +1127,7 @@ var
   x:WideString;
 begin
   CheckHeaderNotSent;
-  AddResponseHeader('Cache-Control','no-cache="set-cookie"');
+  //AddResponseHeader('Cache-Control','no-cache="set-cookie"');???
   x:=Name+'='+Value;
   //'; Version=1';
   if Comment<>'' then
@@ -1136,8 +1136,9 @@ begin
     x:=x+'; Domain='+Domain;
   if Path<>'' then
     x:=x+'; Path='+Path;
-  x:=x+'; Max-Age='+IntToStr(KeepSeconds)+
-    '; Expires='+RFC822DateGMT(Now+KeepSeconds/86400);
+  if KeepSeconds<>0 then
+    x:=x+'; Max-Age='+IntToStr(KeepSeconds)+
+      '; Expires='+RFC822DateGMT(Now+KeepSeconds/86400);
   if Secure then
     x:=x+'; Secure';
   if HttpOnly then

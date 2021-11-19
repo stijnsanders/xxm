@@ -535,7 +535,7 @@ begin
     if FSessionID='' then
      begin
       FSessionID:=Copy(CreateClassID,2,32);
-      SetCookie(SessionCookie,FSessionID+'; SameSite=Strict');//expiry?
+      SetCookie(SessionCookie,FSessionID+'; Path=/; SameSite=Lax');//expiry?
      end;
    end;
   Result:=FSessionID;
