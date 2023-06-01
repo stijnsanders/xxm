@@ -24,11 +24,11 @@ function AutoBuild(Entry: TXxmProjectEntry; Context: IXxmContext;
   const ProjectName: WideString):boolean;
 var
   WebProject:TXxmWebProject;
-  wsig,fn:string;
+  wsig,fn,lr:string;
   b:boolean;
 const
   RT_HTML=PChar(23);//MakeIntResource(23);
-  NoNextBuildAfter=5000;//TODO: setting!
+  NoNextBuildAfter=2000;//TODO: setting!
 
   function BuildError(const res, val1, val2: string): WideString;
   var
@@ -73,7 +73,8 @@ const
   end;
 
 begin
-  Result:=Entry.LastResult='';//default;
+  lr:=Entry.LastResult;
+  Result:=lr='';//default;
   if cardinal(GetTickCount-Entry.LastCheck)>NoNextBuildAfter then
    begin
     fn:=Entry.ModulePath;//force get from registry outside of lock
@@ -92,6 +93,7 @@ begin
               b:=WebProject.CheckFiles(false,nil);
               if not(b) then
                begin
+                lr:='';
                 Entry.LastResult:='';
                 Result:=true;
                 wsig:=GetFileSignature(
@@ -110,12 +112,14 @@ begin
                   wsig:=GetFileSignature(
                     WebProject.RootFolder+WebProject.ProjectFile);
                   Entry.Signature:=wsig;
+                  lr:='';
                   Entry.LastResult:='';
                   Result:=true;
                  end
                 else
                  begin
-                  Entry.LastResult:=BuildError('bfail','','');
+                  lr:=BuildError('bfail','','');
+                  Entry.LastResult:=lr;
                   Result:=false;
                  end;
                end;
@@ -141,10 +145,10 @@ begin
     end;
    end;
   if not Result then
-    if Entry.LastResult='' then
+    if lr='' then
       Context.SendHTML(BuildError('berror','-','AutoCompile failed in an other worker process.'))
     else
-      Context.SendHTML(Entry.LastResult);
+      Context.SendHTML(lr);
 end;
 
 end.

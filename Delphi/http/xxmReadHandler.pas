@@ -37,6 +37,22 @@ type
     constructor Create(Socket: TTcpSocket);
     destructor Destroy; override;
     { IStream }
+{$IF CompilerVersion<20}
+    function Seek(dlibMove: Largeint; dwOrigin: Longint;
+      out libNewPosition: Largeint): HResult; stdcall;
+    function SetSize(libNewSize: Largeint): HResult; stdcall;
+    function CopyTo(stm: IStream; cb: Largeint; out cbRead: Largeint;
+      out cbWritten: Largeint): HResult; stdcall;
+    function Commit(grfCommitFlags: Longint): HResult; stdcall;
+    function Revert: HResult; stdcall;
+    function LockRegion(libOffset: Largeint; cb: Largeint;
+      dwLockType: Longint): HResult; stdcall;
+    function UnlockRegion(libOffset: Largeint; cb: Largeint;
+      dwLockType: Longint): HResult; stdcall;
+    function Stat(out statstg: TStatStg; grfStatFlag: Longint): HResult;
+      stdcall;
+    function Clone(out stm: IStream): HResult; stdcall;
+{$ELSE}
     function Seek(dlibMove: Largeint; dwOrigin: DWORD;
       out libNewPosition: LargeUInt): HResult; stdcall;
     function SetSize(libNewSize: LargeUInt): HResult; stdcall;
@@ -51,6 +67,7 @@ type
     function Stat(out statstg: TStatStg; grfStatFlag: DWORD): HResult;
       stdcall;
     function Clone(out stm: IStream): HResult; stdcall;
+{$IFEND}
     { ISequentialStream }
     function Read(pv: Pointer; cb: FixedUInt; pcbRead: PFixedUInt): HResult;
       stdcall;
@@ -182,7 +199,11 @@ begin
   raise Exception.Create('TRawSocketData.Clone not supported');
 end;
 
+{$IF CompilerVersion<20}
+function TRawSocketData.Commit(grfCommitFlags: Longint): HResult;
+{$ELSE}
 function TRawSocketData.Commit(grfCommitFlags: DWORD): HResult;
+{$IFEND}
 begin
   raise Exception.Create('TRawSocketData.Commit not supported');
 end;
@@ -193,8 +214,13 @@ begin
   raise Exception.Create('TRawSocketData.CopyTo not supported');
 end;
 
+{$IF CompilerVersion<20}
+function TRawSocketData.LockRegion(libOffset: Largeint; cb: Largeint;
+  dwLockType: Longint): HResult;
+{$ELSE}
 function TRawSocketData.LockRegion(libOffset, cb: LargeUInt;
   dwLockType: DWORD): HResult;
+{$IFEND}
 begin
   raise Exception.Create('TRawSocketData.LockRegion not supported');
 end;
@@ -204,8 +230,13 @@ begin
   raise Exception.Create('TRawSocketData.Revert not supported');
 end;
 
+{$IF CompilerVersion<20}
+function TRawSocketData.Seek(dlibMove: Largeint; dwOrigin: Longint;
+      out libNewPosition: Largeint): HResult;
+{$ELSE}
 function TRawSocketData.Seek(dlibMove: Largeint; dwOrigin: DWORD;
   out libNewPosition: LargeUInt): HResult;
+{$IFEND}
 begin
   raise Exception.Create('TRawSocketData.Seek not supported');
 end;
@@ -215,14 +246,24 @@ begin
   raise Exception.Create('TRawSocketData.SetSize not supported');
 end;
 
+{$IF CompilerVersion<20}
+function TRawSocketData.Stat(out statstg: TStatStg;
+  grfStatFlag: Longint): HResult;
+{$ELSE}
 function TRawSocketData.Stat(out statstg: TStatStg;
   grfStatFlag: DWORD): HResult;
+{$IFEND}
 begin
   raise Exception.Create('TRawSocketData.Stat not supported');
 end;
 
+{$IF CompilerVersion<20}
+function TRawSocketData.UnlockRegion(libOffset: Largeint; cb: Largeint;
+  dwLockType: Longint): HResult;
+{$ELSE}
 function TRawSocketData.UnlockRegion(libOffset, cb: LargeUInt;
   dwLockType: DWORD): HResult;
+{$IFEND}
 begin
   raise Exception.Create('TRawSocketData.UnlockRegion not supported');
 end;

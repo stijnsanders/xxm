@@ -1143,7 +1143,7 @@ begin
     x:=x+'; Secure';
   if HttpOnly then
     x:=x+'; HttpOnly';
-  x:=x+'; SameSite=Strict';
+  x:=x+'; SameSite=Lax';
   SettingCookie:=true;//allow multiple?
   AddResponseHeader('Set-Cookie',x);
   //TODO: Set-Cookie2

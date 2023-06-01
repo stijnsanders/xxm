@@ -16,13 +16,14 @@ uses Windows, SysUtils, xxm, xxmPReg;
 type
   TXxmProjectCacheEntry=class(TXxmProjectEntry)
   protected
-    procedure SetSignature(const Value: AnsiString); override;
+    procedure SetSignature(const Value: string); override;
     function GetExtensionMimeType(const x: AnsiString): AnsiString; override;
     function GetAllowInclude: boolean; override;
     function LoadProject: IXxmProject; override;
   public
     constructor Create(const Name: WideString);
     destructor Destroy; override;
+	function NTLM:boolean;
   end;
 
   TXxmProjectCacheJson=class(TXxmProjectCache)
@@ -83,10 +84,15 @@ begin
   Result:=XxmProjectLoad(Name);
 end;
 
-procedure TXxmProjectCacheEntry.SetSignature(const Value: AnsiString);
+procedure TXxmProjectCacheEntry.SetSignature(const Value: string);
 begin
   inherited;
   raise Exception.Create('SetSignature: not implemented');
+end;
+
+function TXxmProjectCacheEntry.NTLM:boolean;
+begin
+  Result:=false;
 end;
 
 { TXxmProjectCacheJson }
@@ -144,7 +150,7 @@ begin
    end;
   j:=i;
   while (i<=l) and not(URI[i] in ['?','&','$','#']) do inc(i);
-  FragmentName:=Copy(URI,j,i-j);
+  FragmentName:=WideString(Copy(URI,j,i-j));
   if (i<=l) then inc(i);
 end;
 

@@ -400,6 +400,15 @@ begin
     SetStatus(401,'Unauthorized');
     AddResponseHeader('Connection','keep-alive');
     AddResponseHeader('WWW-Authenticate','NTLM');
+    if FPostData<>nil then
+      try
+        //flush post data if any
+        r:=$10000;
+        SetLength(s,r);
+        while FPostData.Read(s[1],r)<>integer(r) do ;
+      except
+        //ignore
+      end;
     ResponseStr('<h1>Authorization required</h1>','401');
    end
   else

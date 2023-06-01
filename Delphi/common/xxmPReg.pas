@@ -192,7 +192,8 @@ begin
   end;
   if FHandle<>0 then
    begin
-    FreeLibrary(FHandle);
+    if not FreeLibrary(FHandle) then
+      RaiseLastOSError;
     FHandle:=0;
     //FContextCount:=0;
     if FLoadPath<>'' then
