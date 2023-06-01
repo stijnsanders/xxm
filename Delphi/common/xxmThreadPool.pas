@@ -379,14 +379,14 @@ begin
        begin
         inc(FEventsSize,$20);//grow
         SetLength(FEvents,FEventsSize);
-        FEvents[i].Key:=EventKey;
-        FEvents[i].ProjectEntry:=pe;
-        FEvents[i].Queue:=c0;
-        FEvents[i].CheckInterval:=CheckIntervalMS;
-        FEvents[i].CheckLast:=tc;
-        inc(FEventsIndex);
-        c0.QueueIn:=nil;
        end;
+      FEvents[i].Key:=EventKey;
+      FEvents[i].ProjectEntry:=pe;
+      FEvents[i].Queue:=c0;
+      FEvents[i].CheckInterval:=CheckIntervalMS;
+      FEvents[i].CheckLast:=tc;
+      inc(FEventsIndex);
+      c0.QueueIn:=nil;
      end
     else
      begin
