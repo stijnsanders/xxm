@@ -28,7 +28,7 @@ type
   FixedUInt=LongInt;
   PFixedUInt=PLongInt;
   LargeUInt=LargeInt;
-  {$ENDIF}
+  {$IFEND}
 
   TRawSocketData=class(TInterfacedObject, IStream, IXxmRawSocket)
   private
@@ -67,7 +67,7 @@ type
     function Stat(out statstg: TStatStg; grfStatFlag: DWORD): HResult;
       stdcall;
     function Clone(out stm: IStream): HResult; stdcall;
-{$ENDIF}
+{$IFEND}
     { ISequentialStream }
     function Read(pv: Pointer; cb: FixedUInt; pcbRead: PFixedUInt): HResult;
       stdcall;
@@ -203,7 +203,7 @@ end;
 function TRawSocketData.Commit(grfCommitFlags: Longint): HResult;
 {$ELSE}
 function TRawSocketData.Commit(grfCommitFlags: DWORD): HResult;
-{$ENDIF}
+{$IFEND}
 begin
   raise Exception.Create('TRawSocketData.Commit not supported');
 end;
@@ -220,7 +220,7 @@ function TRawSocketData.LockRegion(libOffset: Largeint; cb: Largeint;
 {$ELSE}
 function TRawSocketData.LockRegion(libOffset, cb: LargeUInt;
   dwLockType: DWORD): HResult;
-{$ENDIF}
+{$IFEND}
 begin
   raise Exception.Create('TRawSocketData.LockRegion not supported');
 end;
@@ -236,7 +236,7 @@ function TRawSocketData.Seek(dlibMove: Largeint; dwOrigin: Longint;
 {$ELSE}
 function TRawSocketData.Seek(dlibMove: Largeint; dwOrigin: DWORD;
   out libNewPosition: LargeUInt): HResult;
-{$ENDIF}
+{$IFEND}
 begin
   raise Exception.Create('TRawSocketData.Seek not supported');
 end;
@@ -252,7 +252,7 @@ function TRawSocketData.Stat(out statstg: TStatStg;
 {$ELSE}
 function TRawSocketData.Stat(out statstg: TStatStg;
   grfStatFlag: DWORD): HResult;
-{$ENDIF}
+{$IFEND}
 begin
   raise Exception.Create('TRawSocketData.Stat not supported');
 end;
@@ -263,7 +263,7 @@ function TRawSocketData.UnlockRegion(libOffset: Largeint; cb: Largeint;
 {$ELSE}
 function TRawSocketData.UnlockRegion(libOffset, cb: LargeUInt;
   dwLockType: DWORD): HResult;
-{$ENDIF}
+{$IFEND}
 begin
   raise Exception.Create('TRawSocketData.UnlockRegion not supported');
 end;

@@ -132,10 +132,10 @@
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
         <RcCompile Include="..\common\xxmData.rc">
-            <Form>xxmData.res</Form>
+            <Form>..\common\xxmData.res</Form>
         </RcCompile>
         <RcCompile Include="..\common\xxmAU_manifest.rc">
-            <Form>xxmAU_manifest.res</Form>
+            <Form>..\common\xxmAU_manifest.res</Form>
         </RcCompile>
         <DCCReference Include="xxmSynaMain.pas"/>
         <DCCReference Include="..\bin\public\xxm.pas"/>

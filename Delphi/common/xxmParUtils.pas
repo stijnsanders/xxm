@@ -161,7 +161,7 @@ procedure HeaderCheckValue(const Value: WideString);
 
 {$IF not Declared(UTF8ToWideString)}
 {$DEFINE NOT_DECLARED_UTF8ToWideString}
-{$ENDIF}
+{$IFEND}
 
 {$IFDEF NOT_DECLARED_UTF8ToWideString}
 function UTF8ToWideString(const s: UTF8String): WideString;

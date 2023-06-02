@@ -79,7 +79,7 @@ function UTF8ToWideString(const s: UTF8String): WideString;
 begin
   Result:=UTF8Decode(s);
 end;
-{$ENDIF}
+{$IFEND}
 
 { TXxmProjectCacheEntry }
 
@@ -429,6 +429,9 @@ var
   found:boolean;
   e:TXxmProjectCacheEntry;
 begin
+{$IF CompilerVersion<20}
+  e:=nil;//counter warning
+{$IFEND}
   CheckRegistry;
   EnterCriticalSection(FLock);
   try

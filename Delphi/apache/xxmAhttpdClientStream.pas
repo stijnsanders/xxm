@@ -28,6 +28,9 @@ type
   FixedUInt=LongInt;
   PFixedUInt=PLongInt;
   LargeUInt=LargeInt;
+  XDWORD=LongInt;
+  {$ELSE}
+  XDWORD=DWORD;
   {$IFEND}
 
   TRawSocketData=class(TInterfacedObject, IStream, IXxmRawSocket)
@@ -38,16 +41,16 @@ type
     constructor Create(Request:PRequest);
     destructor Destroy; override;
     { IStream }
-    function Seek(dlibMove: Largeint; dwOrigin: DWORD;
+    function Seek(dlibMove: Largeint; dwOrigin: XDWORD;
       out libNewPosition: LargeUInt): HResult; stdcall;
     function SetSize(libNewSize: LargeUInt): HResult; stdcall;
     function CopyTo(stm: IStream; cb: LargeUInt; out cbRead: LargeUInt;
       out cbWritten: LargeUInt): HResult; stdcall;
-    function Commit(grfCommitFlags: DWORD): HResult; stdcall;
+    function Commit(grfCommitFlags: XDWORD): HResult; stdcall;
     function Revert: HResult; stdcall;
-    function LockRegion(libOffset, cb: LargeUInt; dwLockType: DWORD): HResult; stdcall;
-    function UnlockRegion(libOffset, cb: LargeUInt; dwLockType: DWORD): HResult; stdcall;
-    function Stat(out statstg: TStatStg; grfStatFlag: DWORD): HResult; stdcall;
+    function LockRegion(libOffset, cb: LargeUInt; dwLockType: XDWORD): HResult; stdcall;
+    function UnlockRegion(libOffset, cb: LargeUInt; dwLockType: XDWORD): HResult; stdcall;
+    function Stat(out statstg: TStatStg; grfStatFlag: XDWORD): HResult; stdcall;
     function Clone(out stm: IStream): HResult; stdcall;
     { ISequentialStream }
     function Read(pv: Pointer; cb: FixedUInt;
@@ -170,7 +173,7 @@ begin
   raise Exception.Create('TRawSocketData.Clone not supported');
 end;
 
-function TRawSocketData.Commit(grfCommitFlags: DWORD): HResult;
+function TRawSocketData.Commit(grfCommitFlags: XDWORD): HResult;
 begin
   raise Exception.Create('TRawSocketData.Commit not supported');
 end;
@@ -182,7 +185,7 @@ begin
 end;
 
 function TRawSocketData.LockRegion(libOffset, cb: LargeUInt;
-  dwLockType: DWORD): HResult;
+  dwLockType: XDWORD): HResult;
 begin
   raise Exception.Create('TRawSocketData.LockRegion not supported');
 end;
@@ -192,7 +195,7 @@ begin
   raise Exception.Create('TRawSocketData.Revert not supported');
 end;
 
-function TRawSocketData.Seek(dlibMove: Largeint; dwOrigin: DWORD;
+function TRawSocketData.Seek(dlibMove: Largeint; dwOrigin: XDWORD;
   out libNewPosition: LargeUInt): HResult;
 begin
   raise Exception.Create('TRawSocketData.Seek not supported');
@@ -204,13 +207,13 @@ begin
 end;
 
 function TRawSocketData.Stat(out statstg: TStatStg;
-  grfStatFlag: DWORD): HResult;
+  grfStatFlag: XDWORD): HResult;
 begin
   raise Exception.Create('TRawSocketData.Stat not supported');
 end;
 
 function TRawSocketData.UnlockRegion(libOffset, cb: LargeUInt;
-  dwLockType: DWORD): HResult;
+  dwLockType: XDWORD): HResult;
 begin
   raise Exception.Create('TRawSocketData.UnlockRegion not supported');
 end;
