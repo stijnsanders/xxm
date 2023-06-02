@@ -405,7 +405,7 @@ begin
         //flush post data if any
         r:=$10000;
         SetLength(s,r);
-        while FPostData.Read(s[1],r)<>integer(r) do ;
+        while FPostData.Read(s[1],r)<>0 do ;
       except
         //ignore
       end;

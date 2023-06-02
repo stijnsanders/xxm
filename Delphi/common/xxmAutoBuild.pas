@@ -139,7 +139,7 @@ begin
            end;
         end
       else
-        Result:=Entry.LastResult<>'';
+        Result:=Entry.LastResult='';
     finally
       Entry.Unlock;
     end;

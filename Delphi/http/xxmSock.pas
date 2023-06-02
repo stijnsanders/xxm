@@ -886,6 +886,11 @@ begin
      end;
 end;
 
+{$IF not(Declared(NativeUInt))}
+type
+  NativeUInt=cardinal;
+{$ENDIF}
+
 function TTcpSecureSocket.SendBuf(const Buf; Count: Integer): LongInt;
 var
   d1:TSecBufferDesc;

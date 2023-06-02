@@ -5,8 +5,8 @@ interface
 uses SysUtils, Classes, ActiveX;
 
 const
-  //$Date: 2019-03-15 21:54:56 +0100 (vr, 15 mrt 2019) $
-  XxmRevision = '$Rev: 459 $';
+  //$Date: 2023-06-02 17:46:58 +0200 (vr, 02 jun 2023) $
+  XxmRevision = '$Rev: 468 $';
 
 type
   IXxmContext = interface;//forward
@@ -281,7 +281,7 @@ function UTF8ToWideString(const s: UTF8String): WideString;
 begin
   Result:=UTF8Decode(s);
 end;
-{$IFEND}
+{$ENDIF}
 
 { Helper Functions }
 

@@ -79,7 +79,7 @@ function UTF8ToWideString(const s: UTF8String): WideString;
 begin
   Result:=UTF8Decode(s);
 end;
-{$IFEND}
+{$ENDIF}
 
 { TXxmProjectCacheEntry }
 

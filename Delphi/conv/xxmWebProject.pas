@@ -702,7 +702,7 @@ end;
 {$IF not Declared(TStartupInfoA)}
 type
   TStartupInfoA=TStartupInfo;
-{$IFEND}
+{$ENDIF}
 
 function TXxmWebProject.Compile:boolean;
 var
