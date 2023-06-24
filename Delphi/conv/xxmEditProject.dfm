@@ -1,9 +1,9 @@
 object EditProjectMainForm: TEditProjectMainForm
   Left = 457
   Top = 125
+  Width = 452
+  Height = 522
   Caption = 'xxm Project Properties'
-  ClientHeight = 463
-  ClientWidth = 419
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
@@ -16,8 +16,8 @@ object EditProjectMainForm: TEditProjectMainForm
   PixelsPerInch = 96
   TextHeight = 13
   object PageControl1: TPageControl
-    Left = 0
-    Top = 0
+    Left = 8
+    Top = 8
     Width = 417
     Height = 423
     ActivePage = TabSheet1
@@ -25,10 +25,6 @@ object EditProjectMainForm: TEditProjectMainForm
     object TabSheet1: TTabSheet
       BorderWidth = 4
       Caption = 'Project'
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       DesignSize = (
         401
         387)
@@ -49,24 +45,22 @@ object EditProjectMainForm: TEditProjectMainForm
       object txtProjectName: TEdit
         Left = 0
         Top = 16
-        Width = 416
+        Width = 400
         Height = 21
         Anchors = [akLeft, akTop, akRight]
         TabOrder = 0
         Text = 'txtProjectName'
         OnChange = txtChange
-        ExplicitWidth = 400
       end
       object txtCompileCommand: TEdit
         Left = 0
         Top = 56
-        Width = 416
+        Width = 400
         Height = 21
         Anchors = [akLeft, akTop, akRight]
         TabOrder = 1
         Text = 'txtCompileCommand'
         OnChange = txtChange
-        ExplicitWidth = 400
       end
       object btnRegisterLocal: TButton
         Left = 0
@@ -90,10 +84,6 @@ object EditProjectMainForm: TEditProjectMainForm
     object TabSheet2: TTabSheet
       BorderWidth = 4
       Caption = 'Files'
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       object tvFiles: TTreeView
         Left = 0
         Top = 0
@@ -117,10 +107,6 @@ object EditProjectMainForm: TEditProjectMainForm
       BorderWidth = 4
       Caption = 'Parser Values'
       ImageIndex = 2
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       DesignSize = (
         401
         387)
@@ -158,6 +144,7 @@ object EditProjectMainForm: TEditProjectMainForm
         Style = csDropDownList
         Anchors = [akLeft, akTop, akRight]
         DropDownCount = 32
+        ItemHeight = 13
         TabOrder = 0
         OnChange = cbParserValueChange
         Items.Strings = (
@@ -201,13 +188,12 @@ object EditProjectMainForm: TEditProjectMainForm
   object StatusBar1: TStatusBar
     Left = 0
     Top = 444
-    Width = 419
+    Width = 436
     Height = 19
     Panels = <
       item
         Width = 50
       end>
-    ExplicitTop = 424
   end
   object MainMenu1: TMainMenu
     Left = 64

@@ -753,6 +753,7 @@ begin
         fn:=Copy(fn,1,Length(fn)-4)+'.json';
        end;
 
+      t:=LowerCase(t);
       d:=JSON;
       if FileExists(fn) then
        begin
