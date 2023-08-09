@@ -12,7 +12,7 @@ It implements IXxmPage, so you can call xxmFReg's
 with your inheriting class (or any alternative fragment registry you use)
 to determine which URL the WebSocket will be available with.
 
-  $Rev: 462 $ $Date: 2021-02-26 16:01:20 +0100 (vr, 26 feb 2021) $
+  $Rev: 472 $ $Date: 2023-08-09 21:52:10 +0200 (wo, 09 aug 2023) $
 
 }
 {$D-}
@@ -23,6 +23,16 @@ interface
 uses SysUtils, xxm;
 
 type
+
+  {$IF not(Declared(FixedUInt))}
+  FixedUInt=LongInt;
+  PFixedUInt=PLongInt;
+  LargeUInt=LargeInt;
+  XDWORD=LongInt;
+  {$ELSE}
+  XDWORD=LongInt;
+  {$IFEND}
+
   TXxmWebSocket=class(TXxmPage, IXxmRawSocket)
   private
     FMaxFragmentSize:int64;
@@ -46,9 +56,9 @@ type
       const Values: array of OleVariant; const Objects: array of TObject); override;
 
     //IXxmRawSocket
-    function Read(pv: Pointer; cb: Longint; pcbRead: PLongint): HResult;
+    function Read(pv: Pointer; cb: FixedUInt; pcbRead: PFixedUInt): HResult;
       stdcall;
-    function Write(pv: Pointer; cb: Longint; pcbWritten: PLongint): HResult;
+    function Write(pv: Pointer; cb: FixedUInt; pcbWritten: PFixedUInt): HResult;
       stdcall;
     function DataReady(TimeoutMS: cardinal): boolean;
     procedure ClosingSocket;
@@ -304,7 +314,7 @@ begin
     Context.SetStatus(101,'Switching Protocols');
     hRes['Connection']:='Upgrade';
     hRes['Upgrade']:='websocket';
-    h:=SHA1Hash(hReq['Sec-WebSocket-Key']
+    h:=SHA1Hash(UTF8String(hReq['Sec-WebSocket-Key'])
       +'258EAFA5-E914-47DA-95CA-C5AB0DC85B11');
     hRes['Sec-WebSocket-Accept']:=base64encode(h,20);
 
@@ -338,15 +348,15 @@ begin
    end;
 end;
 
-function TXxmWebSocket.Read(pv: Pointer; cb: Integer;
-  pcbRead: PLongint): HResult;
+function TXxmWebSocket.Read(pv: Pointer; cb: FixedUInt;
+  pcbRead: PFixedUInt): HResult;
 begin
   //IXxmRawSocket on TXxmWebSocket for suspend/resume only
   Result:=E_NOTIMPL;
 end;
 
-function TXxmWebSocket.Write(pv: Pointer; cb: Integer;
-  pcbWritten: PLongint): HResult;
+function TXxmWebSocket.Write(pv: Pointer; cb: FixedUInt;
+  pcbWritten: PFixedUInt): HResult;
 begin
   //IXxmRawSocket on TXxmWebSocket for suspend/resume only
   Result:=E_NOTIMPL;

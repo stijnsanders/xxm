@@ -9,7 +9,7 @@ Use <i>xxmProject.exe</i> to edit and manage project settings.<br />
 For this demonstration project, unit <code>ws1.pas</code> was added.</dd>
 <dt>xxmp.pas</dt>
 <dd>The project's main unit. When this file is missing form the project, xxm creates one for you.<br/>
-This one has been modified so that the project class implements <code>IXxmProjectEvents1</code> to listen in on when the project needs to 'release its contexts' prior to shutting down. Without this, existing WebSocket connections would stall the auto-update or auto-update feature of the xxm handler.</dd>
+This one has been modified so that the project class implements <code>IXxmProjectEvents1</code> to listen in on when the project needs to 'release its contexts' prior to shutting down. Without this, existing WebSocket connections would stall the auto-update or auto-compile feature of the xxm handler.</dd>
 <dt>Default.xxm</dt>
 <dd>The website's default page. Attempts to create a <code>WebSocket</code> instance (if your browser supports this), shows incoming messages, and provides a way to send messages.</dd>
 <dt>ws1.pas</dt>

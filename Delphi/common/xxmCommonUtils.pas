@@ -20,7 +20,7 @@ type
   private
     FHeap:THandle;
   protected
-    function Realloc(var NewCapacity: Integer): Pointer; override;
+    function Realloc(var NewCapacity: NativeInt): Pointer; override;
   public
     procedure AfterConstruction; override;
   end;
@@ -102,7 +102,7 @@ begin
   FHeap:=GetProcessHeap;
 end;
 
-function THeapStream.Realloc(var NewCapacity: Integer): Pointer;
+function THeapStream.Realloc(var NewCapacity: NativeInt): Pointer;
 const
   BlockSize=$10000;
 begin

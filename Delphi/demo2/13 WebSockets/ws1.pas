@@ -31,7 +31,7 @@ uses SysUtils, Windows, xxmFReg, xxmp;
 procedure TMyWebSocket.AfterConstruction;
 begin
   FThread:=TDemoThread.Create(false);
-  (FThread as TDemoThread).MyWebSocket:=Self;//TODO: via parameter of constructor
+  (FThread as TDemoThread).MyWebSocket:=Self;//TODO: via parameter or constructor
 end;
 
 procedure TMyWebSocket.BeforeDestruction;
