@@ -1,7 +1,7 @@
 program xxmHostAU;
 
-{$R 'xxmData.res' '..\common\xxmData.rc'}
-{$R 'xxmAU_manifest.res' '..\common\xxmAU_manifest.rc'}
+{$R '..\common\xxmData.res' '..\common\xxmData.rc'}
+{$R '..\common\xxmAU_manifest.res' '..\common\xxmAU_manifest.rc'}
 
 uses
   SysUtils,
