@@ -29,6 +29,12 @@ type
     FRegFilePath,FRegSignature,FDefaultProject,FSingleProject:string;
     FRegLastCheckTC:cardinal;
     FFavIcon:OleVariant;
+    FAuthCache:array of record
+      SessionID:string;
+      AuthName:AnsiString;
+      Expires:TDateTime;
+    end;
+    FAuthCacheIndex,FAuthCacheSize:integer;
     function FindProject(const Name: string): integer;
     function GetRegistrySignature: string;
     function GetRegistry: IJSONDocument;
@@ -43,6 +49,9 @@ type
       var i:integer; var ProjectName,FragmentName:WideString):boolean;
     function GetProject(const Name:WideString):TXxmProjectCacheEntry;
     procedure ReleaseProject(const Name:WideString);
+
+    function GetAuthCache(const SessionID:string):AnsiString;
+    procedure SetAuthCache(const SessionID:string;const AuthName:AnsiString);
   end;
 
   EXxmProjectRegistryError=class(Exception);
@@ -136,6 +145,8 @@ begin
   FProjectsCount:=0;
   FRegSignature:='-';
   FRegLastCheckTC:=GetTickCount-XxmRegCheckIntervalMS-1;
+  FAuthCacheIndex:=0;
+  FAuthCacheSize:=0;
 
   SetLength(FRegFilePath,MAX_PATH);
   SetLength(FRegFilePath,GetModuleFileName(HInstance,
@@ -545,6 +556,56 @@ begin
     except
       on EFOpenError do ;//silent
     end;
+end;
+
+function TXxmProjectCacheJson.GetAuthCache(const SessionID: string): AnsiString;
+var
+  i:integer;
+begin
+  Result:='';//default
+  if SessionID<>'' then
+   begin
+    EnterCriticalSection(FLock);
+    try
+      i:=0;
+      while (i<FAuthCacheIndex) and (FAuthCache[i].SessionID<>SessionID) do inc(i);
+      if (i<FAuthCacheIndex) and (FAuthCache[i].Expires>Now) then
+        Result:=FAuthCache[i].AuthName;
+    finally
+      LeaveCriticalSection(FLock);
+    end;
+   end;
+end;
+
+procedure TXxmProjectCacheJson.SetAuthCache(const SessionID: string;
+  const AuthName: AnsiString);
+var
+  i:integer;
+const
+  AuthCacheTimeoutMins=15;//TODO: from config?
+begin
+  if AuthName<>'' then
+   begin
+    EnterCriticalSection(FLock);
+    try
+      i:=0;
+      while (i<FAuthCacheIndex) and (FAuthCache[i].SessionID<>SessionID) do inc(i);
+      if i=FAuthCacheIndex then
+       begin
+        if FAuthCacheIndex=FAuthCacheSize then
+         begin
+          inc(FAuthCacheSize,4);//growstep
+          SetLength(FAuthCache,FAuthCacheSize);
+         end;
+        inc(FAuthCacheIndex);
+       end;
+      FAuthCache[i].SessionID:=SessionID;
+      FAuthCache[i].AuthName:=AuthName;
+      FAuthCache[i].Expires:=Now+AuthCacheTimeoutMins/MinsPerDay;
+    finally
+      LeaveCriticalSection(FLock);
+    end;
+   end;
 end;
 
 initialization

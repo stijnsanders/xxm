@@ -1,3 +1,6 @@
+v1.2.7.?
+- NTLM: cache by SessionID to avoid 401's on every request
+
 v1.2.6.466
 - issue converting IPv6 address to string
 - issue with IXxmParameterPostFile.SaveToFile

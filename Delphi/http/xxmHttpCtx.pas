@@ -17,7 +17,7 @@ type
     FResHeaders: TResponseHeaders;
     FHTTPVersion,FVerb,FURI: AnsiString;
     FRedirectPrefix,FSessionID: WideString;
-    FCookieParsed: boolean;
+    FCookieParsed, FAuthStoreCache: boolean;
     FCookie: AnsiString;
     FCookieIdx: TParamIndexes;
     FQueryStringIndex:integer;
@@ -95,6 +95,9 @@ const
 
 type
   EXxmConnectionLost=class(Exception);
+
+var
+  SessionCookie:string;
 
 { TXxmHttpContext }
 
@@ -394,82 +397,90 @@ var
   d:array of TSecBuffer;
   n:TSecPkgContextNames;
 begin
-  s:=AuthParse('NTLM');
-  if s='' then
-   begin
-    SetStatus(401,'Unauthorized');
-    AddResponseHeader('Connection','keep-alive');
-    AddResponseHeader('WWW-Authenticate','NTLM');
-    if FPostData<>nil then
-      try
-        //flush post data if any
-        r:=$10000;
-        SetLength(s,r);
-        while FPostData.Read(s[1],r)<>0 do ;
-      except
-        //ignore
-      end;
-    ResponseStr('<h1>Authorization required</h1>','401');
-   end
+  FAuthStoreCache:=false;//default
+  s:=XxmProjectCache.GetAuthCache(GetCookie(SessionCookie));
+  if s<>'' then
+    AuthSet(s,'') //TODO: update Expires?
   else
    begin
-    if FSocket.Cred.dwLower=nil then
-      if AcquireCredentialsHandle(nil,'NTLM',SECPKG_CRED_INBOUND,
-        nil,nil,nil,nil,@FSocket.Cred,nil)<>0 then RaiseLastOSError;
-
-    SetLength(d,3);
-    SetLength(t,$10000);
-
-    d1.ulVersion:=SECBUFFER_VERSION;
-    d1.cBuffers:=2;
-    d1.pBuffers:=@d[0];
-
-    d[0].cbBuffer:=Length(s);
-    d[0].BufferType:=SECBUFFER_TOKEN;
-    d[0].pvBuffer:=@s[1];
-
-    d[1].cbBuffer:=0;
-    d[1].BufferType:=SECBUFFER_EMPTY;
-    d[1].pvBuffer:=nil;
-
-    d2.ulVersion:=SECBUFFER_VERSION;
-    d2.cBuffers:=1;
-    d2.pBuffers:=@d[2];
-
-    d[2].cbBuffer:=$10000;;
-    d[2].BufferType:=SECBUFFER_TOKEN;
-    d[2].pvBuffer:=@t[1];
-
-    if (FSocket.Ctxt.dwLower=nil) and (FSocket.Ctxt.dwUpper=nil) then
-      p:=nil
-    else
-      p:=@FSocket.Ctxt;
-    r:=AcceptSecurityContext(@FSocket.Cred,p,@d1,
-      ASC_REQ_REPLAY_DETECT or ASC_REQ_SEQUENCE_DETECT,SECURITY_NATIVE_DREP,
-      @FSocket.Ctxt,@d2,@f,nil);
-
-    if r=SEC_E_OK then
+    s:=AuthParse('NTLM');
+    if s='' then
      begin
-      r:=QueryContextAttributes(@FSocket.Ctxt,SECPKG_ATTR_NAMES,@n);
-      if r=0 then
-        AuthSet(n.sUserName,'')
-      else
-        AuthSet('???'+AnsiString(SysErrorMessage(r)),'');//raise?
-      DeleteSecurityContext(@FSocket.Ctxt);
-      FSocket.Ctxt.dwLower:=nil;
-      FSocket.Ctxt.dwUpper:=nil;
-     end
-    else
-    if r=SEC_I_CONTINUE_NEEDED then
-     begin
-      SetLength(t,d[2].cbBuffer);
       SetStatus(401,'Unauthorized');
       AddResponseHeader('Connection','keep-alive');
-      AddResponseHeader('WWW-Authenticate','NTLM '+UTF8ToWideString(Base64Encode(t)));
-      ResponseStr('<h1>Authorization required</h1>','401.1');
+      AddResponseHeader('WWW-Authenticate','NTLM');
+      if FPostData<>nil then
+        try
+          //flush post data if any
+          r:=$10000;
+          SetLength(s,r);
+          while FPostData.Read(s[1],r)<>0 do ;
+        except
+          //ignore
+        end;
+      ResponseStr('<h1>Authorization required</h1>','401');
      end
     else
-      raise Exception.Create(SysErrorMessage(r));
+     begin
+      if FSocket.Cred.dwLower=nil then
+        if AcquireCredentialsHandle(nil,'NTLM',SECPKG_CRED_INBOUND,
+          nil,nil,nil,nil,@FSocket.Cred,nil)<>0 then RaiseLastOSError;
+
+      SetLength(d,3);
+      SetLength(t,$10000);
+
+      d1.ulVersion:=SECBUFFER_VERSION;
+      d1.cBuffers:=2;
+      d1.pBuffers:=@d[0];
+
+      d[0].cbBuffer:=Length(s);
+      d[0].BufferType:=SECBUFFER_TOKEN;
+      d[0].pvBuffer:=@s[1];
+
+      d[1].cbBuffer:=0;
+      d[1].BufferType:=SECBUFFER_EMPTY;
+      d[1].pvBuffer:=nil;
+
+      d2.ulVersion:=SECBUFFER_VERSION;
+      d2.cBuffers:=1;
+      d2.pBuffers:=@d[2];
+
+      d[2].cbBuffer:=$10000;;
+      d[2].BufferType:=SECBUFFER_TOKEN;
+      d[2].pvBuffer:=@t[1];
+
+      if (FSocket.Ctxt.dwLower=nil) and (FSocket.Ctxt.dwUpper=nil) then
+        p:=nil
+      else
+        p:=@FSocket.Ctxt;
+      r:=AcceptSecurityContext(@FSocket.Cred,p,@d1,
+        ASC_REQ_REPLAY_DETECT or ASC_REQ_SEQUENCE_DETECT,SECURITY_NATIVE_DREP,
+        @FSocket.Ctxt,@d2,@f,nil);
+
+      if r=SEC_E_OK then
+       begin
+        r:=QueryContextAttributes(@FSocket.Ctxt,SECPKG_ATTR_NAMES,@n);
+        if r=0 then
+          AuthSet(n.sUserName,'')
+        else
+          AuthSet('???'+AnsiString(SysErrorMessage(r)),'');//raise?
+        DeleteSecurityContext(@FSocket.Ctxt);
+        FSocket.Ctxt.dwLower:=nil;
+        FSocket.Ctxt.dwUpper:=nil;
+        FAuthStoreCache:=true;//see GetSessionID
+       end
+      else
+      if r=SEC_I_CONTINUE_NEEDED then
+       begin
+        SetLength(t,d[2].cbBuffer);
+        SetStatus(401,'Unauthorized');
+        AddResponseHeader('Connection','keep-alive');
+        AddResponseHeader('WWW-Authenticate','NTLM '+UTF8ToWideString(Base64Encode(t)));
+        ResponseStr('<h1>Authorization required</h1>','401.1');
+       end
+      else
+        raise Exception.Create(SysErrorMessage(r));
+     end;
    end;
 end;
 
@@ -533,9 +544,6 @@ begin
   Result:=UTF8ToWideString(GetParamValue(FCookie,FCookieIdx,UTF8Encode(Name)));
 end;
 
-var
-  SessionCookie:string;
-
 function TXxmHttpContext.GetSessionID: WideString;
 begin
   if FSessionID='' then
@@ -546,6 +554,8 @@ begin
       FSessionID:=Copy(CreateClassID,2,32);
       SetCookie(SessionCookie,FSessionID+'; Path=/; SameSite=Lax');//expiry?
      end;
+    if FAuthStoreCache then
+      XxmProjectCache.SetAuthCache(FSessionID,AuthValue(csAuthUser));
    end;
   Result:=FSessionID;
 end;

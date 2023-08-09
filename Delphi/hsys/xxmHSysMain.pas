@@ -39,7 +39,7 @@ type
     FStringCacheSize,FStringCacheIndex:integer;
     FURI:AnsiString;
     FRedirectPrefix,FSessionID:WideString;
-    FCookieParsed: boolean;
+    FCookieParsed, FAuthStoreCache: boolean;
     FCookie: AnsiString;
     FCookieIdx: TParamIndexes;
     FQueryStringIndex:integer;
@@ -154,6 +154,9 @@ resourcestring
 
 const
   StringCacheGrowStep=$20;
+
+var
+  SessionCookie:string;
 
 { TXxmHSysContext }
 
@@ -273,66 +276,73 @@ var
   d:array of TSecBuffer;
   n:TSecPkgContextNames;
 begin
-  s:=AuthParse('NTLM');
-  if s='' then
-   begin
-    SetStatus(401,'Unauthorized');
-    SetResponseHeader(HttpHeaderConnection,'keep-alive');
-    SetResponseHeader(HttpHeaderWwwAuthenticate,'NTLM');
-    ResponseStr('<h1>Authorization required</h1>','401');
-   end
+  FAuthStoreCache:=false;//default
+  s:=XxmProjectCache.GetAuthCache(GetCookie(SessionCookie));
+  if s<>'' then
+    AuthSet(s,'') //TODO: update Expires?
   else
    begin
-    SSPICache.GetContext(FReq.ConnectionId,c,p);
-
-    SetLength(d,3);
-    SetLength(t,$10000);
-
-    d1.ulVersion:=SECBUFFER_VERSION;
-    d1.cBuffers:=2;
-    d1.pBuffers:=@d[0];
-
-    d[0].cbBuffer:=Length(s);
-    d[0].BufferType:=SECBUFFER_TOKEN;
-    d[0].pvBuffer:=@s[1];
-
-    d[1].cbBuffer:=0;
-    d[1].BufferType:=SECBUFFER_EMPTY;
-    d[1].pvBuffer:=nil;
-
-    d2.ulVersion:=SECBUFFER_VERSION;
-    d2.cBuffers:=1;
-    d2.pBuffers:=@d[2];
-
-    d[2].cbBuffer:=$10000;;
-    d[2].BufferType:=SECBUFFER_TOKEN;
-    d[2].pvBuffer:=@t[1];
-
-    if (p.dwLower=nil) and (p.dwUpper=nil) then p1:=nil else p1:=p;
-    r:=AcceptSecurityContext(c,p1,@d1,
-      ASC_REQ_REPLAY_DETECT or ASC_REQ_SEQUENCE_DETECT,SECURITY_NATIVE_DREP,
-      p,@d2,@f,nil);
-
-    if r=SEC_E_OK then
+    s:=AuthParse('NTLM');
+    if s='' then
      begin
-      r:=QueryContextAttributes(p,SECPKG_ATTR_NAMES,@n);
-      if r=0 then
-        AuthSet(n.sUserName,'')
-      else
-        AuthSet(AnsiString('???'+SysErrorMessage(r)),'');//raise?
-      SSPICache.Clear(FReq.ConnectionId);
-     end
-    else
-    if r=SEC_I_CONTINUE_NEEDED then
-     begin
-      SetLength(t,d[2].cbBuffer);
       SetStatus(401,'Unauthorized');
-      AddResponseHeader('Connection','keep-alive');
-      AddResponseHeader('WWW-Authenticate',WideString('NTLM '+Base64Encode(t)));
-      ResponseStr('<h1>Authorization required</h1>','401.1');
+      SetResponseHeader(HttpHeaderConnection,'keep-alive');
+      SetResponseHeader(HttpHeaderWwwAuthenticate,'NTLM');
+      ResponseStr('<h1>Authorization required</h1>','401');
      end
     else
-      raise Exception.Create(SysErrorMessage(r));
+     begin
+      SSPICache.GetContext(FReq.ConnectionId,c,p);
+
+      SetLength(d,3);
+      SetLength(t,$10000);
+
+      d1.ulVersion:=SECBUFFER_VERSION;
+      d1.cBuffers:=2;
+      d1.pBuffers:=@d[0];
+
+      d[0].cbBuffer:=Length(s);
+      d[0].BufferType:=SECBUFFER_TOKEN;
+      d[0].pvBuffer:=@s[1];
+
+      d[1].cbBuffer:=0;
+      d[1].BufferType:=SECBUFFER_EMPTY;
+      d[1].pvBuffer:=nil;
+
+      d2.ulVersion:=SECBUFFER_VERSION;
+      d2.cBuffers:=1;
+      d2.pBuffers:=@d[2];
+
+      d[2].cbBuffer:=$10000;;
+      d[2].BufferType:=SECBUFFER_TOKEN;
+      d[2].pvBuffer:=@t[1];
+
+      if (p.dwLower=nil) and (p.dwUpper=nil) then p1:=nil else p1:=p;
+      r:=AcceptSecurityContext(c,p1,@d1,
+        ASC_REQ_REPLAY_DETECT or ASC_REQ_SEQUENCE_DETECT,SECURITY_NATIVE_DREP,
+        p,@d2,@f,nil);
+
+      if r=SEC_E_OK then
+       begin
+        r:=QueryContextAttributes(p,SECPKG_ATTR_NAMES,@n);
+        if r=0 then
+          AuthSet(n.sUserName,'')
+        else
+          AuthSet(AnsiString('???'+SysErrorMessage(r)),'');//raise?
+        SSPICache.Clear(FReq.ConnectionId);
+       end
+      else
+      if r=SEC_I_CONTINUE_NEEDED then
+       begin
+        SetLength(t,d[2].cbBuffer);
+        SetStatus(401,'Unauthorized');
+        AddResponseHeader('Connection','keep-alive');
+        AddResponseHeader('WWW-Authenticate',WideString('NTLM '+Base64Encode(t)));
+        ResponseStr('<h1>Authorization required</h1>','401.1');
+       end
+      else
+        raise Exception.Create(SysErrorMessage(r));
+     end;
    end;
 end;
 
@@ -433,8 +443,6 @@ begin
 end;
 
 function TXxmHSysContext.GetSessionID: WideString;
-const
-  SessionCookie='xxmSessionID';
 begin
   if FSessionID='' then
    begin
@@ -444,6 +452,8 @@ begin
       FSessionID:=Copy(CreateClassID,2,32);
       SetCookie(SessionCookie,FSessionID);//expiry?
      end;
+    if FAuthStoreCache then
+      XxmProjectCache.SetAuthCache(FSessionID,AuthValue(csAuthUser));
    end;
   Result:=FSessionID;
 end;
@@ -953,4 +963,5 @@ initialization
   StatusBuildError:=503;//TODO: from settings
   StatusException:=500;
   StatusFileNotFound:=404;
+  SessionCookie:='xxm'+Copy(CreateClassID,2,8);
 end.
