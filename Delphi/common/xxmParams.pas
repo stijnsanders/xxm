@@ -175,8 +175,9 @@ begin
    begin
     p:=r;
     q:=r;
-    while (q<=l) and (pd[q]<>'=') do inc(q);
-    r:=q+1;
+    while (q<=l) and (pd[q]<>'=') and (pd[q]<>'&') do inc(q);
+    r:=q;
+    if (q<=l) and (pd[q]='=') then inc(r);
     while (r<=l) and (pd[r]<>'&') do inc(r);
     Add(TXxmReqParGet.Create(Self,
       UTF8ToWideString(Copy(pd,p,q-p)),
@@ -214,8 +215,9 @@ begin
        begin
         p:=r;
         q:=r;
-        while (q<=l) and (pd[q]<>'=') do inc(q);
-        r:=q+1;
+        while (q<=l) and (pd[q]<>'=') and (pd[q]<>'&') do inc(q);
+        r:=q;
+        if (q<=l) and (pd[q]='=') then inc(r);
         while (r<=l) and (pd[r]<>'&') do inc(r);
         Add(TXxmReqParPost.Create(Self,
           URLDecode(Copy(pd,p,q-p)),
