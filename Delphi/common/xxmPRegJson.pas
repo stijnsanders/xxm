@@ -25,6 +25,7 @@ type
       Name,Alias:string;
       Entry:TXxmProjectCacheEntry;
       LoadCheck:boolean;
+      SortIndex:integer;
     end;
     FRegFilePath,FRegSignature,FDefaultProject,FSingleProject:string;
     FRegLastCheckTC:cardinal;
@@ -185,16 +186,55 @@ begin
   inherited;
 end;
 
+function LCSC(const a,b:string):integer; //lower case string compare
+var
+  i,al,bl:integer;
+begin
+  al:=Length(a);
+  bl:=Length(b);
+  i:=1;
+  Result:=0;
+  while (Result=0) and (i<=al) and (i<=bl) do
+    if a[i]<b[i] then
+      Result:=-1
+    else
+      if a[i]>b[i] then
+        Result:=1
+      else
+        inc(i);
+  if Result=0 then
+    if (i<=al) then
+      Result:=1
+    else
+      if (i<=bl) then
+        Result:=-1;
+end;
+
 function TXxmProjectCacheJson.FindProject(const Name: string): integer;
 var
   n:string;
+  a,b,c,m:integer;
 begin
   n:=LowerCase(Name);
   //assert cache stores ProjectName already LowerCase!
-  Result:=0;
-  while (Result<FProjectsCount) and (FProjects[Result].Name<>n) do
-    inc(Result);
-  if Result=FProjectsCount then Result:=-1;
+  a:=0;
+  b:=FProjectsCount-1;
+  Result:=-1;
+  while a<=b do
+   begin
+    c:=(a+b) div 2;
+    m:=LCSC(n,FProjects[FProjects[c].SortIndex].Name);
+    if m<0 then
+      if b=c then dec(b) else b:=c
+    else
+      if m>0 then
+        if a=c then inc(a) else a:=c
+      else
+       begin
+        b:=a-1;//end loop
+        Result:=FProjects[c].SortIndex;
+       end;
+   end;
 end;
 
 function TXxmProjectCacheJson.GetRegistrySignature: string;
@@ -307,9 +347,9 @@ end;
 
 procedure TXxmProjectCacheJson.CheckRegistry;
 var
-  s:string;
+  s,n:string;
   p:WideString;
-  i:integer;
+  i,j,a,b,c,m:integer;
   d,d1:IJSONDocument;
   e:IJSONEnumerator;
 begin
@@ -334,7 +374,29 @@ begin
           while e.Next do
            begin
             d1:=JSON(e.Value);
-            i:=FindProject(e.Key);
+            //i:=FindProject(e.Key);
+
+            n:=LowerCase(e.Key);
+            a:=0;
+            b:=FProjectsCount-1;
+            i:=-1;
+            while a<=b do
+             begin
+              c:=(a+b) div 2;
+              m:=LCSC(n,FProjects[FProjects[c].SortIndex].Name);
+              if m<0 then
+                if b=c then dec(b) else b:=c
+              else
+                if m>0 then
+                  if a=c then inc(a) else a:=c
+                else
+                 begin
+                  a:=c;
+                  b:=a-1;
+                  i:=c;
+                 end;
+             end;
+
             if (i<>-1) and (FProjects[i].LoadCheck) then i:=-1;//duplicate! raise?
             if i=-1 then
              begin
@@ -346,8 +408,16 @@ begin
                end;
               i:=FProjectsCount;
               inc(FProjectsCount);
-              FProjects[i].Name:=LowerCase(e.Key);
+              FProjects[i].Name:=n;
               FProjects[i].Entry:=nil;//create see below
+              //sort index
+              j:=i;
+              while j>a do
+               begin
+                FProjects[j].SortIndex:=FProjects[j-1].SortIndex;
+                dec(j);
+               end;
+              FProjects[j].SortIndex:=i;
              end;
             FProjects[i].LoadCheck:=true;
             FProjects[i].Alias:=VarToStr(d1['alias']);
