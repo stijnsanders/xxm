@@ -7,7 +7,7 @@ uses Windows, SysUtils, xxm, xxmPReg, jsonDoc;
 type
   TXxmProjectCacheEntry=class(TXxmProjectEntry)
   private
-    FAllowInclude,FNTLM:boolean;
+    FAllowInclude,FNTLM,FNegotiate:boolean;
   protected
     procedure SetSignature(const Value: string); override;
     function GetExtensionMimeType(const x: AnsiString): AnsiString; override;
@@ -16,6 +16,7 @@ type
     constructor Create(const Name, FilePath: WideString; LoadCopy: boolean);
     destructor Destroy; override;
     property NTLM:boolean read FNTLM;
+    property Negotiate:boolean read FNegotiate;
   end;
 
   TXxmProjectCacheJson=class(TXxmProjectCache)
@@ -100,6 +101,7 @@ begin
   SetFilePath(FilePath,LoadCopy);
   FAllowInclude:=false;//default
   FNTLM:=false;//default
+  FNegotiate:=false;//default
 end;
 
 destructor TXxmProjectCacheEntry.Destroy;
@@ -447,6 +449,7 @@ begin
               FProjects[i].Entry.FSignature:=VarToStr(d1['signature']);
               FProjects[i].Entry.FBufferSize:=BSize(VarToStr(d1['bufferSize']));
               FProjects[i].Entry.FNTLM:=VarToBool(d1['ntlm']);
+              FProjects[i].Entry.FNegotiate:=VarToBool(d1['negotiate']);
              end
             else
               FreeAndNil(FProjects[i].Entry);

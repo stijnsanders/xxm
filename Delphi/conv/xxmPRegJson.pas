@@ -23,7 +23,8 @@ type
   public
     constructor Create(const Name: WideString);
     destructor Destroy; override;
-	function NTLM:boolean;
+    function NTLM:boolean;
+    function Negotiate:boolean;
   end;
 
   TXxmProjectCacheJson=class(TXxmProjectCache)
@@ -91,6 +92,11 @@ begin
 end;
 
 function TXxmProjectCacheEntry.NTLM:boolean;
+begin
+  Result:=false;
+end;
+
+function TXxmProjectCacheEntry.Negotiate:boolean;
 begin
   Result:=false;
 end;

@@ -1,5 +1,6 @@
 v1.2.7.?
-- NTLM: cache by SessionID to avoid 401's on every request
+- Negotiate: like NTLM but less in danger of getting removed in Windows 11...
+- NTLM/Negotiate: cache by SessionID to avoid 401's on every request
 - parse ?x&y=1 as 'x'='','y'='1' in query string and form data (was 'x&y'='1' previously)
 
 v1.2.6.466

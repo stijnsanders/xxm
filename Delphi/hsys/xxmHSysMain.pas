@@ -51,7 +51,7 @@ type
     function GetResponseHeaderIndex(Idx:integer):WideString;
     procedure SetResponseHeaderIndex(Idx:integer;const Value:WideString);
     procedure ResponseStr(const Body,RedirMsg:WideString);
-    procedure AuthNTLM;
+    procedure AuthSChannel(const Package:AnsiString);
   protected
     function SendData(const Buffer; Count: LongInt): LongInt;
     procedure DispositionAttach(const FileName: WideString); override;
@@ -266,7 +266,7 @@ begin
   end;
 end;
 
-procedure TXxmHsysContext.AuthNTLM;
+procedure TXxmHsysContext.AuthSChannel(const Package:AnsiString);
 var
   s,t:AnsiString;
   c:PCredHandle;
@@ -282,12 +282,12 @@ begin
     AuthSet(s,'') //TODO: update Expires?
   else
    begin
-    s:=AuthParse('NTLM');
+    s:=AuthParse(string(Package));
     if s='' then
      begin
       SetStatus(401,'Unauthorized');
       SetResponseHeader(HttpHeaderConnection,'keep-alive');
-      SetResponseHeader(HttpHeaderWwwAuthenticate,'NTLM');
+      SetResponseHeader(HttpHeaderWwwAuthenticate,Package);
       ResponseStr('<h1>Authorization required</h1>','401');
      end
     else
@@ -337,7 +337,7 @@ begin
         SetLength(t,d[2].cbBuffer);
         SetStatus(401,'Unauthorized');
         AddResponseHeader('Connection','keep-alive');
-        AddResponseHeader('WWW-Authenticate',WideString('NTLM '+Base64Encode(t)));
+        AddResponseHeader('WWW-Authenticate',WideString(Package+' '+Base64Encode(t)));
         ResponseStr('<h1>Authorization required</h1>','401.1');
        end
       else
@@ -347,8 +347,12 @@ begin
 end;
 
 function TXxmHSysContext.GetProjectPage(const FragmentName: WideString):IXxmFragment;
+var
+  e:TXxmProjectCacheEntry;
 begin
-  if (ProjectEntry as TXxmProjectCacheEntry).NTLM then AuthNTLM;
+  e:=ProjectEntry as TXxmProjectCacheEntry;
+  if e.Negotiate then AuthSChannel('Negotiate') else
+    if e.NTLM then AuthSChannel('NTLM');
   Result:=inherited GetProjectPage(FragmentName);
 end;
 

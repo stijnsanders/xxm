@@ -22,7 +22,7 @@ type
     FCookieIdx: TParamIndexes;
     FQueryStringIndex:integer;
     procedure ResponseStr(const Body,RedirMsg:WideString);
-    procedure AuthNTLM;
+    procedure AuthSChannel(const Package:AnsiString);
   protected
     function GetSessionID: WideString; override;
     procedure DispositionAttach(const FileName: WideString); override;
@@ -388,7 +388,7 @@ begin
   Result:=XxmProjectCache.GetProject(FProjectName);
 end;
 
-procedure TXxmHttpContext.AuthNTLM;
+procedure TXxmHttpContext.AuthSChannel(const Package:AnsiString);
 var
   s,t:AnsiString;
   p:PCtxtHandle;
@@ -403,12 +403,12 @@ begin
     AuthSet(s,'') //TODO: update Expires?
   else
    begin
-    s:=AuthParse('NTLM');
+    s:=AuthParse(string(Package));
     if s='' then
      begin
       SetStatus(401,'Unauthorized');
       AddResponseHeader('Connection','keep-alive');
-      AddResponseHeader('WWW-Authenticate','NTLM');
+      AddResponseHeader('WWW-Authenticate',WideString(Package));
       if FPostData<>nil then
         try
           //flush post data if any
@@ -423,7 +423,7 @@ begin
     else
      begin
       if FSocket.Cred.dwLower=nil then
-        if AcquireCredentialsHandle(nil,'NTLM',SECPKG_CRED_INBOUND,
+        if AcquireCredentialsHandle(nil,PAnsiChar(Package),SECPKG_CRED_INBOUND,
           nil,nil,nil,nil,@FSocket.Cred,nil)<>0 then RaiseLastOSError;
 
       SetLength(d,3);
@@ -475,7 +475,7 @@ begin
         SetLength(t,d[2].cbBuffer);
         SetStatus(401,'Unauthorized');
         AddResponseHeader('Connection','keep-alive');
-        AddResponseHeader('WWW-Authenticate','NTLM '+UTF8ToWideString(Base64Encode(t)));
+        AddResponseHeader('WWW-Authenticate',UTF8ToWideString(Package+' '+Base64Encode(t)));
         ResponseStr('<h1>Authorization required</h1>','401.1');
        end
       else
@@ -485,8 +485,12 @@ begin
 end;
 
 function TXxmHttpContext.GetProjectPage(const FragmentName: WideString):IXxmFragment;
+var
+  e:TXxmProjectCacheEntry;
 begin
-  if (ProjectEntry as TXxmProjectCacheEntry).NTLM then AuthNTLM;
+  e:=ProjectEntry as TXxmProjectCacheEntry;
+  if e.Negotiate then AuthSChannel('Negotiate') else
+    if e.NTLM then AuthSChannel('NTLM');
   Result:=inherited GetProjectPage(FragmentName);
   PreProcessRequestPage;
 end;
