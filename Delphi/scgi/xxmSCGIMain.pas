@@ -26,6 +26,7 @@ type
     FSocket:TTcpSocket;
     FReqHeaders:TRequestHeaders;
     FResHeaders:TResponseHeaders;
+    FProjectCache:TXxmProjectCacheLocal;
     FCGIValues:array of record
       Name,Value:AnsiString;
     end;
@@ -225,6 +226,7 @@ begin
   FCGIValuesCount:=0;
   FReqHeaders:=TRequestHeaders.Create;
   FResHeaders:=TResponseHeaders.Create;
+  FProjectCache:=TXxmProjectCacheLocal.Create;
   FSocket:=nil;
 end;
 
@@ -235,6 +237,7 @@ begin
   SetLength(FCGIValues,0);
   FReqHeaders.Free;
   FResHeaders.Free;
+  FProjectCache.Free;
   inherited;
 end;
 
@@ -515,7 +518,7 @@ end;
 
 function TXxmSCGIContext.GetProjectEntry:TXxmProjectEntry;
 begin
-  Result:=XxmProjectCache.GetProject(FProjectName);
+  Result:=FProjectCache.GetProject(FProjectName);
 end;
 
 function TXxmSCGIContext.GetProjectPage(const FragmentName: WideString):IXxmFragment;

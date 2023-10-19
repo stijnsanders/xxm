@@ -44,6 +44,7 @@ type
     FCookieIdx: TParamIndexes;
     FQueryStringIndex:integer;
     FReqHeaders:TRequestHeaders;
+    FProjectCache:TXxmProjectCacheLocal;
     procedure SetResponseHeader(id:THTTP_HEADER_ID;const Value:AnsiString);
     procedure CacheString(const x: AnsiString; var xLen: USHORT; var xPtr: PCSTR);
     function GetResponseHeaderCount:integer;
@@ -165,11 +166,13 @@ begin
   inherited;
   SendDirect:=SendData;
   FReqHeaders:=nil;//TRequestHeaders.Create;//see GetRequestHeaders
+  FProjectCache:=TXxmProjectCacheLocal.Create;
 end;
 
 destructor TXxmHSysContext.Destroy;
 begin
   FreeAndNil(FReqHeaders);
+  FreeAndNil(FProjectCache);
   inherited;
 end;
 
@@ -358,7 +361,7 @@ end;
 
 function TXxmHSysContext.GetProjectEntry: TXxmProjectEntry;
 begin
-  Result:=XxmProjectCache.GetProject(FProjectName);
+  Result:=FProjectCache.GetProject(FProjectName);
 end;
 
 function TXxmHSysContext.Connected: boolean;

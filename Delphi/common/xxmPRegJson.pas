@@ -4,6 +4,9 @@ interface
 
 uses Windows, SysUtils, xxm, xxmPReg, jsonDoc;
 
+const
+  XxmProjectCacheLocalSize=4;
+
 type
   TXxmProjectCacheEntry=class(TXxmProjectEntry)
   private
@@ -29,7 +32,7 @@ type
       SortIndex:integer;
     end;
     FRegFilePath,FRegSignature,FDefaultProject,FSingleProject:string;
-    FRegLastCheckTC:cardinal;
+    FRegLastCheckTC,FCacheIndex:cardinal;
     FFavIcon:OleVariant;
     FAuthCache:array of record
       SessionID:string;
@@ -54,6 +57,22 @@ type
 
     function GetAuthCache(const SessionID:string):AnsiString;
     procedure SetAuthCache(const SessionID:string;const AuthName:AnsiString);
+
+    property CacheIndex:cardinal read FCacheIndex;
+  end;
+
+  TXxmProjectCacheLocal=class(TObject)
+  private
+    FLocalCache:array[0..XxmProjectCacheLocalSize-1] of record
+      CacheIndex:cardinal;
+      Name:WideString;
+      Entry:TXxmProjectCacheEntry;
+    end;
+    FLocalCacheIndex1,FLocalCacheIndex2:integer;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    function GetProject(const Name:WideString):TXxmProjectCacheEntry;
   end;
 
   EXxmProjectRegistryError=class(Exception);
@@ -150,6 +169,7 @@ begin
   FRegLastCheckTC:=GetTickCount-XxmRegCheckIntervalMS-1;
   FAuthCacheIndex:=0;
   FAuthCacheSize:=0;
+  FCacheIndex:=FRegLastCheckTC;//random?
 
   SetLength(FRegFilePath,MAX_PATH);
   SetLength(FRegFilePath,GetModuleFileName(HInstance,
@@ -452,7 +472,10 @@ begin
               FProjects[i].Entry.FNegotiate:=VarToBool(d1['negotiate']);
              end
             else
+             begin
               FreeAndNil(FProjects[i].Entry);
+              inc(FCacheIndex);
+             end;
            end;
           //clean-up items removed from XML
           for i:=0 to FProjectsCount-1 do
@@ -461,6 +484,7 @@ begin
               FProjects[i].Name:='';
               FProjects[i].Alias:='';
               FreeAndNil(FProjects[i].Entry);
+              inc(FCacheIndex);
              end;
           if FSingleProject<>'' then
             LoadFavIcon(FSingleProject+'.ico');
@@ -679,6 +703,64 @@ begin
       LeaveCriticalSection(FLock);
     end;
    end;
+end;
+
+{ TXxmProjectCacheLocal }
+
+constructor TXxmProjectCacheLocal.Create;
+var
+  i:integer;
+begin
+  inherited Create;
+  FLocalCacheIndex1:=0;
+  FLocalCacheIndex2:=0;
+  for i:=0 to XxmProjectCacheLocalSize-1 do
+   begin
+    FLocalCache[i].CacheIndex:=0;//random?
+    FLocalCache[i].Name:='';
+    FLocalCache[i].Entry:=nil;
+   end;
+end;
+
+destructor TXxmProjectCacheLocal.Destroy;
+var
+  i:integer;
+begin
+  for i:=0 to XxmProjectCacheLocalSize-1 do
+   begin
+    FLocalCache[i].CacheIndex:=0;
+    FLocalCache[i].Name:='';
+    FLocalCache[i].Entry:=nil;//not FreeAndNil, see TXxmProjectCacheJson
+   end;
+  inherited;
+end;
+
+function TXxmProjectCacheLocal.GetProject(
+  const Name: WideString): TXxmProjectCacheEntry;
+var
+  i:integer;
+begin
+  //assert Name<>''
+  i:=0;
+  while (i<FLocalCacheIndex1) and not(
+    (FLocalCache[i].CacheIndex=XxmProjectCache.CacheIndex) and
+    (FLocalCache[i].Name=Name)) do inc(i);
+  if i=FLocalCacheIndex1 then
+   begin
+    Result:=XxmProjectCache.GetProject(Name);
+    if Result<>nil then
+     begin
+      i:=FLocalCacheIndex2;
+      FLocalCache[i].CacheIndex:=XxmProjectCache.CacheIndex;
+      FLocalCache[i].Name:=Name;
+      FLocalCache[i].Entry:=Result;
+      inc(FLocalCacheIndex2);
+      if FLocalCacheIndex2=XxmProjectCacheLocalSize then FLocalCacheIndex2:=0;
+      if FLocalCacheIndex1<>XxmProjectCacheLocalSize then inc(FLocalCacheIndex1);
+     end;
+   end
+  else
+    Result:=FLocalCache[i].Entry;
 end;
 
 initialization

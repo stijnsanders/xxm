@@ -17,6 +17,7 @@ type
     FResHeaders: TResponseHeaders;
     FHTTPVersion,FVerb,FURI: AnsiString;
     FRedirectPrefix,FSessionID: WideString;
+    FProjectCache: TXxmProjectCacheLocal;
     FCookieParsed, FAuthStoreCache: boolean;
     FCookie: AnsiString;
     FCookieIdx: TParamIndexes;
@@ -107,6 +108,7 @@ begin
   SendDirect:=nil;
   FReqHeaders:=TRequestHeaders.Create;
   FResHeaders:=TResponseHeaders.Create;
+  FProjectCache:=TXxmProjectCacheLocal.Create;
   inherited;
 end;
 
@@ -116,6 +118,7 @@ begin
   FreeAndNil(FSocket);
   FReqHeaders.Free;
   FResHeaders.Free;
+  FProjectCache.Free;
   inherited;
 end;
 
@@ -385,7 +388,7 @@ end;
 
 function TXxmHttpContext.GetProjectEntry:TXxmProjectEntry;
 begin
-  Result:=XxmProjectCache.GetProject(FProjectName);
+  Result:=FProjectCache.GetProject(FProjectName);
 end;
 
 procedure TXxmHttpContext.AuthSChannel(const Package:AnsiString);

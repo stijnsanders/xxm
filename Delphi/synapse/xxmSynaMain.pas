@@ -31,6 +31,7 @@ type
     FResHeaders:TResponseHeaders;
     FHTTPVersion,FVerb:AnsiString;
     FURI,FRedirectPrefix,FSessionID:WideString;
+    FProjectCache:TXxmProjectCacheLocal;
     FCookieParsed: boolean;
     FCookie: AnsiString;
     FCookieIdx: TParamIndexes;
@@ -268,6 +269,7 @@ begin
   SendDirect:=SendData;
   FReqHeaders:=TRequestHeaders.Create;
   FResHeaders:=TResponseHeaders.Create;
+  FProjectCache:=TXxmProjectCacheLocal.Create;
   inherited;
 end;
 
@@ -278,6 +280,7 @@ begin
   FSocket.Free;
   FReqHeaders.Free;
   FResHeaders.Free;
+  FProjectCache.Free;
   inherited;
 end;
 
@@ -510,7 +513,7 @@ end;
 
 function TXxmSynaContext.GetProjectEntry:TXxmProjectEntry;
 begin
-  Result:=XxmProjectCache.GetProject(FProjectName);
+  Result:=FProjectCache.GetProject(FProjectName);
 end;
 
 function TXxmSynaContext.GetProjectPage(const FragmentName: WideString):IXxmFragment;

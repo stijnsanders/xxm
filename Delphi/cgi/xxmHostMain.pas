@@ -30,6 +30,7 @@ type
     FCGIValuesSize,FCGIValuesCount:integer;
     FReqHeaders:TRequestHeaders;
     FResHeaders:TResponseHeaders;
+    FProjectCache:TXxmProjectCacheLocal;
     FConnected:boolean;
     FURI,FRedirectPrefix,FSessionID:WideString;
     FCookieParsed: boolean;
@@ -128,6 +129,7 @@ begin
   SendDirect:=SendData;
   FReqHeaders:=TRequestHeaders.Create;
   FResHeaders:=TResponseHeaders.Create;
+  FProjectCache:=TXxmProjectCacheLocal.Create;
   FCGIValuesSize:=0;
   inherited;
 end;
@@ -136,6 +138,7 @@ destructor TXxmHostedContext.Destroy;
 begin
   FReqHeaders.Free;
   FResHeaders.Free;
+  FProjectCache.Free;
   SetLength(FCGIValues,0);
   inherited;
 end;
@@ -283,7 +286,7 @@ end;
 
 function TXxmHostedContext.GetProjectEntry: TXxmProjectEntry;
 begin
-  Result:=XxmProjectCache.GetProject(FProjectName);
+  Result:=FProjectCache.GetProject(FProjectName);
 end;
 
 function TXxmHostedContext.Connected: boolean;

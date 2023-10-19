@@ -18,6 +18,7 @@ type
     FCookieParsed: boolean;
     FCookie: AnsiString;
     FCookieIdx: TParamIndexes;
+    FProjectCache: TXxmProjectCacheLocal;
   protected
     function GetSessionID:WideString; override;
     procedure DispositionAttach(const FileName: WideString); override;
@@ -58,12 +59,14 @@ resourcestring
 procedure TxxmAhttpdContext.AfterConstruction;
 begin
   SendDirect:=SendData;
+  FProjectCache:=TXxmProjectCacheLocal.Create;
   inherited;
 end;
 
 destructor TxxmAhttpdContext.Destroy;
 begin
   rq:=nil;
+  FProjectCache.Free;
   inherited;
 end;
 
@@ -142,7 +145,7 @@ end;
 
 function TxxmAhttpdContext.GetProjectEntry: TXxmProjectEntry;
 begin
-  Result:=XxmProjectCache.GetProject(FProjectName);
+  Result:=FProjectCache.GetProject(FProjectName);
 end;
 
 function TxxmAhttpdContext.Connected: boolean;

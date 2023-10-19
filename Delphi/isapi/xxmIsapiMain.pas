@@ -20,6 +20,7 @@ type
     FURI, FRedirectPrefix, FSessionID: WideString;
     FReqHeaders: TRequestHeaders;
     FResHeaders: TResponseHeaders;
+    FProjectCache: TXxmProjectCacheLocal;
     FCookieParsed: boolean;
     FCookie: AnsiString;
     FCookieIdx: TParamIndexes;
@@ -208,6 +209,7 @@ procedure TXxmIsapiContext.AfterConstruction;
 begin
   FReqHeaders:=TRequestHeaders.Create;
   FResHeaders:=TResponseHeaders.Create;
+  FProjectCache:=TXxmProjectCacheLocal.Create;
   inherited;
 end;
 
@@ -215,6 +217,7 @@ destructor TXxmIsapiContext.Destroy;
 begin
   FReqHeaders.Free;
   FResHeaders.Free;
+  FProjectCache.Free;
   inherited;
 end;
 
@@ -328,7 +331,7 @@ end;
 
 function TXxmIsapiContext.GetProjectEntry:TXxmProjectEntry;
 begin
-  Result:=XxmProjectCache.GetProject(FProjectName);
+  Result:=FProjectCache.GetProject(FProjectName);
 end;
 
 function TXxmIsapiContext.GetProjectPage(const FragmentName: WideString):IXxmFragment;
