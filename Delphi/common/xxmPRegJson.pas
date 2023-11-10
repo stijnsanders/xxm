@@ -40,7 +40,8 @@ type
       Expires:TDateTime;
     end;
     FAuthCacheIndex,FAuthCacheSize:integer;
-    function FindProject(const Name: string): integer;
+    procedure FindProject(const Name: string; var n: string;
+      var i, a: integer);
     function GetRegistrySignature: string;
     function GetRegistry: IJSONDocument;
     procedure SetSignature(const Name: WideString; const Value: string);
@@ -232,16 +233,16 @@ begin
         Result:=-1;
 end;
 
-function TXxmProjectCacheJson.FindProject(const Name: string): integer;
+procedure TXxmProjectCacheJson.FindProject(const Name: string;
+  var n: string; var i,a:integer);
 var
-  n:string;
-  a,b,c,m:integer;
+  b,c,m:integer;
 begin
   n:=LowerCase(Name);
   //assert cache stores ProjectName already LowerCase!
   a:=0;
   b:=FProjectsCount-1;
-  Result:=-1;
+  i:=-1;
   while a<=b do
    begin
     c:=(a+b) div 2;
@@ -253,8 +254,9 @@ begin
         if a=c then inc(a) else a:=c
       else
        begin
+        a:=c;
         b:=a-1;//end loop
-        Result:=FProjects[c].SortIndex;
+        i:=FProjects[c].SortIndex;
        end;
    end;
 end;
@@ -371,7 +373,7 @@ procedure TXxmProjectCacheJson.CheckRegistry;
 var
   s,n:string;
   p:WideString;
-  i,j,a,b,c,m:integer;
+  i,j,a:integer;
   d,d1:IJSONDocument;
   e:IJSONEnumerator;
 begin
@@ -396,29 +398,7 @@ begin
           while e.Next do
            begin
             d1:=JSON(e.Value);
-            //i:=FindProject(e.Key);
-
-            n:=LowerCase(e.Key);
-            a:=0;
-            b:=FProjectsCount-1;
-            i:=-1;
-            while a<=b do
-             begin
-              c:=(a+b) div 2;
-              m:=LCSC(n,FProjects[FProjects[c].SortIndex].Name);
-              if m<0 then
-                if b=c then dec(b) else b:=c
-              else
-                if m>0 then
-                  if a=c then inc(a) else a:=c
-                else
-                 begin
-                  a:=c;
-                  b:=a-1;
-                  i:=c;
-                 end;
-             end;
-
+            FindProject(e.Key,n,i,a);
             if (i<>-1) and (FProjects[i].LoadCheck) then i:=-1;//duplicate! raise?
             if i=-1 then
              begin
@@ -477,7 +457,7 @@ begin
               inc(FCacheIndex);
              end;
            end;
-          //clean-up items removed from XML
+          //clean-up items removed from registry
           for i:=0 to FProjectsCount-1 do
             if not FProjects[i].LoadCheck then
              begin
@@ -533,7 +513,8 @@ end;
 function TXxmProjectCacheJson.GetProject(const Name: WideString):
   TXxmProjectCacheEntry;
 var
-  i,d:integer;
+  n:string;
+  i,a,d:integer;
   found:boolean;
   e:TXxmProjectCacheEntry;
 begin
@@ -545,14 +526,14 @@ begin
   try
     found:=false;
     d:=0;
-    i:=FindProject(Name);
+    FindProject(Name,n,i,a);
     while (i<>-1) and not(found) do
       if FProjects[i].Alias='' then found:=true else
        begin
         inc(d);
         if d=8 then raise EXxmProjectAliasDepth.Create(StringReplace(
           SXxmProjectAliasDepth,'__',Name,[]));
-        i:=FindProject(FProjects[i].Alias);
+        FindProject(FProjects[i].Alias,n,i,a);
        end;
     if i=-1 then
       raise EXxmProjectNotFound.Create(StringReplace(
@@ -567,12 +548,13 @@ end;
 
 procedure TXxmProjectCacheJson.ReleaseProject(const Name: WideString);
 var
-  i:integer;
+  n:string;
+  i,a:integer;
 begin
   //CheckRegistry?
   EnterCriticalSection(FLock);
   try
-    i:=FindProject(Name);
+    FindProject(Name,n,i,a);
     //if i=-1 then raise?
     if i<>-1 then
      begin
