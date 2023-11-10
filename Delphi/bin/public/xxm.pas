@@ -5,8 +5,8 @@ interface
 uses SysUtils, Classes, ActiveX;
 
 const
-  //$Date: 2023-06-02 20:27:42 +0200 (vr, 02 jun 2023) $
-  XxmRevision = '$Rev: 469 $';
+  //$Date: 2023-10-27 21:31:12 +0200 (vr, 27 okt 2023) $
+  XxmRevision = '$Rev: 479 $';
 
 type
   IXxmContext = interface;//forward
@@ -453,7 +453,7 @@ function XxmVersion: TXxmVersion;
 begin
   Result.Major:=1;
   Result.Minor:=2;
-  Result.Release:=6;
+  Result.Release:=7;
   Result.Build:=StrToInt(Copy(XxmRevision,7,Length(XxmRevision)-8));
 end;
 
