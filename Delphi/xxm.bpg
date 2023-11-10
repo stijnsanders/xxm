@@ -9,15 +9,15 @@ MAKE = $(ROOT)\bin\make.exe -$(MAKEFLAGS) -f$**
 DCC = $(ROOT)\bin\dcc32.exe $**
 BRCC = $(ROOT)\bin\brcc32.exe $**
 #------------------------------------------------------------------------------
-PROJECTS = xxmConv.exe xxmProto.xxl xxmProject.exe xxmRun.exe xxmLocal.dll \
-  xxmLocalAU.dll xxmLocalDev.dll xxmIsapiEx.dll xxmIsapiAU.dll xxmIsapiDev.dll \
-  xxmHttp.exe xxmHttpAU.exe xxmHttpDev.exe xxmHttpSvc.exe xxmHttpSvcAU.exe \
-  xxmCGI.exe xxmHost.exe xxmHostAU.exe xxmHostDev.exe xxmHostSvc.exe \
-  xxmHostSvcAU.exe xxmSCGI.exe xxmSCGIAU.exe xxmSCGIDev.exe xxmSCGISvc.exe \
-  xxmSCGISvcAU.exe xxmAhttpd.dll xxmAhttpdAU.dll xxmAhttpdDev.dll xxmHSys1.exe \
-  xxmHSys1AU.exe xxmHSys1Dev.exe xxmHSys1Svc.exe xxmHSys1SvcAU.exe xxmHSys2.exe \
-  xxmHSys2AU.exe xxmHSys2Dev.exe xxmHSys2Svc.exe xxmHSys2SvcAU.exe xxmSyna.exe \
-  xxmSynaAU.exe xxmSynaDev.exe xxmSynaSvc.exe xxmSynaSvcAU.exe
+PROJECTS = xxmConv.exe xxmProto.xxl xxmProject.exe xxmIsapiEx.dll \
+  xxmIsapiAU.dll xxmIsapiDev.dll xxmHttp.exe xxmHttpAU.exe xxmHttpDev.exe \
+  xxmHttpSvc.exe xxmHttpSvcAU.exe xxmCGI.exe xxmHost.exe xxmHostAU.exe \
+  xxmHostDev.exe xxmHostSvc.exe xxmHostSvcAU.exe xxmSCGI.exe xxmSCGIAU.exe \
+  xxmSCGIDev.exe xxmSCGISvc.exe xxmSCGISvcAU.exe xxmAhttpd.dll xxmAhttpdAU.dll \
+  xxmAhttpdDev.dll xxmHSys1.exe xxmHSys1AU.exe xxmHSys1Dev.exe xxmHSys1Svc.exe \
+  xxmHSys1SvcAU.exe xxmHSys2.exe xxmHSys2AU.exe xxmHSys2Dev.exe xxmHSys2Svc.exe \
+  xxmHSys2SvcAU.exe xxmSyna.exe xxmSynaAU.exe xxmSynaDev.exe xxmSynaSvc.exe \
+  xxmSynaSvcAU.exe
 #------------------------------------------------------------------------------
 default: $(PROJECTS)
 #------------------------------------------------------------------------------
@@ -28,12 +28,6 @@ xxmConv.exe: conv\xxmConv.dpr
 xxmProto.xxl: proto\xxmProto.dpr
   $(DCC)
 
-xxmLocal.dll: local\xxmLocal.dpr
-  $(DCC)
-
-xxmLocalDev.dll: local\xxmLocalDev.dpr
-  $(DCC)
-
 xxmIsapiEx.dll: isapi\xxmIsapiEx.dpr
   $(DCC)
 
@@ -41,9 +35,6 @@ xxmIsapiDev.dll: isapi\xxmIsapiDev.dpr
   $(DCC)
 
 xxmHttp.exe: http\xxmHttp.dpr
-  $(DCC)
-
-xxmLocalAU.dll: local\xxmLocalAU.dpr
   $(DCC)
 
 xxmIsapiAU.dll: isapi\xxmIsapiAU.dpr
@@ -59,9 +50,6 @@ xxmHttpSvc.exe: http\xxmHttpSvc.dpr
   $(DCC)
 
 xxmHttpSvcAU.exe: http\xxmHttpSvcAU.dpr
-  $(DCC)
-
-xxmRun.exe: run\xxmRun.dpr
   $(DCC)
 
 xxmCGI.exe: cgi\xxmCGI.dpr

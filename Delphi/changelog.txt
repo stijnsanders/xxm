@@ -1,3 +1,6 @@
+v1.2.8.?
+- deprecated: xxmLocal, xxmRun
+
 v1.2.7.477
 - Negotiate: like NTLM but less in danger of getting removed in Windows 11...
 - NTLM/Negotiate: cache by SessionID to avoid 401's on every request
