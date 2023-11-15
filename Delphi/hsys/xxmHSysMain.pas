@@ -567,7 +567,8 @@ begin
     for i:=0 to FReq.Headers.UnknownHeaderCount-1 do
       s:=s+PHTTP_UNKNOWN_HEADER_ARRAY(FReq.Headers.pUnknownHeaders)[i].pName+': '+
         PHTTP_UNKNOWN_HEADER_ARRAY(FReq.Headers.pUnknownHeaders)[i].pRawValue+#13#10;
-    FReqHeaders.Load(s+#13#10);
+    s:=s+#13#10;
+    FReqHeaders.Load(s,1,Length(s));
    end;
   Result:=FReqHeaders;
 end;

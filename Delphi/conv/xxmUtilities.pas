@@ -120,7 +120,7 @@ begin
 end;
 
 
-function IsReservedWord(const x:AnsiString):boolean;
+function IsReservedWord(const x:string):boolean;
 const
   ResWordsCount=65;
   ResWords:array[0..ResWordsCount-1] of string=(
@@ -149,13 +149,13 @@ var
   i:integer;
 begin
   //assert x<>''
-  c:=x[1];
+  c:=AnsiChar(x[1]);
   //skip anything longer than longest word
   if not(c in ['A'..'Z','a'..'z']) or (Length(x)>ResWordMaxLength[byte(c) and $1F]) then
     Result:=false
   else
    begin
-    y:=LowerCase(string(x));
+    y:=LowerCase(x);
     i:=0;
     while (i<ResWordsCount) and (y<>ResWords[i]) do inc(i);
     Result:=i<ResWordsCount;
@@ -219,7 +219,7 @@ begin
     end;
   //assert CID<>''
   if not(AnsiChar(Result[1]) in ['A'..'Z','a'..'z']) then Result:='x'+Result;
-  if IsReservedWord(AnsiString(Result)) then
+  if IsReservedWord(Result) then
     if LowerCase(Result)='or' then
       Result:='x_'+Result
     else

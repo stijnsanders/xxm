@@ -218,11 +218,12 @@ end;
 
 procedure TXxmHttpContext.HandleRequest;
 var
-  i,j,k,l,m,n:integer;
-  x,y:AnsiString;
+  i,j,k,l,m,n,p:integer;
+  x:AnsiString;
   s:TStream;
   si:int64;
   tc:cardinal;
+  cl:string;
 begin
   try
     tc:=GetTickCount;
@@ -232,12 +233,12 @@ begin
 //      (FSocket as TTcpSecureSocket).Negotiate;
 
     //command line and headers
-    y:='';
     k:=0;
     l:=0;
     m:=0;
     i:=1;
     j:=1;
+    p:=1;
     repeat
       if j>l then   
        begin
@@ -274,10 +275,10 @@ begin
           FHTTPVersion:=Copy(x,i,j-i);
           AllowChunked:=FHTTPVersion='HTTP/1.1';
           inc(m);
+          p:=j;
          end
         else
          begin
-          y:=y+Copy(x,i,j-i)+#13#10;
           if i=j then m:=-1 else
            begin
             inc(m);
@@ -285,13 +286,12 @@ begin
               raise EXxmMaximumHeaderLines.Create(SXxmMaximumHeaderLines);
            end;
          end;
-        inc(j);
-        if (j<=l) and (x[j]=#10) then inc(j);
+        inc(j);//#13
+        if (j<=l) and (x[j]=#10) then inc(j);//#10
         i:=j;
        end;
     until m=-1;
-    x:=Copy(x,j,l-j+1);
-    FReqHeaders.Load(y);
+    FReqHeaders.Load(x,p,l);
 
     ProcessRequestHeaders;
     //if XxmProjectCache=nil then XxmProjectCache:=TXxmProjectCacheXml.Create;
@@ -319,10 +319,10 @@ begin
     PreProcessRequest;
 
     //if Verb<>'GET' then?
-    y:=UTF8Encode(FReqHeaders['Content-Length']);
-    if y<>'' then
+    cl:=FReqHeaders['Content-Length'];
+    if cl<>'' then
      begin
-      si:=StrToInt(string(y));
+      si:=StrToInt(cl);
       if si<PostDataThreshold then
         s:=THeapStream.Create
       else
@@ -335,7 +335,7 @@ begin
        end;
       s.Size:=si;
       s.Position:=0;
-      FPostData:=THandlerReadStreamAdapter.Create(FSocket,si,s,x);
+      FPostData:=THandlerReadStreamAdapter.Create(FSocket,si,s,x,j,l);
      end;
 
     if FVerb='OPTIONS' then
@@ -456,6 +456,7 @@ begin
         p:=nil
       else
         p:=@FSocket.Ctxt;
+
       r:=AcceptSecurityContext(@FSocket.Cred,p,@d1,
         ASC_REQ_REPLAY_DETECT or ASC_REQ_SEQUENCE_DETECT,SECURITY_NATIVE_DREP,
         @FSocket.Ctxt,@d2,@f,nil);
@@ -494,9 +495,9 @@ begin
   e:=ProjectEntry as TXxmProjectCacheEntry;
   if e.Negotiate then AuthSChannel('Negotiate') else
     if e.NTLM then AuthSChannel('NTLM');
-  Result:=inherited GetProjectPage(FragmentName);
-  PreProcessRequestPage;
-end;
+      Result:=inherited GetProjectPage(FragmentName);
+        PreProcessRequestPage;
+        end;
 
 function TXxmHttpContext.Connected: boolean;
 begin

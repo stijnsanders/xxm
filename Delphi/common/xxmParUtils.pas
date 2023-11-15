@@ -41,7 +41,7 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-    procedure Load(const Data:AnsiString);
+    procedure Load(const Data:AnsiString;StartIndex,DataLength:integer);
     procedure Reset;
     property Item[Name: OleVariant]:WideString read GetItem write SetItem; default;
     property Name[Idx: integer]:WideString read GetName write SetName;
@@ -151,7 +151,6 @@ const //resourcestring
   SXxmResponseHeaderInvalidChar='Response header add: value contains invalid character.';
   SXxmResponseHeaderAlreadySent='Response header has already been sent.';
 
-procedure SplitHeader(const Value:AnsiString; var Params:TParamIndexes);
 function SplitHeaderValue(const Value:AnsiString;ValueStart,ValueLength:integer;
   var Params:TParamIndexes):AnsiString;
 function GetParamValue(const Data:AnsiString;
@@ -192,58 +191,6 @@ begin
 end;
 
 {  }
-
-procedure SplitHeader(const Value:AnsiString; var Params:TParamIndexes);
-var
-  b:boolean;
-  p,q,l,r,i,pl:integer;
-begin
-  q:=1;
-  i:=0;
-  pl:=0;
-  l:=Length(Value);
-  while (q<=l) do
-   begin
-    p:=q;
-    b:=false;
-    while (q<=l) and not(b and (Value[q]=#10)) do
-     begin
-      b:=Value[q]=#13;
-      inc(q);
-     end;
-    inc(q);
-
-    if q-p<>2 then
-     begin
-      r:=p;
-      while (r<=q) and (Value[r] in [#1..#32]) do inc(r);
-      if r=p then
-       begin
-        if i=pl then
-         begin
-          inc(pl,$10);//grow
-          SetLength(Params,pl);
-         end;
-        Params[i].NameStart:=p;
-        r:=p;
-        while (r<=q) and (Value[r]<>':') do inc(r);
-        Params[i].NameLength:=r-p;
-        inc(r);
-        while (r<=q) and (Value[r] in [#1..#32]) do inc(r);
-        Params[i].ValueStart:=r;
-        Params[i].ValueLength:=q-r-2;//2 from Length(EOL)
-        inc(i);
-       end
-      else
-       begin
-        //assert i<>0
-        Params[i].ValueLength:=q-Params[i].ValueStart-2;
-        //TODO: kill EOF and whitespace?
-       end;
-     end;
-   end;
-  SetLength(Params,i);
-end;
 
 function SplitHeaderValue(const Value:AnsiString;
   ValueStart,ValueLength:integer;var Params:TParamIndexes):AnsiString;
@@ -574,10 +521,57 @@ begin
   inherited;
 end;
 
-procedure TRequestHeaders.Load(const Data: AnsiString);
+procedure TRequestHeaders.Load(const Data:AnsiString;StartIndex,DataLength:integer);
+var
+  b:boolean;
+  p,q,l,r,i,pl:integer;
 begin
   FData:=Data;
-  SplitHeader(FData,FIdx);
+  q:=StartIndex;//assert >0
+  i:=0;
+  pl:=0;
+  //assert Length(FData)>=DataLength;
+  l:=DataLength;
+  while (q<=l) do
+   begin
+    p:=q;
+    b:=false;
+    while (q<=l) and not(b and (FData[q]=#10)) do
+     begin
+      b:=FData[q]=#13;
+      inc(q);
+     end;
+    inc(q);
+    if q-p<>2 then
+     begin
+      r:=p;
+      while (r<=q) and (FData[r] in [#1..#32]) do inc(r);
+      if r=p then
+       begin
+        if i=pl then
+         begin
+          inc(pl,$10);//grow
+          SetLength(FIdx,pl);
+         end;
+        FIdx[i].NameStart:=p;
+        r:=p;
+        while (r<=q) and (FData[r]<>':') do inc(r);
+        FIdx[i].NameLength:=r-p;
+        inc(r);
+        while (r<=q) and (FData[r] in [#1..#32]) do inc(r);
+        FIdx[i].ValueStart:=r;
+        FIdx[i].ValueLength:=q-r-2;//2 from Length(EOL)
+        inc(i);
+       end
+      else
+       begin
+        //assert i<>0
+        FIdx[i].ValueLength:=q-FIdx[i].ValueStart-2;
+        //TODO: kill EOF and whitespace?
+       end;
+     end;
+   end;
+  SetLength(FIdx,i);
 end;
 
 procedure TRequestHeaders.Reset;

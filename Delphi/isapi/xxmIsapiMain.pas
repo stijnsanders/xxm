@@ -561,8 +561,11 @@ begin
 end;
 
 function TXxmIsapiContext.GetRequestHeaders: IxxmDictionaryEx;
+var
+  d:AnsiString;
 begin
-  FReqHeaders.Load(GetVar(ecb,'ALL_RAW'));
+  d:=GetVar(ecb,'ALL_RAW');
+  FReqHeaders.Load(d,1,Length(d));
   Result:=FReqHeaders;
 end;
 

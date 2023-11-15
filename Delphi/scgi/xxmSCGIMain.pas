@@ -407,7 +407,7 @@ begin
     until m=-1;
 
     z:=Copy(x,j,l-j+1);
-    FReqHeaders.Load(y);
+    FReqHeaders.Load(y,1,Length(y));
 
     x:=GetCGIValue('SERVER_PROTOCOL');//http or https
     i:=1;
@@ -474,7 +474,7 @@ begin
        end;
       s.Size:=si;
       s.Position:=0;
-      FPostData:=THandlerReadStreamAdapter.Create(FSocket,si,s,z);
+      FPostData:=THandlerReadStreamAdapter.Create(FSocket,si,s,z,1,Length(z));
      end;
 
     if FVerb='OPTIONS' then

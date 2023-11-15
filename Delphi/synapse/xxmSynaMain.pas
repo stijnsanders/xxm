@@ -349,10 +349,11 @@ end;
 procedure TXxmSynaContext.HandleRequest;
 var
   i,j,l,xi:integer;
-  x,y:AnsiString;
+  x:AnsiString;
   s:TStream;
   si:int64;
   tc:cardinal;
+  cl:string;
 begin
   try
 
@@ -380,7 +381,6 @@ begin
     //command line and headers
     tc:=GetTickCount;
     x:=FSocket.RecvPacket(DefaultRecvTimeout);
-    y:='';
     l:=Length(x);
     j:=0;
     xi:=1;
@@ -414,7 +414,6 @@ begin
        end
       else
        begin
-        y:=y+Copy(x,i,xi-i)+#13#10;
         if i=xi then j:=-1 else
          begin
           inc(j);
@@ -422,11 +421,11 @@ begin
             raise EXxmMaximumHeaderLines.Create(SXxmMaximumHeaderLines);
          end;
        end;
-      inc(xi);
+      inc(xi);//#13
       if (xi<=l) and (x[xi]=#10) then inc(xi);
     until j=-1;
     x:=Copy(x,xi,l-xi+1);
-    FReqHeaders.Load(y);
+    FReqHeaders.Load(x,xi,l);
 
     ProcessRequestHeaders;
     //if XxmProjectCache=nil then XxmProjectCache:=TXxmProjectCacheXml.Create;
@@ -453,10 +452,10 @@ begin
     PreProcessRequest;
 
     //if Verb<>'GET' then?
-    y:=AnsiString(FReqHeaders['Content-Length']);
-    if y<>'' then
+    cl:=FReqHeaders['Content-Length'];
+    if cl<>'' then
      begin
-      si:=StrToInt(string(y));
+      si:=StrToInt(cl);
       if si<PostDataThreshold then
         s:=THeapStream.Create
       else

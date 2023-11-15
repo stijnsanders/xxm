@@ -218,7 +218,7 @@ begin
      end;
     y:=y+#13#10;
 
-    FReqHeaders.Load(y);
+    FReqHeaders.Load(y,1,Length(y));
 
     x:=GetCGIValue('SERVER_PROTOCOL');//http or https
     i:=1;
