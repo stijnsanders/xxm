@@ -22,8 +22,9 @@ type
     FCookie: AnsiString;
     FCookieIdx: TParamIndexes;
     FQueryStringIndex:integer;
+    FCredNTLM,FCredNego:TCredHandle;
     procedure ResponseStr(const Body,RedirMsg:WideString);
-    procedure AuthSChannel(const Package:AnsiString);
+    procedure AuthSChannel(const Package:AnsiString; var Cred: TCredHandle);
   protected
     function GetSessionID: WideString; override;
     procedure DispositionAttach(const FileName: WideString); override;
@@ -109,6 +110,10 @@ begin
   FReqHeaders:=TRequestHeaders.Create;
   FResHeaders:=TResponseHeaders.Create;
   FProjectCache:=TXxmProjectCacheLocal.Create;
+  FCredNTLM.dwUpper:=nil;
+  FCredNTLM.dwLower:=nil;
+  FCredNego.dwUpper:=nil;
+  FCredNego.dwLower:=nil;
   inherited;
 end;
 
@@ -119,6 +124,10 @@ begin
   FReqHeaders.Free;
   FResHeaders.Free;
   FProjectCache.Free;
+  if (FCredNTLM.dwLower<>nil) or (FCredNTLM.dwUpper<>nil) then
+    FreeCredentialsHandle(@FCredNTLM);
+  if (FCredNego.dwLower<>nil) or (FCredNego.dwUpper<>nil) then
+    FreeCredentialsHandle(@FCredNego);
   inherited;
 end;
 
@@ -391,7 +400,8 @@ begin
   Result:=FProjectCache.GetProject(FProjectName);
 end;
 
-procedure TXxmHttpContext.AuthSChannel(const Package:AnsiString);
+procedure TXxmHttpContext.AuthSChannel(const Package:AnsiString;
+  var Cred:TCredHandle);
 var
   s,t:AnsiString;
   p:PCtxtHandle;
@@ -425,9 +435,9 @@ begin
      end
     else
      begin
-      if FSocket.Cred.dwLower=nil then
+      if Cred.dwLower=nil then
         if AcquireCredentialsHandle(nil,PAnsiChar(Package),SECPKG_CRED_INBOUND,
-          nil,nil,nil,nil,@FSocket.Cred,nil)<>0 then RaiseLastOSError;
+          nil,nil,nil,nil,@Cred,nil)<>0 then RaiseLastOSError;
 
       SetLength(d,3);
       SetLength(t,$10000);
@@ -457,7 +467,7 @@ begin
       else
         p:=@FSocket.Ctxt;
 
-      r:=AcceptSecurityContext(@FSocket.Cred,p,@d1,
+      r:=AcceptSecurityContext(@Cred,p,@d1,
         ASC_REQ_REPLAY_DETECT or ASC_REQ_SEQUENCE_DETECT,SECURITY_NATIVE_DREP,
         @FSocket.Ctxt,@d2,@f,nil);
 
@@ -472,6 +482,7 @@ begin
         FSocket.Ctxt.dwLower:=nil;
         FSocket.Ctxt.dwUpper:=nil;
         FAuthStoreCache:=true;//see GetSessionID
+        //AddResponseHeader('Persistent-Auth','false');
        end
       else
       if r=SEC_I_CONTINUE_NEEDED then
@@ -493,11 +504,12 @@ var
   e:TXxmProjectCacheEntry;
 begin
   e:=ProjectEntry as TXxmProjectCacheEntry;
-  if e.Negotiate then AuthSChannel('Negotiate') else
-    if e.NTLM then AuthSChannel('NTLM');
+  //TODO: support both Negotiate and NTLM (and Digest?)
+  if e.Negotiate then AuthSChannel('Negotiate',FCredNego) else
+    if e.NTLM then AuthSChannel('NTLM',FCredNTLM);
       Result:=inherited GetProjectPage(FragmentName);
-        PreProcessRequestPage;
-        end;
+  PreProcessRequestPage;
+end;
 
 function TXxmHttpContext.Connected: boolean;
 begin
