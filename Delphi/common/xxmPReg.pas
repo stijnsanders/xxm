@@ -24,7 +24,7 @@ type
     procedure SetSignature(const Value: string); virtual; abstract;
     procedure SetFilePath(const FilePath: WideString; LoadCopy: boolean);
     function ProjectLoaded:boolean;
-    function GetExtensionMimeType(const x:AnsiString): AnsiString; virtual;
+    function GetExtensionMimeType(const x:string): string;
     function GetAllowInclude:boolean; virtual; abstract;
     property FilePath: WideString read FFilePath;
   public
@@ -66,6 +66,7 @@ type
   EXxmProjectNotFound=class(Exception);
   EXxmProjectLoadFailed=class(Exception);
   EXxmModuleNotFound=class(Exception);
+  EXxmFileTypeAccessDenied=class(Exception);
 
   TXxmAutoBuildHandler=function(Entry: TXxmProjectEntry;
     Context: IXxmContext; const ProjectName: WideString): boolean;
@@ -79,6 +80,7 @@ const //resourcestring?
   SXxmProjectNotFound='xxm Project "__" not defined.';
   SXxmProjectLoadFailed='xxm Project load "__" failed.';
   SXxmModuleNotFound='xxm Module "__" does not exist.';
+  SXxmFileTypeAccessDenied='Access denied to this type of file';
 
 implementation
 
@@ -339,24 +341,31 @@ begin
   //find a MIME-type from registry
   i:=Length(sf)-1;
   while (i>0) and (sf[i]<>'.') do dec(i);
-  MimeType:=WideString(GetExtensionMimeType(AnsiString(
-    LowerCase(Copy(sf,i,Length(sf)-i+1)))));
+  MimeType:=GetExtensionMimeType(
+    LowerCase(Copy(sf,i,Length(sf)-i+1)));
 end;
 
-function TXxmProjectEntry.GetExtensionMimeType(const x: AnsiString): AnsiString;
+function TXxmProjectEntry.GetExtensionMimeType(const x: string): string;
 var
   r:TRegistry;
 begin
+  if (x='.xxl') or (x='.xxu') or (x='.xxmp') or (x='.xxlc')
+    or (x='.exe') or (x='.dll') or (x='.udl') //or (x='.pas')?
+    //more? settings?
+  then
+    raise EXxmFileTypeAccessDenied.Create(SXxmFileTypeAccessDenied);
+
   r:=TRegistry.Create;
   try
     r.RootKey:=HKEY_CLASSES_ROOT;
-    if r.OpenKeyReadOnly(string(x)) and r.ValueExists('Content Type') then
-      Result:=AnsiString(r.ReadString('Content Type'))
+    if r.OpenKeyReadOnly(x) and r.ValueExists('Content Type') then
+      Result:=r.ReadString('Content Type')
     else
       if (x='.log') or (x='.ini') then //override default for a few known types
         Result:='text/plain'
       else if x='.js' then Result:='text/javascript'
       else if x='.css' then Result:='text/css'
+      //TODO: more? from config?
       else
         Result:='application/octet-stream';
   finally

@@ -13,7 +13,6 @@ type
     FAllowInclude,FNTLM,FNegotiate:boolean;
   protected
     procedure SetSignature(const Value: string); override;
-    function GetExtensionMimeType(const x: AnsiString): AnsiString; override;
     function GetAllowInclude: boolean; override;
   public
     constructor Create(const Name, FilePath: WideString; LoadCopy: boolean);
@@ -77,7 +76,6 @@ type
   end;
 
   EXxmProjectRegistryError=class(Exception);
-  EXxmFileTypeAccessDenied=class(Exception);
   EXxmProjectAliasDepth=class(Exception);
 
 var
@@ -86,11 +84,10 @@ var
 
 implementation
 
-uses Registry, Variants, Classes, xxmHeaders, xxmContext, xxmConvert2;
+uses Registry, Variants, Classes, xxmHeaders, xxmContext;
 
 resourcestring
   SXxmProjectRegistryError='Could not open project registry "__"';
-  SXxmFileTypeAccessDenied='Access denied to this type of file';
   SXxmProjectAliasDepth='xxm Project "__": aliasses are limited to 8 in sequence';
 
 const
@@ -128,16 +125,6 @@ destructor TXxmProjectCacheEntry.Destroy;
 begin
   //pointer(FProject):=nil;//strange, project modules get closed before this happens
   inherited;
-end;
-
-function TXxmProjectCacheEntry.GetExtensionMimeType(const x: AnsiString): AnsiString;
-begin
-  if (x='.xxl') or (x='.xxu') or (x='.xxmp') or (x='.xxlc')
-    or (x='.exe') or (x='.dll') or (x='.udl') //or (x='.pas')?
-    //more? settings?
-  then
-    raise EXxmFileTypeAccessDenied.Create(SXxmFileTypeAccessDenied);
-  Result:=inherited GetExtensionMimeType(x);
 end;
 
 procedure TXxmProjectCacheEntry.SetSignature(const Value: string);
@@ -289,21 +276,8 @@ begin
   //assert in FLock
   //assert CoInitialize called
   Result:=JSON;
-
-  //TRANSITIONAL
-  try
-    f:=TFileStream.Create(FRegFilePath+XxmRegFileName,
-      fmOpenRead or fmShareDenyWrite);
-
-  except
-    on EFOpenError do
-     begin
-      ConvertProjectReg;
-      f:=TFileStream.Create(FRegFilePath+XxmRegFileName,
-        fmOpenRead or fmShareDenyWrite);
-     end;
-  end;
-
+  f:=TFileStream.Create(FRegFilePath+XxmRegFileName,
+    fmOpenRead or fmShareDenyWrite);
   try
     i:=f.Size;
     SetLength(s,i);
