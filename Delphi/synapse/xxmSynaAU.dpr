@@ -1,7 +1,7 @@
 program xxmSynaAU;
 
-{$R '..\common\xxmData.res' '..\common\xxmData.rc'}
-{$R '..\common\xxmAU_manifest.res' '..\common\xxmAU_manifest.rc'}
+{$R 'xxmData.res' '..\common\xxmData.rc'}
+{$R 'xxmAU_manifest.res' '..\common\xxmAU_manifest.rc'}
 
 uses
   SysUtils,
@@ -15,8 +15,6 @@ uses
   xxmCommonUtils in '..\common\xxmCommonUtils.pas',
   xxmContext in '..\common\xxmContext.pas',
   xxmReadHandler in 'xxmReadHandler.pas',
-  MSXML2_TLB in '..\common\MSXML2_TLB.pas',
-  xxmConvert2 in '..\conv\xxmConvert2.pas',
   jsonDoc in '..\common\jsonDoc.pas',
   xxmThreadPool in '..\common\xxmThreadPool.pas',
   xxmSynaKept in 'xxmSynaKept.pas',

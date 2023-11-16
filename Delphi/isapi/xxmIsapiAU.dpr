@@ -1,6 +1,6 @@
 library xxmIsapiAU;
 
-{$R '..\common\xxmData.res' '..\common\xxmData.rc'}
+{$R 'xxmData.res' '..\common\xxmData.rc'}
 
 uses
   SysUtils,
@@ -14,8 +14,6 @@ uses
   xxmParUtils in '..\common\xxmParUtils.pas',
   xxmHeaders in '..\bin\public\xxmHeaders.pas',
   xxmThreadPool in '..\common\xxmThreadPool.pas',
-  MSXML2_TLB in '..\common\MSXML2_TLB.pas',
-  xxmConvert2 in '..\conv\xxmConvert2.pas',
   jsonDoc in '..\common\jsonDoc.pas',
   xxmCommonUtils in '..\common\xxmCommonUtils.pas',
   xxmContext in '..\common\xxmContext.pas',

@@ -1,7 +1,7 @@
 program xxmHostDev;
 
-{$R '..\common\xxmData.res' '..\common\xxmData.rc'}
-{$R '..\common\xxmDataDev.res' '..\common\xxmDataDev.rc'}
+{$R 'xxmData.res' '..\common\xxmData.rc'}
+{$R 'xxmDataDev.res' '..\common\xxmDataDev.rc'}
 
 uses
   SysUtils,
@@ -17,15 +17,12 @@ uses
   xxmPRegJson in '..\common\xxmPRegJson.pas',
   xxmCommonUtils in '..\common\xxmCommonUtils.pas',
   xxmContext in '..\common\xxmContext.pas',
-  MSXML2_TLB in '..\common\MSXML2_TLB.pas',
-  xxmConvert2 in '..\conv\xxmConvert2.pas',
   jsonDoc in '..\common\jsonDoc.pas',
   xxmAutoBuild in '..\common\xxmAutoBuild.pas',
   xxmWebProject in '..\conv\xxmWebProject.pas',
   xxmUtilities in '..\conv\xxmUtilities.pas',
   xxmPageParse in '..\conv\xxmPageParse.pas',
-  xxmProtoParse in '..\conv\xxmProtoParse.pas',
-  xxmConvertXML in '..\common\xxmConvertXML.pas';
+  xxmProtoParse in '..\conv\xxmProtoParse.pas';
 
 {$R *.res}
 

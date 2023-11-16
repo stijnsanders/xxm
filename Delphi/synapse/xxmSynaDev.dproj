@@ -127,10 +127,10 @@
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
         <RcCompile Include="..\common\xxmData.rc">
-            <Form>..\common\xxmData.res</Form>
+            <Form>xxmData.res</Form>
         </RcCompile>
         <RcCompile Include="..\common\xxmDataDev.rc">
-            <Form>..\common\xxmDataDev.res</Form>
+            <Form>xxmDataDev.res</Form>
         </RcCompile>
         <DCCReference Include="xxmSynaMain.pas"/>
         <DCCReference Include="..\bin\public\xxm.pas"/>
@@ -142,8 +142,6 @@
         <DCCReference Include="..\common\xxmCommonUtils.pas"/>
         <DCCReference Include="..\common\xxmContext.pas"/>
         <DCCReference Include="xxmReadHandler.pas"/>
-        <DCCReference Include="..\common\MSXML2_TLB.pas"/>
-        <DCCReference Include="..\conv\xxmConvert2.pas"/>
         <DCCReference Include="..\common\jsonDoc.pas"/>
         <DCCReference Include="..\common\xxmThreadPool.pas"/>
         <DCCReference Include="xxmSynaKept.pas"/>
@@ -153,7 +151,6 @@
         <DCCReference Include="..\conv\xxmUtilities.pas"/>
         <DCCReference Include="..\conv\xxmPageParse.pas"/>
         <DCCReference Include="..\conv\xxmProtoParse.pas"/>
-        <DCCReference Include="..\common\xxmConvertXML.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

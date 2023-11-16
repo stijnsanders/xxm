@@ -1,6 +1,6 @@
 program xxmHSys2;
 
-{$R '..\common\xxmData.res' '..\common\xxmData.rc'}
+{$R 'xxmData.res' '..\common\xxmData.rc'}
 {$IFNDEF HSYS2}{$MESSAGE FATAL 'HSYS2 not defined.'}{$ENDIF}
 
 uses
@@ -17,8 +17,6 @@ uses
   xxmPRegJson in '..\common\xxmPRegJson.pas',
   xxmCommonUtils in '..\common\xxmCommonUtils.pas',
   xxmContext in '..\common\xxmContext.pas',
-  MSXML2_TLB in '..\common\MSXML2_TLB.pas',
-  xxmConvert2 in '..\conv\xxmConvert2.pas',
   jsonDoc in '..\common\jsonDoc.pas',
   xxmHSysHeaders in 'xxmHSysHeaders.pas';
 

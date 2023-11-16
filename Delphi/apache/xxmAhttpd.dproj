@@ -104,7 +104,7 @@
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
         <RcCompile Include="..\common\xxmData.rc">
-            <Form>..\common\xxmData.res</Form>
+            <Form>xxmData.res</Form>
         </RcCompile>
         <DCCReference Include="httpd24.pas"/>
         <DCCReference Include="..\bin\public\xxm.pas"/>
@@ -118,8 +118,6 @@
         <DCCReference Include="..\common\xxmPRegJson.pas"/>
         <DCCReference Include="xxmAhttpdClientStream.pas"/>
         <DCCReference Include="xxmAhttpdPars.pas"/>
-        <DCCReference Include="..\common\MSXML2_TLB.pas"/>
-        <DCCReference Include="..\conv\xxmConvert2.pas"/>
         <DCCReference Include="..\common\jsonDoc.pas"/>
         <DCCReference Include="..\common\xxmContext.pas"/>
         <BuildConfiguration Include="Base">

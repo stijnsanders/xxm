@@ -1,7 +1,7 @@
 program xxmHostAU;
 
-{$R '..\common\xxmData.res' '..\common\xxmData.rc'}
-{$R '..\common\xxmAU_manifest.res' '..\common\xxmAU_manifest.rc'}
+{$R 'xxmData.res' '..\common\xxmData.rc'}
+{$R 'xxmAU_manifest.res' '..\common\xxmAU_manifest.rc'}
 
 uses
   SysUtils,
@@ -17,8 +17,6 @@ uses
   xxmPRegJson in '..\common\xxmPRegJson.pas',
   xxmCommonUtils in '..\common\xxmCommonUtils.pas',
   xxmContext in '..\common\xxmContext.pas',
-  MSXML2_TLB in '..\common\MSXML2_TLB.pas',
-  xxmConvert2 in '..\conv\xxmConvert2.pas',
   jsonDoc in '..\common\jsonDoc.pas',
   xxmAutoUpdate in '..\common\xxmAutoUpdate.pas';
 

@@ -1,7 +1,7 @@
 program xxmHSys1Dev;
 
-{$R '..\common\xxmData.res' '..\common\xxmData.rc'}
-{$R '..\common\xxmDataDev.res' '..\common\xxmDataDev.rc'}
+{$R 'xxmData.res' '..\common\xxmData.rc'}
+{$R 'xxmDataDev.res' '..\common\xxmDataDev.rc'}
 {$IFNDEF HSYS1}{$MESSAGE FATAL 'HSYS1 not defined.'}{$ENDIF}
 
 uses
@@ -20,14 +20,11 @@ uses
   xxmContext in '..\common\xxmContext.pas',
   xxmAutoBuild in '..\common\xxmAutoBuild.pas',
   xxmWebProject in '..\conv\xxmWebProject.pas',
-  MSXML2_TLB in '..\common\MSXML2_TLB.pas',
-  xxmConvert2 in '..\conv\xxmConvert2.pas',
   jsonDoc in '..\common\jsonDoc.pas',
   xxmUtilities in '..\conv\xxmUtilities.pas',
   xxmPageParse in '..\conv\xxmPageParse.pas',
   xxmProtoParse in '..\conv\xxmProtoParse.pas',
-  xxmHSysHeaders in 'xxmHSysHeaders.pas',
-  xxmConvertXML in '..\common\xxmConvertXML.pas';
+  xxmHSysHeaders in 'xxmHSysHeaders.pas';
 
 {$R *.res}
 

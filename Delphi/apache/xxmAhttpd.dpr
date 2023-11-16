@@ -1,6 +1,6 @@
 library xxmAhttpd;
 
-{$R '..\common\xxmData.res' '..\common\xxmData.rc'}
+{$R 'xxmData.res' '..\common\xxmData.rc'}
 
 uses
   httpd24 in 'httpd24.pas',
@@ -15,8 +15,6 @@ uses
   xxmPRegJson in '..\common\xxmPRegJson.pas',
   xxmAhttpdClientStream in 'xxmAhttpdClientStream.pas',
   xxmAhttpdPars in 'xxmAhttpdPars.pas',
-  MSXML2_TLB in '..\common\MSXML2_TLB.pas',
-  xxmConvert2 in '..\conv\xxmConvert2.pas',
   jsonDoc in '..\common\jsonDoc.pas',
   xxmContext in '..\common\xxmContext.pas';
 

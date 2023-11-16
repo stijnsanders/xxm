@@ -109,10 +109,10 @@
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
         <RcCompile Include="..\common\xxmData.rc">
-            <Form>..\common\xxmData.res</Form>
+            <Form>xxmData.res</Form>
         </RcCompile>
         <RcCompile Include="..\common\xxmAU_manifest.rc">
-            <Form>..\common\xxmAU_manifest.res</Form>
+            <Form>xxmAU_manifest.res</Form>
         </RcCompile>
         <DCCReference Include="..\bin\public\xxm.pas"/>
         <DCCReference Include="xxmHSys2Run.pas"/>
@@ -127,8 +127,6 @@
         <DCCReference Include="..\common\xxmCommonUtils.pas"/>
         <DCCReference Include="..\common\xxmContext.pas"/>
         <DCCReference Include="..\common\xxmAutoUpdate.pas"/>
-        <DCCReference Include="..\common\MSXML2_TLB.pas"/>
-        <DCCReference Include="..\conv\xxmConvert2.pas"/>
         <DCCReference Include="..\common\jsonDoc.pas"/>
         <DCCReference Include="xxmHSysHeaders.pas"/>
         <BuildConfiguration Include="Base">
@@ -165,5 +163,4 @@
     </ProjectExtensions>
     <Import Project="$(BDS)\Bin\CodeGear.Delphi.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Delphi.Targets')"/>
     <Import Project="$(APPDATA)\Embarcadero\$(BDSAPPDATABASEDIR)\$(PRODUCTVERSION)\UserTools.proj" Condition="Exists('$(APPDATA)\Embarcadero\$(BDSAPPDATABASEDIR)\$(PRODUCTVERSION)\UserTools.proj')"/>
-    <Import Project="$(MSBuildProjectName).deployproj" Condition="Exists('$(MSBuildProjectName).deployproj')"/>
 </Project>
