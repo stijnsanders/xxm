@@ -23,6 +23,7 @@ type
     FCookieIdx: TParamIndexes;
     FQueryStringIndex:integer;
     FCredNTLM,FCredNego:TCredHandle;
+    FCtxt:TCtxtHandle;
     procedure ResponseStr(const Body,RedirMsg:WideString);
     procedure AuthSChannel(const Package:AnsiString; var Cred: TCredHandle);
   protected
@@ -114,6 +115,8 @@ begin
   FCredNTLM.dwLower:=nil;
   FCredNego.dwUpper:=nil;
   FCredNego.dwLower:=nil;
+  FCtxt.dwUpper:=nil;
+  FCtxt.dwLower:=nil;
   inherited;
 end;
 
@@ -462,25 +465,25 @@ begin
       d[2].BufferType:=SECBUFFER_TOKEN;
       d[2].pvBuffer:=@t[1];
 
-      if (FSocket.Ctxt.dwLower=nil) and (FSocket.Ctxt.dwUpper=nil) then
+      if (FCtxt.dwLower=nil) and (FCtxt.dwUpper=nil) then
         p:=nil
       else
-        p:=@FSocket.Ctxt;
+        p:=@FCtxt;
 
       r:=AcceptSecurityContext(@Cred,p,@d1,
         ASC_REQ_REPLAY_DETECT or ASC_REQ_SEQUENCE_DETECT,SECURITY_NATIVE_DREP,
-        @FSocket.Ctxt,@d2,@f,nil);
+        @FCtxt,@d2,@f,nil);
 
       if r=SEC_E_OK then
        begin
-        r:=QueryContextAttributes(@FSocket.Ctxt,SECPKG_ATTR_NAMES,@n);
+        r:=QueryContextAttributes(@FCtxt,SECPKG_ATTR_NAMES,@n);
         if r=0 then
           AuthSet(n.sUserName,'')
         else
           AuthSet('???'+AnsiString(SysErrorMessage(r)),'');//raise?
-        DeleteSecurityContext(@FSocket.Ctxt);
-        FSocket.Ctxt.dwLower:=nil;
-        FSocket.Ctxt.dwUpper:=nil;
+        DeleteSecurityContext(@FCtxt);
+        FCtxt.dwLower:=nil;
+        FCtxt.dwUpper:=nil;
         FAuthStoreCache:=true;//see GetSessionID
         //AddResponseHeader('Persistent-Auth','false');
        end
