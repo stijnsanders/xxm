@@ -22,8 +22,8 @@ var
 
 implementation
 
-uses Registry, xxmPReg, xxmPRegJson, ActiveX,
-  xxmThreadPool, xxmContext, xxmHttpCtx, xxmKeptCon, xxmSpoolingCon;
+uses Registry, xxmPReg, ActiveX, xxmThreadPool, xxmContext, xxmHttpCtx,
+  xxmKeptCon, xxmSpoolingCon;
 
 {$R *.dfm}
 
@@ -69,7 +69,7 @@ begin
     r.Free;
   end;
   CoInitialize(nil);
-  XxmProjectCache:=TXxmProjectCacheJson.Create;
+  XxmProjectCache:=TXxmProjectCache.Create;
   ContextPool:=TXxmContextPool.Create(TXxmHttpContext);
   KeptConnections:=TXxmKeptConnections.Create;
   SpoolingConnections:=TXxmSpoolingConnections.Create;

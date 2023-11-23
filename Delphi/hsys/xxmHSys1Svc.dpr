@@ -15,7 +15,6 @@ uses
   xxmHeaders in '..\bin\public\xxmHeaders.pas',
   xxmThreadPool in '..\common\xxmThreadPool.pas',
   xxmPReg in '..\common\xxmPReg.pas',
-  xxmPRegJson in '..\common\xxmPRegJson.pas',
   xxmCommonUtils in '..\common\xxmCommonUtils.pas',
   xxmContext in '..\common\xxmContext.pas',
   jsonDoc in '..\common\jsonDoc.pas',

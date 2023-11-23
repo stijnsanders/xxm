@@ -6,7 +6,7 @@ uses
   Windows, SysUtils, ActiveX, Classes, xxm, xxmContext, xxmThreadPool,
   {$IFDEF HSYS1}httpapi1,{$ENDIF}
   {$IFDEF HSYS2}httpapi2,{$ENDIF}
-  xxmPReg, xxmPRegJson, xxmParams, xxmParUtils, xxmHeaders;
+  xxmPReg, xxmParams, xxmParUtils, xxmHeaders;
 
 const
   XxmHSysContextDataSize=$1000;
@@ -350,12 +350,9 @@ begin
 end;
 
 function TXxmHSysContext.GetProjectPage(const FragmentName: WideString):IXxmFragment;
-var
-  e:TXxmProjectCacheEntry;
 begin
-  e:=ProjectEntry as TXxmProjectCacheEntry;
-  if e.Negotiate then AuthSChannel('Negotiate') else
-    if e.NTLM then AuthSChannel('NTLM');
+  if ProjectEntry.Negotiate then AuthSChannel('Negotiate') else
+    if ProjectEntry.NTLM then AuthSChannel('NTLM');
   Result:=inherited GetProjectPage(FragmentName);
 end;
 

@@ -20,7 +20,7 @@ type
   private
     FHeap:THandle;
   protected
-    {$IF CompilerVersion<20}
+    {$IF CompilerVersion<30}
     function Realloc(var NewCapacity: LongInt): Pointer; override;
     {$ELSE}
     function Realloc(var NewCapacity: NativeInt): Pointer; override;
@@ -106,7 +106,7 @@ begin
   FHeap:=GetProcessHeap;
 end;
 
-{$IF CompilerVersion<20}
+{$IF CompilerVersion<30}
 function THeapStream.Realloc(var NewCapacity: LongInt): Pointer;
 {$ELSE}
 function THeapStream.Realloc(var NewCapacity: NativeInt): Pointer;

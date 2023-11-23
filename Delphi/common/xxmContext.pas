@@ -174,7 +174,6 @@ type
   EXxmTransferError=class(Exception);
   EXxmAutoBuildFailed=class(Exception);
   EXxmDirectInclude=class(Exception);
-  EXxmPageRedirected=class(Exception);
   EXxmIncludeOnlyOnBuild=class(Exception);
   EXxmIncludeStackFull=class(Exception);
   EXxmIncludeFragmentNotFound=class(Exception);

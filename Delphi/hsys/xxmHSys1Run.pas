@@ -11,8 +11,8 @@ procedure HandleWindowsMessages(var QuitApp:boolean);
 
 implementation
 
-uses Windows, SysUtils, Classes, ActiveX, httpapi1,
-  xxmPRegJson, xxmThreadPool, xxmHSysMain, xxmContext;
+uses Windows, SysUtils, Classes, ActiveX, httpapi1, xxmContext, xxmPReg,
+  xxmThreadPool, xxmHSysMain;
 
 type
   THSysParameters=(
@@ -102,7 +102,7 @@ begin
   //TODO: load from xxm.xml?
   if c=0 then raise Exception.Create('No projects loaded');
 
-  XxmProjectCache:=TXxmProjectCacheJson.Create;
+  XxmProjectCache:=TXxmProjectCache.Create;
   ContextPool:=TXxmContextPool.Create(TXxmHSysContext);
   PageLoaderPool:=TXxmPageLoaderPool.Create(Threads);
   

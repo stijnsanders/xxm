@@ -11,8 +11,8 @@ procedure HandleWindowsMessages(var QuitApp:boolean);
 
 implementation
 
-uses Windows, SysUtils, ActiveX, xxmPReg, xxmPRegJson,
-  xxmThreadPool, xxmHostMain, xxmCGIHeader, xxmContext;
+uses Windows, SysUtils, ActiveX, xxmPReg, xxmThreadPool, xxmHostMain,
+  xxmCGIHeader, xxmContext;
 
 procedure XxmRunHoster(HandleMessagesProc:TXxmHandleMessagesProc);
 type
@@ -66,7 +66,7 @@ begin
    end;
 
   CoInitialize(nil);
-  XxmProjectCache:=TXxmProjectCacheJson.Create;
+  XxmProjectCache:=TXxmProjectCache.Create;
   PageLoaderPool:=TXxmPageLoaderPool.Create(Threads);
 
   h:=INVALID_HANDLE_VALUE;

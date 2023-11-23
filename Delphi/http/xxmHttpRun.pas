@@ -31,8 +31,8 @@ procedure XxmRunServer;
 
 implementation
 
-uses Windows, ActiveX, ShellApi, xxmParams, xxmPRegJson,
-  xxmThreadPool, xxmContext, xxmKeptCon, xxmSpoolingCon;
+uses Windows, ActiveX, ShellApi, xxmParams, xxmThreadPool,
+  xxmContext, xxmKeptCon, xxmSpoolingCon;
 
 procedure XxmRunServer;
 const
@@ -91,7 +91,7 @@ begin
   //
   CoInitialize(nil);
   SetErrorMode(SEM_FAILCRITICALERRORS);
-  XxmProjectCache:=TXxmProjectCacheJson.Create;
+  XxmProjectCache:=TXxmProjectCache.Create;
   ContextPool:=TXxmContextPool.Create(TXxmHttpContext);
   KeptConnections:=TXxmKeptConnections.Create;
   SpoolingConnections:=TXxmSpoolingConnections.Create;

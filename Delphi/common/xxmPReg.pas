@@ -2,7 +2,7 @@ unit xxmPReg;
 
 interface
 
-uses xxm, SysUtils, Windows;
+uses xxm, SysUtils, Windows, jsonDoc;
 
 type
   TXxmProjectEntry=class(TObject)
@@ -14,25 +14,25 @@ type
     FLoadSignature:string;
     FCheckMutex:THandle;
     FFilePath,FLoadPath:WideString;
-    FLoadCopy:boolean;
+    FLoadCopy,FAllowInclude,FNTLM,FNegotiate:boolean;
   protected
     FSignature:string;
     FBufferSize:integer;
     function GetProject: IXxmProject;
     function LoadProject: IXxmProject; virtual;
     function GetModulePath:WideString; virtual;
-    procedure SetSignature(const Value: string); virtual; abstract;
+    procedure SetSignature(const Value: string);
     procedure SetFilePath(const FilePath: WideString; LoadCopy: boolean);
     function ProjectLoaded:boolean;
     function GetExtensionMimeType(const x:string): string;
-    function GetAllowInclude:boolean; virtual; abstract;
+    function GetAllowInclude:boolean;
     property FilePath: WideString read FFilePath;
   public
     //used by auto-build/auto-update
     LastCheck:cardinal;
     LastResult:WideString;
 
-    constructor Create(const Name: WideString);
+    constructor Create(const Name, FilePath: WideString; LoadCopy: boolean);
     destructor Destroy; override;
 
     procedure Lock; //used by auto-build/auto-update
@@ -44,6 +44,8 @@ type
     property LoadSignature:string read FLoadSignature;
     property LoadCount:integer read FLoadCount;
     property AllowInclude:boolean read GetAllowInclude;
+    property NTLM:boolean read FNTLM;
+    property Negotiate:boolean read FNegotiate;
 
     //used by xxmContext
     procedure OpenContext;
@@ -58,22 +60,77 @@ type
   TXxmProjectCache=class(TObject)
   protected
     FLock:TRTLCriticalSection;
+    FProjectsLength,FProjectsCount:integer;
+    FProjects:array of record
+      Name,Alias:string;
+      Entry:TXxmProjectEntry;
+      LoadCheck:boolean;
+      SortIndex:integer;
+    end;
+    FRegFilePath,FRegSignature,FDefaultProject,FSingleProject:string;
+    FRegLastCheckTC,FCacheIndex:cardinal;
+    FFavIcon:OleVariant;
+    FAuthCache:array of record
+      SessionID:string;
+      AuthName:AnsiString;
+      Expires:TDateTime;
+    end;
+    FAuthCacheIndex,FAuthCacheSize:integer;
+    procedure FindProject(const Name: string; var n: string;
+      var i, a: integer);
+    function GetRegistrySignature: string;
+    function GetRegistry: IJSONDocument;
+    procedure SetSignature(const Name: WideString; const Value: string);
+    procedure LoadFavIcon(const FilePath: string);
   public
     constructor Create;
     destructor Destroy; override;
+    procedure CheckRegistry;
+
+    function ProjectFromURI(Context:IXxmContext;const URI:AnsiString;
+      var i:integer; var ProjectName,FragmentName:WideString):boolean;
+    function GetProject(const Name:WideString):TXxmProjectEntry;
+    procedure ReleaseProject(const Name:WideString);
+
+    function GetAuthCache(const SessionID:string):AnsiString;
+    procedure SetAuthCache(const SessionID:string;const AuthName:AnsiString);
+
+    property CacheIndex:cardinal read FCacheIndex;
+  end;
+
+const
+  XxmProjectCacheLocalSize=4;
+
+type
+  TXxmProjectCacheLocal=class(TObject)
+  private
+    FLocalCache:array[0..XxmProjectCacheLocalSize-1] of record
+      CacheIndex:cardinal;
+      Name:WideString;
+      Entry:TXxmProjectEntry;
+    end;
+    FLocalCacheIndex1,FLocalCacheIndex2:integer;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    function GetProject(const Name: WideString): TXxmProjectEntry;
   end;
 
   EXxmProjectNotFound=class(Exception);
   EXxmProjectLoadFailed=class(Exception);
+  EXxmProjectRegistryError=class(Exception);
+  EXxmProjectAliasDepth=class(Exception);
   EXxmModuleNotFound=class(Exception);
   EXxmFileTypeAccessDenied=class(Exception);
+  EXxmPageRedirected=class(Exception);
 
   TXxmAutoBuildHandler=function(Entry: TXxmProjectEntry;
     Context: IXxmContext; const ProjectName: WideString): boolean;
 
 var
   XxmAutoBuildHandler:TXxmAutoBuildHandler;
-  //XxmProjectCache:TXxmProjectCache;
+  XxmProjectCache:TXxmProjectCache;
+  XxmProjectCacheError:string;
   GlobalAllowLoadCopy:boolean;
 
 const //resourcestring?
@@ -84,7 +141,7 @@ const //resourcestring?
 
 implementation
 
-uses Registry, xxmCommonUtils;
+uses Registry, Classes, Variants, xxmCommonUtils, xxmHeaders;
 
 const //resourcestring?
   SXxmLoadProjectCopyFailed='LoadProject: Create load copy failed: ';
@@ -92,10 +149,32 @@ const //resourcestring?
   SXxmLoadProjectProcFailed='LoadProject: GetProcAddress failed: ';
   SXxmProjectEntryAcq='ProjectEntry acquire UpdateLock failed: ';
   SXxmProjectEntryRel='ProjectEntry release UpdateLock failed: ';
+  SXxmProjectRegistryError='Could not open project registry "__"';
+  SXxmProjectAliasDepth='xxm Project "__": aliasses are limited to 8 in sequence';
+
+const
+  XxmRegFileName='xxm.json';
+  XxmRegCheckIntervalMS=1000;
+
+{
+function PathIsRelative(lpszPath:PWideChar):LongBool;
+  stdcall; external 'shlwapi.dll' name 'PathIsRelativeW';
+function PathCombine(lpszDest,lpszDir,lpszFile:PWideChar):PWideChar;
+  stdcall; external 'shlwapi.dll' name 'PathRelativePathToW';
+}
+
+{$IF not Declared(UTF8ToWideString)}
+function UTF8ToWideString(const s: UTF8String): WideString;
+begin
+  Result:=UTF8Decode(s);
+end;
+{$IFEND}
+
 
 { TXxmProjectEntry }
 
-constructor TXxmProjectEntry.Create(const Name: WideString);
+constructor TXxmProjectEntry.Create(const Name, FilePath: WideString;
+  LoadCopy: boolean);
 begin
   inherited Create;
   FName:=Name;
@@ -112,6 +191,10 @@ begin
   FCheckMutex:=0;
   LastCheck:=GetTickCount-100000;
   LastResult:='';//default
+  SetFilePath(FilePath,LoadCopy);
+  FAllowInclude:=false;//default
+  FNTLM:=false;//default
+  FNegotiate:=false;//default
 end;
 
 procedure TXxmProjectEntry.AfterConstruction;
@@ -140,6 +223,7 @@ end;
 
 destructor TXxmProjectEntry.Destroy;
 begin
+  //pointer(FProject):=nil;//strange, project modules get closed before this happens
   Release;
   if FCheckMutex<>0 then CloseHandle(FCheckMutex);
   inherited;
@@ -402,20 +486,603 @@ begin
   //if FLoadCopy then FLoadPath:=FFilePath+'_'+IntToHex(GetCurrentProcessId,4);
 end;
 
+procedure TXxmProjectEntry.SetSignature(const Value: string);
+begin
+  FSignature:=Value;
+  XxmProjectCache.SetSignature(Name,Value);
+end;
+
+function TXxmProjectEntry.GetAllowInclude: boolean;
+begin
+  XxmProjectCache.CheckRegistry;
+  Result:=FAllowInclude;
+end;
+
 { TXxmProjectCache }
 
 constructor TXxmProjectCache.Create;
+var
+  i:integer;
+  r:TResourceStream;
+  p:pointer;
+const
+  RT_HTML = MakeIntResource(23);
 begin
   inherited Create;
   InitializeCriticalSection(FLock);
+
+  //assert CoInitialize called
+  FProjectsLength:=0;
+  FProjectsCount:=0;
+  FRegSignature:='-';
+  FRegLastCheckTC:=GetTickCount-XxmRegCheckIntervalMS-1;
+  FAuthCacheIndex:=0;
+  FAuthCacheSize:=0;
+  FCacheIndex:=FRegLastCheckTC;//random?
+
+  SetLength(FRegFilePath,MAX_PATH);
+  SetLength(FRegFilePath,GetModuleFileName(HInstance,
+    PChar(FRegFilePath),MAX_PATH));
+  if Copy(FRegFilePath,1,4)='\\?\' then
+    FRegFilePath:=Copy(FRegFilePath,5,Length(FRegFilePath)-4);
+  i:=Length(FRegFilePath);
+  while (i<>0) and (FRegFilePath[i]<>PathDelim) do dec(i);
+  FRegFilePath:=Copy(FRegFilePath,1,i);
+
+  //settings?
+
+  CheckRegistry;
+
+  r:=TResourceStream.Create(HInstance,'favicon',RT_HTML);
+  try
+    i:=r.Size;
+    FFavIcon:=VarArrayCreate([0,i-1],varByte);
+    p:=VarArrayLock(FFavIcon);
+    try
+      r.Read(p^,i);
+    finally
+      VarArrayUnlock(FFavIcon);
+    end;
+  finally
+    r.Free;
+  end;
 end;
 
 destructor TXxmProjectCache.Destroy;
+var
+  i:integer;
 begin
+  for i:=0 to FProjectsCount-1 do FreeAndNil(FProjects[i].Entry);
+  SetLength(FProjects,0);
   DeleteCriticalSection(FLock);
   inherited;
 end;
 
+function LCSC(const a,b: string): integer; //lower case string compare
+var
+  i,al,bl:integer;
+begin
+  al:=Length(a);
+  bl:=Length(b);
+  i:=1;
+  Result:=0;
+  while (Result=0) and (i<=al) and (i<=bl) do
+    if a[i]<b[i] then
+      Result:=-1
+    else
+      if a[i]>b[i] then
+        Result:=1
+      else
+        inc(i);
+  if Result=0 then
+    if (i<=al) then
+      Result:=1
+    else
+      if (i<=bl) then
+        Result:=-1;
+end;
+
+procedure TXxmProjectCache.FindProject(const Name: string;
+  var n: string; var i,a:integer);
+var
+  b,c,m:integer;
+begin
+  n:=LowerCase(Name);
+  //assert cache stores ProjectName already LowerCase!
+  a:=0;
+  b:=FProjectsCount-1;
+  i:=-1;
+  while a<=b do
+   begin
+    c:=(a+b) div 2;
+    m:=LCSC(n,FProjects[FProjects[c].SortIndex].Name);
+    if m<0 then
+      if b=c then dec(b) else b:=c
+    else
+      if m>0 then
+        if a=c then inc(a) else a:=c
+      else
+       begin
+        a:=c;
+        b:=a-1;//end loop
+        i:=FProjects[c].SortIndex;
+       end;
+   end;
+end;
+
+function TXxmProjectCache.GetRegistrySignature: string;
+var
+  fh:THandle;
+  fd:TWin32FindData;
+begin
+  //assert in FLock
+  FRegLastCheckTC:=GetTickCount;
+  fh:=FindFirstFile(PChar(FRegFilePath+XxmRegFileName),fd);
+  if fh=INVALID_HANDLE_VALUE then Result:='' else
+   begin
+    Result:=
+      IntToHex(fd.ftLastWriteTime.dwHighDateTime,8)+
+      IntToHex(fd.ftLastWriteTime.dwLowDateTime,8)+
+      IntToStr(fd.nFileSizeLow);
+    Windows.FindClose(fh);
+   end;
+end;
+
+function TXxmProjectCache.GetRegistry: IJSONDocument;
+var
+  f:TFileStream;
+  i:integer;
+  s:AnsiString;
+  w:WideString;
+begin
+  //assert in FLock
+  //assert CoInitialize called
+  Result:=JSON;
+  f:=TFileStream.Create(FRegFilePath+XxmRegFileName,
+    fmOpenRead or fmShareDenyWrite);
+  try
+    i:=f.Size;
+    SetLength(s,i);
+    if f.Read(s[1],i)<>i then RaiseLastOSError;
+    if (i>=3) and (s[1]=#$EF) and (s[2]=#$BB) and (s[3]=#$BF) then
+      Result.Parse(UTF8ToWideString(Copy(s,4,i-3)))
+    else
+    if (i>=2) and (s[1]=#$FF) and (s[2]=#$FE) then
+     begin
+      SetLength(w,(i div 2)-1);
+      Move(s[3],w[1],(i*2)-1);
+      Result.Parse(w);
+     end
+    else
+      Result.Parse(WideString(s));
+  finally
+    f.Free;
+  end;
+end;
+
+function BSize(const x:string):integer;
+var
+  i,l:integer;
+begin
+  Result:=0;//default
+  i:=1;
+  l:=Length(x);
+  if l<>0 then
+    case x[1] of
+      '$','#','h','H','x','X':inc(i);//hex
+      '0':if (l>2) and ((x[2]='x') or (x[2]='X')) then inc(i,2);
+    end;
+  if i<>1 then
+    while (i<=l) do
+     begin
+      case x[i] of
+        '0'..'9':
+          Result:=Result*$10+(byte(x[i]) and $F);
+        'A'..'F','a'..'f':
+          Result:=Result*$10+9+(byte(x[i]) and $F);
+        else raise Exception.Create('Invalid hexadecimal value "'+x+'"');
+      end;
+      inc(i);
+     end
+  else
+    while (i<=l) do
+     begin
+      case x[i] of
+        '0'..'9':
+          Result:=Result*10+(byte(x[i]) and $F);
+        'K','k':Result:=Result*$400;//kilobyte
+        'M','m':Result:=Result*$100000;//megabyte
+        //'G','g':Result:=Result*$40000000;//gigabyte
+        'B','I','b','i':;//ignore
+        else raise Exception.Create('Invalid numeric value "'+x+'"');
+      end;
+      inc(i);
+     end;
+end;
+
+function VarToBool(const v:OleVariant):boolean;
+begin
+  Result:=not(VarIsNull(v)) and boolean(v);
+end;
+
+procedure TXxmProjectCache.CheckRegistry;
+var
+  s,n:string;
+  p:WideString;
+  i,j,a:integer;
+  d,d1:IJSONDocument;
+  e:IJSONEnumerator;
+begin
+  if cardinal(GetTickCount-FRegLastCheckTC)>XxmRegCheckIntervalMS then
+   begin
+    EnterCriticalSection(FLock);
+    try
+      //check again for threads that were waiting for lock
+      if cardinal(GetTickCount-FRegLastCheckTC)>XxmRegCheckIntervalMS then
+       begin
+        //signature
+        s:=GetRegistrySignature;
+        if FRegSignature<>s then
+         begin
+          FRegSignature:=s;
+          for i:=0 to FProjectsCount-1 do FProjects[i].LoadCheck:=false;
+          d:=GetRegistry;
+          FDefaultProject:=VarToStr(d['defaultProject']);
+          if FDefaultProject='' then FDefaultProject:='xxm';
+          FSingleProject:=VarToStr(d['singleProject']);
+          e:=JSONEnum(d['projects']);
+          while e.Next do
+           begin
+            d1:=JSON(e.Value);
+            FindProject(e.Key,n,i,a);
+            if (i<>-1) and (FProjects[i].LoadCheck) then i:=-1;//duplicate! raise?
+            if i=-1 then
+             begin
+              //new
+              if FProjectsCount=FProjectsLength then
+               begin
+                inc(FProjectsLength,8);
+                SetLength(FProjects,FProjectsLength);
+               end;
+              i:=FProjectsCount;
+              inc(FProjectsCount);
+              FProjects[i].Name:=n;
+              FProjects[i].Entry:=nil;//create see below
+              //sort index
+              j:=i;
+              while j>a do
+               begin
+                FProjects[j].SortIndex:=FProjects[j-1].SortIndex;
+                dec(j);
+               end;
+              FProjects[j].SortIndex:=i;
+             end;
+            FProjects[i].LoadCheck:=true;
+            FProjects[i].Alias:=VarToStr(d1['alias']);
+            if FProjects[i].Alias='' then
+             begin
+              p:=StringReplace(
+                VarToStr(d1['path']),'/',PathDelim,[rfReplaceAll]);
+              if p='' then raise EXxmProjectNotFound.Create(StringReplace(
+                SXxmProjectNotFound,'__',e.Key,[]));
+              {
+              if PathIsRelative(PWideChar(p)) then
+               begin
+                SetLength(p,MAX_PATH);
+                PathCombine(PWideChar(p),PWideChar(WideString(FRegFilePath)),PWideChar(y.text));
+                SetLength(p,Length(p));
+               end;
+              }
+              if (Length(p)>2) and not((p[2]=':') or ((p[1]='\') and (p[2]='\'))) then
+                p:=FRegFilePath+p;
+              if FProjects[i].Entry=nil then
+                FProjects[i].Entry:=TXxmProjectEntry.Create(e.Key,p,
+                  VarToBool(d1['loadCopy']))
+              else
+                if p<>FProjects[i].Entry.FilePath then
+                  FProjects[i].Entry.SetFilePath(p,VarToBool(d1['loadCopy']));
+              FProjects[i].Entry.FAllowInclude:=VarToBool(d1['allowInclude']);
+              FProjects[i].Entry.FSignature:=VarToStr(d1['signature']);
+              FProjects[i].Entry.FBufferSize:=BSize(VarToStr(d1['bufferSize']));
+              FProjects[i].Entry.FNTLM:=VarToBool(d1['ntlm']);
+              FProjects[i].Entry.FNegotiate:=VarToBool(d1['negotiate']);
+             end
+            else
+             begin
+              FreeAndNil(FProjects[i].Entry);
+              inc(FCacheIndex);
+             end;
+           end;
+          //clean-up items removed from registry
+          for i:=0 to FProjectsCount-1 do
+            if not FProjects[i].LoadCheck then
+             begin
+              FProjects[i].Name:='';
+              FProjects[i].Alias:='';
+              FreeAndNil(FProjects[i].Entry);
+              inc(FCacheIndex);
+             end;
+          if FSingleProject<>'' then
+            LoadFavIcon(FSingleProject+'.ico');
+         end;
+      end;
+    finally
+      LeaveCriticalSection(FLock);
+    end;
+   end;
+end;
+
+procedure TXxmProjectCache.SetSignature(const Name:WideString;
+  const Value:string);
+var
+  d,d1:IJSONDocument;
+  s:AnsiString;
+  f:TFileStream;
+begin
+  CheckRegistry;//?
+  EnterCriticalSection(FLock);
+  try
+    d:=GetRegistry;
+    d1:=JSON(JSON(d['projects'])[Name]);
+    if d1=nil then
+      raise EXxmProjectNotFound.Create(StringReplace(
+        SXxmProjectNotFound,'__',Name,[]));
+    d1['signature']:=Value;
+    //save
+    s:=
+      #$EF#$BB#$BF+//Utf8ByteOrderMark+
+      UTF8Encode(d.ToString);
+    f:=TFileStream.Create(FRegFilePath+XxmRegFileName,fmCreate);
+    try
+      f.Write(s[1],Length(s));
+    finally
+      f.Free;
+    end;
+    FRegSignature:=GetRegistrySignature;
+  finally
+    LeaveCriticalSection(FLock);
+  end;
+end;
+
+function TXxmProjectCache.GetProject(const Name: WideString):
+  TXxmProjectEntry;
+var
+  n:string;
+  i,a,d:integer;
+  found:boolean;
+  e:TXxmProjectEntry;
+begin
+{$IF CompilerVersion<20}
+  e:=nil;//counter warning
+{$IFEND}
+  CheckRegistry;
+  EnterCriticalSection(FLock);
+  try
+    found:=false;
+    d:=0;
+    FindProject(Name,n,i,a);
+    while (i<>-1) and not(found) do
+      if FProjects[i].Alias='' then found:=true else
+       begin
+        inc(d);
+        if d=8 then raise EXxmProjectAliasDepth.Create(StringReplace(
+          SXxmProjectAliasDepth,'__',Name,[]));
+        FindProject(FProjects[i].Alias,n,i,a);
+       end;
+    if i=-1 then
+      raise EXxmProjectNotFound.Create(StringReplace(
+        SXxmProjectNotFound,'__',Name,[]))
+    else
+      e:=FProjects[i].Entry;
+  finally
+    LeaveCriticalSection(FLock);
+  end;
+  Result:=e;
+end;
+
+procedure TXxmProjectCache.ReleaseProject(const Name: WideString);
+var
+  n:string;
+  i,a:integer;
+begin
+  //CheckRegistry?
+  EnterCriticalSection(FLock);
+  try
+    FindProject(Name,n,i,a);
+    //if i=-1 then raise?
+    if i<>-1 then
+     begin
+      FProjects[i].Name:='';
+      FProjects[i].Alias:='';
+      FreeAndNil(FProjects[i].Entry);
+     end;
+  finally
+    LeaveCriticalSection(FLock);
+  end;
+end;
+
+function TXxmProjectCache.ProjectFromURI(Context:IXxmContext;
+  const URI:AnsiString;var i:integer;
+  var ProjectName,FragmentName:WideString):boolean;
+var
+  j,l:integer;
+  x:AnsiString;
+begin
+  CheckRegistry;
+  l:=Length(URI);
+  if FSingleProject='' then
+   begin
+    while (i<=l) and not(URI[i] in ['/','?','&','$','#']) do inc(i);
+    ProjectName:=WideString(Copy(URI,2,i-2));
+    if ProjectName='' then
+     begin
+      if (i<=l) and (URI[i]='/') then x:='' else x:='/';
+      Context.Redirect('/'+FDefaultProject+WideString(x+Copy(URI,i,l-i+1)),true);
+     end;
+    if (i>l) and (l>1) then
+      if URI='/favicon.ico' then
+       begin
+        Context.ContentType:='image/x-icon';
+        (Context as IxxmHttpHeaders).ResponseHeaders['Content-Length']:=
+          IntToStr(VarArrayHighBound(FFavIcon,1)+1);
+        Context.SendHTML(FFavIcon);
+        raise EXxmPageRedirected.Create(string(URI));
+       end
+      else
+        Context.Redirect(WideString(URI)+'/',true)
+    else
+      if (URI[i]='/') then inc(i);
+    Result:=true;
+   end
+  else
+   begin
+    ProjectName:=FSingleProject;
+    Result:=false;
+   end;
+  j:=i;
+  while (i<=l) and not(URI[i] in ['?','&','$','#']) do inc(i);
+  FragmentName:=URLDecode(Copy(URI,j,i-j));
+  if (i<=l) then inc(i);
+end;
+
+procedure TXxmProjectCache.LoadFavIcon(const FilePath:string);
+var
+  f:TFileStream;
+  i:integer;
+  p:pointer;
+begin
+  if FilePath<>'' then
+    try
+      f:=TFileStream.Create(FilePath,fmOpenRead or fmShareDenyWrite);
+      try
+        i:=f.Size;
+        FFavIcon:=VarArrayCreate([0,i-1],varByte);
+        p:=VarArrayLock(FFavIcon);
+        try
+          f.Read(p^,i);
+        finally
+          VarArrayUnlock(FFavIcon);
+        end;
+      finally
+        f.Free;
+      end;
+    except
+      on EFOpenError do ;//silent
+    end;
+end;
+
+function TXxmProjectCache.GetAuthCache(const SessionID: string): AnsiString;
+var
+  i:integer;
+begin
+  Result:='';//default
+  if SessionID<>'' then
+   begin
+    EnterCriticalSection(FLock);
+    try
+      i:=0;
+      while (i<FAuthCacheIndex) and (FAuthCache[i].SessionID<>SessionID) do inc(i);
+      if (i<FAuthCacheIndex) and (FAuthCache[i].Expires>Now) then
+        Result:=FAuthCache[i].AuthName;
+    finally
+      LeaveCriticalSection(FLock);
+    end;
+   end;
+end;
+
+procedure TXxmProjectCache.SetAuthCache(const SessionID: string;
+  const AuthName: AnsiString);
+var
+  i:integer;
+const
+  AuthCacheTimeoutMins=15;//TODO: from config?
+begin
+  if AuthName<>'' then
+   begin
+    EnterCriticalSection(FLock);
+    try
+      i:=0;
+      while (i<FAuthCacheIndex) and (FAuthCache[i].SessionID<>SessionID) do inc(i);
+      if i=FAuthCacheIndex then
+       begin
+        if FAuthCacheIndex=FAuthCacheSize then
+         begin
+          inc(FAuthCacheSize,4);//growstep
+          SetLength(FAuthCache,FAuthCacheSize);
+         end;
+        inc(FAuthCacheIndex);
+       end;
+      FAuthCache[i].SessionID:=SessionID;
+      FAuthCache[i].AuthName:=AuthName;
+      FAuthCache[i].Expires:=Now+AuthCacheTimeoutMins/MinsPerDay;
+    finally
+      LeaveCriticalSection(FLock);
+    end;
+   end;
+end;
+
+{ TXxmProjectCacheLocal }
+
+constructor TXxmProjectCacheLocal.Create;
+var
+  i:integer;
+begin
+  inherited Create;
+  FLocalCacheIndex1:=0;
+  FLocalCacheIndex2:=0;
+  for i:=0 to XxmProjectCacheLocalSize-1 do
+   begin
+    FLocalCache[i].CacheIndex:=0;//random?
+    FLocalCache[i].Name:='';
+    FLocalCache[i].Entry:=nil;
+   end;
+end;
+
+destructor TXxmProjectCacheLocal.Destroy;
+var
+  i:integer;
+begin
+  for i:=0 to XxmProjectCacheLocalSize-1 do
+   begin
+    FLocalCache[i].CacheIndex:=0;
+    FLocalCache[i].Name:='';
+    FLocalCache[i].Entry:=nil;//not FreeAndNil, see TXxmProjectCacheJson
+   end;
+  inherited;
+end;
+
+function TXxmProjectCacheLocal.GetProject(const Name: WideString):
+  TXxmProjectEntry;
+var
+  i:integer;
+begin
+  //assert Name<>''
+  i:=0;
+  while (i<FLocalCacheIndex1) and not(
+    (FLocalCache[i].CacheIndex=XxmProjectCache.CacheIndex) and
+    (FLocalCache[i].Name=Name)) do inc(i);
+  if i=FLocalCacheIndex1 then
+   begin
+    Result:=XxmProjectCache.GetProject(Name);
+    if Result<>nil then
+     begin
+      i:=FLocalCacheIndex2;
+      FLocalCache[i].CacheIndex:=XxmProjectCache.CacheIndex;
+      FLocalCache[i].Name:=Name;
+      FLocalCache[i].Entry:=Result;
+      inc(FLocalCacheIndex2);
+      if FLocalCacheIndex2=XxmProjectCacheLocalSize then FLocalCacheIndex2:=0;
+      if FLocalCacheIndex1<>XxmProjectCacheLocalSize then inc(FLocalCacheIndex1);
+     end;
+   end
+  else
+    Result:=FLocalCache[i].Entry;
+end;
+
 initialization
   GlobalAllowLoadCopy:=true;//default
+  //XxmProjectCache:=TXxmProjectCacheXml.Create;//moved to project source
+finalization
+  XxmProjectCache.Free;
+
 end.

@@ -61,11 +61,11 @@
         <SanitizedProjectName>xxmAhttpdAU</SanitizedProjectName>
         <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
         <VerInfo_MinorVer>2</VerInfo_MinorVer>
-        <VerInfo_Release>7</VerInfo_Release>
-        <VerInfo_Build>477</VerInfo_Build>
+        <VerInfo_Release>8</VerInfo_Release>
+        <VerInfo_Build>488</VerInfo_Build>
         <VerInfo_DLL>true</VerInfo_DLL>
         <VerInfo_Locale>1033</VerInfo_Locale>
-        <VerInfo_Keys>CompanyName=;FileDescription=xxm Apache httpd 2.4 Module (AutoUpdate);FileVersion=1.2.7.477;InternalName=xxmApache;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductName=xxm;ProductVersion=1.0.0.0;Comments=http://yoy.be/xxm/</VerInfo_Keys>
+        <VerInfo_Keys>CompanyName=;FileDescription=xxm Apache httpd 2.4 Module (AutoUpdate);FileVersion=1.2.8.488;InternalName=xxmApache;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductName=xxm;ProductVersion=1.0.0.0;Comments=http://yoy.be/xxm/</VerInfo_Keys>
         <DCC_Namespace>System;Xml;Data;Datasnap;Web;Soap;Winapi;System.Win;Vcl;$(DCC_Namespace)</DCC_Namespace>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base_Win32)'!=''">
@@ -115,7 +115,6 @@
         <DCCReference Include="xxmAhttpdContext.pas"/>
         <DCCReference Include="..\common\xxmCommonUtils.pas"/>
         <DCCReference Include="..\common\xxmPReg.pas"/>
-        <DCCReference Include="..\common\xxmPRegJson.pas"/>
         <DCCReference Include="xxmAhttpdClientStream.pas"/>
         <DCCReference Include="xxmAhttpdPars.pas"/>
         <DCCReference Include="..\common\xxmContext.pas"/>

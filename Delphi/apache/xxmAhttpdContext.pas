@@ -3,7 +3,7 @@ unit xxmAhttpdContext;
 interface
 
 uses SysUtils, Classes, ActiveX, httpd24, xxm, xxmContext,
-  xxmHeaders, xxmParams, xxmPReg, xxmPRegJson, xxmParUtils;
+  xxmHeaders, xxmParams, xxmPReg, xxmParUtils;
 
 type
   TxxmAhttpdContext=class(TXxmGeneralContext
@@ -105,7 +105,7 @@ var
 begin
   try
     //AddResponseHeader('X-Powered-By',SelfVersion);
-    if XxmProjectCache=nil then XxmProjectCache:=TXxmProjectCacheJson.Create;
+    if XxmProjectCache=nil then XxmProjectCache:=TXxmProjectCache.Create;
 
     //parse url
     x:=rq.uri;

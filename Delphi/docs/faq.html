@@ -25,9 +25,12 @@ in the xxm ISAPI extension or other configurations.</dd>
 <dd>extensible expandable modules... or transportable transformation modules... anyway something fancy like that.</dd>
 
 <dt>how do I get started</dt>
-<dd>use xxmProject.exe to start a new project in a directory. register the project with xxmLocalDev.dll to use Internet Explorer to browse to it. add pages by creating extra <code>.xxm</code> (and <code>.xxmi</code>) files to the directory.<br />
+<dd>Use xxmProject.exe to start a new project in a directory. Register the project with xxm.json for xxmHttpDev.exe to host it. Use a browser to open <code>http://localost/&lt;your project's name&gt;</code>. Add pages by creating extra <code>.xxm</code> (and <code>.xxmi</code>) files to the directory.<br />
 There is also a <a href="tutorial01/index.html">step-by-step tutorial with screenshots</a> that shows how it's done.
 </dd>
+
+<dt>I'm using <a href="https://www.embarcadero.com/products/delphi/starter/free-download/">Delphi Community Edition</a> that does not include the command line compiler</dt>
+<dd>Use <a href="https://gist.github.com/stijnsanders/c7dce4365cde11659c4892d2e7d7109a">this tiny tool</a> instead, that calls BDS.exe with the command line parameters to compile the project, and transfers the output in the same format xxm expects it. It's advised to disable the "Show compiler progress" option, or the IDE might remain open in the background when the project has a compile error.</dd>
 
 <dt>does an xxl module need to be an ActiveX/COM/OLE library</dt>
 <dd>no, an xxl library doesn't have to contain a Type Library and

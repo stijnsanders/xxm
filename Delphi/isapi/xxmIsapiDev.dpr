@@ -10,7 +10,6 @@ uses
   xxm in '..\bin\public\xxm.pas',
   xxmIsapiMain in 'xxmIsapiMain.pas',
   xxmPReg in '..\common\xxmPReg.pas',
-  xxmPRegJson in '..\common\xxmPRegJson.pas',
   xxmParams in '..\common\xxmParams.pas',
   xxmParUtils in '..\common\xxmParUtils.pas',
   xxmHeaders in '..\bin\public\xxmHeaders.pas',

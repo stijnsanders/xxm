@@ -4,7 +4,7 @@ interface
 
 uses
   SysUtils, Windows, xxmSock, xxmThreadPool, xxm, Classes, ActiveX,
-  xxmContext, xxmPReg, xxmPRegJson, xxmParams, xxmParUtils, xxmHeaders,
+  xxmContext, xxmPReg, xxmParams, xxmParUtils, xxmHeaders,
   xxmKeptCon, xxmSpoolingCon;
 
 type
@@ -503,13 +503,10 @@ begin
 end;
 
 function TXxmHttpContext.GetProjectPage(const FragmentName: WideString):IXxmFragment;
-var
-  e:TXxmProjectCacheEntry;
 begin
-  e:=ProjectEntry as TXxmProjectCacheEntry;
   //TODO: support both Negotiate and NTLM (and Digest?)
-  if e.Negotiate then AuthSChannel('Negotiate',FCredNego) else
-    if e.NTLM then AuthSChannel('NTLM',FCredNTLM);
+  if ProjectEntry.Negotiate then AuthSChannel('Negotiate',FCredNego) else
+    if ProjectEntry.NTLM then AuthSChannel('NTLM',FCredNTLM);
       Result:=inherited GetProjectPage(FragmentName);
   PreProcessRequestPage;
 end;

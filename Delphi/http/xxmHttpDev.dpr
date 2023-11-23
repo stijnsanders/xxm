@@ -12,7 +12,6 @@ uses
   xxmParUtils in '..\common\xxmParUtils.pas',
   xxmHeaders in '..\bin\public\xxmHeaders.pas',
   xxmPReg in '..\common\xxmPReg.pas',
-  xxmPRegJson in '..\common\xxmPRegJson.pas',
   xxmCommonUtils in '..\common\xxmCommonUtils.pas',
   xxmContext in '..\common\xxmContext.pas',
   xxmReadHandler in 'xxmReadHandler.pas',

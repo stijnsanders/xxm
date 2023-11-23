@@ -60,11 +60,11 @@
         <SanitizedProjectName>xxmSCGI</SanitizedProjectName>
         <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
         <VerInfo_MinorVer>2</VerInfo_MinorVer>
-        <VerInfo_Release>7</VerInfo_Release>
-        <VerInfo_Build>477</VerInfo_Build>
+        <VerInfo_Release>8</VerInfo_Release>
+        <VerInfo_Build>488</VerInfo_Build>
         <VerInfo_Locale>1033</VerInfo_Locale>
         <DCC_Namespace>System;Xml;Data;Datasnap;Web;Soap;Winapi;System.Win;Vcl;$(DCC_Namespace)</DCC_Namespace>
-        <VerInfo_Keys>CompanyName=;FileDescription=xxm SCGI Server;FileVersion=1.2.7.477;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductName=xxm;ProductVersion=1.0.0.0;Comments=http://yoy.be/xxm/</VerInfo_Keys>
+        <VerInfo_Keys>CompanyName=;FileDescription=xxm SCGI Server;FileVersion=1.2.8.488;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductName=xxm;ProductVersion=1.0.0.0;Comments=http://yoy.be/xxm/</VerInfo_Keys>
         <Icon_MainIcon>$(BDS)\bin\delphi_PROJECTICON.ico</Icon_MainIcon>
         <Icns_MainIcns>$(BDS)\bin\delphi_PROJECTICNS.icns</Icns_MainIcns>
     </PropertyGroup>
@@ -116,7 +116,6 @@
         <DCCReference Include="..\common\xxmParUtils.pas"/>
         <DCCReference Include="..\bin\public\xxmHeaders.pas"/>
         <DCCReference Include="..\common\xxmPReg.pas"/>
-        <DCCReference Include="..\common\xxmPRegJson.pas"/>
         <DCCReference Include="..\common\xxmCommonUtils.pas"/>
         <DCCReference Include="..\common\xxmContext.pas"/>
         <DCCReference Include="..\http\xxmReadHandler.pas"/>

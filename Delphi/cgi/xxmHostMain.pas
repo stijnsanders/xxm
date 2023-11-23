@@ -4,7 +4,7 @@ interface
 
 uses
   Windows, SysUtils, ActiveX, xxm, Classes, xxmContext, xxmThreadPool,
-  xxmPReg, xxmPRegJson, xxmParams, xxmParUtils, xxmHeaders;
+  xxmPReg, xxmParams, xxmParUtils, xxmHeaders;
 
 type
   TXxmPostDataStream=class(TCustomMemoryStream)

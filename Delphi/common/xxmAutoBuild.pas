@@ -59,7 +59,7 @@ const
         case s[j] of
           '1':Result:=Result+HTMLEncode(val1);
           '2':Result:=Result+HTMLEncode(val2);
-          'L':Result:=Result+
+          'L':if BuildOutput<>nil then Result:=Result+
             WebProject.ResolveErrorLines(BuildOutput.DataString);
           'N':Result:=Result+DateTimeToStr(Now);
           'P':Result:=Result+HTMLEncode(ProjectName);
@@ -128,7 +128,7 @@ begin
               WebProject.Free;
             end;
           finally
-            BuildOutput.Free;
+            FreeAndNil(BuildOutput);
           end;
         except
           on EXxmWebProjectNotFound do Result:=true;//assert xxl only
@@ -151,4 +151,6 @@ begin
       Context.SendHTML(lr);
 end;
 
+initialization
+  BuildOutput:=nil;//default
 end.
