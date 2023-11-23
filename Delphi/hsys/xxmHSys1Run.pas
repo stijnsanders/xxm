@@ -99,7 +99,7 @@ begin
 
      end;
    end;
-  //TODO: load from xxm.xml?
+  //TODO: load from xxm.json?
   if c=0 then raise Exception.Create('No projects loaded');
 
   XxmProjectCache:=TXxmProjectCache.Create;

@@ -256,8 +256,8 @@ to enable xxm's built-in exception handling and to enable performance enhancemen
 
 <p><span class="newver">1.1.3</span> To load a fragment from another project,
 prefix the fragment address with <code>xxm://project2/</code> where <code>project2</code> is the name of the other project.
-<b>Attention:</b> this is disallowed by default, to enable this add <code>AllowInclude="1"</code> to the xxm handler's project registry
-(Windows registry or <code>xxm.xml</code>).</p>
+<b>Attention:</b> this is disallowed by default, to enable this add <code>"allowInclude": true</code> to the xxm handler's project registry
+(<a href="install.html#xxmjson"><code>xxm.json</code></a>).</p>
 </dd>
 
 <dt><a name="ContextString"></a><code>function ContextString(cs:TXxmContextString):WideString;</code></dt>
@@ -321,7 +321,7 @@ but could be confusing when debugging a project. (default value: 0)<br />
 It is allowed to set BufferSize to a new value while data is already sent,
 but whether any data still in the output buffer will get flushed or not depends on the implementation of the xxm handler.<br />
 <span class="newver">1.2.2</span> Optionally override the default value by adding
-<code>BufferSize="<i>&lt;new default value&gt;</i>"</code> to the xxm handler's project registry (Windows registry or <code>xxm.xml</code>).</dd>
+<code>"bufferSize": <i>&lt;new default value&gt;</i></code> to the xxm handler's project registry (<a href="install.html#xxmjson"><code>xxm.json</code></a>).</dd>
 
 <dt><code>procedure Flush;</code> <span class="newver">1.1.4</span></dt>
 <dd>write any data waiting in the output buffer rightaway.
