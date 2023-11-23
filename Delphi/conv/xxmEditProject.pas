@@ -24,7 +24,6 @@ type
     txtCompileCommand: TEdit;
     tvFiles: TTreeView;
     Open1: TMenuItem;
-    btnRegisterLocal: TButton;
     ImageList1: TImageList;
     PopupMenu1: TPopupMenu;
     ActionList1: TActionList;
@@ -61,7 +60,6 @@ type
     procedure New1Click(Sender: TObject);
     procedure Save1Click(Sender: TObject);
     procedure Open1Click(Sender: TObject);
-    procedure btnRegisterLocalClick(Sender: TObject);
     procedure tvFilesExpanding(Sender: TObject; Node: TTreeNode;
       var AllowExpansion: Boolean);
     procedure tvFilesCompare(Sender: TObject; Node1, Node2: TTreeNode;
@@ -110,8 +108,7 @@ var
 
 implementation
 
-uses DateUtils, xxmUtilities, Registry, ShellAPI, ComObj, xxmConvertXML,
-  xxmConvert2;
+uses DateUtils, xxmUtilities, Registry, ShellAPI, ComObj;
 
 {$R *.dfm}
 
@@ -201,9 +198,6 @@ begin
         f.Free;
       end;
 
-      //TRANSITIONAL
-      if (i<>0) and (fd[1]='<') then fd:=ConvertProjectFile(fd);
-
       ProjectData.Parse(fd);
      end
     else
@@ -291,38 +285,6 @@ end;
 procedure TEditProjectMainForm.Open1Click(Sender: TObject);
 begin
   if CheckModified then LoadProject('',false);
-end;
-
-procedure TEditProjectMainForm.btnRegisterLocalClick(Sender: TObject);
-var
-  r:TRegistry;
-  s,t,u:string;
-begin
-  if CheckModified then
-   begin
-    t:=txtProjectName.Text;
-    if t='' then raise Exception.Create('Project name required');
-    s:=ProjectFolder+t+'.xxl';
-    r:=TRegistry.Create;
-    try
-      r.RootKey:=HKEY_CURRENT_USER;//HKEY_LOCAL_MACHINE;
-      r.OpenKey('\Software\xxm\local\'+t,true);
-      u:=r.ReadString('');
-      if (u='') or (u=s) or (MessageBox(GetDesktopWindow,PChar('Project "'+t+
-        '" was already registered as'#13#10'  '+u+
-        #13#10'Do you want to overwrite this registration?'#13#10'  '+s),
-        'xxm Project',MB_OKCANCEL or MB_ICONQUESTION or MB_SYSTEMMODAL)=idOK) then
-       begin
-        r.WriteString('',s);
-        r.DeleteValue('Signature');
-        //TODO: default settings?
-        MessageBox(GetDesktopWindow,PChar('Project "'+t+'" registered.'),
-          'xxm Project',MB_OK or MB_ICONINFORMATION);
-       end;
-    finally
-      r.Free;
-    end;
-   end;
 end;
 
 const
@@ -743,15 +705,6 @@ begin
     if odXxmJson.Execute then
      begin
       fn:=odXxmJson.FileName;
-      //TRANSITIONAL
-      if LowerCase(Copy(fn,Length(fn)-3,4))='.xml' then
-       begin
-        s:=GetCurrentDir;
-        SetCurrentDir(ExtractFilePath(fn));
-        ConvertProjectReg;
-        SetCurrentDir(s);
-        fn:=Copy(fn,1,Length(fn)-4)+'.json';
-       end;
 
       t:=LowerCase(t);
       d:=JSON;

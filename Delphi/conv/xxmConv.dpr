@@ -50,8 +50,6 @@ begin
       Writeln('    /x:XXX        define template value XXX');
       Writeln('  xxmConv /install');
       Writeln('    registers a context-menu compile option on xxmp file type');
-      Writeln('  xxmConv /xmltojson');
-      Writeln('    convert xxm.xml to xxm.json');
      end;
 
     i:=1;
