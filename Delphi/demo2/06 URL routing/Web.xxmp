@@ -1,10 +1,21 @@
-<XxmWebProject>
-	<ProjectName>demo</ProjectName>
-	<CompileCommand>dcc32 -U[[HandlerPath]]public -Q [[ProjectName]].dpr</CompileCommand>
-	<UUID>{A3C3F020-3CA6-47AE-B5AF-DADE868EB4E7}</UUID>
-	<Files>
-		<File ID="default_xxm" UnitName="default_xxm1" UnitPath=""><Path>Default.xxm</Path></File>
-		<File ID="search_xxm" UnitName="search_xxm1" UnitPath=""><Path>Search.xxm</Path></File>
-	</Files>
-	<LastModified>2010-09-15T13:52:33</LastModified>
-</XxmWebProject>
+{
+	"name": "demo",
+	"uuid": "{A3C3F020-3CA6-47AE-B5AF-DADE868EB4E7}",
+	"compileCommand": "dcc32 -U[[HandlerPath]]public -Q [[ProjectName]].dpr",
+	"files": {
+		"default_xxm": {
+			"path": "Default.xxm",
+			"unitName": "default_xxm1",
+			"unitPath": ""
+		},
+		"search_xxm": {
+			"path": "Search.xxm",
+			"unitName": "search_xxm1",
+			"unitPath": ""
+		}
+	},
+	"units": {
+		"FRegRouting": {}
+	},
+	"lastModified": "2023-11-24T21:46:15"
+}

@@ -1,3 +1,3 @@
 <h3>search</h3>
 <p>searching "[[=Context['q'].Value]]"</p>
-<p><a href="/">back</a></p>
+<p><a href="/[[=Project.Name]]/">back</a></p>

@@ -1,12 +1,16 @@
-<XxmWebProject>
-	<ProjectName>demo</ProjectName>
-	<CompileCommand>dcc32 -U[[HandlerPath]]public -Q [[ProjectName]].dpr</CompileCommand>
-	<UUID>{FDF985E3-BBCE-421F-B8E9-56347288E833}</UUID>
-	<Files>
-		<File ID="default_xxm" UnitName="default_xxm1" UnitPath=""><Path>Default.xxm</Path></File>
-	</Files>
-	<ParserValues>
-		<SendOpen>ExLogPrefix:='ExLogPrefix:$l';$d</SendOpen>
-		<SendHTMLOpen>ExLogPrefix:='ExLogPrefix:$l';$d</SendHTMLOpen>
-	</ParserValues>
-</XxmWebProject>
+{
+	"name": "demo",
+	"uuid": "{FDF985E3-BBCE-421F-B8E9-56347288E833}",
+	"compileCommand": "dcc32 -U[[HandlerPath]]public -Q [[ProjectName]].dpr",
+	"files": {
+		"default_xxm": {
+			"path": "Default.xxm",
+			"unitName": "default_xxm1",
+			"unitPath": ""
+		}
+	},
+	"parserValues": {
+		"SendOpen": "ExLogPrefix:='ExLogPrefix:$l';$d",
+		"SendHTMLOpen": "ExLogPrefix:='ExLogPrefix:$l';$d"
+	}
+}

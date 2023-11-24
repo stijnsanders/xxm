@@ -14,7 +14,6 @@ library [[ProjectName]];
 }
 
 uses
-	FRegRouting in '..\FRegRouting.pas',
 	[[@Include]][[IncludeUnit]] in '..\[[IncludePath]][[IncludeUnit]].pas',
 	[[@]][[@Fragment]][[FragmentUnit]] in '[[FragmentPath]][[FragmentUnit]].pas', {[[FragmentAddress]]}
 	[[@]][[UsesClause]]

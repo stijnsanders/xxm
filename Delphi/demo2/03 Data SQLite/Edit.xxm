@@ -21,7 +21,7 @@ if Context.Parameter['x'].AsInteger=0 then
 else
  begin
   if id=0 then
-    Session.DbCon.Execute('insert into Table1 ([text]) values (?)',[Context['text'].Value],id)
+    Session.DbCon.Execute('insert into Table1 ([text]) values (?)',[Context['text'].Value])
   else
     Session.DbCon.Execute('update Table1 set [text]=? where id=?',[Context['text'].Value,id]);
   <<p>updated</p>

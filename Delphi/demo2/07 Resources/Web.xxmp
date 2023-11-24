@@ -1,13 +1,20 @@
-<XxmWebProject>
-	<ProjectName>demo</ProjectName>
-	<PreCompileCommand>prebuild\prepres.exe</PreCompileCommand>
-	<Switches>{$R '..\Web.res' '..\Web.rc'}</Switches>
-	<PreCompileCommand>brcc32 -32 Web.rc</PreCompileCommand>
-	<CompileCommand>dcc32 -U[[HandlerPath]]public -Q [[ProjectName]].dpr</CompileCommand>
-	<UUID>{F9D7CE3E-0D22-495B-ABDE-C0F19F799488}</UUID>
-	<Files>
-		<File ID="default_xxm" UnitName="default_xxm1" UnitPath=""><Path>Default.xxm</Path></File>
-		<!-- un-comment this line to force auto-compile when working on xxmp.pas -->
-		<Resource><Path>xxmp.pas</Path></Resource>
-	</Files>
-</XxmWebProject>
+{
+	"name": "demo",
+	"uuid": "{F9D7CE3E-0D22-495B-ABDE-C0F19F799488}",
+	"switches": "{$R '..\\Web.res' '..\\Web.rc'}",
+	"preCompileCommand": [
+		"prebuild\\prepres.exe",
+		"brcc32 -32 Web.rc"
+	],
+	"compileCommand": "dcc32 -U[[HandlerPath]]public -Q [[ProjectName]].dpr",
+	"files": {
+		"default_xxm": {
+			"path": "Default.xxm",
+			"unitName": "default_xxm1",
+			"unitPath": ""
+		}
+	},
+	"resources": {
+		"xxmp.pas": {}
+	}
+}

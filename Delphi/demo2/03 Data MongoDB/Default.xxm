@@ -1,8 +1,8 @@
-[[@xxmSession,mongoWire,bsonDoc,]][[!var
+[[@xxmSession,mongoWire,jsonDoc,]][[!var
 qr:TMongoWireQuery;
-d:IBSONDocument;
+d:IJSONDocument;
 <<ul>>
-d:=BSON;
+d:=JSON;
 qr:=TMongoWireQuery.Create(Session.DbCon);
 try
   qr.Query(xxmDemoCollection,nil);			

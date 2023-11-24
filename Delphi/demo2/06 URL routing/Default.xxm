@@ -1,22 +1,24 @@
 [[!var
 i,l:integer;
+n:string;
 p:IXxmParameter;
 ]][[
 l:=Context.ParameterCount;
+n:=Project.Name;
 ]]
 <h3>examples</h3>
 <ul>
-<li><a href="/view/1234">/view/1234<a>: number parameter</li>
-<li><a href="/view/hello/world/">/view/hello/world/</a>: name value pair</li>
-<li><a href="/view/hello/world/5678/product/1">/view/hello/world/5678/product/1</a>: both</li>
-<li><a href="/view/hello/world/?test=1">/view/hello/world/?test=1</a>: querystring still works</li>
+<li><a href="/[[=n]]/view/1234">/view/1234<a>: number parameter</li>
+<li><a href="/[[=n]]/view/hello/world/">/view/hello/world/</a>: name value pair</li>
+<li><a href="/[[=n]]/view/hello/world/5678/product/1">/view/hello/world/5678/product/1</a>: both</li>
+<li><a href="/[[=n]]/view/hello/world/?test=1">/view/hello/world/?test=1</a>: querystring still works</li>
 <li>
-<form action="/formpost/form/1/product/1" method="post" style="margin:0pt;">
+<form action="/[[=n]]/formpost/form/1/product/1" method="post" style="margin:0pt;">
 <input type="hidden" name="hello" value="world" />
 <input type="submit" value="/formpost/form/1/product/1" />: a form post
 </form></li>
-<li><a href="/search/q/something/">/search/q/something/</a>: another page</li>
-<li><a href="/files/test.html">/files/test.html</a>: remember to put plain files into the files folder</li>
+<li><a href="/[[=n]]/search/q/something/">/search/q/something/</a>: another page</li>
+<li><a href="/[[=n]]/files/test.html">/files/test.html</a>: remember to put plain files into the files folder</li>
 </ul>
 <h3>parameter list ([[=l]]):</h3>
 <table border="1"><tr><th>name</th><th>type</th><th>value</th></tr>

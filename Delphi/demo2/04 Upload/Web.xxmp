@@ -1,13 +1,37 @@
-<XxmWebProject>
-	<ProjectName>demo</ProjectName>
-	<CompileCommand>dcc32 -U[[HandlerPath]]public -Q [[ProjectName]].dpr</CompileCommand>
-	<UUID>{433EF75A-F240-4367-A75B-DD91AC2A9F66}</UUID>
-	<Files>
-		<File ID="default_xxm" UnitName="default_xxm1" UnitPath=""><Path>Default.xxm</Path></File>
-		<File ID="ihead_xxmi" UnitName="ihead_xxmi1" UnitPath=""><Path>iHead.xxmi</Path></File>
-		<File ID="ifoot_xxmi" UnitName="ifoot_xxmi1" UnitPath=""><Path>iFoot.xxmi</Path></File>
-		<File ID="fadd_xxm" UnitName="fadd_xxm1" UnitPath=""><Path>fAdd.xxm</Path></File>
-		<File ID="aadd_xxm" UnitName="aadd_xxm1" UnitPath=""><Path>aAdd.xxm</Path></File>
-		<File ID="files__default_xxm" UnitName="default_xxm2" UnitPath="files\"><Path>files/Default.xxm</Path></File>
-	</Files>
-</XxmWebProject>
+{
+	"name": "demo",
+	"uuid": "{433EF75A-F240-4367-A75B-DD91AC2A9F66}",
+	"compileCommand": "dcc32 -U[[HandlerPath]]public -Q [[ProjectName]].dpr",
+	"files": {
+		"default_xxm": {
+			"path": "Default.xxm",
+			"unitName": "default_xxm1",
+			"unitPath": ""
+		},
+		"ihead_xxmi": {
+			"path": "iHead.xxmi",
+			"unitName": "ihead_xxmi1",
+			"unitPath": ""
+		},
+		"ifoot_xxmi": {
+			"path": "iFoot.xxmi",
+			"unitName": "ifoot_xxmi1",
+			"unitPath": ""
+		},
+		"fadd_xxm": {
+			"path": "fAdd.xxm",
+			"unitName": "fadd_xxm1",
+			"unitPath": ""
+		},
+		"aadd_xxm": {
+			"path": "aAdd.xxm",
+			"unitName": "aadd_xxm1",
+			"unitPath": ""
+		},
+		"files__default_xxm": {
+			"path": "files/Default.xxm",
+			"unitName": "default_xxm2",
+			"unitPath": "files/"
+		}
+	}
+}

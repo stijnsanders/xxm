@@ -1,11 +1,25 @@
-<XxmWebProject>
-	<ProjectName>demo</ProjectName>
-	<CompileCommand>dcc32 -U[[HandlerPath]]public -Q [[ProjectName]].dpr</CompileCommand>
-	<UUID>{C5FF203D-BB0A-4E49-8460-9FDC67957FBA}</UUID>
-	<Files>
-		<Unit UnitName="xxmSession"/>
-		<File ID="default_xxm" UnitName="default_xxm1" UnitPath=""><Path>Default.xxm</Path></File>
-		<File ID="login_xxm" UnitName="login_xxm1" UnitPath=""><Path>Login.xxm</Path></File>
-		<File ID="logout_xxm" UnitName="logout_xxm1" UnitPath=""><Path>Logout.xxm</Path></File>
-	</Files>
-</XxmWebProject>
+{
+	"name": "demo",
+	"uuid": "{C5FF203D-BB0A-4E49-8460-9FDC67957FBA}",
+	"compileCommand": "dcc32 -U[[HandlerPath]]public -Q [[ProjectName]].dpr",
+	"files": {
+		"default_xxm": {
+			"path": "Default.xxm",
+			"unitName": "default_xxm1",
+			"unitPath": ""
+		},
+		"login_xxm": {
+			"path": "Login.xxm",
+			"unitName": "login_xxm1",
+			"unitPath": ""
+		},
+		"logout_xxm": {
+			"path": "Logout.xxm",
+			"unitName": "logout_xxm1",
+			"unitPath": ""
+		}
+	},
+	"units": {
+		"xxmSession": {}
+	}
+}

@@ -1,10 +1,22 @@
-<XxmWebProject>
-	<ProjectName>demo</ProjectName>
-	<CompileCommand>dcc32 -U[[HandlerPath]]public -Q [[ProjectName]].dpr</CompileCommand>
-	<UUID>{E1E084FD-7391-4EF0-8BA4-5D009216871D}</UUID>
-	<Files>
-		<File ID="default_xxm" UnitName="default_xxm1" UnitPath=""><Path>Default.xxm</Path></File>
-		<File ID="hello1_xxm" UnitName="hello1_xxm1" UnitPath=""><Path>Hello1.xxm</Path></File>
-		<File ID="chunk_xxmi" UnitName="chunk_xxmi1" UnitPath=""><Path>Chunk.xxmi</Path></File>
-	</Files>
-</XxmWebProject>
+{
+	"name": "demo",
+	"uuid": "{E1E084FD-7391-4EF0-8BA4-5D009216871D}",
+	"compileCommand": "dcc32 -U[[HandlerPath]]public -Q [[ProjectName]].dpr",
+	"files": {
+		"default_xxm": {
+			"path": "Default.xxm",
+			"unitName": "default_xxm1",
+			"unitPath": ""
+		},
+		"hello1_xxm": {
+			"path": "Hello1.xxm",
+			"unitName": "hello1_xxm1",
+			"unitPath": ""
+		},
+		"chunk_xxmi": {
+			"path": "Chunk.xxmi",
+			"unitName": "chunk_xxmi1",
+			"unitPath": ""
+		}
+	}
+}

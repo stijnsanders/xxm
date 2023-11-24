@@ -1,13 +1,27 @@
-<XxmWebProject>
-	<ProjectName>demo</ProjectName>
-	<CompileCommand>dcc32 -U[[HandlerPath]]public -Q [[ProjectName]].dpr</CompileCommand>
-	<UUID>{906BACDB-4D7D-43AD-8FEC-59BCC4A5AA18}</UUID>
-	<Files>
-		<Unit UnitName="xxmSession"/>
-		<Unit UnitName="SQLite"/>
-		<Unit UnitName="SQLiteData"/>
-		<File ID="default_xxm" UnitName="default_xxm1" UnitPath=""><Path>Default.xxm</Path></File>
-		<File ID="delete_xxm" UnitName="delete_xxm1" UnitPath=""><Path>Delete.xxm</Path></File>
-		<File ID="edit_xxm" UnitName="edit_xxm1" UnitPath=""><Path>Edit.xxm</Path></File>
-	</Files>
-</XxmWebProject>
+{
+	"name": "demo",
+	"uuid": "{906BACDB-4D7D-43AD-8FEC-59BCC4A5AA18}",
+	"compileCommand": "dcc32 -U[[HandlerPath]]public -Q [[ProjectName]].dpr",
+	"files": {
+		"default_xxm": {
+			"path": "Default.xxm",
+			"unitName": "default_xxm1",
+			"unitPath": ""
+		},
+		"delete_xxm": {
+			"path": "Delete.xxm",
+			"unitName": "delete_xxm1",
+			"unitPath": ""
+		},
+		"edit_xxm": {
+			"path": "Edit.xxm",
+			"unitName": "edit_xxm1",
+			"unitPath": ""
+		}
+	},
+	"units": {
+		"xxmSession": {},
+		"SQLite": {},
+		"SQLiteData": {}
+	}
+}

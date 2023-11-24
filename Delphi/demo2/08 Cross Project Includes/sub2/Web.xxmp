@@ -1,10 +1,18 @@
-<XxmWebProject>
-	<ProjectName>sub2</ProjectName>
-	<CompileCommand>dcc32 -U[[HandlerPath]]public -Q [[ProjectName]].dpr</CompileCommand>
-	<UUID>{05672196-ED01-4F2B-8B10-0926AC2D60A1}</UUID>
-	<Files>
-		<File ID="default_xxm" UnitName="default_xxm1" UnitPath=""><Path>Default.xxm</Path></File>
-		<File ID="a_xxmi" UnitName="a_xxmi1" UnitPath=""><Path>A.xxmi</Path></File>
-	</Files>
-	<LastModified>2011-11-08T23:01:50</LastModified>
-</XxmWebProject>
+{
+	"name": "sub2",
+	"uuid": "{05672196-ED01-4F2B-8B10-0926AC2D60A1}",
+	"compileCommand": "dcc32 -U[[HandlerPath]]public -Q [[ProjectName]].dpr",
+	"files": {
+		"default_xxm": {
+			"path": "Default.xxm",
+			"unitName": "default_xxm1",
+			"unitPath": ""
+		},
+		"a_xxmi": {
+			"path": "A.xxmi",
+			"unitName": "a_xxmi1",
+			"unitPath": ""
+		}
+	},
+	"lastModified": "2011-11-08T23:01:50"
+}

@@ -1,10 +1,18 @@
-<XxmWebProject>
-	<ProjectName>demo</ProjectName>
-	<CompileCommand>dcc32 -U[[HandlerPath]]public -Q [[ProjectName]].dpr</CompileCommand>
-	<LastModified>2014-12-01T23:20:56</LastModified>
-	<UUID>{99CA43D9-CD86-4D08-A9C2-DBB26AED47FD}</UUID>
-	<Files>
-		<File ID="default_xxm" UnitName="default_xxm1" UnitPath=""><Path>Default.xxm</Path></File>
-		<File ID="secret_xxm" UnitName="secret_xxm1" UnitPath=""><Path>Secret.xxm</Path></File>
-	</Files>
-</XxmWebProject>
+{
+	"name": "demo",
+	"uuid": "{99CA43D9-CD86-4D08-A9C2-DBB26AED47FD}",
+	"compileCommand": "dcc32 -U[[HandlerPath]]public -Q [[ProjectName]].dpr",
+	"files": {
+		"default_xxm": {
+			"path": "Default.xxm",
+			"unitName": "default_xxm1",
+			"unitPath": ""
+		},
+		"secret_xxm": {
+			"path": "Secret.xxm",
+			"unitName": "secret_xxm1",
+			"unitPath": ""
+		}
+	},
+	"lastModified": "2014-12-01T23:20:56"
+}

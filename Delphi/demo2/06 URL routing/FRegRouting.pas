@@ -64,7 +64,13 @@ var
   s:WideString;
   pc:IxxmParameterCollection;
 begin
-  //first handle exceptions
+  //first handle specific exceptions
+  if Address='readme.html' then
+   begin
+    //no fragment, let xxm pass the static file
+    Result:=nil;
+   end
+  else
   if Copy(Address,1,6)='files/' then
    begin
     //no fragment, let xxm pass the static file

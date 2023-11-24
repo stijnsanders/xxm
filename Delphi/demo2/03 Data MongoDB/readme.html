@@ -15,8 +15,12 @@ Use <i>xxmProject.exe</i> to edit and manage project settings.</dd>
 <dt>xxmp.pas</dt>
 <dd>The project's main unit. When this file is missing form the project, xxm creates one for you.<br />
 This one has been modified to include the <code>SetSession(Context);</code> call on LoadPage, linking each request to a new or existing session.</dd>
-<dt>bsonDoc.pas</dt>
-<dd>This unit defines IBSONDocument, used by TMongoWire</dd>
+<dt>jsonDoc.pas</dt>
+<dd>This unit defines IJSONDocument, used by TMongoWire</dd>
+<dt>bsonTools.pas</dt>
+<dd>This unit defines JSON to BSON conversion tools, used by TMongoWire</dd>
+<dt>simlpeSock.pas</dt>
+<dd>This unit defines networking tools, used by TMongoWire</dd>
 <dt>mongoWire.pas</dt>
 <dd>This unit defines the TMongoWire and TMongoWireQuery classes used to connect to MongoDB.</dd>
 <dt>xxmSession.pas</dt>

@@ -1,11 +1,10 @@
 [[@jsonDoc,Windows,Classes,Variants]][[!var
 i:integer;
-s:string;
+s,t:string;
 f:TFileStream;
 u:UTF8String;
 d,d1:IJSONDocument;
 e:IJSONEnumerator;
-sl:TStringList;
 <<!doctype html>
 <html>
 <head>
@@ -31,46 +30,48 @@ while not((i=0) or FileExists(Copy(s,1,i)+'xxm.json')) do
   while (i<>0) and (s[i]<>'\') do dec(i);
  end;
 
-sl:=TStringList.Create;
-try
-  sl.Sorted:=true;
-  
-  d:=JSON;
+d:=JSON;
 
-  f:=TFileStream.Create(Copy(s,1,i)+'xxm.json',fmOpenRead or fmShareDenyWrite);
-  try
-    i:=f.Size;
-    SetLength(u,i);
-    if i<>f.Read(u[1],i) then RaiseLastOSError;
-    if (i>=3) and (u[1]=#$EF) and (u[2]=#$BB) and (u[3]=#$BF) then
-  	  d.Parse(UTF8Decode(Copy(u,4,i-3)))
+f:=TFileStream.Create(Copy(s,1,i)+'xxm.json',fmOpenRead or fmShareDenyWrite);
+try
+  i:=f.Size;
+  SetLength(u,i);
+  if i<>f.Read(u[1],i) then RaiseLastOSError;
+  if (i>=3) and (u[1]=#$EF) and (u[2]=#$BB) and (u[3]=#$BF) then
+      d.Parse(UTF8Decode(Copy(u,4,i-3)))
+  else
+    if (i>=2) and (u[1]=#$FF) and (u[2]=#$FE) then
+        d.Parse(PWideChar(@u[1]))
     else
-      if (i>=2) and (u[1]=#$FF) and (u[2]=#$FE) then
-  	    d.Parse(PWideChar(@u[1]))
-      else
-  	    d.Parse(WideString(u));
-  finally
-    f.Free;
-  end;
-  
-  e:=JSONEnum(d['projects']);
-  while e.Next do
-   begin
-    d1:=JSON(e.Value);
-	if VarToStr(d1['alias'])='' then
-	 begin
-	  s:=e.Key;
-	  if LowerCase(s)<>'xxm' then sl.Add(s);
-	 end;
-   end;
-   
-  for i:=0 to sl.Count-1 do
-   begin
-    <li><a href="../[[=sl[i]]]">>=sl[i]<</a></li>
-   end;
+        d.Parse(WideString(u));
 finally
-  sl.Free;
+  f.Free;
 end;
+
+e:=JSONEnumSorted(d['projects']);
+while e.Next do
+ begin
+  d1:=JSON(e.Value);
+  if VarToStr(d1['alias'])='' then
+   begin
+    s:=e.Key;
+    if LowerCase(s)<>'xxm' then 
+     begin
+      <li><a href="../[[=s]]">>=s<</a>
+      if not VarIsNull(d1['caption']) then
+       begin
+        ]]: [[=d1['caption']]][[
+       end;
+      if not VarIsNull(d1['about']) then
+       begin
+        t:=d1['about'];
+        if Copy(t,1,4)<>'http' then t:='../'+s+'/'+t;
+        ]] (<a href="[[=t]]">about...</a>)[[
+       end;
+      </li>
+     end;
+   end;
+ end;
 
 <</ul>
 <p>>=Context[csVersion]]] | <a href="http://yoy.be/xxm/">about xxm...</a></p>

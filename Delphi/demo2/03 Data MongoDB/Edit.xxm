@@ -1,15 +1,15 @@
-[[@xxmSession,mongoWire,bsonDoc,Windows,]][[!var
+[[@xxmSession,mongoWire,jsonDoc,Windows,]][[!var
 qr:TMongoWireQuery;
-d:IBSONDocument;
+d:IjSONDocument;
 id:string;
 ]][[
-d:=BSON;
+d:=JSON;
 id:=Context.Parameter['id'].Value;
 if Context.Parameter['x'].AsInteger=0 then
  begin
   qr:=TMongoWireQuery.Create(Session.DbCon);
   try
-    qr.Query(xxmDemoCollection,BSON(['id',id]));
+    qr.Query(xxmDemoCollection,JSON(['id',id]));
 	qr.Next(d);
     <<form action="Edit.xxm" method="post">
 	<input type="hidden" name="x" value="1" />
@@ -26,10 +26,10 @@ else
   if id='' then
    begin
     id:=IntToHex(GetCurrentThreadID,4)+IntToHex(GetTickCount,8);//TODO: use mongoID.pas
-    Session.DbCon.Insert(xxmDemoCollection,BSON(['id',id,'text',Context['text'].Value]));
+    Session.DbCon.Insert(xxmDemoCollection,JSON(['id',id,'text',Context['text'].Value]));
    end
   else
-    Session.DbCon.Update(xxmDemoCollection,BSON(['id',id]),BSON(['id',id,'text',Context['text'].Value]));
+    Session.DbCon.Update(xxmDemoCollection,JSON(['id',id]),JSON(['id',id,'text',Context['text'].Value]));
   <<p>updated</p>
   <a href="Default.xxm">back</a>>
  end;

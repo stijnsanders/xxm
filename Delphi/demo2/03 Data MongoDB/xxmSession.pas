@@ -45,7 +45,8 @@ threadvar
   Session: TXxmSession;
 
 const
-  xxmDemoCollection='test.xxmdemo1';  
+  xxmDemoNameSpace='xxmdemo';
+  xxmDemoCollection='test.xxmdemo1';
 
 implementation
 
@@ -131,7 +132,7 @@ function TXxmSession.GetDbCon: TMongoWire;
 begin
   if ThreadDbCon=nil then
    begin
-    ThreadDBCon:=TMongoWire.Create;
+    ThreadDBCon:=TMongoWire.Create(xxmDemoNameSpace);
     ThreadDBCon.Open;//TODO: server,port from setting
    end;
   Result:=ThreadDbCon;

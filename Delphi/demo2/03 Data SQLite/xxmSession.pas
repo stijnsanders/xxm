@@ -19,7 +19,7 @@ end;
 
 interface
 
-uses xxm, Classes, SQLite;
+uses xxm, Classes, SQLiteData;
 
 type
   TXxmSession=class(TObject)
