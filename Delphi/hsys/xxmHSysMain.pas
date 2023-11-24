@@ -96,6 +96,7 @@ type
   {$IF not(Declared(FixedUInt))}
   FixedUInt=LongInt;
   PFixedUInt=PLongInt;
+  LargeInt=LongLongInt;
   LargeUInt=LargeInt;
   XDWORD=LongInt;
   {$ELSE}
@@ -113,7 +114,7 @@ type
     constructor Create(HSysQueue:THandle;RequestID:THTTP_REQUEST_ID);
     destructor Destroy; override;
     { IStream }
-    function Seek(dlibMove: Largeint; dwOrigin: XDWORD;
+    function Seek(dlibMove: LargeInt; dwOrigin: XDWORD;
       out libNewPosition: LargeUInt): HResult; stdcall;
     function SetSize(libNewSize: LargeUInt): HResult; stdcall;
     function CopyTo(stm: IStream; cb: LargeUInt; out cbRead: LargeUInt;
@@ -853,7 +854,7 @@ begin
   raise Exception.Create('TRawSocketData.Revert not supported');
 end;
 
-function TRawSocketData.Seek(dlibMove: Largeint; dwOrigin: XDWORD;
+function TRawSocketData.Seek(dlibMove: LargeInt; dwOrigin: XDWORD;
   out libNewPosition: LargeUInt): HResult;
 begin
   raise Exception.Create('TRawSocketData.Seek not supported');

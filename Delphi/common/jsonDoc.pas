@@ -2,11 +2,11 @@
 
 jsonDoc.pas
 
-Copyright 2015-2022 Stijn Sanders
+Copyright 2015-2023 Stijn Sanders
 Made available under terms described in file "LICENSE"
 https://github.com/stijnsanders/jsonDoc
 
-v1.2.2
+v1.2.3
 
 }
 unit jsonDoc;
@@ -63,6 +63,8 @@ const
     : TGUID = '{4A534F4E-0001-0006-C000-000000000006}';
   IID_IJSONDocWithReUse
     : TGUID = '{4A534F4E-0001-0007-C000-000000000007}';
+  IID_IJSONEnumerableSorted
+    : TGUID = '{4A534F4E-0001-0008-C000-000000000008}';
 
 type
 {
@@ -165,6 +167,17 @@ type
   end;
 
 {
+  IJSONEnumerableSorted interface
+  used to get a IJSONEnumerable instance for a document, that uses the
+  document's internal keys sort order
+  see also: JSONEnum function
+}
+  IJSONEnumerableSorted = interface(IUnknown)
+    ['{4A534F4E-0001-0008-C000-000000000008}']
+    function NewEnumerator: IJSONEnumerator; stdcall;
+  end;
+
+{
   JSON function: JSON document factory
   call JSON without parameters do create a new blank document
 }
@@ -194,6 +207,14 @@ function JSONEnum(const x: IJSONDocument): IJSONEnumerator; overload; //inline;
 function JSONEnum(const x: Variant): IJSONEnumerator; overload;
 function JSON(const x: IJSONEnumerator): IJSONDocument; overload; //inline;
 function JSONEnum(const x: IJSONEnumerator): IJSONEnumerator; overload; //inline;
+
+{
+  JSONEnumSorted function
+  get a new enumerator to enumeratare the key-value pairs in the document,
+  using the document's internal keys sort order
+}
+function JSONEnumSorted(const x: IJSONDocument): IJSONEnumerator; overload; //inline;
+function JSONEnumSorted(const x: Variant): IJSONEnumerator; overload;
 
 {
   ja function
@@ -259,7 +280,7 @@ type
   see also: JSON function
 }
   TJSONDocument = class(TJSONImplBaseObj, IJSONDocument, IJSONEnumerable,
-    IJSONDocWithReUse)
+    IJSONDocWithReUse, IJSONEnumerableSorted)
   private
     FElementIndex,FElementSize:integer;
     FElements:array of record
@@ -293,6 +314,8 @@ type
       read Get_Item write Set_Item; default;
     property AsString: WideString read JSONToString write Parse;
     property UseIJSONArray:boolean read FUseIJSONArray write FUseIJSONArray;
+    function NewEnumeratorSorted: IJSONEnumerator; stdcall;
+    function IJSONEnumerableSorted.NewEnumerator = NewEnumeratorSorted;
   end;
 
 {
@@ -301,6 +324,27 @@ type
   see also: JSONEnum function
 }
   TJSONEnumerator = class(TJSONImplBaseObj, IJSONEnumerator)
+  private
+    FData:TJSONDocument;
+    FIndex: integer;
+  public
+    constructor Create(Data: TJSONDocument);
+    destructor Destroy; override;
+    function EOF: boolean; stdcall;
+    function Next: boolean; stdcall;
+    function Get_Key: WideString; stdcall;
+    function Get_Value: Variant; stdcall;
+    procedure Set_Value(const Value: Variant); stdcall;
+    function v0: pointer; stdcall;
+  end;
+
+{
+  TJSONEnumeratorSorted class
+  a IJSONEnumerator implementation that uses the IJSONDocument's internal
+  keys sort order
+  see also: JSONEnumSorted function
+}
+  TJSONEnumeratorSorted = class(TJSONImplBaseObj, IJSONEnumerator)
   private
     FData:TJSONDocument;
     FIndex: integer;
@@ -2016,6 +2060,11 @@ begin
   Result:=TJSONEnumerator.Create(Self);
 end;
 
+function TJSONDocument.NewEnumeratorSorted: IJSONEnumerator;
+begin
+  Result:=TJSONEnumeratorSorted.Create(Self);
+end;
+
 { TJSONEnumerator }
 
 constructor TJSONEnumerator.Create(Data: TJSONDocument);
@@ -2120,6 +2169,112 @@ begin
     raise ERangeError.Create('Out of range')
   else
     Result:=@FData.FElements[FIndex].Value;
+end;
+
+{ TJSONEnumeratorSorted }
+
+constructor TJSONEnumeratorSorted.Create(Data: TJSONDocument);
+begin
+  inherited Create;
+  FData:=Data;
+  FIndex:=-1;
+  //TODO: hook into TJSONDocument destructor?
+end;
+
+destructor TJSONEnumeratorSorted.Destroy;
+begin
+  FData:=nil;
+  inherited;
+end;
+
+function TJSONEnumeratorSorted.EOF: boolean;
+var
+  i:integer;
+begin
+  if FData=nil then
+    Result:=true
+  else
+   begin
+    {$IFDEF JSONDOC_THREADSAFE}
+    EnterCriticalSection(FData.FLock);
+    try
+    {$ENDIF}
+      i:=FIndex;
+      if i=-1 then i:=0;
+      while (i<FData.FElementIndex) and
+        (FData.FElements[FData.FElements[i].SortIndex].LoadIndex<>FData.FLoadIndex) do
+        inc(i);
+      Result:=i>=FData.FElementIndex;
+    {$IFDEF JSONDOC_THREADSAFE}
+    finally
+      LeaveCriticalSection(FData.FLock);
+    end;
+    {$ENDIF}
+   end;
+end;
+
+function TJSONEnumeratorSorted.Next: boolean;
+begin
+  if FData=nil then
+    Result:=false
+  else
+   begin
+    {$IFDEF JSONDOC_THREADSAFE}
+    EnterCriticalSection(FData.FLock);
+    try
+    {$ENDIF}
+      inc(FIndex);
+      while (FIndex<FData.FElementIndex) and
+        (FData.FElements[FData.FElements[FIndex].SortIndex].LoadIndex<>FData.FLoadIndex) do
+        inc(FIndex);
+      Result:=FIndex<FData.FElementIndex;
+    {$IFDEF JSONDOC_THREADSAFE}
+    finally
+      LeaveCriticalSection(FData.FLock);
+    end;
+    {$ENDIF}
+   end;
+end;
+
+function TJSONEnumeratorSorted.Get_Key: WideString;
+begin
+  if (FIndex<0) or (FData=nil) or (FIndex>=FData.FElementIndex) then
+    raise ERangeError.Create('Out of range')
+  else
+    Result:=FData.FElements[FData.FElements[FIndex].SortIndex].Key;
+end;
+
+function TJSONEnumeratorSorted.Get_Value: Variant;
+begin
+  if (FIndex<0) or (FData=nil) or (FIndex>=FData.FElementIndex) then
+    raise ERangeError.Create('Out of range')
+  else
+    Result:=FData.FElements[FData.FElements[FIndex].SortIndex].Value;
+end;
+
+procedure TJSONEnumeratorSorted.Set_Value(const Value: Variant);
+begin
+  {$IFDEF JSONDOC_THREADSAFE}
+  EnterCriticalSection(FData.FLock);
+  try
+  {$ENDIF}
+    if (FIndex<0) or (FData=nil) or (FIndex>=FData.FElementIndex) then
+      raise ERangeError.Create('Out of range')
+    else
+      FData.FElements[FData.FElements[FIndex].SortIndex].Value:=Value;
+  {$IFDEF JSONDOC_THREADSAFE}
+  finally
+    LeaveCriticalSection(FData.FLock);
+  end;
+  {$ENDIF}
+end;
+
+function TJSONEnumeratorSorted.v0: pointer;
+begin
+  if (FIndex<0) or (FData=nil) or (FIndex>=FData.FElementIndex) then
+    raise ERangeError.Create('Out of range')
+  else
+    Result:=@FData.FElements[FData.FElements[FIndex].SortIndex].Value;
 end;
 
 { TVarArrayEnumerator }
@@ -2817,6 +2972,40 @@ begin
     Result:=TJSONEnumerator.Create(nil)
   else
     Result:=(IUnknown(x.Value) as IJSONEnumerable).NewEnumerator;
+end;
+
+function JSONEnumSorted(const x: IJSONDocument): IJSONEnumerator;
+var
+  je:IJSONEnumerableSorted;
+begin
+  if x=nil then
+    Result:=TJSONEnumerator.Create(nil)
+  else
+    //Result:=(x as IJSONEnumerable).NewEnumerator;
+    if x.QueryInterface(IID_IJSONEnumerableSorted,je)=S_OK then
+      Result:=je.NewEnumerator
+    else
+      raise EJSONException.Create('IJSONDocument instance doesn''t implement IJSONEnumerableSorted');
+end;
+
+function JSONEnumSorted(const x: Variant): IJSONEnumerator;
+var
+  vt:TVarType;
+  e:IJSONEnumerableSorted;
+begin
+  vt:=TVarData(x).VType;
+  case vt of
+    varNull,varEmpty:
+      Result:=TJSONEnumerator.Create(nil);//has .EOF=true
+    varUnknown:
+      if (TVarData(x).VUnknown<>nil) and
+        (IUnknown(x).QueryInterface(IID_IJSONEnumerableSorted,e)=S_OK) then
+        Result:=e.NewEnumerator
+      else
+        raise EJSONException.Create('No supported interface found on object');
+    else
+      raise EJSONException.Create('Unsupported variant type '+IntToHex(vt,4));
+  end;
 end;
 
 function ja(const Items:array of Variant): IJSONArray;

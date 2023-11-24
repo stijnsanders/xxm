@@ -12,7 +12,7 @@ It implements IXxmPage, so you can call xxmFReg's
 with your inheriting class (or any alternative fragment registry you use)
 to determine which URL the WebSocket will be available with.
 
-  $Rev: 472 $ $Date: 2023-08-09 21:52:10 +0200 (wo, 09 aug 2023) $
+  $Rev: 491 $ $Date: 2023-11-25 00:15:56 +0100 (za, 25 nov 2023) $
 
 }
 {$D-}
@@ -27,6 +27,7 @@ type
   {$IF not(Declared(FixedUInt))}
   FixedUInt=LongInt;
   PFixedUInt=PLongInt;
+  LargeInt=LongLongInt;
   LargeUInt=LargeInt;
   XDWORD=LongInt;
   {$ELSE}

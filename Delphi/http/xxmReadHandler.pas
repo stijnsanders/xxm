@@ -13,20 +13,21 @@ type
     FStorePosition,FPosition:int64;
   protected
     function GetSize: Int64; override;
-    procedure SetSize(NewSize: Longint); overload; override;
+    procedure SetSize(NewSize: LongInt); overload; override;
     procedure SetSize(const NewSize: Int64); overload; override;
   public
     constructor Create(Socket: TTcpSocket; Size: Int64; StoreStream: TStream;
       const StartData: AnsiString; StartIndex, StartLength: integer);
     destructor Destroy; override;
-    function Read(var Buffer; Count: Longint): Longint; override;
-    function Write(const Buffer; Count: Longint): Longint; override;
+    function Read(var Buffer; Count: LongInt): LongInt; override;
+    function Write(const Buffer; Count: LongInt): LongInt; override;
     function Seek(const Offset: Int64; Origin: TSeekOrigin): Int64; overload; override;
   end;
 
   {$IF not(Declared(FixedUInt))}
   FixedUInt=LongInt;
   PFixedUInt=PLongInt;
+  LargeInt=LongLongInt;
   LargeUInt=LargeInt;
   {$IFEND}
 
@@ -38,22 +39,22 @@ type
     destructor Destroy; override;
     { IStream }
 {$IF CompilerVersion<20}
-    function Seek(dlibMove: Largeint; dwOrigin: Longint;
-      out libNewPosition: Largeint): HResult; stdcall;
-    function SetSize(libNewSize: Largeint): HResult; stdcall;
-    function CopyTo(stm: IStream; cb: Largeint; out cbRead: Largeint;
-      out cbWritten: Largeint): HResult; stdcall;
-    function Commit(grfCommitFlags: Longint): HResult; stdcall;
+    function Seek(dlibMove: LargeInt; dwOrigin: LongInt;
+      out libNewPosition: LargeInt): HResult; stdcall;
+    function SetSize(libNewSize: LargeInt): HResult; stdcall;
+    function CopyTo(stm: IStream; cb: LargeInt; out cbRead: LargeInt;
+      out cbWritten: LargeInt): HResult; stdcall;
+    function Commit(grfCommitFlags: LongInt): HResult; stdcall;
     function Revert: HResult; stdcall;
-    function LockRegion(libOffset: Largeint; cb: Largeint;
-      dwLockType: Longint): HResult; stdcall;
-    function UnlockRegion(libOffset: Largeint; cb: Largeint;
-      dwLockType: Longint): HResult; stdcall;
-    function Stat(out statstg: TStatStg; grfStatFlag: Longint): HResult;
+    function LockRegion(libOffset: LargeInt; cb: LargeInt;
+      dwLockType: LongInt): HResult; stdcall;
+    function UnlockRegion(libOffset: LargeInt; cb: LargeInt;
+      dwLockType: LongInt): HResult; stdcall;
+    function Stat(out statstg: TStatStg; grfStatFlag: LongInt): HResult;
       stdcall;
     function Clone(out stm: IStream): HResult; stdcall;
 {$ELSE}
-    function Seek(dlibMove: Largeint; dwOrigin: DWORD;
+    function Seek(dlibMove: LargeInt; dwOrigin: DWORD;
       out libNewPosition: LargeUInt): HResult; stdcall;
     function SetSize(libNewSize: LargeUInt): HResult; stdcall;
     function CopyTo(stm: IStream; cb: LargeUInt; out cbRead: LargeUInt;
@@ -127,7 +128,7 @@ begin
   FPosition:=Result;
 end;
 
-function THandlerReadStreamAdapter.Read(var Buffer; Count: Integer): Longint;
+function THandlerReadStreamAdapter.Read(var Buffer; Count: Integer): LongInt;
 begin
   if FPosition=FStorePosition then
    begin
@@ -172,7 +173,7 @@ begin
 end;
 
 function THandlerReadStreamAdapter.Write(const Buffer;
-  Count: Integer): Longint;
+  Count: Integer): LongInt;
 begin
   raise Exception.Create('THandlerReadStreamAdapter.Write not supported');
 end;
@@ -203,7 +204,7 @@ begin
 end;
 
 {$IF CompilerVersion<20}
-function TRawSocketData.Commit(grfCommitFlags: Longint): HResult;
+function TRawSocketData.Commit(grfCommitFlags: LongInt): HResult;
 {$ELSE}
 function TRawSocketData.Commit(grfCommitFlags: DWORD): HResult;
 {$IFEND}
@@ -218,8 +219,8 @@ begin
 end;
 
 {$IF CompilerVersion<20}
-function TRawSocketData.LockRegion(libOffset: Largeint; cb: Largeint;
-  dwLockType: Longint): HResult;
+function TRawSocketData.LockRegion(libOffset: LargeInt; cb: LargeInt;
+  dwLockType: LongInt): HResult;
 {$ELSE}
 function TRawSocketData.LockRegion(libOffset, cb: LargeUInt;
   dwLockType: DWORD): HResult;
@@ -234,10 +235,10 @@ begin
 end;
 
 {$IF CompilerVersion<20}
-function TRawSocketData.Seek(dlibMove: Largeint; dwOrigin: Longint;
-      out libNewPosition: Largeint): HResult;
+function TRawSocketData.Seek(dlibMove: LargeInt; dwOrigin: LongInt;
+      out libNewPosition: LargeInt): HResult;
 {$ELSE}
-function TRawSocketData.Seek(dlibMove: Largeint; dwOrigin: DWORD;
+function TRawSocketData.Seek(dlibMove: LargeInt; dwOrigin: DWORD;
   out libNewPosition: LargeUInt): HResult;
 {$IFEND}
 begin
@@ -251,7 +252,7 @@ end;
 
 {$IF CompilerVersion<20}
 function TRawSocketData.Stat(out statstg: TStatStg;
-  grfStatFlag: Longint): HResult;
+  grfStatFlag: LongInt): HResult;
 {$ELSE}
 function TRawSocketData.Stat(out statstg: TStatStg;
   grfStatFlag: DWORD): HResult;
@@ -261,8 +262,8 @@ begin
 end;
 
 {$IF CompilerVersion<20}
-function TRawSocketData.UnlockRegion(libOffset: Largeint; cb: Largeint;
-  dwLockType: Longint): HResult;
+function TRawSocketData.UnlockRegion(libOffset: LargeInt; cb: LargeInt;
+  dwLockType: LongInt): HResult;
 {$ELSE}
 function TRawSocketData.UnlockRegion(libOffset, cb: LargeUInt;
   dwLockType: DWORD): HResult;

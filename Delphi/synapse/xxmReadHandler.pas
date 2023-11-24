@@ -13,20 +13,21 @@ type
     FStorePosition,FPosition:int64;
   protected
     function GetSize: Int64; override;
-    procedure SetSize(NewSize: Longint); overload; override;
+    procedure SetSize(NewSize: LongInt); overload; override;
     procedure SetSize(const NewSize: Int64); overload; override;
   public
     constructor Create(Socket:TTCPBlockSocket;Size:Int64;StoreStream:TStream;
       const StartData:AnsiString);
     destructor Destroy; override;
-    function Read(var Buffer; Count: Longint): Longint; override;
-    function Write(const Buffer; Count: Longint): Longint; override;
+    function Read(var Buffer; Count: LongInt): LongInt; override;
+    function Write(const Buffer; Count: LongInt): LongInt; override;
     function Seek(const Offset: Int64; Origin: TSeekOrigin): Int64; overload; override;
   end;
 
   {$IF not(Declared(FixedUInt))}
   FixedUInt=LongInt;
   PFixedUInt=PLongInt;
+  LargeInt=LongLongInt;
   LargeUInt=LargeInt;
   XDWORD=LongInt;
   {$ELSE}
@@ -40,7 +41,7 @@ type
     constructor Create(Socket:TTCPBlockSocket);
     destructor Destroy; override;
     { IStream }
-    function Seek(dlibMove: Largeint; dwOrigin: XDWORD;
+    function Seek(dlibMove: LargeInt; dwOrigin: XDWORD;
       out libNewPosition: LargeUInt): HResult; stdcall;
     function SetSize(libNewSize: LargeUInt): HResult; stdcall;
     function CopyTo(stm: IStream; cb: LargeUInt; out cbRead: LargeUInt;
@@ -106,7 +107,7 @@ begin
   FPosition:=Result;
 end;
 
-function THandlerReadStreamAdapter.Read(var Buffer; Count: Integer): Longint;
+function THandlerReadStreamAdapter.Read(var Buffer; Count: Integer): LongInt;
 var
   x:AnsiString;
 begin
@@ -155,7 +156,7 @@ begin
 end;
 
 function THandlerReadStreamAdapter.Write(const Buffer;
-  Count: Integer): Longint;
+  Count: Integer): LongInt;
 begin
   raise Exception.Create('THandlerReadStreamAdapter.Write not supported');
 end;
@@ -207,7 +208,7 @@ begin
   raise Exception.Create('TRawSocketData.Revert not supported');
 end;
 
-function TRawSocketData.Seek(dlibMove: Largeint; dwOrigin: XDWORD;
+function TRawSocketData.Seek(dlibMove: LargeInt; dwOrigin: XDWORD;
   out libNewPosition: LargeUInt): HResult;
 begin
   raise Exception.Create('TRawSocketData.Seek not supported');
