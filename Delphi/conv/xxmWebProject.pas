@@ -661,7 +661,7 @@ begin
        begin
         v1:=VarArrayLowBound(v,1);
         v2:=VarArrayHighBound(v,1);
-        while v1<v2 do
+        while v1<=v2 do
          begin
           s.WriteString(VarToStr(v[v1]));
           inc(v1);
@@ -708,7 +708,7 @@ var
        begin
         v1:=VarArrayLowBound(v,1);
         v2:=VarArrayHighBound(v,1);
-        while v1<v2 do
+        while v1<=v2 do
          begin
           vx:=v[v1];
           if VarIsArray(vx) then
@@ -718,7 +718,7 @@ var
            end
           else
             cl.Add(prefix+VarToStr(vx));
-          inc(v2);
+          inc(v1);
          end;
        end
       else

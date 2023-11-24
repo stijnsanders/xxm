@@ -159,7 +159,9 @@ function TEditProjectMainForm.LoadProject(const Path: string;
   CreateNew: boolean): boolean;
 var
   f:TFileStream;
-  fn,fd:string;
+  fn:string;
+  fu:UTF8String;
+  fd:WideString;
   fe:boolean;
   i,j:integer;
 begin
@@ -190,10 +192,16 @@ begin
 
       f:=TFileStream.Create(fn,fmOpenRead or fmShareDenyWrite);
       try
-        //TODO: support UTF8,UTF16
         i:=f.Size;
-        SetLength(fd,i);
-        f.Read(fd[1],i);
+        SetLength(fu,i);
+        if i<>f.Read(fu[1],i) then RaiseLastOSError;
+        if (i>=3) and (fu[1]=#$EF) and (fu[2]=#$BB) and (fu[3]=#$BF) then
+            fd:=UTF8ToWideString(Copy(fu,4,i-3))
+        else
+          if (i>=2) and (fu[1]=#$FF) and (fu[2]=#$FE) then
+              fd:=PWideChar(@fu[1])
+          else
+              fd:=WideString(fu);
       finally
         f.Free;
       end;
@@ -525,6 +533,7 @@ var
   nn:TFileNode;
   s:string;
   i,j:integer;
+  d:IJSONDocument;
 begin
   n:=tvFiles.Selected;
   nx:=n;
@@ -548,7 +557,13 @@ begin
       nn.Doc:=JSON;
       if j>1 then nn.Doc['unitPath']:=
         StringReplace(Copy(s,2,j-1),PathDelim,'/',[rfReplaceAll]);
-      JSON(ProjectData[nn.Col])[nn.Key]:=nn.Doc;
+      d:=JSON(ProjectData[nn.Col]);
+      if d=nil then
+       begin
+        d:=JSON;
+        ProjectData[nn.Col]:=d;
+       end;
+      d[nn.Key]:=nn.Doc;
       Modified:=true;
      end;
     iiFile:
@@ -557,7 +572,13 @@ begin
       nn.Col:='resources';
       nn.Key:=StringReplace(Copy(s,2,Length(s)),PathDelim,'/',[rfReplaceAll]);
       nn.Doc:=JSON;
-      JSON(ProjectData[nn.Col])[nn.Key]:=nn.Doc;
+      d:=JSON(ProjectData[nn.Col]);
+      if d=nil then
+       begin
+        d:=JSON;
+        ProjectData[nn.Col]:=d;
+       end;
+      d[nn.Key]:=nn.Doc;
       Modified:=true;
      end;
     //more?
@@ -690,12 +711,11 @@ end;
 procedure TEditProjectMainForm.btnRegisterFileClick(Sender: TObject);
 var
   fn,s,t,u:string;
-  v:AnsiString;
+  fu:UTF8string;
+  fd:WideString;
   i:integer;
   f:TFileStream;
   d,d1:IJSONDocument;
-const
-  Utf8ByteOrderMark=#$EF#$BB#$BF;
 begin
   if CheckModified then
    begin
@@ -713,18 +733,19 @@ begin
         f:=TFileStream.Create(fn,fmOpenRead or fmShareDenyWrite);
         try
           i:=f.Size;
-          SetLength(v,i);
-          if i<>f.Read(v[1],i) then RaiseLastOSError;
-          if (i>=3) and (v[1]=#$EF) and (v[2]=#$BB) and (v[3]=#$BF) then
-            d.Parse(UTF8ToWideString(Copy(v,4,i-3)))
+          SetLength(fu,i);
+          if i<>f.Read(fu[1],i) then RaiseLastOSError;
+          if (i>=3) and (fu[1]=#$EF) and (fu[2]=#$BB) and (fu[3]=#$BF) then
+            fd:=UTF8ToWideString(Copy(fu,4,i-3))
           else
-          if (i>=2) and (v[1]=#$FF) and (v[2]=#$FE) then
-            d.Parse(PWideChar(@v[1]))
+          if (i>=2) and (fu[1]=#$FF) and (fu[2]=#$FE) then
+            fd:=PWideChar(@fu[1])
           else
-            d.Parse(WideString(v));
+            fd:=WideString(fu);
         finally
           f.Free;
         end;
+        d.Parse(fd);
        end
       else
         d['projects']:=JSON;
@@ -746,10 +767,10 @@ begin
           d1.Delete('alias');//?
          end;
         d1['path']:=StringReplace(s,PathDelim,'/',[rfReplaceAll]);
-        v:=Utf8ByteOrderMark+UTF8Encode(d.ToString);
+        fu:=#$EF#$BB#$BF+UTF8Encode(d.ToString);
         f:=TFileStream.Create(fn,fmCreate);
         try
-          f.Write(v[1],Length(v));
+          f.Write(fu[1],Length(fu));
         finally
           f.Free;
         end;
