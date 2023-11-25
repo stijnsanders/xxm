@@ -96,7 +96,7 @@ type
   {$IF not(Declared(FixedUInt))}
   FixedUInt=LongInt;
   PFixedUInt=PLongInt;
-  LargeInt=LongLongInt;
+  LargeInt=Int64;
   LargeUInt=LargeInt;
   XDWORD=LongInt;
   {$ELSE}
