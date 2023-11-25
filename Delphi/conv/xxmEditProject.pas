@@ -21,7 +21,6 @@ type
     Label1: TLabel;
     txtProjectName: TEdit;
     Label2: TLabel;
-    txtCompileCommand: TEdit;
     tvFiles: TTreeView;
     Open1: TMenuItem;
     ImageList1: TImageList;
@@ -53,6 +52,11 @@ type
     txtParserValue: TMemo;
     Label3: TLabel;
     Label4: TLabel;
+    txtPreCompCmds: TMemo;
+    Label5: TLabel;
+    txtCompCmds: TMemo;
+    Label6: TLabel;
+    txtPostCompCmds: TMemo;
     procedure Exit1Click(Sender: TObject);
     procedure txtChange(Sender: TObject);
     procedure tvFilesCreateNodeClass(Sender: TCustomTreeView;
@@ -164,6 +168,28 @@ var
   fd:WideString;
   fe:boolean;
   i,j:integer;
+
+  procedure LoadMemo(const key: WideString; m: TMemo);
+  var
+    v:Variant;
+    i:integer;
+  begin
+    v:=ProjectData[key];
+    m.Lines.BeginUpdate;
+    try
+      if VarIsArray(v) then
+       begin
+        m.Lines.Clear;
+        for i:=VarArrayLowBound(v,1) to VarArrayHighBound(v,1) do
+          m.Lines.Add(VarToStr(v[i]));
+       end
+      else
+        m.Text:=VarToStr(v);
+    finally
+      m.Lines.EndUpdate;
+    end;
+  end;
+
 begin
   //assert CheckModified called before
 
@@ -215,7 +241,7 @@ begin
       i:=j-1;
       while (i>0) and (fn[i]<>PathDelim) do dec(i);
       ProjectData['name']:=Copy(fn,i+1,j-i-1);
-      ProjectData['compileCommand']:='dcc32 -U[[HandlerPath]]public -Q [[ProjectName]].dpr';
+      ProjectData['compileCommand']:='dcc32 "-U[[HandlerPath]]public" -Q "[[ProjectName]].dpr"';
       ProjectData['files']:=JSON;
       ProjectData['units']:=JSON;
       ProjectData['resources']:=JSON;
@@ -226,7 +252,9 @@ begin
     Application.Title:='xxm Project - '+fn;
 
     txtProjectName.Text:=VarToStr(ProjectData['name']);
-    txtCompileCommand.Text:=VarToStr(ProjectData['compileCommand']);//TODO: support array of strings
+    LoadMemo('preCompileCommand',txtPreCompCmds);
+    LoadMemo('compileCommand',txtCompCmds);
+    LoadMemo('postCompileCommand',txtPostCompCmds);
     LastParserValue:=-1;
     cbParserValue.ItemIndex:=-1;
 
@@ -245,11 +273,49 @@ procedure TEditProjectMainForm.SaveProject;
 var
   s:AnsiString;
   f:TFileStream;
+
+  procedure SaveMemo(const key: WideString; m: TMemo);
+  var
+    i,l:integer;
+    v:Variant;
+  begin
+    m.Lines.BeginUpdate;
+    try
+      l:=m.Lines.Count;
+      i:=l;
+      while i<>0 do
+       begin
+        dec(i);
+        if Trim(m.Lines[i])='' then
+         begin
+          m.Lines.Delete(i);
+          dec(l);
+         end;
+       end;
+      case l of
+        0:ProjectData.Delete(key);//ProjectData[key]:=Null;//?
+        1:ProjectData[key]:=m.Text;
+        else
+         begin
+          dec(l);
+          v:=VarArrayCreate([0,l],varOleStr);
+          for i:=0 to l do
+            v[i]:=m.Lines[i];
+          ProjectData[key]:=v;
+         end;
+      end;
+    finally
+      m.Lines.EndUpdate;
+    end;
+  end;
+
 begin
   if txtProjectName.Text='' then raise Exception.Create('Project name required');
   SaveParserValue;
   ProjectData['name']:=txtProjectName.Text;
-  ProjectData['compileCommand']:=txtCompileCommand.Text;//TODO: support array of strings
+  SaveMemo('preCompileCommand',txtPreCompCmds);
+  SaveMemo('compileCommand',txtCompCmds);
+  SaveMemo('postCompileCommand',txtPostCompCmds);
   ProjectData['lastModified']:=
     FormatDateTime('yyyy-mm-dd"T"hh:nn:ss',Now);//timezone?
   //TODO: files?
