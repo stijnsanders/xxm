@@ -21,8 +21,8 @@ uses
   isapi4 in '[[XxmSourcePath]]\isapi\isapi4.pas',
   xxm in '[[XxmSourcePath]]\bin\public\xxm.pas',
   xxmIsapiMain in '[[XxmSourcePath]]\isapi\xxmIsapiMain.pas',
-  xxmPReg in '[[XxmSourcePath]]\common\xxmPReg.pas',
-  xxmPRegJson in '[[XxmSourcePath]]\conv\xxmPRegJson.pas', //ATTENTION: rigged for single project
+  jsonDoc in '[[XxmSourcePath]]\common\jsonDoc.pas',
+  xxmPReg in '[[XxmSourcePath]]\common\xxmPReg.pas', //ATTENTION: see XXM_INLINE_PROJECT
   xxmParams in '[[XxmSourcePath]]\common\xxmParams.pas',
   xxmParUtils in '[[XxmSourcePath]]\common\xxmParUtils.pas',
   xxmHeaders in '[[XxmSourcePath]]\bin\public\xxmHeaders.pas',

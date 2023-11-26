@@ -4,6 +4,7 @@ UnsafeCode=0
 UnsafeCast=0
 [Directories]
 SearchPath=..\..\bin\public
+Conditionals=XXM_INLINE_PROJECT
 UnitOutputDir=dcu
 [Version Info]
 IncludeVerInfo=1

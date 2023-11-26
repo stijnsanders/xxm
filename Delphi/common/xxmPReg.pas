@@ -12,16 +12,20 @@ type
     FContextCount,FLoadCount:integer;
     FHandle:THandle;
     FLoadSignature:string;
+{$IFNDEF XXM_INLINE_PROJECT}
     FCheckMutex:THandle;
+{$ENDIF}
     FFilePath,FLoadPath:WideString;
     FLoadCopy,FAllowInclude,FNTLM,FNegotiate:boolean;
   protected
     FSignature:string;
     FBufferSize:integer;
     function GetProject: IXxmProject;
-    function LoadProject: IXxmProject; virtual;
-    function GetModulePath:WideString; virtual;
+    function GetModulePath:WideString;
+{$IFNDEF XXM_INLINE_PROJECT}
+    function LoadProject: IXxmProject;
     procedure SetSignature(const Value: string);
+{$ENDIF}
     procedure SetFilePath(const FilePath: WideString; LoadCopy: boolean);
     function ProjectLoaded:boolean;
     function GetExtensionMimeType(const x:string): string;
@@ -35,14 +39,18 @@ type
     constructor Create(const Name, FilePath: WideString; LoadCopy: boolean);
     destructor Destroy; override;
 
+{$IFNDEF XXM_INLINE_PROJECT}
     procedure Lock; //used by auto-build/auto-update
     procedure Unlock; //used by auto-build/auto-update
-    procedure Release; //virtual;?
     procedure AfterConstruction; override; //creates the lock mutex
+{$ENDIF}
+    procedure Release;
     property ModulePath:WideString read GetModulePath;
+{$IFNDEF XXM_INLINE_PROJECT}
     property Signature:string read FSignature write SetSignature;
     property LoadSignature:string read FLoadSignature;
     property LoadCount:integer read FLoadCount;
+{$ENDIF}
     property AllowInclude:boolean read GetAllowInclude;
     property NTLM:boolean read FNTLM;
     property Negotiate:boolean read FNegotiate;
@@ -59,7 +67,10 @@ type
 
   TXxmProjectCache=class(TObject)
   protected
-    FLock:TRTLCriticalSection;
+{$IFDEF XXM_INLINE_PROJECT}
+    FProjectEntry:TXxmProjectEntry;
+    FDefaultProject,FSingleProject:string;
+{$ELSE}
     FProjectsLength,FProjectsCount:integer;
     FProjects:array of record
       Name,Alias:string;
@@ -68,51 +79,66 @@ type
       SortIndex:integer;
     end;
     FRegFilePath,FRegSignature,FDefaultProject,FSingleProject:string;
-    FRegLastCheckTC,FCacheIndex:cardinal;
+    FRegLastCheckTC:cardinal;
+{$ENDIF}
     FFavIcon:OleVariant;
+    FLock:TRTLCriticalSection;
+    FCacheIndex:cardinal;
     FAuthCache:array of record
       SessionID:string;
       AuthName:AnsiString;
       Expires:TDateTime;
     end;
     FAuthCacheIndex,FAuthCacheSize:integer;
+
+{$IFNDEF XXM_INLINE_PROJECT}
     procedure FindProject(const Name: string; var n: string;
       var i, a: integer);
     function GetRegistrySignature: string;
     function GetRegistry: IJSONDocument;
     procedure SetSignature(const Name: WideString; const Value: string);
+{$ENDIF}
     procedure LoadFavIcon(const FilePath: string);
   public
     constructor Create;
     destructor Destroy; override;
-    procedure CheckRegistry;
 
     function ProjectFromURI(Context:IXxmContext;const URI:AnsiString;
       var i:integer; var ProjectName,FragmentName:WideString):boolean;
+
+{$IFNDEF XXM_INLINE_PROJECT}
+    procedure CheckRegistry;
     function GetProject(const Name:WideString):TXxmProjectEntry;
     procedure ReleaseProject(const Name:WideString);
 
+{$ENDIF}
     function GetAuthCache(const SessionID:string):AnsiString;
     procedure SetAuthCache(const SessionID:string;const AuthName:AnsiString);
 
     property CacheIndex:cardinal read FCacheIndex;
   end;
 
+{$IFNDEF XXM_INLINE_PROJECT}
 const
   XxmProjectCacheLocalSize=4;
+{$ENDIF}
 
 type
   TXxmProjectCacheLocal=class(TObject)
   private
+{$IFNDEF XXM_INLINE_PROJECT}
     FLocalCache:array[0..XxmProjectCacheLocalSize-1] of record
       CacheIndex:cardinal;
       Name:WideString;
       Entry:TXxmProjectEntry;
     end;
     FLocalCacheIndex1,FLocalCacheIndex2:integer;
+{$ENDIF}
   public
+{$IFNDEF XXM_INLINE_PROJECT}
     constructor Create;
     destructor Destroy; override;
+{$ENDIF}    
     function GetProject(const Name: WideString): TXxmProjectEntry;
   end;
 
@@ -132,6 +158,9 @@ var
   XxmProjectCache:TXxmProjectCache;
   XxmProjectCacheError:string;
   GlobalAllowLoadCopy:boolean;
+{$IFDEF XXM_INLINE_PROJECT}
+  XxmProjectName:string;
+{$ENDIF}
 
 const //resourcestring?
   SXxmProjectNotFound='xxm Project "__" not defined.';
@@ -141,7 +170,11 @@ const //resourcestring?
 
 implementation
 
-uses Registry, Classes, Variants, xxmCommonUtils, xxmHeaders;
+uses Registry, Classes, Variants,
+{$IFDEF XXM_INLINE_PROJECT}
+  xxmp,
+{$ENDIF}
+  xxmCommonUtils, xxmHeaders;
 
 const //resourcestring?
   SXxmLoadProjectCopyFailed='LoadProject: Create load copy failed: ';
@@ -188,7 +221,9 @@ begin
   FLoadCopy:=false;
   FSignature:='';//used for auto-build
   FLoadSignature:='';//used for auto-update
+{$IFNDEF XXM_INLINE_PROJECT}
   FCheckMutex:=0;
+{$ENDIF}  
   LastCheck:=GetTickCount-100000;
   LastResult:='';//default
   SetFilePath(FilePath,LoadCopy);
@@ -197,6 +232,7 @@ begin
   FNegotiate:=false;//default
 end;
 
+{$IFNDEF XXM_INLINE_PROJECT}
 procedure TXxmProjectEntry.AfterConstruction;
 var
   mn:WideString;
@@ -220,12 +256,15 @@ begin
     if FCheckMutex=0 then RaiseLastOSError;//?
    end;
 end;
+{$ENDIF}
 
 destructor TXxmProjectEntry.Destroy;
 begin
   //pointer(FProject):=nil;//strange, project modules get closed before this happens
   Release;
+{$IFNDEF XXM_INLINE_PROJECT}
   if FCheckMutex<>0 then CloseHandle(FCheckMutex);
+{$ENDIF}
   inherited;
 end;
 
@@ -291,6 +330,13 @@ begin
    end;
 end;
 
+{$IFDEF XXM_INLINE_PROJECT}
+function TXxmProjectEntry.GetProject: IXxmProject;
+begin
+  Result:=FProject;
+end;
+
+{$ELSE}
 function TXxmProjectEntry.GetProject: IXxmProject;
 begin
   if FProject=nil then
@@ -377,6 +423,7 @@ begin
       SysErrorMessage(GetLastError));
   Result:=lp(FName);//try?
 end;
+{$ENDIF}
 
 function TXxmProjectEntry.ProjectLoaded: boolean;
 begin
@@ -457,6 +504,7 @@ begin
   end;
 end;
 
+{$IFNDEF XXM_INLINE_PROJECT}
 procedure TXxmProjectEntry.Lock;
 begin
   if FCheckMutex<>0 then
@@ -470,6 +518,7 @@ begin
     if not ReleaseMutex(FCheckMutex) then
       raise Exception.Create(SXxmProjectEntryRel+SysErrorMessage(GetLastError));
 end;
+{$ENDIF}
 
 function TXxmProjectEntry.GetProjectInterface(const IID: TGUID): IUnknown;
 begin
@@ -486,15 +535,19 @@ begin
   //if FLoadCopy then FLoadPath:=FFilePath+'_'+IntToHex(GetCurrentProcessId,4);
 end;
 
+{$IFNDEF XXM_INLINE_PROJECT}
 procedure TXxmProjectEntry.SetSignature(const Value: string);
 begin
   FSignature:=Value;
   XxmProjectCache.SetSignature(Name,Value);
 end;
+{$ENDIF}
 
 function TXxmProjectEntry.GetAllowInclude: boolean;
 begin
+{$IFNDEF XXM_INLINE_PROJECT}
   XxmProjectCache.CheckRegistry;
+{$ENDIF}
   Result:=FAllowInclude;
 end;
 
@@ -509,16 +562,29 @@ const
   RT_HTML = MakeIntResource(23);
 begin
   inherited Create;
+
+  FAuthCacheIndex:=0;
+  FAuthCacheSize:=0;
+  FCacheIndex:=GetTickCount;//random?
   InitializeCriticalSection(FLock);
 
-  //assert CoInitialize called
+{$IFDEF XXM_INLINE_PROJECT}
+  FProjectEntry:=TXxmProjectEntry.Create(XxmProjectName,'',false);
+  FProjectEntry.FProject:=XxmProjectLoad(XxmProjectName);
+  FDefaultProject:=XxmProjectName;
+  {$IFDEF HSYS1}{$DEFINE IgnoreProjectNameInURL}{$ENDIF}
+  {$IFDEF HSYS2}{$DEFINE IgnoreProjectNameInURL}{$ENDIF}
+  {$IFDEF IgnoreProjectNameInURL}
+  FSingleProject:='';//see ProjectFromURI
+  {$ELSE}
+  FSingleProject:=xxmProjectName;
+  {$ENDIF}
+{$ELSE}
+
   FProjectsLength:=0;
   FProjectsCount:=0;
   FRegSignature:='-';
   FRegLastCheckTC:=GetTickCount-XxmRegCheckIntervalMS-1;
-  FAuthCacheIndex:=0;
-  FAuthCacheSize:=0;
-  FCacheIndex:=FRegLastCheckTC;//random?
 
   SetLength(FRegFilePath,MAX_PATH);
   SetLength(FRegFilePath,GetModuleFileName(HInstance,
@@ -530,8 +596,10 @@ begin
   FRegFilePath:=Copy(FRegFilePath,1,i);
 
   //settings?
-
+  
+  //assert CoInitialize called
   CheckRegistry;
+{$ENDIF}
 
   r:=TResourceStream.Create(HInstance,'favicon',RT_HTML);
   try
@@ -549,15 +617,21 @@ begin
 end;
 
 destructor TXxmProjectCache.Destroy;
+{$IFDEF XXM_INLINE_PROJECT}
+begin
+  FProjectEntry.Free;
+{$ELSE}
 var
   i:integer;
 begin
   for i:=0 to FProjectsCount-1 do FreeAndNil(FProjects[i].Entry);
   SetLength(FProjects,0);
+{$ENDIF}
   DeleteCriticalSection(FLock);
   inherited;
 end;
 
+{$IFNDEF XXM_INLINE_PROJECT}
 function LCSC(const a,b: string): integer; //lower case string compare
 var
   i,al,bl:integer;
@@ -900,6 +974,7 @@ begin
     LeaveCriticalSection(FLock);
   end;
 end;
+{$ENDIF}
 
 function TXxmProjectCache.ProjectFromURI(Context:IXxmContext;
   const URI:AnsiString;var i:integer;
@@ -908,9 +983,15 @@ var
   j,l:integer;
   x:AnsiString;
 begin
+{$IFNDEF XXM_INLINE_PROJECT}
   CheckRegistry;
+{$ENDIF}
   l:=Length(URI);
+{$IFDEF IgnoreProjectNameInURL}
+  if true then
+{$ELSE}
   if FSingleProject='' then
+{$ENDIF}
    begin
     while (i<=l) and not(URI[i] in ['/','?','&','$','#']) do inc(i);
     ProjectName:=WideString(Copy(URI,2,i-2));
@@ -1023,6 +1104,18 @@ end;
 
 { TXxmProjectCacheLocal }
 
+{$IFDEF XXM_INLINE_PROJECT}
+function TXxmProjectCacheLocal.GetProject(const Name: WideString):
+  TXxmProjectEntry;
+begin
+  if Name=XxmProjectName then
+    Result:=XxmProjectCache.FProjectEntry
+  else
+    raise EXxmProjectNotFound.Create(StringReplace(
+      SXxmProjectNotFound,'__',Name,[]));
+end;
+
+{$ELSE}
 constructor TXxmProjectCacheLocal.Create;
 var
   i:integer;
@@ -1078,10 +1171,17 @@ begin
   else
     Result:=FLocalCache[i].Entry;
 end;
+{$ENDIF}
+
 
 initialization
+{$IFDEF XXM_INLINE_PROJECT}
+  XxmProjectName:='xxm';//default, set by dpr
+  GlobalAllowLoadCopy:=false;
+{$ELSE}
   GlobalAllowLoadCopy:=true;//default
   //XxmProjectCache:=TXxmProjectCacheXml.Create;//moved to project source
+{$ENDIF}
 finalization
   XxmProjectCache.Free;
 

@@ -23,8 +23,8 @@ uses
   xxmParams in '[[XxmSourcePath]]\common\xxmParams.pas',
   xxmParUtils in '[[XxmSourcePath]]\common\xxmParUtils.pas',
   xxmHeaders in '[[XxmSourcePath]]\bin\public\xxmHeaders.pas',
-  xxmPReg in '[[XxmSourcePath]]\common\xxmPReg.pas',
-  xxmPRegJson in '[[XxmSourcePath]]\conv\xxmPRegJson.pas', //ATTENTION: rigged for single project
+  jsonDoc in '[[XxmSourcePath]]\common\jsonDoc.pas',
+  xxmPReg in '[[XxmSourcePath]]\common\xxmPReg.pas', //ATTENTION: see XXM_INLINE_PROJECT
   xxmCommonUtils in '[[XxmSourcePath]]\common\xxmCommonUtils.pas',
   xxmContext in '[[XxmSourcePath]]\common\xxmContext.pas',
   xxmReadHandler in '[[XxmSourcePath]]\http\xxmReadHandler.pas',
@@ -45,7 +45,7 @@ begin
   XxmProjectName:='[[ProjectName]]';
   HttpListenPort:=8877;
   HttpBindIPv4:='127.0.0.1';
-  HttpBindIpV6:='::1';
+  HttpBindIPv6:='::1';
   XxmStartURL;
   [[ProjectBody]]
   if XxmGlobalMutex(XxmProjectName) then

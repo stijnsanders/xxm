@@ -25,8 +25,8 @@ uses
   xxmAhttpdContext in '[[XxmSourcePath]]\apache\xxmAhttpdContext.pas',
   xxmCommonUtils in '[[XxmSourcePath]]\common\xxmCommonUtils.pas',
   xxmContext in '[[XxmSourcePath]]\common\xxmContext.pas',
-  xxmPReg in '[[XxmSourcePath]]\common\xxmPReg.pas',
-  xxmPRegJson in '[[XxmSourcePath]]\conv\xxmPRegJson.pas', //ATTENTION: rigged for single project
+  jsonDoc in '[[XxmSourcePath]]\common\jsonDoc.pas',
+  xxmPReg in '[[XxmSourcePath]]\common\xxmPReg.pas', //ATTENTION: see XXM_INLINE_PROJECT
   xxmAhttpdClientStream in '[[XxmSourcePath]]\apache\xxmAhttpdClientStream.pas',
   xxmAhttpdPars in '[[XxmSourcePath]]\apache\xxmAhttpdPars.pas',
   [[@Include]][[IncludeUnit]] in '[[ProjectPath]][[IncludePath]][[IncludeUnit]].pas',

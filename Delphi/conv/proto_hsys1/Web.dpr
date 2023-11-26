@@ -26,8 +26,8 @@ uses
   xxmParUtils in '[[XxmSourcePath]]\common\xxmParUtils.pas',
   xxmHeaders in '[[XxmSourcePath]]\bin\public\xxmHeaders.pas',
   xxmThreadPool in '[[XxmSourcePath]]\common\xxmThreadPool.pas',
-  xxmPReg in '[[XxmSourcePath]]\common\xxmPReg.pas',
-  xxmPRegJson in '[[XxmSourcePath]]\conv\xxmPRegJson.pas', //ATTENTION: rigged for single project
+  jsonDoc in '[[XxmSourcePath]]\common\jsonDoc.pas',
+  xxmPReg in '[[XxmSourcePath]]\common\xxmPReg.pas', //ATTENTION: see XXM_INLINE_PROJECT
   xxmCommonUtils in '[[XxmSourcePath]]\common\xxmCommonUtils.pas',
   xxmContext in '[[XxmSourcePath]]\common\xxmContext.pas',
   xxmHSysHeaders in '[[XxmSourcePath]]\hsys\xxmHSysHeaders.pas',

@@ -5,7 +5,7 @@ UnsafeCast=0
 [Directories]
 SearchPath=..\..\bin\public
 UnitOutputDir=dcu
-Conditionals=HSYS2
+Conditionals=HSYS2;XXM_INLINE_PROJECT
 [Version Info]
 IncludeVerInfo=1
 AutoIncBuild=0

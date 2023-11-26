@@ -5,9 +5,10 @@ UnsafeCast=0
 [Directories]
 SearchPath=..\..\bin\public
 UnitOutputDir=dcu
+Conditionals=XXM_INLINE_PROJECT
 [Parameters]
-RunParams=/Processid:{658F8418-31B2-4572-88AE-A3535BADD0A8}
-HostApplication=C:\WINDOWS\system32\dllhost.exe
+RunParams=/X
+HostApplication=C:\Program Files (x86)\Apache Software Foundation\Apache24\bin\httpd.exe
 [Version Info]
 IncludeVerInfo=1
 AutoIncBuild=0
