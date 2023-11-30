@@ -190,13 +190,14 @@ type
     FCred:TCredHandle;
     FData:array of record
       ConnectionID:UInt64;
+      Package:AnsiString;
       Context:TCtxtHandle;
     end;
     FDataSize,FDataIndex:integer;
   public
     constructor Create;
     destructor Destroy; override;
-    procedure GetContext(ConnectionID:UInt64;
+    procedure GetContext(ConnectionID:UInt64;const Package:AnsiString;
       var Cred:PCredHandle;var Ctxt:PCtxtHandle);
     procedure Clear(ConnectionID:UInt64);
   end;
@@ -239,19 +240,20 @@ begin
 end;
 
 procedure TXxmSSPICache.GetContext(ConnectionID:UInt64;
-  var Cred:PCredHandle;var Ctxt:PCtxtHandle);
+  const Package:AnsiString;var Cred:PCredHandle;var Ctxt:PCtxtHandle);
 var
   i:integer;
 begin
   EnterCriticalSection(FLock);
   try
     if FCred.dwLower=nil then
-      if AcquireCredentialsHandle(nil,'NTLM',SECPKG_CRED_INBOUND,
+      if AcquireCredentialsHandle(nil,PAnsiChar(Package),SECPKG_CRED_INBOUND,
         nil,nil,nil,nil,@FCred,nil)<>0 then RaiseLastOSError;
 
     //TODO: more performant lookup algo?
     i:=0;
-    while (i<FDataIndex) and (FData[i].ConnectionID<>ConnectionID) do inc(i);
+    while (i<FDataIndex) and not((FData[i].ConnectionID=ConnectionID) and
+      (FData[i].Package=Package)) do inc(i);
     if i=FDataIndex then
      begin
       //not found: add, first find a free spot
@@ -268,6 +270,7 @@ begin
         inc(FDataIndex);
        end;
       FData[i].ConnectionID:=ConnectionID;
+      FData[i].Package:=Package;
       FData[i].Context.dwLower:=nil;
       FData[i].Context.dwUpper:=nil;
      end;
@@ -292,6 +295,7 @@ begin
     if i<FDataIndex then
      begin
       FData[i].ConnectionID:=0;
+      FData[i].Package:='';
       DeleteSecurityContext(@FData[i].Context);
       FData[i].Context.dwLower:=nil;
       FData[i].Context.dwUpper:=nil;

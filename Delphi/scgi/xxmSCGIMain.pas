@@ -26,13 +26,12 @@ type
     FSocket:TTcpSocket;
     FReqHeaders:TRequestHeaders;
     FResHeaders:TResponseHeaders;
-    FProjectCache:TXxmProjectCacheLocal;
     FCGIValues:array of record
       Name,Value:AnsiString;
     end;
     FCGIValuesSize,FCGIValuesCount:integer;
     FHTTPVersion,FVerb:AnsiString;
-    FURI,FRedirectPrefix,FSessionID:WideString;
+    FURI,FRedirectPrefix:WideString;
     FCookieParsed: boolean;
     FCookie: AnsiString;
     FCookieIdx: TParamIndexes;
@@ -40,14 +39,11 @@ type
     procedure Load(Socket:TTcpSocket);
     function GetCGIValue(const Name: AnsiString): AnsiString;
   protected
-    function GetSessionID: WideString; override;
-    procedure DispositionAttach(const FileName: WideString); override;
     function ContextString(cs: TXxmContextString): WideString; override;
     function Connected: Boolean; override;
     procedure Redirect(const RedirectURL: WideString; Relative:boolean); override;
     function GetCookie(const Name: WideString): WideString; override;
 
-    function GetProjectEntry:TXxmProjectEntry; override;
     procedure SendHeader; override;
     function GetRequestHeader(const Name: WideString): WideString; override;
     procedure AddResponseHeader(const Name, Value: WideString); override;
@@ -226,7 +222,6 @@ begin
   FCGIValuesCount:=0;
   FReqHeaders:=TRequestHeaders.Create;
   FResHeaders:=TResponseHeaders.Create;
-  FProjectCache:=TXxmProjectCacheLocal.Create;
   FSocket:=nil;
 end;
 
@@ -237,7 +232,6 @@ begin
   SetLength(FCGIValues,0);
   FReqHeaders.Free;
   FResHeaders.Free;
-  FProjectCache.Free;
   inherited;
 end;
 
@@ -266,7 +260,6 @@ begin
   FResHeaders.Reset;
   FCookieParsed:=false;
   FQueryStringIndex:=1;
-  FSessionID:='';//see GetSessionID
   FURI:='';//see Execute
   FRedirectPrefix:='';
   FCGIValuesCount:=0;
@@ -516,11 +509,6 @@ begin
   end;
 end;
 
-function TXxmSCGIContext.GetProjectEntry:TXxmProjectEntry;
-begin
-  Result:=FProjectCache.GetProject(FProjectName);
-end;
-
 function TXxmSCGIContext.GetProjectPage(const FragmentName: WideString):IXxmFragment;
 begin
   Result:=inherited GetProjectPage(FragmentName);
@@ -556,19 +544,6 @@ begin
   end;
 end;
 
-procedure TXxmSCGIContext.DispositionAttach(const FileName: WideString);
-var
-  s:WideString;
-  i:integer;
-begin
-  s:=FileName;
-  for i:=1 to Length(s) do
-    if AnsiChar(s[i]) in ['\','/',':','*','?','"','<','>','|'] then
-      s[i]:='_';
-  AddResponseHeader('Content-disposition','attachment; filename="'+s+'"');
-  FResHeaders.SetComplex('Content-disposition','attachment')['filename']:=s;
-end;
-
 function TXxmSCGIContext.GetCookie(const Name: WideString): WideString;
 begin
   if not(FCookieParsed) then
@@ -578,22 +553,6 @@ begin
     FCookieParsed:=true;
    end;
   Result:=UTF8ToWideString(GetParamValue(FCookie,FCookieIdx,UTF8Encode(Name)));
-end;
-
-function TXxmSCGIContext.GetSessionID: WideString;
-const
-  SessionCookie='xxmSessionID';
-begin
-  if FSessionID='' then
-   begin
-    FSessionID:=GetCookie(SessionCookie);
-    if FSessionID='' then
-     begin
-      FSessionID:=Copy(CreateClassID,2,32);
-      SetCookie(SessionCookie,FSessionID);//expiry?
-     end;
-   end;
-  Result:=FSessionID;
 end;
 
 procedure TXxmSCGIContext.Redirect(const RedirectURL: WideString; Relative: boolean);

@@ -7,6 +7,9 @@ uses Windows, SysUtils, Classes, ActiveX, xxm, xxmPReg, xxmHeaders,
 
 const
   XxmMaxIncludeDepth=64;//TODO: setting?
+{$IFNDEF XXM_INLINE_PROJECT}
+  XxmProjectCacheLocalSize=4;//TODO: setting?
+{$ENDIF}
 
 type
   TXxmSendBufHandler=function(const Buffer; Count: LongInt): LongInt of object;
@@ -33,11 +36,19 @@ type
     FProjectEntry: TXxmProjectEntry;
     FPage, FBuilding: IXxmFragment;
     FStatusCode, FIncludeDepth, FBufferSize: integer;
-    FStatusText, FSingleFileSent: WideString;
+    FStatusText, FSingleFileSent, FSessionID: WideString;
     FParams: TXxmReqPars;
     FIncludeCheck: pointer;//see Include
     FChunked, FAuthParsed: boolean;
     FAuthUserName, FAuthPassword: AnsiString;
+{$IFNDEF XXM_INLINE_PROJECT}
+    FLocalCache:array[0..XxmProjectCacheLocalSize-1] of record
+      CacheIndex:cardinal;
+      Name:WideString;
+      Entry:TXxmProjectEntry;
+    end;
+    FLocalCacheIndex1,FLocalCacheIndex2:integer;
+{$ENDIF}
   protected
     FURL, FContentType, FProjectName, FPageClass, FFragmentName: WideString;
     FAutoEncoding: TXxmAutoEncoding;
@@ -45,7 +56,7 @@ type
     FPostData: TStream;
     FPostTempFile: string;
     SendBuf, SendDirect: TXxmSendBufHandler;
-    AllowChunked, ContentTypeSet, SettingCookie: boolean;
+    AllowChunked, ContentTypeSet, SettingCookie, AuthStoreCache: boolean;
 
     { IXxmContext }
     function GetURL: WideString;
@@ -74,8 +85,8 @@ type
       const Objects: array of TObject); overload;
 
     //abstract methods, inheriters need to implement these
-    function GetSessionID: WideString; virtual; abstract;
-    procedure DispositionAttach(const FileName: WideString); virtual; abstract;
+    function GetSessionID: WideString;
+    procedure DispositionAttach(const FileName: WideString);
     //function SendDirect(const Buffer; Count: LongInt): LongInt; virtual; abstract;
     function ContextString(cs: TXxmContextString): WideString; virtual; abstract;
     function Connected: Boolean; virtual; abstract;
@@ -103,12 +114,12 @@ type
     procedure AttachAgent(Agent: IxxmUploadProgressAgent; Flags, Step: integer);
 
     {  }
-    function GetProjectEntry:TXxmProjectEntry; virtual; abstract;
     procedure SendHeader; virtual;
     function GetRequestHeader(const Name: WideString): WideString; virtual; abstract;
     function GetResponseHeader(const Name: WideString): WideString; virtual; abstract;
     procedure AddResponseHeader(const Name, Value: WideString); virtual; abstract;
 
+    function GetProjectEntry: TXxmProjectEntry;
     function GetProjectPage(const FragmentName: WideString):IXxmFragment; virtual;
     procedure CheckHeaderNotSent;
     function CheckSendStart(NoOnNextFlush:boolean):boolean;
@@ -133,6 +144,9 @@ type
     //see also GetBufferSize,SetBufferSize, only here for inheriters
   public
     State: TXxmContextState;
+
+    procedure AfterConstruction; override;
+    destructor Destroy; override;
 
     procedure Recycle; virtual;
 
@@ -186,6 +200,7 @@ var
   StatusBuildError,StatusException,StatusFileNotFound:integer;
   ContextPool:TXxmContextPool;
   BufferStore:TXxmBufferStore;
+  XxmSessionCookieName:string;
 
 const
   Utf8ByteOrderMark:array[0..2] of byte=($EF,$BB,$BF);
@@ -205,6 +220,43 @@ const //resourcestring?
   SXxmBufferSizeInvalid='BufferSize exceeds maximum';
 
 { TXxmGeneralContext }
+
+procedure TXxmGeneralContext.AfterConstruction;
+{$IFNDEF XXM_INLINE_PROJECT}
+var
+  i:integer;
+{$ENDIF}
+begin
+  inherited;
+  AuthStoreCache:=false;//default, see GetSessionID
+{$IFNDEF XXM_INLINE_PROJECT}
+  FLocalCacheIndex1:=0;
+  FLocalCacheIndex2:=0;
+  for i:=0 to XxmProjectCacheLocalSize-1 do
+   begin
+    FLocalCache[i].CacheIndex:=0;//random?
+    FLocalCache[i].Name:='';
+    FLocalCache[i].Entry:=nil;
+   end;
+{$ENDIF}
+end;
+
+destructor TXxmGeneralContext.Destroy;
+{$IFNDEF XXM_INLINE_PROJECT}
+var
+  i:integer;
+{$ENDIF}
+begin
+{$IFNDEF XXM_INLINE_PROJECT}
+  for i:=0 to XxmProjectCacheLocalSize-1 do
+   begin
+    FLocalCache[i].CacheIndex:=0;
+    FLocalCache[i].Name:='';
+    FLocalCache[i].Entry:=nil;//not FreeAndNil, see TXxmProjectCacheJson
+   end;
+{$ENDIF}
+  inherited;
+end;
 
 procedure TXxmGeneralContext.BeginRequest;
 begin
@@ -290,6 +342,38 @@ end;
 function TXxmGeneralContext.GetURL: WideString;
 begin
   Result:=FURL;
+end;
+
+function TXxmGeneralContext.GetProjectEntry: TXxmProjectEntry;
+{$IFDEF XXM_INLINE_PROJECT}
+begin
+  Result:=XxmProjectCache.GetProject(FProjectName);
+{$ELSE}
+var
+  i:integer;
+begin
+  //assert FProjectName<>''
+  i:=0;
+  while (i<FLocalCacheIndex1) and not(
+    (FLocalCache[i].CacheIndex=XxmProjectCache.CacheIndex) and
+    (FLocalCache[i].Name=FProjectName)) do inc(i);
+  if i=FLocalCacheIndex1 then
+   begin
+    Result:=XxmProjectCache.GetProject(FProjectName);
+    if Result<>nil then
+     begin
+      i:=FLocalCacheIndex2;
+      FLocalCache[i].CacheIndex:=XxmProjectCache.CacheIndex;
+      FLocalCache[i].Name:=FProjectName;
+      FLocalCache[i].Entry:=Result;
+      inc(FLocalCacheIndex2);
+      if FLocalCacheIndex2=XxmProjectCacheLocalSize then FLocalCacheIndex2:=0;
+      if FLocalCacheIndex1<>XxmProjectCacheLocalSize then inc(FLocalCacheIndex1);
+     end;
+   end
+  else
+    Result:=FLocalCache[i].Entry;
+{$ENDIF}
 end;
 
 function TXxmGeneralContext.GetProjectPage(const FragmentName: WideString): IXxmFragment;
@@ -1111,6 +1195,40 @@ begin
   end;
 end;
 
+function TXxmGeneralContext.GetSessionID: WideString;
+begin
+  if FSessionID='' then
+   begin
+    FSessionID:=GetCookie(XxmSessionCookieName);
+    if FSessionID='' then
+     begin
+      FSessionID:=Copy(CreateClassID,2,32);
+      SetCookie(XxmSessionCookieName,FSessionID+'; Path=/; SameSite=Lax');//expiry?
+     end;
+    if AuthStoreCache then
+      XxmProjectCache.SetAuthCache(FSessionID,AuthValue(csAuthUser));
+   end;
+  Result:=FSessionID;
+end;
+
+procedure TXxmGeneralContext.DispositionAttach(const FileName: WideString);
+var
+  s:WideString;
+  i:integer;
+begin
+  if FileName='' then
+    AddResponseHeader('Content-disposition','attachment')
+  else
+   begin
+    s:=FileName;
+    for i:=1 to Length(s) do
+      if AnsiChar(s[i]) in ['\','/',':','*','?','"','<','>','|'] then
+        s[i]:='_';
+    AddResponseHeader('Content-disposition','attachment; filename="'+s+'"');
+   end;
+end;
+
+
 procedure TXxmGeneralContext.SetCookie(const Name, Value: WideString);
 begin
   CheckHeaderNotSent;
@@ -1483,6 +1601,7 @@ end;
 initialization
   ContextPool:=nil;//created by handler initialization
   BufferStore:=TXxmBufferStore.Create;
+  XxmSessionCookieName:='xxm'+Copy(CreateClassID,2,8);
 finalization
   ContextPool.Free;
   BufferStore.Free;

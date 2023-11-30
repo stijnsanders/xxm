@@ -16,9 +16,8 @@ type
     FReqHeaders: TRequestHeaders;
     FResHeaders: TResponseHeaders;
     FHTTPVersion,FVerb,FURI: AnsiString;
-    FRedirectPrefix,FSessionID: WideString;
-    FProjectCache: TXxmProjectCacheLocal;
-    FCookieParsed, FAuthStoreCache: boolean;
+    FRedirectPrefix: WideString;
+    FCookieParsed: boolean;
     FCookie: AnsiString;
     FCookieIdx: TParamIndexes;
     FQueryStringIndex:integer;
@@ -27,14 +26,11 @@ type
     procedure ResponseStr(const Body,RedirMsg:WideString);
     procedure AuthSChannel(const Package:AnsiString; var Cred: TCredHandle);
   protected
-    function GetSessionID: WideString; override;
-    procedure DispositionAttach(const FileName: WideString); override;
     function ContextString(cs: TXxmContextString): WideString; override;
     function Connected: Boolean; override;
     procedure Redirect(const RedirectURL: WideString; Relative:boolean); override;
     function GetCookie(const Name: WideString): WideString; override;
 
-    function GetProjectEntry:TXxmProjectEntry; override;
     procedure SendHeader; override;
     function GetRequestHeader(const Name: WideString): WideString; override;
     function GetResponseHeader(const Name: WideString): WideString; override;
@@ -99,11 +95,9 @@ const
 type
   EXxmConnectionLost=class(Exception);
 
-var
-  SessionCookie:string;
-
 { TXxmHttpContext }
 
+{$IFNDEF XXM_INLINE_PROJECT}
 procedure TXxmHttpContext.AfterConstruction;
 begin
   inherited;
@@ -113,7 +107,6 @@ begin
   FResHeaders:=TResponseHeaders.Create;
   FCookieIdx.ParsSize:=0;
   FCookieIdx.ParsIndex:=0;
-  FProjectCache:=TXxmProjectCacheLocal.Create;
   FCredNTLM.dwUpper:=nil;
   FCredNTLM.dwLower:=nil;
   FCredNego.dwUpper:=nil;
@@ -128,13 +121,13 @@ begin
   FreeAndNil(FSocket);
   FReqHeaders.Free;
   FResHeaders.Free;
-  FProjectCache.Free;
   if (FCredNTLM.dwLower<>nil) or (FCredNTLM.dwUpper<>nil) then
     FreeCredentialsHandle(@FCredNTLM);
   if (FCredNego.dwLower<>nil) or (FCredNego.dwUpper<>nil) then
     FreeCredentialsHandle(@FCredNego);
   inherited;
 end;
+{$ENDIF}
 
 function TXxmHttpContext.Accept(Socket: TTcpSocket): TXxmHttpContext;
 var
@@ -161,7 +154,6 @@ begin
   FCookieParsed:=false;
   FCookieIdx.ParsIndex:=0;
   FQueryStringIndex:=1;
-  FSessionID:='';//see GetSessionID
   FURI:='';//see Execute
   FRedirectPrefix:='';
 end;
@@ -401,11 +393,6 @@ begin
   end;
 end;
 
-function TXxmHttpContext.GetProjectEntry:TXxmProjectEntry;
-begin
-  Result:=FProjectCache.GetProject(FProjectName);
-end;
-
 procedure TXxmHttpContext.AuthSChannel(const Package:AnsiString;
   var Cred:TCredHandle);
 var
@@ -416,8 +403,7 @@ var
   d:array of TSecBuffer;
   n:TSecPkgContextNames;
 begin
-  FAuthStoreCache:=false;//default
-  s:=XxmProjectCache.GetAuthCache(GetCookie(SessionCookie));
+  s:=XxmProjectCache.GetAuthCache(GetCookie(XxmSessionCookieName));
   if s<>'' then
     AuthSet(s,'') //TODO: update Expires?
   else
@@ -487,7 +473,7 @@ begin
         DeleteSecurityContext(@FCtxt);
         FCtxt.dwLower:=nil;
         FCtxt.dwUpper:=nil;
-        FAuthStoreCache:=true;//see GetSessionID
+        AuthStoreCache:=true;//see GetSessionID
         //AddResponseHeader('Persistent-Auth','false');
        end
       else
@@ -543,19 +529,6 @@ begin
   end;
 end;
 
-procedure TXxmHttpContext.DispositionAttach(const FileName: WideString);
-var
-  s:WideString;
-  i:integer;
-begin
-  s:=FileName;
-  for i:=1 to Length(s) do
-    if AnsiChar(s[i]) in ['\','/',':','*','?','"','<','>','|'] then
-      s[i]:='_';
-  AddResponseHeader('Content-disposition','attachment; filename="'+s+'"');
-  FResHeaders.SetComplex('Content-disposition','attachment')['filename']:=s;
-end;
-
 function TXxmHttpContext.GetCookie(const Name: WideString): WideString;
 begin
   if not(FCookieParsed) then
@@ -565,22 +538,6 @@ begin
     FCookieParsed:=true;
    end;
   Result:=UTF8ToWideString(GetParamValue(FCookie,FCookieIdx,UTF8Encode(Name)));
-end;
-
-function TXxmHttpContext.GetSessionID: WideString;
-begin
-  if FSessionID='' then
-   begin
-    FSessionID:=GetCookie(SessionCookie);
-    if FSessionID='' then
-     begin
-      FSessionID:=Copy(CreateClassID,2,32);
-      SetCookie(SessionCookie,FSessionID+'; Path=/; SameSite=Lax');//expiry?
-     end;
-    if FAuthStoreCache then
-      XxmProjectCache.SetAuthCache(FSessionID,AuthValue(csAuthUser));
-   end;
-  Result:=FSessionID;
 end;
 
 procedure TXxmHttpContext.Redirect(const RedirectURL: WideString; Relative: boolean);
@@ -723,5 +680,4 @@ initialization
   StatusBuildError:=503;//TODO: from settings
   StatusException:=500;
   StatusFileNotFound:=404;
-  SessionCookie:='xxm'+Copy(CreateClassID,2,8);
 end.

@@ -30,9 +30,8 @@ type
     FCGIValuesSize,FCGIValuesCount:integer;
     FReqHeaders:TRequestHeaders;
     FResHeaders:TResponseHeaders;
-    FProjectCache:TXxmProjectCacheLocal;
     FConnected:boolean;
-    FURI,FRedirectPrefix,FSessionID:WideString;
+    FURI,FRedirectPrefix:WideString;
     FCookieParsed: boolean;
     FCookie: AnsiString;
     FCookieIdx: TParamIndexes;
@@ -44,15 +43,12 @@ type
     procedure EndRequest; override;
 
     function SendData(const Buffer; Count: LongInt): LongInt;
-    procedure DispositionAttach(const FileName: WideString); override;
     function ContextString(cs:TXxmContextString):WideString; override;
     procedure Redirect(const RedirectURL:WideString; Relative:boolean); override;
     function Connected:boolean; override;
-    function GetSessionID:WideString; override;
     procedure SendHeader; override;
     function GetCookie(const Name:WideString):WideString; override;
 
-    function GetProjectEntry:TXxmProjectEntry; override;
     function GetRequestHeader(const Name: WideString): WideString; override;
     procedure AddResponseHeader(const Name, Value: WideString); override;
     function GetRawSocket: IStream; override;
@@ -130,7 +126,6 @@ begin
   SendDirect:=SendData;
   FReqHeaders:=TRequestHeaders.Create;
   FResHeaders:=TResponseHeaders.Create;
-  FProjectCache:=TXxmProjectCacheLocal.Create;
   FCGIValuesSize:=0;
   inherited;
 end;
@@ -139,7 +134,6 @@ destructor TXxmHostedContext.Destroy;
 begin
   FReqHeaders.Free;
   FResHeaders.Free;
-  FProjectCache.Free;
   SetLength(FCGIValues,0);
   inherited;
 end;
@@ -158,7 +152,6 @@ begin
   FConnected:=true;
   FCookieParsed:=false;
   FQueryStringIndex:=1;
-  FSessionID:='';//see GetSessionID
   FRedirectPrefix:='';
   FReqHeaders.Reset;
   FResHeaders.Reset;
@@ -285,11 +278,6 @@ begin
   end;
 end;
 
-function TXxmHostedContext.GetProjectEntry: TXxmProjectEntry;
-begin
-  Result:=FProjectCache.GetProject(FProjectName);
-end;
-
 function TXxmHostedContext.Connected: boolean;
 begin
   Result:=FConnected;
@@ -320,18 +308,6 @@ begin
   end;
 end;
 
-procedure TXxmHostedContext.DispositionAttach(const FileName: WideString);
-var
-  s:WideString;
-  i:integer;
-begin
-  s:=FileName;
-  for i:=1 to Length(s) do
-    if AnsiChar(s[i]) in ['\','/',':','*','?','"','<','>','|'] then
-      s[i]:='_';
-  FResHeaders.SetComplex('Content-disposition','attachment')['filename']:=s;
-end;
-
 function TXxmHostedContext.GetCookie(const Name: WideString): WideString;
 begin
   if not(FCookieParsed) then
@@ -341,22 +317,6 @@ begin
     FCookieParsed:=true;
    end;
   Result:=UTF8ToWideString(GetParamValue(FCookie,FCookieIdx,UTF8Encode(Name)));
-end;
-
-function TXxmHostedContext.GetSessionID: WideString;
-const
-  SessionCookie='xxmSessionID';
-begin
-  if FSessionID='' then
-   begin
-    FSessionID:=GetCookie(SessionCookie);
-    if FSessionID='' then
-     begin
-      FSessionID:=Copy(CreateClassID,2,32);
-      SetCookie(SessionCookie,FSessionID);//expiry?
-     end;
-   end;
-  Result:=FSessionID;
 end;
 
 procedure TXxmHostedContext.Redirect(const RedirectURL: WideString;

@@ -118,30 +118,6 @@ type
     property CacheIndex:cardinal read FCacheIndex;
   end;
 
-{$IFNDEF XXM_INLINE_PROJECT}
-const
-  XxmProjectCacheLocalSize=4;
-{$ENDIF}
-
-type
-  TXxmProjectCacheLocal=class(TObject)
-  private
-{$IFNDEF XXM_INLINE_PROJECT}
-    FLocalCache:array[0..XxmProjectCacheLocalSize-1] of record
-      CacheIndex:cardinal;
-      Name:WideString;
-      Entry:TXxmProjectEntry;
-    end;
-    FLocalCacheIndex1,FLocalCacheIndex2:integer;
-{$ENDIF}
-  public
-{$IFNDEF XXM_INLINE_PROJECT}
-    constructor Create;
-    destructor Destroy; override;
-{$ENDIF}    
-    function GetProject(const Name: WideString): TXxmProjectEntry;
-  end;
-
   EXxmProjectNotFound=class(Exception);
   EXxmProjectLoadFailed=class(Exception);
   EXxmProjectRegistryError=class(Exception);
@@ -1077,78 +1053,6 @@ begin
     end;
    end;
 end;
-
-{ TXxmProjectCacheLocal }
-
-{$IFDEF XXM_INLINE_PROJECT}
-function TXxmProjectCacheLocal.GetProject(const Name: WideString):
-  TXxmProjectEntry;
-begin
-  if Name=XxmProjectName then
-    Result:=XxmProjectCache.FProjectEntry
-  else
-    raise EXxmProjectNotFound.Create(StringReplace(
-      SXxmProjectNotFound,'__',Name,[]));
-end;
-
-{$ELSE}
-constructor TXxmProjectCacheLocal.Create;
-var
-  i:integer;
-begin
-  inherited Create;
-  FLocalCacheIndex1:=0;
-  FLocalCacheIndex2:=0;
-  for i:=0 to XxmProjectCacheLocalSize-1 do
-   begin
-    FLocalCache[i].CacheIndex:=0;//random?
-    FLocalCache[i].Name:='';
-    FLocalCache[i].Entry:=nil;
-   end;
-end;
-
-destructor TXxmProjectCacheLocal.Destroy;
-var
-  i:integer;
-begin
-  for i:=0 to XxmProjectCacheLocalSize-1 do
-   begin
-    FLocalCache[i].CacheIndex:=0;
-    FLocalCache[i].Name:='';
-    FLocalCache[i].Entry:=nil;//not FreeAndNil, see TXxmProjectCacheJson
-   end;
-  inherited;
-end;
-
-function TXxmProjectCacheLocal.GetProject(const Name: WideString):
-  TXxmProjectEntry;
-var
-  i:integer;
-begin
-  //assert Name<>''
-  i:=0;
-  while (i<FLocalCacheIndex1) and not(
-    (FLocalCache[i].CacheIndex=XxmProjectCache.CacheIndex) and
-    (FLocalCache[i].Name=Name)) do inc(i);
-  if i=FLocalCacheIndex1 then
-   begin
-    Result:=XxmProjectCache.GetProject(Name);
-    if Result<>nil then
-     begin
-      i:=FLocalCacheIndex2;
-      FLocalCache[i].CacheIndex:=XxmProjectCache.CacheIndex;
-      FLocalCache[i].Name:=Name;
-      FLocalCache[i].Entry:=Result;
-      inc(FLocalCacheIndex2);
-      if FLocalCacheIndex2=XxmProjectCacheLocalSize then FLocalCacheIndex2:=0;
-      if FLocalCacheIndex1<>XxmProjectCacheLocalSize then inc(FLocalCacheIndex1);
-     end;
-   end
-  else
-    Result:=FLocalCache[i].Entry;
-end;
-{$ENDIF}
-
 
 initialization
 {$IFDEF XXM_INLINE_PROJECT}

@@ -29,8 +29,7 @@ type
     FReqHeaders:TRequestHeaders;
     FResHeaders:TResponseHeaders;
     FHTTPVersion,FVerb:AnsiString;
-    FURI,FRedirectPrefix,FSessionID:WideString;
-    FProjectCache:TXxmProjectCacheLocal;
+    FURI,FRedirectPrefix:WideString;
     FCookieParsed: boolean;
     FCookie: AnsiString;
     FCookieIdx: TParamIndexes;
@@ -38,15 +37,12 @@ type
     procedure Accept(SocketHandle:THandle);
   protected
 
-    function GetSessionID: WideString; override;
-    procedure DispositionAttach(const FileName: WideString); override;
     function SendData(const Buffer; Count: LongInt): LongInt;
     function ContextString(cs: TXxmContextString): WideString; override;
     function Connected: Boolean; override;
     procedure Redirect(const RedirectURL: WideString; Relative:boolean); override;
     function GetCookie(const Name: WideString): WideString; override;
 
-    function GetProjectEntry:TXxmProjectEntry; override;
     procedure SendHeader; override;
     function GetRequestHeader(const Name: WideString): WideString; override;
     procedure AddResponseHeader(const Name, Value: WideString); override;
@@ -268,7 +264,6 @@ begin
   SendDirect:=SendData;
   FReqHeaders:=TRequestHeaders.Create;
   FResHeaders:=TResponseHeaders.Create;
-  FProjectCache:=TXxmProjectCacheLocal.Create;
   inherited;
 end;
 
@@ -279,7 +274,6 @@ begin
   FSocket.Free;
   FReqHeaders.Free;
   FResHeaders.Free;
-  FProjectCache.Free;
   inherited;
 end;
 
@@ -302,7 +296,6 @@ begin
   FResHeaders.Reset;
   FCookieParsed:=false;
   FQueryStringIndex:=1;
-  FSessionID:='';//see GetSessionID
   FURI:='';//see Execute
   FRedirectPrefix:='';
 end;
@@ -509,11 +502,6 @@ begin
   end;
 end;
 
-function TXxmSynaContext.GetProjectEntry:TXxmProjectEntry;
-begin
-  Result:=FProjectCache.GetProject(FProjectName);
-end;
-
 function TXxmSynaContext.GetProjectPage(const FragmentName: WideString):IXxmFragment;
 begin
   Result:=inherited GetProjectPage(FragmentName);
@@ -549,19 +537,6 @@ begin
   end;
 end;
 
-procedure TXxmSynaContext.DispositionAttach(const FileName: WideString);
-var
-  s:WideString;
-  i:integer;
-begin
-  s:=FileName;
-  for i:=1 to Length(s) do
-    if AnsiChar(s[i]) in ['\','/',':','*','?','"','<','>','|'] then
-      s[i]:='_';
-  AddResponseHeader('Content-disposition','attachment; filename="'+s+'"');
-  FResHeaders.SetComplex('Content-disposition','attachment')['filename']:=s;
-end;
-
 function TXxmSynaContext.GetCookie(const Name: WideString): WideString;
 begin
   if not(FCookieParsed) then
@@ -571,22 +546,6 @@ begin
     FCookieParsed:=true;
    end;
   Result:=UTF8ToWideString(GetParamValue(FCookie,FCookieIdx,UTF8Encode(Name)));
-end;
-
-function TXxmSynaContext.GetSessionID: WideString;
-const
-  SessionCookie='xxmSessionID';
-begin
-  if FSessionID='' then
-   begin
-    FSessionID:=GetCookie(SessionCookie);
-    if FSessionID='' then
-     begin
-      FSessionID:=Copy(CreateClassID,2,32);
-      SetCookie(SessionCookie,FSessionID);//expiry?
-     end;
-   end;
-  Result:=FSessionID;
 end;
 
 procedure TXxmSynaContext.Redirect(const RedirectURL: WideString;

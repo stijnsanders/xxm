@@ -17,10 +17,9 @@ type
     ecb: PEXTENSION_CONTROL_BLOCK;
     FIOState: integer;
     FIOStream: TStream;
-    FURI, FRedirectPrefix, FSessionID: WideString;
+    FURI, FRedirectPrefix: WideString;
     FReqHeaders: TRequestHeaders;
     FResHeaders: TResponseHeaders;
-    FProjectCache: TXxmProjectCacheLocal;
     FCookieParsed: boolean;
     FCookie: AnsiString;
     FCookieIdx: TParamIndexes;
@@ -29,8 +28,6 @@ type
     procedure ServerFunction(HSERRequest: DWORD; Buffer: Pointer;
       Size, DataType: LPDWORD);
   protected
-    function GetSessionID: WideString; override;
-    procedure DispositionAttach(const FileName: WideString); override;
     function SendData(const Buffer; Count: LongInt): LongInt;
     function ContextString(cs: TXxmContextString): WideString; override;
     function Connected: Boolean; override;
@@ -40,7 +37,6 @@ type
     procedure Redirect(const RedirectURL: WideString; Relative:boolean); override;
     function GetCookie(const Name: WideString): WideString; override;
 
-    function GetProjectEntry: TXxmProjectEntry; override;
     function GetProjectPage(const FragmentName: WideString):IXxmFragment; override;
     procedure SendHeader; override;
     procedure SetStatus(Code: Integer; const Text: WideString); override;
@@ -209,7 +205,6 @@ procedure TXxmIsapiContext.AfterConstruction;
 begin
   FReqHeaders:=TRequestHeaders.Create;
   FResHeaders:=TResponseHeaders.Create;
-  FProjectCache:=TXxmProjectCacheLocal.Create;
   inherited;
 end;
 
@@ -217,7 +212,6 @@ destructor TXxmIsapiContext.Destroy;
 begin
   FReqHeaders.Free;
   FResHeaders.Free;
-  FProjectCache.Free;
   inherited;
 end;
 
@@ -240,7 +234,6 @@ procedure TXxmIsapiContext.BeginRequest;
 begin
   inherited;
   FCookieParsed:=false;
-  FSessionID:='';//see GetSessionID
   FIOState:=IOState_None;
   FIOStream:=nil;
   FResHeaders.Reset;
@@ -329,11 +322,6 @@ begin
   if (FIOState and 1)=0 then inherited;
 end;
 
-function TXxmIsapiContext.GetProjectEntry:TXxmProjectEntry;
-begin
-  Result:=FProjectCache.GetProject(FProjectName);
-end;
-
 function TXxmIsapiContext.GetProjectPage(const FragmentName: WideString):IXxmFragment;
 var
   p:IXxmPage;
@@ -401,19 +389,6 @@ begin
   end;
   //ecb.lpszPathInfo;
   //ecb.lpszPathTranslated;
-end;
-
-procedure TXxmIsapiContext.DispositionAttach(const FileName: WideString);
-var
-  s:WideString;
-  i:integer;
-begin
-  s:=FileName;
-  for i:=1 to Length(s) do
-    if AnsiChar(s[i]) in ['\','/',':','*','?','"','<','>','|'] then
-      s[i]:='_';
-  AddResponseHeader('Content-disposition','attachment; filename="'+s+'"');
-  FResHeaders.SetComplex('Content-disposition','attachment')['filename']:=s;
 end;
 
 function TXxmIsapiContext.SendData(const Buffer; Count: LongInt): LongInt;
@@ -542,22 +517,6 @@ begin
     FCookieParsed:=true;
    end;
   Result:=WideString(GetParamValue(FCookie,FCookieIdx,AnsiString(Name)));
-end;
-
-function TXxmIsapiContext.GetSessionID: WideString;
-const
-  SessionCookie='xxmSessionID';
-begin
-  if FSessionID='' then
-   begin
-    FSessionID:=GetCookie(SessionCookie);
-    if FSessionID='' then
-     begin
-      FSessionID:=Copy(CreateClassID,2,32);
-      SetCookie(SessionCookie,FSessionID);//expiry?
-     end;
-   end;
-  Result:=FSessionID;
 end;
 
 function TXxmIsapiContext.GetRequestHeaders: IxxmDictionaryEx;
