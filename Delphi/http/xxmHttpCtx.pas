@@ -97,7 +97,6 @@ type
 
 { TXxmHttpContext }
 
-{$IFNDEF XXM_INLINE_PROJECT}
 procedure TXxmHttpContext.AfterConstruction;
 begin
   inherited;
@@ -127,7 +126,6 @@ begin
     FreeCredentialsHandle(@FCredNego);
   inherited;
 end;
-{$ENDIF}
 
 function TXxmHttpContext.Accept(Socket: TTcpSocket): TXxmHttpContext;
 var

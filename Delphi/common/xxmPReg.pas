@@ -106,7 +106,9 @@ type
     function ProjectFromURI(Context:IXxmContext;const URI:AnsiString;
       var i:integer; var ProjectName,FragmentName:WideString):boolean;
 
-{$IFNDEF XXM_INLINE_PROJECT}
+{$IFDEF XXM_INLINE_PROJECT}
+    property ProjectEntry:TXxmProjectEntry read FProjectEntry;
+{$ELSE}
     procedure CheckRegistry;
     function GetProject(const Name:WideString):TXxmProjectEntry;
     procedure ReleaseProject(const Name:WideString);
