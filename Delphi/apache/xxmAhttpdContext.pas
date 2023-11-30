@@ -60,6 +60,8 @@ procedure TxxmAhttpdContext.AfterConstruction;
 begin
   SendDirect:=SendData;
   FProjectCache:=TXxmProjectCacheLocal.Create;
+  FCookieIdx.ParsIndex:=0;
+  FCookieIdx.ParsSize:=0;
   inherited;
 end;
 

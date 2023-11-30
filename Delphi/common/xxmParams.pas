@@ -162,11 +162,16 @@ function TXxmReqPars.Fill(Context: IXxmContext; PostData: TStream): boolean;
 var
   i,p,q,r,l:integer;
   ps:TStream;
-  pm,pn,pb,pd,pf,px:AnsiString;
+  pm,pb,pd,pf,px:AnsiString;
   pa,pax:TParamIndexes;
+  pn:string;
   sn:TStreamNozzle;
 begin
   Result:=false;//return wether to free PostData
+  pa.ParsIndex:=0;
+  pa.ParsSize:=0;
+  pax.ParsIndex:=0;
+  pax.ParsSize:=0;
   pd:=UTF8Encode(Context.ContextString(csQueryString));
   //TODO: revert &#[0-9]+?;
   l:=Length(pd);
@@ -190,7 +195,7 @@ begin
    begin
     ps.Seek(0,soFromBeginning);
     pm:=AnsiString(Context.ContextString(csPostMimeType));
-    pn:=SplitHeaderValue(pm,1,Length(pm),pa);//lower?
+    pn:=string(SplitHeaderValue(pm,1,Length(pm),pa));//lower?
 
     //pm='' with redirect in response to POST request, but StgMed prevails! drop it
     if pm='' then Result:=true else
@@ -243,18 +248,20 @@ begin
           pm:='';
           pf:='';
           pd:=sn.GetHeader(pa);
-          for i:=0 to Length(pa)-1 do
+          for i:=0 to pa.ParsIndex-1 do
            begin
-            pn:=AnsiString(LowerCase(string(Copy(pd,pa[i].NameStart,pa[i].NameLength))));
+            pn:=pa.Pars[i].NameL;
             if pn='content-disposition' then
              begin
-              pn:=SplitHeaderValue(pd,pa[i].ValueStart,pa[i].ValueLength,pax);
+              pn:=string(SplitHeaderValue(pd,
+                pa.Pars[i].ValueStart,pa.Pars[i].ValueLength,pax));
               //assert pn='form-data'
               px:=GetParamValue(pd,pax,'name');
               pf:=GetParamValue(pd,pax,'filename');
              end
             else
-            if pn='content-type' then pm:=Copy(pd,pa[i].ValueStart,pa[i].ValueLength)
+            if pn='content-type' then
+              pm:=Copy(pd,pa.Pars[i].ValueStart,pa.Pars[i].ValueLength)
             else
               ;//raise Exception.Create('Unknown multipart header "'+pn+'"');
            end;

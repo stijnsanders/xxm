@@ -24,8 +24,12 @@ type
     function _Release:integer; stdcall;
   end;
 
-  TParamIndexes=array of record
-    NameStart,NameLength,ValueStart,ValueLength:integer;
+  TParamIndexes=record
+    Pars:array of record
+      NameStart,NameLength,ValueStart,ValueLength:integer;
+      NameL:string;
+    end;
+    ParsIndex,ParsSize:integer;
   end;
 
   TRequestHeaders=class(TControlledLifeTimeObject,
@@ -51,7 +55,7 @@ type
 
   TRequestSubValues=class(TInterfacedObject, IxxmDictionary)
   private
-    FData:WideString;
+    FData:AnsiString;
     FIdx:TParamIndexes;
     function GetItem(Name:OleVariant):WideString;
     procedure SetItem(Name:OleVariant;const Value:WideString);
@@ -59,7 +63,7 @@ type
     procedure SetName(Idx:integer; Value:WideString);
     function GetCount:integer;
   public
-    constructor Create(const Data:WideString;ValueStart,ValueLength:integer;
+    constructor Create(const Data:AnsiString;ValueStart,ValueLength:integer;
       var FirstValue:WideString);
     destructor Destroy; override;
     property Item[Name:OleVariant]:WideString read GetItem write SetItem; default;
@@ -74,6 +78,7 @@ type
   private
     FItems:array of record
       Name,Value:WideString;
+      NameL:string;
       SubValues:TResponseSubValues;
     end;
     FItemsSize,FItemsCount:integer;
@@ -102,6 +107,7 @@ type
   private
     FItems:array of record
       Name,Value:WideString;
+      NameL:string;
     end;
     FItemsSize,FItemsCount:integer;
     FBuilt:boolean;
@@ -195,10 +201,9 @@ end;
 function SplitHeaderValue(const Value:AnsiString;
   ValueStart,ValueLength:integer;var Params:TParamIndexes):AnsiString;
 var
-  i,j,l,q,pl:integer;
+  i,j,l:integer;
 begin
-  q:=0;
-  pl:=0;
+  Params.ParsIndex:=0;
   l:=ValueStart+ValueLength-1;
   i:=ValueStart;//set to 0 to start parsing sub-values
   if i=0 then inc(l) else while (i<=l) and (Value[i]<>';') do inc(i);
@@ -207,56 +212,58 @@ begin
     if i=0 then Result:='' else Result:=Copy(Value,ValueStart,i-ValueStart);
     while i<=l do
      begin
-      if q=pl then
+      if Params.ParsIndex=Params.ParsSize then
        begin
-        inc(pl,$10);
-        SetLength(Params,pl);
+        inc(Params.ParsSize,$10);//growstep
+        SetLength(Params.Pars,Params.ParsSize);
        end;
       inc(i);
       while (i<=l) and (Value[i] in [#1..#32]) do inc(i);
-      Params[q].NameStart:=i;
+      Params.Pars[Params.ParsIndex].NameStart:=i;
       j:=i;
       while (j<=l) and (Value[j]<>'=') do inc(j);
-      Params[q].NameLength:=j-i;
+      Params.Pars[Params.ParsIndex].NameLength:=j-i;
+      //TODO: SortIndex
+      Params.Pars[Params.ParsIndex].NameL:=LowerCase(string(Copy(Value,i,j-i)));
       i:=j+1;
       if (i<=l) and (Value[i]='"') then
        begin
         //in quotes
         inc(i);
-        Params[q].ValueStart:=i;
+        Params.Pars[Params.ParsIndex].ValueStart:=i;
         j:=i;
         while (j<=l) and (Value[j]<>'"') do inc(j);
-        Params[q].ValueLength:=j-i;
+        Params.Pars[Params.ParsIndex].ValueLength:=j-i;
         while (j<=l) and (Value[j]<>';') do inc(j);//ignore
        end
       else
        begin
         //not in quotes
-        Params[q].ValueStart:=i;
+        Params.Pars[Params.ParsIndex].ValueStart:=i;
         j:=i;
         while (j<=l) and (Value[j]<>';') do inc(j);
-        Params[q].ValueLength:=j-i;
+        Params.Pars[Params.ParsIndex].ValueLength:=j-i;
        end;
       i:=j;
-      inc(q);
+      inc(Params.ParsIndex);
      end;
    end
   else
     Result:=Copy(Value,ValueStart,ValueLength);
-  SetLength(Params,q);
 end;
 
 function GetParamValue(const Data:AnsiString;
   Params:TParamIndexes; const Name:AnsiString):AnsiString;
 var
+  n:string;
   l,i:integer;
 begin
-  l:=Length(Params);
+  n:=LowerCase(string(Name));
+  l:=Params.ParsIndex;
   i:=0;
-  while (i<l) and (CompareText(string(
-    Copy(Data,Params[i].NameStart,Params[i].NameLength)),string(Name))<>0) do inc(i);
+  while (i<l) and (RawCompare(Params.Pars[i].NameL,n)<>0) do inc(i);
   if i<l then
-    Result:=Copy(Data,Params[i].ValueStart,Params[i].ValueLength)
+    Result:=Copy(Data,Params.Pars[i].ValueStart,Params.Pars[i].ValueLength)
   else
     Result:='';
 end;
@@ -374,17 +381,13 @@ begin
 end;
 
 function TStreamNozzle.GetHeader(var Params: TParamIndexes): AnsiString;
-const
-  sGrowStep=$1000;
-  pGrowStep=$10;
 var
   b:boolean;
-  p,q,r,s,i,l:integer;
+  p,q,r,s:integer;
 begin
   p:=0;
   q:=1;
-  i:=0;
-  l:=0;
+  Params.ParsIndex:=0;
   s:=0;
   while Ensure(1) and (q-p<>2) do //2 being Length(EOL)
    begin
@@ -394,7 +397,7 @@ begin
      begin
       if q>s then
        begin
-        inc(s,sGrowStep);
+        inc(s,$1000);//grow step
         SetLength(Result,s);
        end;
       Result[q]:=Data[Index];
@@ -408,23 +411,23 @@ begin
 
     if q-p<>2 then
      begin
-      if i=l then
+      if Params.ParsIndex=Params.ParsSize then
        begin
-        inc(l,pGrowStep);
-        SetLength(Params,l);
+        inc(Params.ParsSize,$10);//grow step
+        SetLength(Params.Pars,Params.ParsSize);
        end;
-      Params[i].NameStart:=p;
+      Params.Pars[Params.ParsIndex].NameStart:=p;
       r:=p;
       while (r<=q) and (Result[r]<>':') do inc(r);
-      Params[i].NameLength:=r-p;
+      Params.Pars[Params.ParsIndex].NameLength:=r-p;
+      Params.Pars[Params.ParsIndex].NameL:=LowerCase(string(Copy(Result,p,r-p)));
       inc(r);
       while (r<=q) and (Result[r] in [#1..#32]) do inc(r);
-      Params[i].ValueStart:=r;
-      Params[i].ValueLength:=q-r-2;//2 from Length(EOL)
-      inc(i);
+      Params.Pars[Params.ParsIndex].ValueStart:=r;
+      Params.Pars[Params.ParsIndex].ValueLength:=q-r-2;//2 from Length(EOL)
+      inc(Params.ParsIndex);
      end;
    end;
-  SetLength(Params,i);
   SetLength(Result,q-1);
   Flush;
 end;
@@ -513,6 +516,8 @@ constructor TRequestHeaders.Create;
 begin
   inherited Create;
   FData:='';//Reset;
+  FIdx.ParsIndex:=0;
+  FIdx.ParsSize:=0;
 end;
 
 destructor TRequestHeaders.Destroy;
@@ -524,12 +529,11 @@ end;
 procedure TRequestHeaders.Load(const Data:AnsiString;StartIndex,DataLength:integer);
 var
   b:boolean;
-  p,q,l,r,i,pl:integer;
+  p,q,l,r:integer;
 begin
   FData:=Data;
   q:=StartIndex;//assert >0
-  i:=0;
-  pl:=0;
+  FIdx.ParsIndex:=0;
   //assert Length(FData)>=DataLength;
   l:=DataLength;
   while (q<=l) do
@@ -548,41 +552,41 @@ begin
       while (r<=q) and (FData[r] in [#1..#32]) do inc(r);
       if r=p then
        begin
-        if i=pl then
+        if FIdx.ParsIndex=FIdx.ParsSize then
          begin
-          inc(pl,$10);//grow
-          SetLength(FIdx,pl);
+          inc(FIdx.ParsSize,$10);//grow
+          SetLength(FIdx.Pars,FIdx.ParsSize);
          end;
-        FIdx[i].NameStart:=p;
+        FIdx.Pars[FIdx.ParsIndex].NameStart:=p;
         r:=p;
         while (r<=q) and (FData[r]<>':') do inc(r);
-        FIdx[i].NameLength:=r-p;
+        FIdx.Pars[FIdx.ParsIndex].NameLength:=r-p;
+        FIdx.Pars[FIdx.ParsIndex].NameL:=LowerCase(string(Copy(FData,p,r-p)));
         inc(r);
         while (r<=q) and (FData[r] in [#1..#32]) do inc(r);
-        FIdx[i].ValueStart:=r;
-        FIdx[i].ValueLength:=q-r-2;//2 from Length(EOL)
-        inc(i);
+        FIdx.Pars[FIdx.ParsIndex].ValueStart:=r;
+        FIdx.Pars[FIdx.ParsIndex].ValueLength:=q-r-2;//2 from Length(EOL)
+        inc(FIdx.ParsIndex);
        end
       else
        begin
         //assert i<>0
-        FIdx[i].ValueLength:=q-FIdx[i].ValueStart-2;
+        FIdx.Pars[FIdx.ParsIndex].ValueLength:=q-FIdx.Pars[FIdx.ParsIndex].ValueStart-2;
         //TODO: kill EOF and whitespace?
        end;
      end;
    end;
-  SetLength(FIdx,i);
 end;
 
 procedure TRequestHeaders.Reset;
 begin
-  SetLength(FIdx,0);
+  FIdx.ParsIndex:=0;
   FData:='';
 end;
 
 function TRequestHeaders.GetCount: integer;
 begin
-  Result:=Length(FIdx);
+  Result:=FIdx.ParsIndex;
 end;
 
 function TRequestHeaders.GetItem(Name: OleVariant): WideString;
@@ -592,8 +596,8 @@ begin
   if VarIsNumeric(Name) then
    begin
     i:=integer(Name);
-    if (i>=0) and (i<Length(FIdx)) then
-      Result:=WideString(Copy(FData,FIdx[i].ValueStart,FIdx[i].ValueLength))
+    if (i>=0) and (i<FIdx.ParsIndex) then
+      Result:=WideString(Copy(FData,FIdx.Pars[i].ValueStart,FIdx.Pars[i].ValueLength))
     else
       raise ERangeError.Create('TRequestHeaders.GetItem: Out of range');
    end
@@ -604,19 +608,19 @@ end;
 function TRequestHeaders.Complex(Name: OleVariant;
   out Items: IxxmDictionary): WideString;
 var
-  l,i:integer;
+  n:string;
+  i:integer;
   sv:TRequestSubValues;
 begin
-  l:=Length(FIdx);
   if VarIsNumeric(Name) then i:=integer(Name) else
    begin
+    n:=LowerCase(string(Name));
     i:=0;
-    while (i<l) and (CompareText(string(Copy(
-      FData,FIdx[i].NameStart,FIdx[i].NameLength)),string(Name))<>0) do inc(i);//lower?
+    while (i<FIdx.ParsIndex) and (RawCompare(FIdx.Pars[i].NameL,n)<>0) do inc(i);
    end;
-  if (i>=0) and (i<l) then
-    sv:=TRequestSubValues.Create(WideString(FData),
-      FIdx[i].ValueStart,FIdx[i].ValueLength,Result)
+  if (i>=0) and (i<FIdx.ParsIndex) then
+    sv:=TRequestSubValues.Create(FData,
+      FIdx.Pars[i].ValueStart,FIdx.Pars[i].ValueLength,Result)
   else
     sv:=TRequestSubValues.Create('',1,0,Result);//raise?
   if @Items=nil then sv.Free else Items:=sv;
@@ -629,8 +633,8 @@ end;
 
 function TRequestHeaders.GetName(Idx: integer): WideString;
 begin
-  if (Idx>=0) and (Idx<Length(FIdx)) then
-    Result:=WideString(Copy(FData,FIdx[Idx].NameStart,FIdx[Idx].NameLength))
+  if (Idx>=0) and (Idx<FIdx.ParsIndex) then
+    Result:=WideString(Copy(FData,FIdx.Pars[Idx].NameStart,FIdx.Pars[Idx].NameLength))
   else
     raise ERangeError.Create('TRequestHeaders.GetName: Out of range');
 end;
@@ -642,46 +646,49 @@ end;
 
 { TRequestSubValues }
 
-constructor TRequestSubValues.Create(const Data: WideString; ValueStart,
+constructor TRequestSubValues.Create(const Data: AnsiString; ValueStart,
   ValueLength: integer; var FirstValue: WideString);
 begin
   inherited Create;
   FData:=Data;//assert reference counting, full copy is senseless
+  FIdx.ParsIndex:=0;
+  FIdx.ParsSize:=0;
   FirstValue:=WideString(SplitHeaderValue(AnsiString(FData),ValueStart,ValueLength,FIdx));
 end;
 
 destructor TRequestSubValues.Destroy;
 begin
-  SetLength(FIdx,0);
+  SetLength(FIdx.Pars,0);
   FData:='';
   inherited;
 end;
 
 function TRequestSubValues.GetCount: integer;
 begin
-  Result:=Length(FIdx);
+  Result:=FIdx.ParsIndex;
 end;
 
 function TRequestSubValues.GetItem(Name: OleVariant): WideString;
 var
   i:integer;
 begin
+  //TODO: UTF8ToWideString?
   if VarIsNumeric(Name) then
    begin
     i:=integer(Name);
-    if (i>=0) and (i<Length(FIdx)) then
-      Result:=Copy(FData,FIdx[i].ValueStart,FIdx[i].ValueLength)
+    if (i>=0) and (i<FIdx.ParsIndex) then
+      Result:=WideString(Copy(FData,FIdx.Pars[i].ValueStart,FIdx.Pars[i].ValueLength))
     else
       raise ERangeError.Create('TRequestSubValues.GetItem: Out of range');
    end
   else
-    Result:=WideString(GetParamValue(AnsiString(FData),FIdx,AnsiString(VarToStr(Name))));
+    Result:=WideString(GetParamValue(FData,FIdx,AnsiString(VarToStr(Name))));
 end;
 
 function TRequestSubValues.GetName(Idx: integer): WideString;
 begin
-  if (Idx>=0) and (Idx<Length(FIdx)) then
-    Result:=Copy(FData,FIdx[Idx].NameStart,FIdx[Idx].NameLength)
+  if (Idx>=0) and (Idx<FIdx.ParsIndex) then
+    Result:=WideString(Copy(FData,FIdx.Pars[Idx].NameStart,FIdx.Pars[Idx].NameLength))
   else
     raise ERangeError.Create('TRequestSubValues.GetName: Out of range');
 end;
@@ -747,11 +754,13 @@ end;
 function TResponseHeaders.GetItem(Name: OleVariant): WideString;
 var
   i:integer;
+  n:string;
 begin
   if VarIsNumeric(Name) then i:=integer(Name) else
    begin
+    n:=LowerCase(VarToStr(Name));
     i:=0;
-    while (i<FItemsCount) and (CompareText(FItems[i].Name,Name)<>0) do inc(i);
+    while (i<FItemsCount) and (RawCompare(FItems[i].NameL,n)<>0) do inc(i);
    end;
   if (i>=0) and (i<FItemsCount) then Result:=FItems[i].Value else Result:='';
 end;
@@ -759,19 +768,22 @@ end;
 procedure TResponseHeaders.SetItem(Name: OleVariant; const Value: WideString);
 var
   i:integer;
+  n:string;
 begin
   if FBuilt then
     raise EXxmResponseHeaderAlreadySent.Create(SXxmResponseHeaderAlreadySent);
   //TODO: add sorted, query with minimax
   if VarIsNumeric(Name) then i:=integer(Name) else
    begin
+    n:=LowerCase(VarToStr(Name));
     i:=0;
-    while (i<FItemsCount) and (CompareText(FItems[i].Name,Name)<>0) do inc(i);
+    while (i<FItemsCount) and (RawCompare(FItems[i].NameL,n)<>0) do inc(i);
     if i=FItemsCount then
      begin
       HeaderCheckName(VarToWideStr(Name));
       Grow;
       FItems[i].Name:=Name;
+      FItems[i].NameL:=LowerCase(string(Name));
       FItems[i].SubValues:=nil;
      end;
    end;
@@ -786,16 +798,19 @@ function TResponseHeaders.Complex(Name: OleVariant;
   out Items: IxxmDictionary): WideString;
 var
   i:integer;
+  n:string;
 begin
   if VarIsNumeric(Name) then i:=integer(Name) else
    begin
+    n:=LowerCase(VarToStr(Name));
     i:=0;
-    while (i<FItemsCount) and (CompareText(FItems[i].Name,Name)<>0) do inc(i);
+    while (i<FItemsCount) and (RawCompare(FItems[i].NameL,n)<>0) do inc(i);
     if i=FItemsCount then
      begin
       HeaderCheckName(VarToWideStr(Name));
       Grow;
       FItems[i].Name:=Name;
+      FItems[i].NameL:=LowerCase(string(Name));
       FItems[i].Value:='';
       FItems[i].SubValues:=nil;
      end;
@@ -844,22 +859,26 @@ begin
   i:=FItemsCount;
   Grow;
   FItems[i].Name:=Name;
-  FItems[i].SubValues:=nil;
+  FItems[i].NameL:=LowerCase(string(Name));
   FItems[i].Value:=Value;
+  FItems[i].SubValues:=nil;
 end;
 
 function TResponseHeaders.SetComplex(const Name,
   Value: WideString): TResponseSubValues;
 var
   i:integer;
+  n:string;
 begin
+  n:=LowerCase(VarToStr(Name));
   i:=0;
-  while (i<FItemsCount) and (CompareText(FItems[i].Name,Name)<>0) do inc(i);
+  while (i<FItemsCount) and (RawCompare(FItems[i].NameL,n)<>0) do inc(i);
   if i=FItemsCount then
    begin
     HeaderCheckName(Name);
     Grow;
     FItems[i].Name:=Name;
+    FItems[i].NameL:=LowerCase(string(Name));
     FItems[i].SubValues:=nil;
    end;
   HeaderCheckValue(Value);
@@ -878,10 +897,12 @@ end;
 procedure TResponseHeaders.Remove(const Name: WideString);
 var
   i,l:integer;
+  n:string;
 begin
-  i:=0;
+  n:=LowerCase(VarToStr(Name));
   l:=FItemsCount;
-  while (i<l) and (CompareText(FItems[i].Name,Name)<>0) do inc(i);
+  i:=0;
+  while (i<l) and (RawCompare(FItems[i].NameL,n)<>0) do inc(i);
   if i<l then
    begin
     if FItems[i].SubValues<>nil then FItems[i].SubValues.Free;
@@ -956,11 +977,13 @@ end;
 function TResponseSubValues.GetItem(Name: OleVariant): WideString;
 var
   i:integer;
+  n:string;
 begin
   if VarIsNumeric(Name) then i:=integer(Name) else
    begin
+    n:=LowerCase(VarToStr(Name));
     i:=0;
-    while (i<FItemsCount) and (CompareText(FItems[i].Name,Name)<>0) do inc(i);
+    while (i<FItemsCount) and (RawCompare(FItems[i].NameL,n)<>0) do inc(i);
    end;
   if (i>=0) and (i<FItemsCount) then Result:=FItems[i].Value else Result:='';
 end;
@@ -968,19 +991,22 @@ end;
 procedure TResponseSubValues.SetItem(Name: OleVariant; const Value: WideString);
 var
   i:integer;
+  n:string;
 begin
   if FBuilt then
     raise EXxmResponseHeaderAlreadySent.Create(SXxmResponseHeaderAlreadySent);
   HeaderCheckValue(Value);
   if VarIsNumeric(Name) then i:=integer(Name) else
    begin
+    n:=LowerCase(VarToStr(Name));
     i:=0;
-    while (i<FItemsCount) and (CompareText(FItems[i].Name,Name)<>0) do inc(i);
+    while (i<FItemsCount) and (RawCompare(FItems[i].NameL,n)<>0) do inc(i);
     if i=FItemsCount then
      begin
       HeaderCheckName(VarToWideStr(Name));
       Grow;
       FItems[i].Name:=Name;
+      FItems[i].NameL:=LowerCase(string(Name));
      end;
    end;
   if (i>=0) and (i<FItemsCount) then
@@ -1018,7 +1044,10 @@ begin
     raise EXxmResponseHeaderAlreadySent.Create(SXxmResponseHeaderAlreadySent);
   HeaderCheckName(Value);
   if (Idx>=0) and (Idx<Length(FItems)) then
-    FItems[Idx].Name:=Value
+   begin
+    FItems[Idx].Name:=Value;
+    FItems[Idx].NameL:=LowerCase(string(Value));
+   end
   else
     raise ERangeError.Create('TResponseSubValues.SetName: Out of range');
 end;

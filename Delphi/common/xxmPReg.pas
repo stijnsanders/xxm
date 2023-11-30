@@ -632,30 +632,6 @@ begin
 end;
 
 {$IFNDEF XXM_INLINE_PROJECT}
-function LCSC(const a,b: string): integer; //lower case string compare
-var
-  i,al,bl:integer;
-begin
-  al:=Length(a);
-  bl:=Length(b);
-  i:=1;
-  Result:=0;
-  while (Result=0) and (i<=al) and (i<=bl) do
-    if a[i]<b[i] then
-      Result:=-1
-    else
-      if a[i]>b[i] then
-        Result:=1
-      else
-        inc(i);
-  if Result=0 then
-    if (i<=al) then
-      Result:=1
-    else
-      if (i<=bl) then
-        Result:=-1;
-end;
-
 procedure TXxmProjectCache.FindProject(const Name: string;
   var n: string; var i,a:integer);
 var
@@ -669,7 +645,7 @@ begin
   while a<=b do
    begin
     c:=(a+b) div 2;
-    m:=LCSC(n,FProjects[FProjects[c].SortIndex].Name);
+    m:=RawCompare(n,FProjects[FProjects[c].SortIndex].Name);
     if m<0 then
       if b=c then dec(b) else b:=c
     else

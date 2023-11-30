@@ -106,10 +106,13 @@ var
 
 procedure TXxmHttpContext.AfterConstruction;
 begin
+  inherited;
   FSocket:=nil;
   SendDirect:=nil;
   FReqHeaders:=TRequestHeaders.Create;
   FResHeaders:=TResponseHeaders.Create;
+  FCookieIdx.ParsSize:=0;
+  FCookieIdx.ParsIndex:=0;
   FProjectCache:=TXxmProjectCacheLocal.Create;
   FCredNTLM.dwUpper:=nil;
   FCredNTLM.dwLower:=nil;
@@ -117,7 +120,6 @@ begin
   FCredNego.dwLower:=nil;
   FCtxt.dwUpper:=nil;
   FCtxt.dwLower:=nil;
-  inherited;
 end;
 
 destructor TXxmHttpContext.Destroy;
@@ -157,6 +159,7 @@ begin
   FReqHeaders.Reset;
   FResHeaders.Reset;
   FCookieParsed:=false;
+  FCookieIdx.ParsIndex:=0;
   FQueryStringIndex:=1;
   FSessionID:='';//see GetSessionID
   FURI:='';//see Execute

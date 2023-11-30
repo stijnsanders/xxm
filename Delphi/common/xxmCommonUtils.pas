@@ -9,6 +9,7 @@ function GetFileModifiedDateTime(const FilePath:AnsiString;
   var FileSize:Int64):TDateTime;
 function GetFileSignature(const Path: string): string;
 function Base64Encode(const x:AnsiString):AnsiString;
+function RawCompare(const a,b: string): integer;
 
 type
   TOwningHandleStream=class(THandleStream)
@@ -184,5 +185,29 @@ begin
   //SetLength(Result,j);
 end;
 
+function RawCompare(const a,b: string): integer;
+var
+  i,al,bl:integer;
+begin
+  //assert caller already made strings lower-case
+  al:=Length(a);
+  bl:=Length(b);
+  i:=1;
+  Result:=0;
+  while (Result=0) and (i<=al) and (i<=bl) do
+    if a[i]<b[i] then
+      Result:=-1
+    else
+      if a[i]>b[i] then
+        Result:=1
+      else
+        inc(i);
+  if Result=0 then
+    if (i<=al) then
+      Result:=1
+    else
+      if (i<=bl) then
+        Result:=-1;
+end;
+
 end.
- 

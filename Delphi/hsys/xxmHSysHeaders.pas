@@ -146,7 +146,7 @@ const
 
 implementation
 
-uses Variants, SysUtils;
+uses Variants, SysUtils, xxmCommonUtils;
 
 { TxxmHSysResponseHeaders }
 
@@ -202,6 +202,8 @@ constructor TxxmHSysResponseSubHeader.Create(xPar: OleVariant; xGet: TxxmHeaderG
   var xValue: WideString);
 begin
   inherited Create;
+  FPars.ParsIndex:=0;
+  FPars.ParsSize:=0;
   FPar:=xPar;
   FGet:=xGet;
   FSet:=xSet;
@@ -224,12 +226,13 @@ end;
 function TxxmHSysResponseSubHeader.GetCount: integer;
 begin
   ParseValue;
-  Result:=Length(FPars);
+  Result:=FPars.ParsIndex;
 end;
 
 function TxxmHSysResponseSubHeader.GetItem(Name: OleVariant): WideString;
 var
   i:integer;
+  n:string;
 begin
   ParseValue;
   if VarIsNumeric(Name) then
@@ -237,16 +240,20 @@ begin
   else
    begin
     i:=0;
-    while (i<Length(FPars)) and (CompareText(Name,string(Copy(FValue,FPars[i].NameStart,FPars[i].NameLength)))<>0) do inc(i);
+    n:=LowerCase(VarToStr(Name));
+    while (i<FPars.ParsIndex) and (RawCompare(FPars.Pars[i].NameL,n)<>0) do inc(i);
    end;
-  if (i<0) or (i>=Length(FPars)) then Result:='' else Result:=WideString(Copy(FValue,FPars[i].ValueStart,FPars[i].ValueLength));
+  if (i<0) or (i>=FPars.ParsIndex) then
+    Result:=''
+  else
+    Result:=WideString(Copy(FValue,FPars.Pars[i].ValueStart,FPars.Pars[i].ValueLength));
 end;
 
 function TxxmHSysResponseSubHeader.GetName(Idx: integer): WideString;
 begin
   ParseValue;
-  if (Idx>=0) and (Idx<Length(FPars)) then
-    Result:=WideString(Copy(FValue,FPars[Idx].NameStart,FPars[Idx].NameLength))
+  if (Idx>=0) and (Idx<FPars.ParsIndex) then
+    Result:=WideString(Copy(FValue,FPars.Pars[Idx].NameStart,FPars.Pars[Idx].NameLength))
   else
     raise ERangeError.Create('TxxmHSysResponseSubHeader.GetName: Out of range');
 end;
@@ -254,6 +261,7 @@ end;
 procedure TxxmHSysResponseSubHeader.SetItem(Name: OleVariant; const Value: WideString);
 var
   i,j:integer;
+  n:string;
   x:WideString;
 begin
   ParseValue;
@@ -262,12 +270,14 @@ begin
   else
    begin
     i:=0;
-    while (i<Length(FPars)) and (CompareText(Name,string(Copy(FValue,FPars[i].NameStart,FPars[i].NameLength)))<>0) do inc(i);
+    n:=LowerCase(VarToStr(Name));
+    while (i<FPars.ParsIndex) and (RawCompare(FPars.Pars[i].NameL,n)<>0) do inc(i);
    end;
-  if (i>=0) and (i<Length(FPars)) then
+  if (i>=0) and (i<FPars.ParsIndex) then
    begin
-    j:=FPars[i].ValueStart+FPars[i].ValueLength;
-    x:=WideString(Copy(FValue,1,FPars[i].ValueStart-1))+Value+WideString(Copy(FValue,j,Length(FValue)-j+1));
+    j:=FPars.Pars[i].ValueStart+FPars.Pars[i].ValueLength;
+    x:=WideString(Copy(FValue,1,FPars.Pars[i].ValueStart-1))+
+      Value+WideString(Copy(FValue,j,Length(FValue)-j+1));
    end
   else
     x:=WideString(FValue)+'; '+VarToWideStr(Name)+'='+Value;
@@ -280,10 +290,11 @@ var
   x:WideString;
 begin
   ParseValue;
-  if (Idx>=0) and (Idx<Length(FPars)) then
+  if (Idx>=0) and (Idx<FPars.ParsIndex) then
    begin
-    j:=FPars[Idx].NameStart+FPars[Idx].NameLength;
-    x:=WideString(Copy(FValue,1,FPars[Idx].NameStart-1))+Value+WideString(Copy(FValue,j,Length(FValue)-j+1));
+    j:=FPars.Pars[Idx].NameStart+FPars.Pars[Idx].NameLength;
+    x:=WideString(Copy(FValue,1,FPars.Pars[Idx].NameStart-1))+
+      Value+WideString(Copy(FValue,j,Length(FValue)-j+1));
     if VarIsNumeric(FPar) then FSetIndex(FPar,x) else FSet(FPar,x);
    end
   else
