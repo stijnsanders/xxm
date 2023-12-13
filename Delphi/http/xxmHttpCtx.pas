@@ -468,9 +468,15 @@ begin
           AuthSet(n.sUserName,'')
         else
           AuthSet('???'+AnsiString(SysErrorMessage(r)),'');//raise?
+
         DeleteSecurityContext(@FCtxt);
         FCtxt.dwLower:=nil;
         FCtxt.dwUpper:=nil;
+
+        FreeCredentialsHandle(@Cred);
+        Cred.dwLower:=nil;
+        Cred.dwUpper:=nil;
+
         AuthStoreCache:=true;//see GetSessionID
         //AddResponseHeader('Persistent-Auth','false');
        end

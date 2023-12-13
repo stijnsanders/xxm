@@ -267,6 +267,7 @@ begin
   FPostData:=nil;
   FPostTempFile:='';
   FChunked:=false;
+  FSessionID:='';
   FAuthParsed:=false;
   FAuthUserName:='';
   FAuthPassword:='';
@@ -281,6 +282,7 @@ begin
   AllowChunked:=false;
   ContentTypeSet:=false;
   SettingCookie:=false;
+  AuthStoreCache:=false;
   FProjectName:='';//parsed from URL later
   FFragmentName:='';//parsed from URL later
   FBufferSize:=0;
@@ -347,7 +349,11 @@ end;
 function TXxmGeneralContext.GetProjectEntry: TXxmProjectEntry;
 {$IFDEF XXM_INLINE_PROJECT}
 begin
-  Result:=XxmProjectCache.GetProject(FProjectName);
+  if LowerCase(FProjectName)=LowerCase(XxmProjectName) then
+    Result:=XxmProjectCache.ProjectEntry
+  else
+    raise EXxmProjectNotFound.Create(StringReplace(
+      SXxmProjectNotFound,'__',FProjectName,[]));
 {$ELSE}
 var
   i:integer;
