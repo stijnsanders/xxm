@@ -19,7 +19,8 @@ uses
   xxmContext in '..\common\xxmContext.pas',
   xxmAutoUpdate in '..\common\xxmAutoUpdate.pas',
   jsonDoc in '..\common\jsonDoc.pas',
-  xxmHSysHeaders in 'xxmHSysHeaders.pas';
+  xxmHSysHeaders in 'xxmHSysHeaders.pas',
+  xxmSSPI in 'xxmSSPI.pas';
 
 {$R *.res}
 

@@ -675,7 +675,7 @@ function TXxmHSysContext.GetRawSocket: IStream;
 var
   i:integer;
 begin
-  if FReqHeaders['Upgrade']='' then Result:=nil else
+  if GetRequestHeader('Upgrade')='' then Result:=nil else
    begin
     FContentType:='';
 

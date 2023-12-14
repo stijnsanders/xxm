@@ -23,7 +23,8 @@ uses
   xxmUtilities in '..\conv\xxmUtilities.pas',
   xxmPageParse in '..\conv\xxmPageParse.pas',
   xxmProtoParse in '..\conv\xxmProtoParse.pas',
-  xxmHSysHeaders in 'xxmHSysHeaders.pas';
+  xxmHSysHeaders in 'xxmHSysHeaders.pas',
+  xxmSSPI in 'xxmSSPI.pas';
 
 {$R *.res}
 

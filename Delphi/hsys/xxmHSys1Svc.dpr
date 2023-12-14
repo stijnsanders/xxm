@@ -18,7 +18,8 @@ uses
   xxmCommonUtils in '..\common\xxmCommonUtils.pas',
   xxmContext in '..\common\xxmContext.pas',
   jsonDoc in '..\common\jsonDoc.pas',
-  xxmHSysHeaders in 'xxmHSysHeaders.pas';
+  xxmHSysHeaders in 'xxmHSysHeaders.pas',
+  xxmSSPI in 'xxmSSPI.pas';
 
 {$R *.res}
 
