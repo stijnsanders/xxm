@@ -21,4 +21,8 @@ Use <i>xxmProject.exe</i> to edit and manage project settings.</dd>
 <dd>The upload form. Please note the form's <code>method</code> and <code>enctype</code>, and the client-side script that grays the submit button, as a visual feedback that the form posting is in progress, and to prevent subsequent posts. (Some people confuse single and double click sometimes. Sometimes a second click happens unintentionally.)</dd>
 <dt>aAdd.xxm</dt>
 <dd>Accepts the upload form post. Expects a parameter that supports the <code>IXxmParameterPostFile</code> interface, and stores the uploaded file.</dd>
+<dt>fMulti.xxm</dt>
+<dd>An upload form that allows selecting multiple files. Please note the similarity to <code>fAdd.xxm</code>, but with an added <code>multiple</code> attribute.</dd>
+<dt>aMulti.xxm</dt>
+<dd>Accepts the upload form post. Uses <code>IXxmParameter</code>'s <code>NextBySameName</code> method to process all incoming files.</dd>
 </dl>

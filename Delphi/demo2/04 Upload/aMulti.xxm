@@ -1,0 +1,19 @@
+[[@Windows,]][[!var
+doc:IXxmParameterPostFile;
+dir:string;
+]][[
+
+SetLength(dir,MAX_PATH);
+SetLength(dir,GetModuleFileName(HInstance,PChar(dir),MAX_PATH));
+
+doc:=Context.Parameter['doc'] as IXxmParameterPostFile;
+
+while doc<>nil do
+ begin
+  doc.SaveToFile(ExtractFilePath(dir)+'files\'+ExtractFileName(doc.Value));
+  doc:=doc.NextBySameName as IXxmParameterPostFile;
+ end;
+
+Context.Redirect('Default.xxm',true);
+
+]]

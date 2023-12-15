@@ -26,6 +26,7 @@ if (fh<>INVALID_HANDLE_VALUE) then
  end;
  
 <<p><i><a href="fAdd.xxm">[add file]</a></i></p>>
+<<p><i><a href="fMulti.xxm">[add multiple files]</a></i></p>>
 
 Context.Include('iFoot.xxmi');
 ]]

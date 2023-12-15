@@ -32,6 +32,16 @@
 			"path": "files/Default.xxm",
 			"unitName": "default_xxm2",
 			"unitPath": "files/"
+		},
+		"fmulti_xxm": {
+			"path": "fMulti.xxm",
+			"unitName": "fmulti_xxm1",
+			"unitPath": ""
+		},
+		"amulti_xxm": {
+			"path": "aMulti.xxm",
+			"unitName": "amulti_xxm1",
+			"unitPath": ""
 		}
 	}
 }
