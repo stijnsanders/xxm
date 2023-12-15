@@ -187,11 +187,11 @@ type
   TXxmSSPICache=class(TObject)
   private
     FLock:TRTLCriticalSection;
-    FCred:TCredHandle;
     FData:array of record
       ConnectionID:UInt64;
       Package:AnsiString;
-      Context:TCtxtHandle;
+      Cred:TCredHandle;
+      Ctxt:TCtxtHandle;
     end;
     FDataSize,FDataIndex:integer;
   public
@@ -246,10 +246,6 @@ var
 begin
   EnterCriticalSection(FLock);
   try
-    if FCred.dwLower=nil then
-      if AcquireCredentialsHandle(nil,PAnsiChar(Package),SECPKG_CRED_INBOUND,
-        nil,nil,nil,nil,@FCred,nil)<>0 then RaiseLastOSError;
-
     //TODO: more performant lookup algo?
     i:=0;
     while (i<FDataIndex) and not((FData[i].ConnectionID=ConnectionID) and
@@ -271,13 +267,13 @@ begin
        end;
       FData[i].ConnectionID:=ConnectionID;
       FData[i].Package:=Package;
-      FData[i].Context.dwLower:=nil;
-      FData[i].Context.dwUpper:=nil;
+      if AcquireCredentialsHandle(nil,PAnsiChar(Package),SECPKG_CRED_INBOUND,
+        nil,nil,nil,nil,@FData[i].Cred,nil)<>0 then RaiseLastOSError;
+      FData[i].Ctxt.dwLower:=nil;
+      FData[i].Ctxt.dwUpper:=nil;
      end;
-
-    Cred:=@FCred;
-    Ctxt:=@FData[i].Context;
-
+    Cred:=@FData[i].Cred;
+    Ctxt:=@FData[i].Ctxt;
   finally
     LeaveCriticalSection(FLock);
   end;
@@ -296,9 +292,12 @@ begin
      begin
       FData[i].ConnectionID:=0;
       FData[i].Package:='';
-      DeleteSecurityContext(@FData[i].Context);
-      FData[i].Context.dwLower:=nil;
-      FData[i].Context.dwUpper:=nil;
+      DeleteSecurityContext(@FData[i].Ctxt);
+      FreeCredentialsHandle(@FData[i].Cred);
+      FData[i].Cred.dwLower:=nil;
+      FData[i].Cred.dwUpper:=nil;
+      FData[i].Ctxt.dwLower:=nil;
+      FData[i].Ctxt.dwUpper:=nil;
      end;
   finally
     LeaveCriticalSection(FLock);
