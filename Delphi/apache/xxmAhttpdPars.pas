@@ -118,14 +118,14 @@ begin
    end
   else
    begin
-    HeaderCheckName(VarToWideStr(Name));
+    HeaderNameSet(Name);
     apr_table_set(FTable,PAnsiChar(AnsiString(Name)),PAnsiChar(AnsiString(Value)));
    end;
 end;
 
 procedure TxxmAhttpdTable.SetName(Idx: integer; Value: WideString);
 begin
-  HeaderCheckName(Value);
+  HeaderNameSet(Value);
   if (Idx>=0) and (Idx<FTable.a.nelts) then
     FTable.a.elts[Idx].key:=
       apr_pstrdup(FPool,PAnsiChar(AnsiString(Value)))
@@ -166,15 +166,14 @@ end;
 
 function TxxmAhttpdSubValues.GetItem(Name: OleVariant): WideString;
 var
-  i:integer;
-  n:string;
+  n,i:integer;
 begin
   ParseValue;
   if VarIsNumeric(Name) then i:=integer(Name) else
    begin
-    n:=LowerCase(VarToStr(Name));
-    i:=0;
-    while (i<FIdx.ParsIndex) and (RawCompare(FIdx.Pars[i].NameL,n)<>0) do inc(i);
+    n:=HeaderNameGet(Name);
+    if n=0 then i:=FIdx.ParsIndex else i:=0;
+    while (i<FIdx.ParsIndex) and (FIdx.Pars[i].NameIndex<>n) do inc(i);
    end;
   if (i>=0) and (i<FIdx.ParsIndex) then
     Result:=UTF8ToWideString(Copy(FData,
@@ -185,16 +184,15 @@ end;
 
 procedure TxxmAhttpdSubValues.SetItem(Name: OleVariant; const Value: WideString);
 var
-  i,l:integer;
-  n:string;
+  n,i,l:integer;
 begin
   HeaderCheckValue(Value);
   ParseValue;
   if VarIsNumeric(Name) then i:=integer(Name) else
    begin
-    n:=LowerCase(VarToStr(Name));
+    n:=HeaderNameSet(Name);
     i:=0;
-    while (i<FIdx.ParsIndex) and (RawCompare(FIdx.Pars[i].NameL,n)<>0) do inc(i);
+    while (i<FIdx.ParsIndex) and (FIdx.Pars[i].NameIndex<>n) do inc(i);
    end;
   if (i>=0) and (i<FIdx.ParsIndex) then
    begin
@@ -213,7 +211,7 @@ begin
    end
   else
    begin
-    HeaderCheckName(VarToWideStr(Name));
+    HeaderNameSet(Name);
     FTable.SetItem(FIndex,UTF8ToWideString(FData)+'; '+VarToStr(Name)+'='+Value);
    end;
 end;
@@ -231,7 +229,7 @@ procedure TxxmAhttpdSubValues.SetName(Idx: integer; Value: WideString);
 var
   l:integer;
 begin
-  HeaderCheckName(Value);
+  HeaderNameSet(Value);
   ParseValue;
   if (Idx>=0) and (Idx<FIdx.ParsIndex) then
    begin

@@ -258,7 +258,7 @@ end;
 
 procedure TxxmAhttpdContext.AddResponseHeader(const Name, Value: WideString);
 begin
-  HeaderCheckName(Name);
+  HeaderNameSet(Name);
   HeaderCheckValue(Value);
   if SettingCookie then
    begin

@@ -577,7 +577,7 @@ var
   x:THTTP_HEADER_ID;
 begin
   inherited;
-  HeaderCheckName(Name);
+  HeaderNameSet(Name);
   HeaderCheckValue(Value);
   //TODO: encode when non-UTF7 characters?
   x:=HttpHeaderStart;

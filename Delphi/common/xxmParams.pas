@@ -244,14 +244,12 @@ begin
 
         while not(sn.MultiPartDone) do
          begin
-
           pm:='';
           pf:='';
           pd:=sn.GetHeader(pa);
           for i:=0 to pa.ParsIndex-1 do
            begin
-            pn:=pa.Pars[i].NameL;
-            if pn='content-disposition' then
+            if pa.Pars[i].NameIndex=KnownHeaderIndex(khContentDisposition) then
              begin
               pn:=string(SplitHeaderValue(pd,
                 pa.Pars[i].ValueStart,pa.Pars[i].ValueLength,pax));
@@ -260,7 +258,7 @@ begin
               pf:=GetParamValue(pd,pax,'filename');
              end
             else
-            if pn='content-type' then
+            if pa.Pars[i].NameIndex=KnownHeaderIndex(khContentType)  then
               pm:=Copy(pd,pa.Pars[i].ValueStart,pa.Pars[i].ValueLength)
             else
               ;//raise Exception.Create('Unknown multipart header "'+pn+'"');

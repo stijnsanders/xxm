@@ -231,17 +231,16 @@ end;
 
 function TxxmHSysResponseSubHeader.GetItem(Name: OleVariant): WideString;
 var
-  i:integer;
-  n:string;
+  n,i:integer;
 begin
   ParseValue;
   if VarIsNumeric(Name) then
     i:=Name
   else
    begin
-    i:=0;
-    n:=LowerCase(VarToStr(Name));
-    while (i<FPars.ParsIndex) and (RawCompare(FPars.Pars[i].NameL,n)<>0) do inc(i);
+    n:=HeaderNameGet(Name);
+    if n=0 then i:=FPars.ParsIndex else i:=0;
+    while (i<FPars.ParsIndex) and (FPars.Pars[i].NameIndex<>n) do inc(i);
    end;
   if (i<0) or (i>=FPars.ParsIndex) then
     Result:=''
@@ -260,8 +259,7 @@ end;
 
 procedure TxxmHSysResponseSubHeader.SetItem(Name: OleVariant; const Value: WideString);
 var
-  i,j:integer;
-  n:string;
+  n,i,j:integer;
   x:WideString;
 begin
   ParseValue;
@@ -269,9 +267,9 @@ begin
     i:=Name
   else
    begin
-    i:=0;
-    n:=LowerCase(VarToStr(Name));
-    while (i<FPars.ParsIndex) and (RawCompare(FPars.Pars[i].NameL,n)<>0) do inc(i);
+    n:=HeaderNameGet(Name);
+    if n=0 then i:=FPars.ParsIndex else i:=0;
+    while (i<FPars.ParsIndex) and (FPars.Pars[i].NameIndex<>n) do inc(i);
    end;
   if (i>=0) and (i<FPars.ParsIndex) then
    begin
