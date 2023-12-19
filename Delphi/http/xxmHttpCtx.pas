@@ -15,7 +15,7 @@ type
     FSocket: TTcpSocket;
     FReqHeaders: TRequestHeaders;
     FResHeaders: TResponseHeaders;
-    FHTTPVersion,FVerb,FURI: AnsiString;
+    FHeaderData,FHTTPVersion,FVerb,FURI: AnsiString;
     FRedirectPrefix: WideString;
     FCookieParsed: boolean;
     FCookie: AnsiString;
@@ -102,6 +102,7 @@ begin
   inherited;
   FSocket:=nil;
   SendDirect:=nil;
+  FHeaderData:='';
   FReqHeaders:=TRequestHeaders.Create;
   FResHeaders:=TResponseHeaders.Create;
   FCookieIdx.ParsSize:=0;
@@ -161,6 +162,7 @@ begin
   inherited;
   //FURL:='';
   //Disconnect: see Recycle
+  //ZeroMemory(FHeaderData[1],Length(FHeaderData));//?
 end;
 
 procedure TXxmHttpContext.Recycle;
@@ -224,7 +226,6 @@ end;
 procedure TXxmHttpContext.HandleRequest;
 var
   i,j,k,l,m,n,p:integer;
-  x:AnsiString;
   s:TStream;
   si:int64;
   tc:cardinal;
@@ -250,9 +251,10 @@ begin
         if l=k then
          begin
           inc(k,$10000);
-          SetLength(x,k);
+          if Length(FHeaderData)<k then
+            SetLength(FHeaderData,k);
          end;
-        n:=FSocket.ReceiveBuf(x[l+1],k-l);
+        n:=FSocket.ReceiveBuf(FHeaderData[l+1],k-l);
         if (n<=0) or (cardinal(GetTickCount-tc)>HTTPMaxHeaderParseTimeMS) then
          begin
           i:=1;
@@ -262,22 +264,22 @@ begin
          end;
         inc(l,n);
        end;
-      while (j<=l) and (x[j]<>#13) and (x[j]<>#10) do inc(j);
-      if (j<=l) and ((x[j]=#13) or (x[j]=#10)) then
+      while (j<=l) and (FHeaderData[j]<>#13) and (FHeaderData[j]<>#10) do inc(j);
+      if (j<=l) and ((FHeaderData[j]=#13) or (FHeaderData[j]=#10)) then
        begin
         if m=0 then
          begin
           //i:=1;
-          while (i<=l) and (x[i]>' ') do inc(i);
-          FVerb:=AnsiUpper(PAnsiChar(Copy(x,1,i-1)));
+          while (i<=l) and (FHeaderData[i]>' ') do inc(i);
+          FVerb:=AnsiUpper(PAnsiChar(Copy(FHeaderData,1,i-1)));
           inc(i);
           j:=i;
-          while (j<=l) and (x[j]>' ') do inc(j);
-          FURI:=Copy(x,i,j-i);
+          while (j<=l) and (FHeaderData[j]>' ') do inc(j);
+          FURI:=Copy(FHeaderData,i,j-i);
           inc(j);
           i:=j;
-          while (j<=l) and (x[j]<>#13) and (x[j]<>#10) do inc(j);
-          FHTTPVersion:=Copy(x,i,j-i);
+          while (j<=l) and (FHeaderData[j]<>#13) and (FHeaderData[j]<>#10) do inc(j);
+          FHTTPVersion:=Copy(FHeaderData,i,j-i);
           AllowChunked:=FHTTPVersion='HTTP/1.1';
           inc(m);
           p:=j;
@@ -292,11 +294,11 @@ begin
            end;
          end;
         inc(j);//#13
-        if (j<=l) and (x[j]=#10) then inc(j);//#10
+        if (j<=l) and (FHeaderData[j]=#10) then inc(j);//#10
         i:=j;
        end;
     until m=-1;
-    FReqHeaders.Load(x,p,l);
+    FReqHeaders.Load(FHeaderData,p,l);
 
     ProcessRequestHeaders;
     //if XxmProjectCache=nil then XxmProjectCache:=TXxmProjectCacheXml.Create;
@@ -340,7 +342,7 @@ begin
        end;
       s.Size:=si;
       s.Position:=0;
-      FPostData:=THandlerReadStreamAdapter.Create(FSocket,si,s,x,j,l);
+      FPostData:=THandlerReadStreamAdapter.Create(FSocket,si,s,FHeaderData,j,l);
      end;
 
     if FVerb='OPTIONS' then
@@ -541,7 +543,7 @@ begin
     SplitHeaderValue(FCookie,0,Length(FCookie),FCookieIdx);
     FCookieParsed:=true;
    end;
-  Result:=UTF8ToWideString(GetParamValue(FCookie,FCookieIdx,UTF8Encode(Name)));
+  Result:=UTF8ToWideString(GetParamValue(FCookie,FCookieIdx,Name));
 end;
 
 procedure TXxmHttpContext.Redirect(const RedirectURL: WideString; Relative: boolean);

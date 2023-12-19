@@ -32,7 +32,7 @@ begin
   Context.SendHTML('<input type="checkbox" name="iterate" value="1" /><br />');
   Context.SendHTML('<input type="text" name="test" /><br />');
   Context.SendHTML('<input type="image" src="http://yoy.be/yoy_bg.png" name="testimg" /><br />');
-  Context.SendHTML('<input type="file" name="uploadtest" /><br />');
+  Context.SendHTML('<input type="file" multiple name="uploadtest" /><br />');
   Context.SendHTML('<input type="submit" />');
   Context.SendHTML('</form>');
 

@@ -10,6 +10,7 @@ type
     FID:WideString;
   public
     //TODO: support multiple concurrent uploads per session with upload identifiers
+    UploadProgressFileName:string;
     UploadProgressPosition,UploadProgressLength:integer;
 
     constructor Create(const ID: WideString; Context: IXxmContext);

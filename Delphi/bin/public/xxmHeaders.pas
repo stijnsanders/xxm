@@ -35,7 +35,7 @@ type
 
   IxxmUploadProgressAgent=interface
     ['{78786D00-0000-0011-C000-000000000011}']
-    procedure ReportProgress(FieldName, FileName: AnsiString; Position: integer);
+    procedure ReportProgress(const FieldName, FileName: AnsiString; Position: integer);
   end;
 
   IxxmUploadProgressService=interface

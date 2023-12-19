@@ -516,7 +516,7 @@ begin
     SplitHeaderValue(FCookie,0,Length(FCookie),FCookieIdx);
     FCookieParsed:=true;
    end;
-  Result:=WideString(GetParamValue(FCookie,FCookieIdx,AnsiString(Name)));
+  Result:=WideString(GetParamValue(FCookie,FCookieIdx,Name));
 end;
 
 function TXxmIsapiContext.GetRequestHeaders: IxxmDictionaryEx;

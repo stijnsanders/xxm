@@ -209,7 +209,12 @@ begin
         SetLength(pd,p+q);
         q:=ps.Read(pd[p+1],q);
         inc(p,q);
-        if DataProgressAgent<>nil then DataProgressAgent.ReportProgress('','',p);
+        if DataProgressAgent<>nil then
+          try
+            DataProgressAgent.ReportProgress('','',p);
+          except
+            pointer(DataProgressAgent):=nil;
+          end;
       until q=0;
       SetLength(pd,p);
 
@@ -241,14 +246,12 @@ begin
       try
         //initialization, find first boundary
         sn.CheckBoundary(pb);
-
         while not(sn.MultiPartDone) do
          begin
           pm:='';
           pf:='';
           pd:=sn.GetHeader(pa);
           for i:=0 to pa.ParsIndex-1 do
-           begin
             if pa.Pars[i].NameIndex=KnownHeaderIndex(khContentDisposition) then
              begin
               pn:=string(SplitHeaderValue(pd,
@@ -262,10 +265,7 @@ begin
               pm:=Copy(pd,pa.Pars[i].ValueStart,pa.Pars[i].ValueLength)
             else
               ;//raise Exception.Create('Unknown multipart header "'+pn+'"');
-           end;
-
           //TODO: transfer encoding?
-
           if pm='' then
             Add(TXxmReqParPost.Create(Self,WideString(px),UTF8ToWideString(sn.GetString(pb))))
           else
@@ -275,9 +275,7 @@ begin
               UTF8ToWideString(pf),//TODO: encoding from header?
               WideString(pm),ps,p,q));
            end;
-
          end;
-
       finally
         sn.Free;
       end;
@@ -290,8 +288,18 @@ begin
     ps.Seek(0,soFromBeginning);
    end;
   FFilled:=true;
-  DataProgressAgent:=nil;
-  FileProgressAgent:=nil;
+  try
+    DataProgressAgent:=nil;
+  except
+    //silent
+    pointer(DataProgressAgent):=nil;
+  end;
+  try
+    FileProgressAgent:=nil;
+  except
+    //silent
+    pointer(FileProgressAgent):=nil;
+  end;
 end;
 
 procedure TXxmReqPars.Add(Par: IXxmParameter);
@@ -303,8 +311,8 @@ begin
     inc(FParamsSize,GrowStep);
     SetLength(FParams,FParamsSize);
    end;
-  FParams[FParamsCount]:=Par;
   Par._AddRef;
+  FParams[FParamsCount]:=Par;
   inc(FParamsCount);
 end;
 

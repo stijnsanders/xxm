@@ -171,7 +171,7 @@ const //resourcestring
 function SplitHeaderValue(const Value:AnsiString;ValueStart,ValueLength:integer;
   var Params:TParamIndexes):AnsiString;
 function GetParamValue(const Data:AnsiString;
-  Params:TParamIndexes; const Name:AnsiString):AnsiString;
+  Params:TParamIndexes; const Name:WideString):AnsiString;
 
 procedure HeaderNameNext(HeaderNameChar:AnsiChar;var HeaderNameIndex:integer);
 function HeaderNameGet(const Name:WideString):integer;
@@ -294,12 +294,12 @@ begin
 end;
 
 function GetParamValue(const Data:AnsiString;
-  Params:TParamIndexes; const Name:AnsiString):AnsiString;
+  Params:TParamIndexes; const Name:WideString):AnsiString;
 var
   n:integer;
   l,i:integer;
 begin
-  n:=HeaderNameGet(WideString(Name));
+  n:=HeaderNameGet(Name);
   l:=Params.ParsIndex;
   if n=0 then i:=l else i:=0;
   while (i<l) and (Params.Pars[i].NameIndex<>n) do inc(i);
@@ -503,8 +503,18 @@ end;
 
 destructor TStreamNozzle.Destroy;
 begin
-  FDataAgent:=nil;
-  FFileAgent:=nil;
+  try
+    FDataAgent:=nil;
+  except
+    //silent
+    pointer(FDataAgent):=nil;
+  end;
+  try
+    FFileAgent:=nil;
+  except
+    //silent
+    pointer(FFileAgent):=nil;
+  end;
   inherited;
 end;
 
@@ -527,7 +537,11 @@ begin
       if i=0 then SourceAtEnd:=true;
       Result:=Index+EnsureSize<=Size;
       if FDataAgent<>nil then
-        FDataAgent.ReportProgress(FieldName,FileName,Done+Size);
+        try
+          FDataAgent.ReportProgress(FieldName,FileName,Done+Size);
+        except
+          pointer(FDataAgent):=nil;
+        end;
      end;
    end
   else
@@ -598,7 +612,7 @@ begin
       inc(Index);
       inc(q);
      end;
-    Result[q]:=Data[Index];
+    Result[q]:=Data[Index];//#10
     inc(Index);
     inc(q);
 
@@ -687,12 +701,22 @@ begin
         dec(x);
         if x=0 then
          begin
-          FFileAgent.ReportProgress(FieldName,FileName,s);
+          if FFileAgent<>nil then
+            try
+              FFileAgent.ReportProgress(FieldName,FileName,s);
+            except
+              pointer(FFileAgent):=nil;
+            end;
           x:=ReportStep;
          end;
        end;
-      FFileAgent.ReportProgress(FieldName,FileName,s);
      end;
+    if FFileAgent<>nil then
+      try
+        FFileAgent.ReportProgress(FieldName,FileName,s);
+      except
+        pointer(FFileAgent):=nil;
+      end;
    end;
   Len:=Done+Index-(Pos+1);
   //skip boundary
@@ -810,7 +834,7 @@ begin
       raise ERangeError.Create('TRequestHeaders.GetItem: Out of range');
    end
   else
-    Result:=WideString(GetParamValue(FData,FIdx,AnsiString(Name)));
+    Result:=WideString(GetParamValue(FData,FIdx,Name));
 end;
 
 function TRequestHeaders.Complex(Name: OleVariant;
@@ -889,7 +913,7 @@ begin
       raise ERangeError.Create('TRequestSubValues.GetItem: Out of range');
    end
   else
-    Result:=WideString(GetParamValue(FData,FIdx,AnsiString(VarToStr(Name))));
+    Result:=WideString(GetParamValue(FData,FIdx,Name));
 end;
 
 function TRequestSubValues.GetName(Idx: integer): WideString;

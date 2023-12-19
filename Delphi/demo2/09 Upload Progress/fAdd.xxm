@@ -12,7 +12,7 @@ function form1submit()
 }
 //--></script>
 <form action="aAdd.xxm" method="post" enctype="multipart/form-data" onsubmit="form1submit();">
-<input type="file" name="doc" /><br />
+<input type="file" name="doc" multiple /><br />
 <input type="submit" id="submitbutton1" value="add" />
 </form>
 <iframe id="progress1" style="display:none;"></iframe>

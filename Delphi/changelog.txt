@@ -1,7 +1,8 @@
-v1.2.8.?
+v1.2.8.500
 - deprecated: xxmLocal, xxmRun
 - deprecated: xxm.xml auto-conversion (see v1.2.5)
 - fixed bug with multiple preCompileCommand/compileCommand/postCompileCommand entries
+- support for multiple file upload
 
 v1.2.7.477
 - Negotiate: like NTLM but less in danger of getting removed in Windows 11...

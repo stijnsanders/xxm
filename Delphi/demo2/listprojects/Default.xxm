@@ -5,6 +5,20 @@ f:TFileStream;
 u:UTF8String;
 d,d1:IJSONDocument;
 e:IJSONEnumerator;
+h:THandle;
+
+const
+XxmModNames=36;
+XxmModName:array[0..XxmModNames-1] of string=(
+  'xxmAhttpd.dll','xxmAhttpdAU.dll','xxmAhttpdDev.dll',
+  'xxmIsapiAU.dll','xxmIsapiDev.dll','xxmIsapiEx.dll',
+  'xxmHost.exe','xxmHostAU.exe','xxmHostDev.exe','xxmHostSvc.exe','xxmHostSvcAU.exe',
+  'xxmHSys1.exe','xxmHSys1AU.exe','xxmHSys1Dev.exe','xxmHSys1Svc.exe','xxmHSys1SvcAU.exe',
+  'xxmHSys2.exe','xxmHSys2AU.exe','xxmHSys2Dev.exe','xxmHSys2Svc.exe','xxmHSys2SvcAU.exe',
+  'xxmHttp.exe','xxmHttpAU.exe','xxmHttpDev.exe','xxmHttpSvc.exe','xxmHttpSvcAU.exe',
+  'xxmSCGI.exe','xxmSCGIAU.exe','xxmSCGIDev.exe','xxmSCGISvc.exe','xxmSCGISvcAU.exe',
+  'xxmSyna.exe','xxmSynaAU.exe','xxmSynaDev.exe','xxmSynaSvc.exe','xxmSynaSvcAU.exe');
+
 <<!doctype html>
 <html>
 <head>
@@ -16,12 +30,20 @@ BODY {font-family: Calibri, Verdana, sans-serif;font-size:12pt;}
 <p>Projects on this host:</p>
 <ul>>
 
-
-SetLength(s,MAX_PATH);
-SetLength(s,GetModuleFileName(HInstance,PChar(s),MAX_PATH));
-
 //TODO: find via context? via config?
 //TODO: list via context from handler?
+
+h:=0;
+i:=0;
+while (h=0) and (i<XxmModNames) do
+ begin
+  h:=GetModuleHandle(PChar(XxmModName[i]));
+  inc(i);
+ end;
+if h=0 then h:=HInstance;
+SetLength(s,MAX_PATH);
+SetLength(s,GetModuleFileName(h,PChar(s),MAX_PATH));
+
 i:=Length(s);
 while (i<>0) and (s[i]<>'\') do dec(i);
 while not((i=0) or FileExists(Copy(s,1,i)+'xxm.json')) do
@@ -57,7 +79,7 @@ while e.Next do
     s:=e.Key;
     if LowerCase(s)<>'xxm' then 
      begin
-      <li><a href="../[[=s]]">>=s<</a>
+      <li><a href="../[[=s]]/">>=s<</a>
       if not VarIsNull(d1['caption']) then
        begin
         ]]: [[=d1['caption']]][[
