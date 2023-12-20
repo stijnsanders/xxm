@@ -139,6 +139,9 @@ asm
 end;
 }
 
+{$Q-}
+{$R-}
+
 function SwapEndian(Value: integer): integer; overload;
 var
   x:array[0..3] of byte absolute Result;
