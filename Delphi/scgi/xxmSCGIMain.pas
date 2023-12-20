@@ -424,11 +424,9 @@ begin
       FURI:=UTF8ToWideString(y);
       //FURLPrefix:= should be ok
      end;
-
     FURL:=FRedirectPrefix+FURI;
 
     ProcessRequestHeaders;
-    //if XxmProjectCache=nil then XxmProjectCache:=TXxmProjectCacheXml.Create;
 
     if (FURI<>'') and (FURI[1]='/') then
      begin

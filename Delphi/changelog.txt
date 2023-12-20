@@ -2,6 +2,7 @@ v1.2.8.500
 - deprecated: xxmLocal, xxmRun
 - deprecated: xxm.xml auto-conversion (see v1.2.5)
 - fixed bug with multiple preCompileCommand/compileCommand/postCompileCommand entries
+- fixed support for WebSockets with FireFox
 - support for multiple file upload
 
 v1.2.7.477

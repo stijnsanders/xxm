@@ -421,7 +421,6 @@ begin
     FReqHeaders.Load(xi,l-xi+1);
 
     ProcessRequestHeaders;
-    //if XxmProjectCache=nil then XxmProjectCache:=TXxmProjectCacheXml.Create;
 
     if (FURI<>'') and (FURI[1]='/') then
      begin
