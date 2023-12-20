@@ -308,7 +308,8 @@ begin
   except
     //silent (log?)
   end;
-  FSocket.CloseSocket;//Disconnect
+  if FSocket<>nil then
+    FSocket.CloseSocket;//Disconnect
 end;
 
 procedure TXxmSynaContext.FlushFinal;
@@ -416,8 +417,8 @@ begin
       inc(xi);//#13
       if (xi<=l) and (x[xi]=#10) then inc(xi);
     until j=-1;
-    x:=Copy(x,xi,l-xi+1);
-    FReqHeaders.Load(x,xi,l);
+    FReqHeaders.Data:=x;
+    FReqHeaders.Load(xi,l-xi+1);
 
     ProcessRequestHeaders;
     //if XxmProjectCache=nil then XxmProjectCache:=TXxmProjectCacheXml.Create;

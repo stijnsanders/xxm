@@ -1062,7 +1062,7 @@ initialization
   GlobalAllowLoadCopy:=false;
 {$ELSE}
   GlobalAllowLoadCopy:=true;//default
-  //XxmProjectCache:=TXxmProjectCacheXml.Create;//moved to project source
+  //XxmProjectCache:=TXxmProjectCache.Create;//see handler start-up
 {$ENDIF}
 finalization
   XxmProjectCache.Free;

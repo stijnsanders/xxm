@@ -15,7 +15,7 @@ type
     FSocket: TTcpSocket;
     FReqHeaders: TRequestHeaders;
     FResHeaders: TResponseHeaders;
-    FHeaderData,FHTTPVersion,FVerb,FURI: AnsiString;
+    FHTTPVersion,FVerb,FURI: AnsiString;
     FRedirectPrefix: WideString;
     FCookieParsed: boolean;
     FCookie: AnsiString;
@@ -102,7 +102,6 @@ begin
   inherited;
   FSocket:=nil;
   SendDirect:=nil;
-  FHeaderData:='';
   FReqHeaders:=TRequestHeaders.Create;
   FResHeaders:=TResponseHeaders.Create;
   FCookieIdx.ParsSize:=0;
@@ -229,16 +228,12 @@ var
   s:TStream;
   si:int64;
   tc:cardinal;
-  cl:string;
+  cl:AnsiString;
 begin
   try
     tc:=GetTickCount;
-
-    //secure?
-//    if FSocket is TTcpSecureSocket then
-//      (FSocket as TTcpSecureSocket).Negotiate;
-
     //command line and headers
+    //TODO: absorb this into FReqHeaders.Load
     k:=0;
     l:=0;
     m:=0;
@@ -251,10 +246,10 @@ begin
         if l=k then
          begin
           inc(k,$10000);
-          if Length(FHeaderData)<k then
-            SetLength(FHeaderData,k);
+          if Length(FReqHeaders.Data)<k then
+            SetLength(FReqHeaders.Data,k);
          end;
-        n:=FSocket.ReceiveBuf(FHeaderData[l+1],k-l);
+        n:=FSocket.ReceiveBuf(FReqHeaders.Data[l+1],k-l);
         if (n<=0) or (cardinal(GetTickCount-tc)>HTTPMaxHeaderParseTimeMS) then
          begin
           i:=1;
@@ -264,22 +259,22 @@ begin
          end;
         inc(l,n);
        end;
-      while (j<=l) and (FHeaderData[j]<>#13) and (FHeaderData[j]<>#10) do inc(j);
-      if (j<=l) and ((FHeaderData[j]=#13) or (FHeaderData[j]=#10)) then
+      while (j<=l) and (FReqHeaders.Data[j]<>#13) and (FReqHeaders.Data[j]<>#10) do inc(j);
+      if (j<=l) and ((FReqHeaders.Data[j]=#13) or (FReqHeaders.Data[j]=#10)) then
        begin
         if m=0 then
          begin
           //i:=1;
-          while (i<=l) and (FHeaderData[i]>' ') do inc(i);
-          FVerb:=AnsiUpper(PAnsiChar(Copy(FHeaderData,1,i-1)));
+          while (i<=l) and (FReqHeaders.Data[i]>' ') do inc(i);
+          FVerb:=AnsiUpper(PAnsiChar(Copy(FReqHeaders.Data,1,i-1)));
           inc(i);
           j:=i;
-          while (j<=l) and (FHeaderData[j]>' ') do inc(j);
-          FURI:=Copy(FHeaderData,i,j-i);
+          while (j<=l) and (FReqHeaders.Data[j]>' ') do inc(j);
+          FURI:=Copy(FReqHeaders.Data,i,j-i);
           inc(j);
           i:=j;
-          while (j<=l) and (FHeaderData[j]<>#13) and (FHeaderData[j]<>#10) do inc(j);
-          FHTTPVersion:=Copy(FHeaderData,i,j-i);
+          while (j<=l) and (FReqHeaders.Data[j]<>#13) and (FReqHeaders.Data[j]<>#10) do inc(j);
+          FHTTPVersion:=Copy(FReqHeaders.Data,i,j-i);
           AllowChunked:=FHTTPVersion='HTTP/1.1';
           inc(m);
           p:=j;
@@ -294,14 +289,13 @@ begin
            end;
          end;
         inc(j);//#13
-        if (j<=l) and (FHeaderData[j]=#10) then inc(j);//#10
+        if (j<=l) and (FReqHeaders.Data[j]=#10) then inc(j);//#10
         i:=j;
        end;
     until m=-1;
-    FReqHeaders.Load(FHeaderData,p,l);
+    FReqHeaders.Load(p,l);
 
     ProcessRequestHeaders;
-    //if XxmProjectCache=nil then XxmProjectCache:=TXxmProjectCacheXml.Create;
 
     if (FURI<>'') and (FURI[1]='/') then
      begin
@@ -326,10 +320,16 @@ begin
     PreProcessRequest;
 
     //if Verb<>'GET' then?
-    cl:=FReqHeaders['Content-Length'];
+    cl:=FReqHeaders.KnownHeader(khContentLength);
     if cl<>'' then
      begin
-      si:=StrToInt(cl);
+      //si:=StrToInt(cl);
+      si:=0;
+      for i:=1 to Length(cl) do
+        if cl[i] in ['0'..'9'] then
+          si:=si*10+(byte(cl[i]) and $F)
+        else
+          raise EConvertError.Create('Invalid Content-Length value');
       if si<PostDataThreshold then
         s:=THeapStream.Create
       else
@@ -342,7 +342,7 @@ begin
        end;
       s.Size:=si;
       s.Position:=0;
-      FPostData:=THandlerReadStreamAdapter.Create(FSocket,si,s,FHeaderData,j,l);
+      FPostData:=THandlerReadStreamAdapter.Create(FSocket,si,s,FReqHeaders.Data,j,l);
      end;
 
     if FVerb='OPTIONS' then
@@ -518,14 +518,14 @@ begin
     csExtraInfo:Result:='';//???
     csVerb:Result:=UTF8ToWideString(FVerb);
     csQueryString:Result:=UTF8ToWideString(Copy(FURI,FQueryStringIndex,Length(FURI)-FQueryStringIndex+1));
-    csUserAgent:Result:=FReqHeaders['User-Agent'];
-    csAcceptedMimeTypes:Result:=FReqHeaders['Accept'];
-    csPostMimeType:Result:=FReqHeaders['Content-Type'];
+    csUserAgent:Result:=UTF8ToWideString(FReqHeaders.KnownHeader(khUserAgent));
+    csAcceptedMimeTypes:Result:=UTF8ToWideString(FReqHeaders.KnownHeader(khAccept));
+    csPostMimeType:Result:=UTF8ToWideString(FReqHeaders.KnownHeader(khContentType));
     csURL:Result:=GetURL;
     csProjectName:Result:=FProjectName;
     csLocalURL:Result:=FFragmentName;
-    csReferer:Result:=FReqHeaders['Referer'];
-    csLanguage:Result:=FReqHeaders['Accept-Language'];
+    csReferer:Result:=UTF8ToWideString(FReqHeaders.KnownHeader(khReferer));
+    csLanguage:Result:=UTF8ToWideString(FReqHeaders.KnownHeader(khAcceptLanguage));
     csRemoteAddress:Result:=FSocket.Address;
     csRemoteHost:Result:=FSocket.HostName;
     csAuthUser,csAuthPassword:Result:=UTF8ToWideString(AuthValue(cs));//?
@@ -539,7 +539,7 @@ function TXxmHttpContext.GetCookie(const Name: WideString): WideString;
 begin
   if not(FCookieParsed) then
    begin
-    FCookie:=UTF8Encode(FReqHeaders['Cookie']);
+    FCookie:=FReqHeaders.KnownHeader(khCookie);
     SplitHeaderValue(FCookie,0,Length(FCookie),FCookieIdx);
     FCookieParsed:=true;
    end;
@@ -635,7 +635,7 @@ begin
   //'If-Modified-Since' ? 304
   //'Connection: Keep-alive' ? with sent Content-Length
 
-  FURL:=FReqHeaders['Host'];
+  FURL:=UTF8ToWideString(FReqHeaders.KnownHeader(khHost));
   if FURL='' then
    begin
     FURL:='localhost';//TODO: from binding? setting?
@@ -667,7 +667,7 @@ end;
 
 function TXxmHttpContext.GetRawSocket: IStream;
 begin
-  if FReqHeaders['Upgrade']='' then Result:=nil else
+  if FReqHeaders.KnownHeader(khUpgrade)='' then Result:=nil else
    begin
     FContentType:='';
     SetBufferSize(0);//!

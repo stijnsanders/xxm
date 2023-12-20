@@ -520,11 +520,9 @@ begin
 end;
 
 function TXxmIsapiContext.GetRequestHeaders: IxxmDictionaryEx;
-var
-  d:AnsiString;
 begin
-  d:=GetVar(ecb,'ALL_RAW');
-  FReqHeaders.Load(d,1,Length(d));
+  FReqHeaders.Data:=GetVar(ecb,'ALL_RAW');
+  FReqHeaders.Load(1,Length(FReqHeaders.Data));
   Result:=FReqHeaders;
 end;
 

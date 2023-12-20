@@ -523,7 +523,8 @@ begin
       s:=s+PHTTP_UNKNOWN_HEADER_ARRAY(FReq.Headers.pUnknownHeaders)[i].pName+': '+
         PHTTP_UNKNOWN_HEADER_ARRAY(FReq.Headers.pUnknownHeaders)[i].pRawValue+#13#10;
     s:=s+#13#10;
-    FReqHeaders.Load(s,1,Length(s));
+    FReqHeaders.Data:=s;
+    FReqHeaders.Load(1,Length(s));
    end;
   Result:=FReqHeaders;
 end;

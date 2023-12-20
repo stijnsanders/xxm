@@ -32,10 +32,18 @@ type
     ParsIndex,ParsSize:integer;
   end;
 
+  TKnownHeaderName=(khContentType,khContentLength,khContentDisposition,
+    khConnection,khTransferEncoding,khCacheControl,
+    khAccept,khAuthorization,khWWWAuthenticate,khUpgrade,
+    khServer,khHost,khUserAgent,khReferer,khLocation,
+    khAcceptEncoding,khAcceptLanguage,
+    khIfModifiedSince,khLastModified,khExpires,
+    khCookie,khSetCookie);
+
+
   TRequestHeaders=class(TControlledLifeTimeObject,
     IxxmDictionary, IxxmDictionaryEx)
   private
-    FData:AnsiString;
     FIdx:TParamIndexes;
     function GetItem(Name:OleVariant):WideString;
     procedure SetItem(Name:OleVariant;const Value:WideString);
@@ -43,14 +51,16 @@ type
     procedure SetName(Idx:integer;Value:WideString);
     function GetCount:integer;
   public
+    Data:AnsiString;
     constructor Create;
     destructor Destroy; override;
-    procedure Load(const Data:AnsiString;StartIndex,DataLength:integer);
+    procedure Load(StartIndex,DataLength:integer);
     procedure Reset;
     property Item[Name: OleVariant]:WideString read GetItem write SetItem; default;
     property Name[Idx: integer]:WideString read GetName write SetName;
     property Count:integer read GetCount;
     function Complex(Name:OleVariant;out Items:IxxmDictionary):WideString;
+    function KnownHeader(Header:TKnownHeaderName):AnsiString;
   end;
 
   TRequestSubValues=class(TInterfacedObject, IxxmDictionary)
@@ -148,14 +158,6 @@ type
       var Pos: integer; var Len: integer);
     function MultiPartDone: boolean;
   end;
-
-  TKnownHeaderName=(khContentType,khContentLength,khContentDisposition,
-    khConncetion,khTransferEncoding,khCacheControl,
-    khAccept,khAuthorization,khWWWAuthenticate,
-    khServer,khHost,khUserAgent,khReferer,khLocation,
-    khAcceptEncoding,khAcceptLanguage,
-    khIfModifiedSince,khLastModified,khExpires,
-    khCookie,khSetCookie);
 
   EXxmRequestHeadersReadOnly=class(Exception);
   EXxmResponseHeaderInvalidName=class(Exception);
@@ -314,7 +316,7 @@ const
   HeaderNamePreload:array[TKnownHeaderName] of AnsiString=(
     'Content-Type','Content-Length','Content-Disposition',
     'Connection','Transfer-Encoding','Cache-Control',
-    'Accept','Authorization','WWW-Authenticate',
+    'Accept','Authorization','WWW-Authenticate','Upgrade',
     'Server','Host','User-Agent','Referer','Location',
     'Accept-Encoding','Accept-Language',
     'If-Modified-Since','Last-Modified','Expires',
@@ -736,7 +738,7 @@ end;
 constructor TRequestHeaders.Create;
 begin
   inherited Create;
-  FData:='';//Reset;
+  Data:='';
   FIdx.ParsIndex:=0;
   FIdx.ParsSize:=0;
 end;
@@ -747,12 +749,12 @@ begin
   inherited;
 end;
 
-procedure TRequestHeaders.Load(const Data:AnsiString;StartIndex,DataLength:integer);
+procedure TRequestHeaders.Load(StartIndex,DataLength:integer);
 var
   b:boolean;
   p,q,l,r,n:integer;
 begin
-  FData:=Data;
+  //caller load data into public Data:AnsiString;
   q:=StartIndex;//assert >0
   FIdx.ParsIndex:=0;
   //assert Length(FData)>=DataLength;
@@ -761,9 +763,9 @@ begin
    begin
     p:=q;
     b:=false;
-    while (q<=l) and not(b and (FData[q]=#10)) do
+    while (q<=l) and not(b and (Data[q]=#10)) do
      begin
-      b:=FData[q]=#13;
+      b:=Data[q]=#13;
       inc(q);
      end;
     inc(q);
@@ -775,7 +777,7 @@ begin
     else
      begin
       r:=p;
-      while (r<=q) and (FData[r] in [#1..#32]) do inc(r);
+      while (r<=q) and (Data[r] in [#1..#32]) do inc(r);
       if r=p then
        begin
         if FIdx.ParsIndex=FIdx.ParsSize then
@@ -786,16 +788,16 @@ begin
         FIdx.Pars[FIdx.ParsIndex].NameStart:=p;
         r:=p;
         n:=0;
-        while (r<=q) and (FData[r]<>':') do
+        while (r<=q) and (Data[r]<>':') do
          begin
-          HeaderNameNext(FData[r],n);
+          HeaderNameNext(Data[r],n);
           inc(r);
          end;
         FIdx.Pars[FIdx.ParsIndex].NameLength:=r-p;
         FIdx.Pars[FIdx.ParsIndex].NameIndex:=n;
         //FIdx.Pars[FIdx.ParsIndex].NameL:=LowerCase(string(Copy(FData,p,r-p)));
         inc(r);//':'
-        while (r<=q) and (FData[r] in [#1..#32]) do inc(r);
+        while (r<=q) and (Data[r] in [#1..#32]) do inc(r);
         FIdx.Pars[FIdx.ParsIndex].ValueStart:=r;
         FIdx.Pars[FIdx.ParsIndex].ValueLength:=q-r-2;//2 from Length(EOL)
         inc(FIdx.ParsIndex);
@@ -813,7 +815,7 @@ end;
 procedure TRequestHeaders.Reset;
 begin
   FIdx.ParsIndex:=0;
-  FData:='';
+  //re-use Data, see Load
 end;
 
 function TRequestHeaders.GetCount: integer;
@@ -829,12 +831,12 @@ begin
    begin
     i:=integer(Name);
     if (i>=0) and (i<FIdx.ParsIndex) then
-      Result:=WideString(Copy(FData,FIdx.Pars[i].ValueStart,FIdx.Pars[i].ValueLength))
+      Result:=WideString(Copy(Data,FIdx.Pars[i].ValueStart,FIdx.Pars[i].ValueLength))
     else
       raise ERangeError.Create('TRequestHeaders.GetItem: Out of range');
    end
   else
-    Result:=WideString(GetParamValue(FData,FIdx,Name));
+    Result:=WideString(GetParamValue(Data,FIdx,Name));
 end;
 
 function TRequestHeaders.Complex(Name: OleVariant;
@@ -850,7 +852,7 @@ begin
     while (i<FIdx.ParsIndex) and (FIdx.Pars[i].NameIndex<>n) do inc(i);
    end;
   if (i>=0) and (i<FIdx.ParsIndex) then
-    sv:=TRequestSubValues.Create(FData,
+    sv:=TRequestSubValues.Create(Data,
       FIdx.Pars[i].ValueStart,FIdx.Pars[i].ValueLength,Result)
   else
     sv:=TRequestSubValues.Create('',1,0,Result);//raise?
@@ -865,9 +867,22 @@ end;
 function TRequestHeaders.GetName(Idx: integer): WideString;
 begin
   if (Idx>=0) and (Idx<FIdx.ParsIndex) then
-    Result:=WideString(Copy(FData,FIdx.Pars[Idx].NameStart,FIdx.Pars[Idx].NameLength))
+    Result:=WideString(Copy(Data,FIdx.Pars[Idx].NameStart,FIdx.Pars[Idx].NameLength))
   else
     raise ERangeError.Create('TRequestHeaders.GetName: Out of range');
+end;
+
+function TRequestHeaders.KnownHeader(Header:TKnownHeaderName):AnsiString;
+var
+  n,i:integer;
+begin
+  n:=KnownHeaders[Header];
+  i:=0;
+  while (i<FIdx.ParsIndex) and (FIdx.Pars[i].NameIndex<>n) do inc(i);
+  if i<FIdx.ParsIndex then
+    Result:=Copy(Data,FIdx.Pars[i].ValueStart,FIdx.Pars[i].ValueLength)
+  else
+    Result:='';
 end;
 
 procedure TRequestHeaders.SetName(Idx: integer; Value: WideString);
