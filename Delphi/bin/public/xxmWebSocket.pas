@@ -295,6 +295,7 @@ procedure TXxmWebSocket.Build(const Context: IXxmContext;
   const Objects: array of TObject);
 var
   hReq,hRes:IxxmDictionaryEx;
+  hConn,hUpgr:string;
   h:TSHA1Hash;
 begin
   //inherited;
@@ -303,8 +304,10 @@ begin
   
   hReq:=(Context as IxxmHttpHeaders).RequestHeaders;
   hRes:=(Context as IxxmHttpHeaders).ResponseHeaders;
-  if (CompareText(hReq['Connection'],'upgrade')=0)
-    and (CompareText(hReq['Upgrade'],'websocket')=0) then
+  hConn:=LowerCase(string(hReq['Connection']));
+  hUpgr:=LowerCase(string(hReq['Upgrade']));
+  if ((hConn='upgrade') or (hConn='keep-alive, upgrade'))
+    and (hUpgr='websocket') then
    begin
     //TODO: check HTTP 1.1 or more
     //TODO: check hReq['Origin']
