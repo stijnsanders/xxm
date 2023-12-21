@@ -162,7 +162,7 @@ function TXxmReqPars.Fill(Context: IXxmContext; PostData: TStream): boolean;
 var
   i,p,q,r,l:integer;
   ps:TStream;
-  pm,pb,pd,pf,px:AnsiString;
+  pm,pd,pf,px:AnsiString;
   pa,pax:TParamIndexes;
   pn:string;
   sn:TStreamNozzle;
@@ -239,24 +239,19 @@ begin
     else
     if pn=MimeFormData then
      begin
-      pb:=GetParamValue(pm,pa,'boundary');
-      if pb='' then raise Exception.Create('unable to get boundary from header for multipart/form-data');
-
-      sn:=TStreamNozzle.Create(ps,DataProgressAgent,FileProgressAgent,FileProgressStep);
+      sn:=TStreamNozzle.Create(ps,GetParamValue(pm,pa,'boundary'),
+        DataProgressAgent,FileProgressAgent,FileProgressStep);
       try
-        //initialization, find first boundary
-        sn.CheckBoundary(pb);
-        while not(sn.MultiPartDone) do
-         begin
+        repeat
           pm:='';
           pf:='';
           pd:=sn.GetHeader(pa);
           for i:=0 to pa.ParsIndex-1 do
             if pa.Pars[i].NameIndex=KnownHeaderIndex(khContentDisposition) then
              begin
-              pn:=string(SplitHeaderValue(pd,
-                pa.Pars[i].ValueStart,pa.Pars[i].ValueLength,pax));
-              //assert pn='form-data'
+              SplitHeaderValue(pd,
+                pa.Pars[i].ValueStart,pa.Pars[i].ValueLength,pax);
+              //assert ='form-data'
               px:=GetParamValue(pd,pax,'name');
               pf:=GetParamValue(pd,pax,'filename');
              end
@@ -267,15 +262,16 @@ begin
               ;//raise Exception.Create('Unknown multipart header "'+pn+'"');
           //TODO: transfer encoding?
           if pm='' then
-            Add(TXxmReqParPost.Create(Self,WideString(px),UTF8ToWideString(sn.GetString(pb))))
+            Add(TXxmReqParPost.Create(Self,WideString(px),
+              UTF8ToWideString(sn.GetString)))
           else
            begin
-            sn.GetData(pb,px,pf,p,q);
+            sn.GetData(px,pf,p,q);
             Add(TXxmReqParPostFile.Create(Self,WideString(px),
               UTF8ToWideString(pf),//TODO: encoding from header?
               WideString(pm),ps,p,q));
            end;
-         end;
+        until sn.MultiPartDone;
       finally
         sn.Free;
       end;

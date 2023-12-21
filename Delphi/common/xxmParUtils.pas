@@ -140,7 +140,7 @@ type
   private
     FSource: TStream;
     SourceAtEnd: boolean;
-    Data: AnsiString;
+    Data, FBoundary: AnsiString;
     Size, Index, Done, ReportStep: integer;
     FDataAgent, FFileAgent: IxxmUploadProgressAgent;
     function Ensure(EnsureSize: integer;
@@ -148,13 +148,13 @@ type
     procedure Flush;
     procedure SkipWhiteSpace;
   public
-    constructor Create(Source: TStream; DataProgressAgent,
-      FileProgressAgent: IxxmUploadProgressAgent; FileProgressStep: integer);
+    constructor Create(Source: TStream; const Boundary: AnsiString;
+      DataProgressAgent, FileProgressAgent: IxxmUploadProgressAgent;
+      FileProgressStep: integer);
     destructor Destroy; override;
-    procedure CheckBoundary(var Boundary: AnsiString);
     function GetHeader(var Params: TParamIndexes): AnsiString;
-    function GetString(const Boundary: AnsiString): AnsiString;
-    procedure GetData(const Boundary, FieldName, FileName: AnsiString;
+    function GetString: AnsiString;
+    procedure GetData(const FieldName, FileName: AnsiString;
       var Pos: integer; var Len: integer);
     function MultiPartDone: boolean;
   end;
@@ -266,8 +266,6 @@ begin
        end;
       Params.Pars[Params.ParsIndex].NameLength:=j-i;
       Params.Pars[Params.ParsIndex].NameIndex:=n;
-      //Params.Pars[Params.ParsIndex].NameL:=LowerCase(string(Copy(Value,i,j-i)));
-      //TODO: SortIndex
       i:=j+1;
       if (i<=l) and (Value[i]='"') then
        begin
@@ -489,8 +487,11 @@ end;
 
 { TStreamNozzle }
 
-constructor TStreamNozzle.Create(Source: TStream; DataProgressAgent,
-  FileProgressAgent: IxxmUploadProgressAgent; FileProgressStep: integer);
+constructor TStreamNozzle.Create(Source: TStream; const Boundary: AnsiString;
+  DataProgressAgent, FileProgressAgent: IxxmUploadProgressAgent;
+  FileProgressStep: integer);
+var
+  bl:integer;
 begin
   inherited Create;
   FSource:=Source;
@@ -501,6 +502,19 @@ begin
   FDataAgent:=DataProgressAgent;
   FFileAgent:=FileProgressAgent;
   ReportStep:=FileProgressStep;
+
+  //initialization, find first boundary
+  bl:=Length(Boundary);
+  if bl=0 then
+    raise Exception.Create('unable to get boundary from header for multipart/form-data');
+  Ensure(bl+5,'','');
+  if Copy(Data,3,bl)<>Boundary then
+    raise Exception.Create('multipart/form-data data does not start with boundary');
+  Index:=bl+3;
+  //TODO:detect EOL now?
+  SkipWhiteSpace;
+  FBoundary:=#13#10'--'+Boundary;
+  //Flush;?
 end;
 
 destructor TStreamNozzle.Destroy;
@@ -573,22 +587,6 @@ begin
   while Ensure(1,'','') and (Data[Index] in [#0..#31]) do inc(Index);
 end;
 
-procedure TStreamNozzle.CheckBoundary(var Boundary: AnsiString);
-var
-  bl:integer;
-begin
-  bl:=Length(Boundary);
-  Ensure(bl+5,'','');
-  //assert Index=1;
-  if Copy(Data,3,bl)<>Boundary then
-    raise Exception.Create('Multipart data does not start with boundary');
-  Index:=bl+3;
-  //TODO:detect EOL now?
-  SkipWhiteSpace;
-  Boundary:=#13#10'--'+Boundary;
-  //Flush;?
-end;
-
 function TStreamNozzle.GetHeader(var Params: TParamIndexes): AnsiString;
 var
   b:boolean;
@@ -635,7 +633,6 @@ begin
        end;
       Params.Pars[Params.ParsIndex].NameLength:=r-p;
       Params.Pars[Params.ParsIndex].NameIndex:=n;
-      //Params.Pars[Params.ParsIndex].NameL:=LowerCase(string(Copy(Result,p,r-p)));
       inc(r);
       while (r<=q) and (Result[r] in [#1..#32]) do inc(r);
       Params.Pars[Params.ParsIndex].ValueStart:=r;
@@ -647,17 +644,17 @@ begin
   Flush;
 end;
 
-function TStreamNozzle.GetString(const Boundary: AnsiString): AnsiString;
+function TStreamNozzle.GetString: AnsiString;
 var
   l,p,q:integer;
 begin
-  l:=Length(Boundary);
+  l:=Length(FBoundary);
   p:=0;
   q:=Index;
   while Ensure(l,'','') and (p<>l) do
    begin
     p:=0;
-    while (p<l) and (Data[p+Index]=Boundary[p+1]) do inc(p);
+    while (p<l) and (Data[p+Index]=FBoundary[p+1]) do inc(p);
     if p<>l then inc(Index);
    end;
   SetLength(Result,Index-q);
@@ -667,13 +664,13 @@ begin
   Flush;
 end;
 
-procedure TStreamNozzle.GetData(const Boundary, FieldName, FileName: AnsiString;
+procedure TStreamNozzle.GetData(const FieldName, FileName: AnsiString;
   var Pos: integer; var Len: integer);
 var
   l,p,x,s:integer;
 begin
   Pos:=Done+Index-1;
-  l:=Length(Boundary);
+  l:=Length(FBoundary);
   p:=0;
   if (ReportStep=0) or (FFileAgent=nil) then
    begin
@@ -682,7 +679,7 @@ begin
      begin
       Flush;//depends on flush threshold
       p:=0;
-      while (p<l) and (Data[p+Index]=Boundary[p+1]) do inc(p);
+      while (p<l) and (Data[p+Index]=FBoundary[p+1]) do inc(p);
       if p<>l then inc(Index);
      end;
    end
@@ -695,7 +692,7 @@ begin
      begin
       Flush;//depends on flush threshold
       p:=0;
-      while (p<l) and (Data[p+Index]=Boundary[p+1]) do inc(p);
+      while (p<l) and (Data[p+Index]=FBoundary[p+1]) do inc(p);
       if p<>l then
        begin
         inc(Index);
@@ -795,7 +792,6 @@ begin
          end;
         FIdx.Pars[FIdx.ParsIndex].NameLength:=r-p;
         FIdx.Pars[FIdx.ParsIndex].NameIndex:=n;
-        //FIdx.Pars[FIdx.ParsIndex].NameL:=LowerCase(string(Copy(FData,p,r-p)));
         inc(r);//':'
         while (r<=q) and (Data[r] in [#1..#32]) do inc(r);
         FIdx.Pars[FIdx.ParsIndex].ValueStart:=r;
