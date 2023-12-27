@@ -1544,9 +1544,8 @@ begin
     for i:=0 to FStoreIndex-1 do
       try
         FreeAndNil(FStore[i]);
-      finally
+      except
         //silent
-        pointer(FStore[i]):=nil;
       end;
   DeleteCriticalSection(FLock);
   inherited;

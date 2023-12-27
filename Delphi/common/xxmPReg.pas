@@ -602,7 +602,12 @@ begin
 var
   i:integer;
 begin
-  for i:=0 to FProjectsCount-1 do FreeAndNil(FProjects[i].Entry);
+  for i:=0 to FProjectsCount-1 do
+    try
+      FreeAndNil(FProjects[i].Entry);
+    except
+      //silent
+    end;
   SetLength(FProjects,0);
 {$ENDIF}
   DeleteCriticalSection(FLock);
@@ -817,7 +822,11 @@ begin
              end
             else
              begin
-              FreeAndNil(FProjects[i].Entry);
+              try
+                FreeAndNil(FProjects[i].Entry);
+              except
+                //silent
+              end;
               inc(FCacheIndex);
              end;
            end;
@@ -827,7 +836,11 @@ begin
              begin
               FProjects[i].Name:='';
               FProjects[i].Alias:='';
-              FreeAndNil(FProjects[i].Entry);
+              try
+                FreeAndNil(FProjects[i].Entry);
+              except
+                //silent
+              end;
               inc(FCacheIndex);
              end;
           if FSingleProject<>'' then
@@ -922,7 +935,11 @@ begin
      begin
       FProjects[i].Name:='';
       FProjects[i].Alias:='';
-      FreeAndNil(FProjects[i].Entry);
+      try
+        FreeAndNil(FProjects[i].Entry);
+      except
+        //silent
+      end;
      end;
   finally
     LeaveCriticalSection(FLock);
@@ -1066,5 +1083,4 @@ initialization
 {$ENDIF}
 finalization
   XxmProjectCache.Free;
-
 end.

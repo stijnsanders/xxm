@@ -591,7 +591,6 @@ begin
     end;
   except
     //silent
-    //TODO: on e:Exception do log!
     if State>ctResponding then State:=ctResponding;
   end;
   if State in [ctHeaderNotSent..ctResponding] then
@@ -632,5 +631,4 @@ initialization
   PageLoaderPool:=nil;//created on first page start, DLL may be called for URL info only
 finalization
   FreeAndNil(PageLoaderPool);
-
 end.

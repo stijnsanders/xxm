@@ -474,5 +474,4 @@ end;
 
 initialization
   GetSelfVersion;
-
 end.

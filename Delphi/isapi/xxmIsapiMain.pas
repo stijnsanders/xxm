@@ -130,11 +130,13 @@ begin
     FreeAndNil(PageLoaderPool);
   except
     //silent (log?)
+    PageLoaderPool:=nil;
   end;
   try
     FreeAndNil(XxmProjectCache);
   except
     //silent (log?)
+    XxmProjectCache:=nil;
   end;
   Result:=true;
 end;

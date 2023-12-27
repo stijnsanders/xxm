@@ -173,6 +173,4 @@ initialization
   HttpListenPort:=80;
   HttpBindIPv4:='';
   HttpBindIPv6:='';
-
-
 end.
