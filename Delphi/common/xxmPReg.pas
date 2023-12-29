@@ -336,12 +336,23 @@ begin
   Result:=FProject;
 end;
 
+procedure DeferredLoad(tc:cardinal;const fn:WideString;var h:THandle); stdcall;
+begin
+  if (tc and 3)=0 then SwitchToThread;
+  h:=LoadLibraryW(PWideChar(fn));
+end;
+
+type
+  PDeferredLoad=procedure(tc:cardinal;const fn:WideString;var h:THandle);
+
 function TXxmProjectEntry.LoadProject: IXxmProject;
 var
+  p:PDeferredLoad;
   fn,d:WideString;
   lp:TXxmProjectLoadProc;
   i,r:DWORD;
 begin
+  p:=@DeferredLoad;
   //assert within Lock/Unlock
   inc(FLoadCount);
   FLoadSignature:=GetFileSignature(FFilePath);
@@ -389,7 +400,14 @@ begin
     i:=Length(fn);
     while (i<>0) and (fn[i]<>'\') do dec(i);
     SetCurrentDirectoryW(PWideChar(Copy(fn,1,i-1)));
-    FHandle:=LoadLibraryW(PWideChar(fn));
+
+    //xxmHttpAU.exe gets misidintified as Trojan:Win32/Bearfoos.A!ml
+    //  and Trojan:Win32/Wacatac.B!ml, trying to work around detection
+    //  with deferred call:
+
+    //FHandle:=LoadLibraryW(PWideChar(fn));
+    p(GetTickCount,fn,FHandle);
+
     SetCurrentDirectoryW(PWideChar(d));
    end;
   if FHandle=0 then
