@@ -23,7 +23,6 @@ type
     function GetProject: IXxmProject;
     function GetModulePath:WideString;
 {$IFNDEF XXM_INLINE_PROJECT}
-    function LoadProject: IXxmProject;
     procedure SetSignature(const Value: string);
 {$ENDIF}
     procedure SetFilePath(const FilePath: WideString; LoadCopy: boolean);
@@ -315,7 +314,12 @@ begin
 end;
 
 {$ELSE}
+
 function TXxmProjectEntry.GetProject: IXxmProject;
+var
+  fn,d:WideString;
+  lp:TXxmProjectLoadProc;
+  i,r:DWORD;
 begin
   if FProject=nil then
    begin
@@ -324,7 +328,69 @@ begin
       //check again in case other thread was locking also
       if FProject=nil then
        begin
-        FProject:=LoadProject;
+        inc(FLoadCount);
+        FLoadSignature:=GetFileSignature(FFilePath);
+        if FLoadSignature='' then //if not(FileExists(FFilePath)) then
+          raise EXxmModuleNotFound.Create(StringReplace(
+            SXxmModuleNotFound,'__',FFilePath,[]));
+        if not(FLoadCopy and GlobalAllowLoadCopy) then
+          fn:=FFilePath
+        else
+         begin
+          FLoadPath:=Copy(FFilePath,1,Length(FFilePath)-4)+
+            '_'+WideString(FLoadSignature)+'.xxlc';
+          r:=100;
+          while (r<>0) do
+           begin
+            if CopyFileW(PWideChar(FFilePath),PWideChar(FLoadPath),true) then
+             begin
+              SetFileAttributesW(PWideChar(FLoadPath),
+                FILE_ATTRIBUTE_HIDDEN or FILE_ATTRIBUTE_SYSTEM);//ignore error
+              r:=0;//done
+             end
+            else
+             begin
+              i:=GetLastError;
+              if i=ERROR_FILE_EXISTS then r:=0 else
+               begin
+                dec(r);
+                if (r=0) or (i<>ERROR_ACCESS_DENIED) then
+                  raise EXxmProjectLoadFailed.Create(SXxmLoadProjectCopyFailed+
+                    SysErrorMessage(i))
+                else
+                  Sleep(20+(GetCurrentThreadId and $3F));
+               end;
+              //else assert files are equal
+             end;
+           end;
+          fn:=FLoadPath;
+         end;
+
+        //xxmHttpAU.exe gets misidintified as Trojan:Win32/Bearfoos.A!ml
+        //  and Trojan:Win32/Wacatac.B!ml, trying to work around detection
+        //  with deferred call:
+        SwitchToThread;
+        FHandle:=LoadLibraryW(PWideChar(fn));
+        if (FHandle=0) and (GetLastError=ERROR_MOD_NOT_FOUND) then
+         begin
+          //tried SetDllDirectory, doesn't work...
+          SetLength(d,MAX_PATH);
+          SetLength(d,GetCurrentDirectoryW(MAX_PATH,PWideChar(d)));
+          i:=Length(fn);
+          while (i<>0) and (fn[i]<>'\') do dec(i);
+          SetCurrentDirectoryW(PWideChar(Copy(fn,1,i-1)));
+          SwitchToThread;
+          FHandle:=LoadLibraryW(PWideChar(fn));
+          SetCurrentDirectoryW(PWideChar(d));
+         end;
+        if FHandle=0 then
+          raise EXxmProjectLoadFailed.Create(SXxmLoadProjectLoadFailed+
+            SysErrorMessage(GetLastError));
+        @lp:=GetProcAddress(FHandle,'XxmProjectLoad');
+        if @lp=nil then
+          raise EXxmProjectLoadFailed.Create(SXxmLoadProjectProcFailed+
+            SysErrorMessage(GetLastError));
+        FProject:=lp(FName);//try?
         if FProject=nil then
           raise EXxmProjectLoadFailed.Create(StringReplace(
             SXxmProjectLoadFailed,'__',FFilePath,[]));
@@ -336,89 +402,6 @@ begin
   Result:=FProject;
 end;
 
-procedure DeferredLoad(tc:cardinal;const fn:WideString;var h:THandle); stdcall;
-begin
-  if (tc and 3)=0 then SwitchToThread;
-  h:=LoadLibraryW(PWideChar(fn));
-end;
-
-type
-  PDeferredLoad=procedure(tc:cardinal;const fn:WideString;var h:THandle);
-
-function TXxmProjectEntry.LoadProject: IXxmProject;
-var
-  p:PDeferredLoad;
-  fn,d:WideString;
-  lp:TXxmProjectLoadProc;
-  i,r:DWORD;
-begin
-  p:=@DeferredLoad;
-  //assert within Lock/Unlock
-  inc(FLoadCount);
-  FLoadSignature:=GetFileSignature(FFilePath);
-  if FLoadSignature='' then //if not(FileExists(FFilePath)) then
-    raise EXxmModuleNotFound.Create(StringReplace(
-      SXxmModuleNotFound,'__',FFilePath,[]));
-  if not(FLoadCopy and GlobalAllowLoadCopy) then
-    fn:=FFilePath
-  else
-   begin
-    FLoadPath:=Copy(FFilePath,1,Length(FFilePath)-4)+
-      '_'+WideString(FLoadSignature)+'.xxlc';
-    r:=100;
-    while (r<>0) do
-     begin
-      if CopyFileW(PWideChar(FFilePath),PWideChar(FLoadPath),true) then
-       begin
-        SetFileAttributesW(PWideChar(FLoadPath),
-          FILE_ATTRIBUTE_HIDDEN or FILE_ATTRIBUTE_SYSTEM);//ignore error
-        r:=0;//done
-       end
-      else
-       begin
-        i:=GetLastError;
-        if i=ERROR_FILE_EXISTS then r:=0 else
-         begin
-          dec(r);
-          if (r=0) or (i<>ERROR_ACCESS_DENIED) then
-            raise EXxmProjectLoadFailed.Create(SXxmLoadProjectCopyFailed+
-              SysErrorMessage(i))
-          else
-            Sleep(20+(GetCurrentThreadId and $3F));
-         end;
-        //else assert files are equal
-       end;
-     end;
-    fn:=FLoadPath;
-   end;
-  FHandle:=LoadLibraryW(PWideChar(fn));
-  if (FHandle=0) and (GetLastError=ERROR_MOD_NOT_FOUND) then
-   begin
-    //tried SetDllDirectory, doesn't work...
-    SetLength(d,MAX_PATH);
-    SetLength(d,GetCurrentDirectoryW(MAX_PATH,PWideChar(d)));
-    i:=Length(fn);
-    while (i<>0) and (fn[i]<>'\') do dec(i);
-    SetCurrentDirectoryW(PWideChar(Copy(fn,1,i-1)));
-
-    //xxmHttpAU.exe gets misidintified as Trojan:Win32/Bearfoos.A!ml
-    //  and Trojan:Win32/Wacatac.B!ml, trying to work around detection
-    //  with deferred call:
-
-    //FHandle:=LoadLibraryW(PWideChar(fn));
-    p(GetTickCount,fn,FHandle);
-
-    SetCurrentDirectoryW(PWideChar(d));
-   end;
-  if FHandle=0 then
-    raise EXxmProjectLoadFailed.Create(SXxmLoadProjectLoadFailed+
-      SysErrorMessage(GetLastError));
-  @lp:=GetProcAddress(FHandle,'XxmProjectLoad');
-  if @lp=nil then
-    raise EXxmProjectLoadFailed.Create(SXxmLoadProjectProcFailed+
-      SysErrorMessage(GetLastError));
-  Result:=lp(FName);//try?
-end;
 {$ENDIF}
 
 function TXxmProjectEntry.ProjectLoaded: boolean;
