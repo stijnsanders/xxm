@@ -579,7 +579,7 @@ begin
    begin
     tc:=GetTickCount;
     repeat
-      Sleep(1);
+      SwitchToThread;
       if not(PeekNamedPipe(FPipeIn,nil,0,nil,@l,nil)) then
         RaiseLastOSError;
     until (cardinal(GetTickCount-tc)>=TimeoutMS) or (l<>0);

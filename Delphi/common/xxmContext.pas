@@ -194,6 +194,7 @@ type
   EXxmIncludeCrossProjectDisabled=class(Exception);
   EXxmParametersAlreadyParsed=class(Exception);
   EXxmBufferSizeInvalid=class(Exception);
+  EXxmShuttingDown=class(Exception);
 
 var
   //see xxmSettings

@@ -95,7 +95,16 @@ begin
   FListener6.Free;
   FServer.Free;
   FServer6.Free;
-  FreeAndNil(XxmProjectCache);
+
+  //first make ReleasingContexts/ReleaseProject run
+  try
+    FreeAndNil(XxmProjectCache);
+  except
+    //log?
+  end;
+
+  KeptConnections.Free;
+  SpoolingConnections.Free;
 end;
 
 end.

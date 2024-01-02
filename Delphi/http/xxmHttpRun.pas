@@ -88,7 +88,6 @@ begin
     '/'+Copy(SelfVersion,i+1,Length(SelfVersion)-i);
   }
 
-  //
   CoInitialize(nil);
   SetErrorMode(SEM_FAILCRITICALERRORS);
   XxmProjectCache:=TXxmProjectCache.Create;
@@ -129,6 +128,14 @@ begin
     finally
       Listener.Free;
       Listener6.Free;
+
+      //first make ReleasingContexts/ReleaseProject run
+      try
+        FreeAndNil(XxmProjectCache);
+      except
+        //log?
+      end;
+
       KeptConnections.Free;
       SpoolingConnections.Free;
     end;
@@ -158,6 +165,7 @@ end;
 procedure TXxmHttpServerListener.Execute;
 begin
   //inherited;
+
   //assert FServer.Bind called
   while not Terminated do
     try

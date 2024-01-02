@@ -258,6 +258,9 @@ end;
 procedure TXxmProjectEntry.Release;
 var
   pe:IXxmProjectEvents1;
+  tc:cardinal;
+const
+  ReleaseContext_TimeoutMS=30000;
 begin
   //attention: deadlock danger, use OpenContext,CloseContext
   //XxmAutoBuildHandler should lock new requests
@@ -273,7 +276,10 @@ begin
    end;
 
   //assert only one thread at once, use Lock/Unlock!
-  while (FContextCount>0) do Sleep(1);
+  tc:=GetTickCount;//TODO: if timeout then raise? log?
+  while (FContextCount>0) and (cardinal(GetTickCount-tc)<=ReleaseContext_TimeoutMS) do
+    SwitchToThread;
+  FContextCount:=0;
 
   if (FProject<>nil) and (FProject.QueryInterface(IXxmProjectEvents1,pe)=S_OK) then
    begin

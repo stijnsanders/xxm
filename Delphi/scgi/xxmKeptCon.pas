@@ -61,6 +61,8 @@ var
   i:integer;
 begin
   //TODO: maximum lingering connections? or close oldest on queue newer?
+  if Terminated then raise EXxmShuttingDown.Create(
+    'Connection Queue denied: service is shutting down');
   EnterCriticalSection(FLock);
   try
     Context.State:=SetState;
@@ -116,7 +118,10 @@ begin
                 if FContexts[j].Context.State=ctSocketResume then
                   PageLoaderPool.Queue(FContexts[j].Context,ctSocketDisconnect)
                 else
+                 begin
+                  FContexts[j].Context.State:=ctSocketDisconnect;
                   FContexts[j].Context.Recycle;
+                 end;
               finally
                 FContexts[j].Context:=nil;
               end
@@ -164,7 +169,10 @@ begin
                   if FContexts[j].Context.State=ctSocketResume then
                     PageLoaderPool.Queue(FContexts[j].Context,ctSocketDisconnect)
                   else
+                   begin
+                    FContexts[j].Context.State:=ctSocketDisconnect;
                     FContexts[j].Context.Recycle;
+                   end;
                 finally
                   FContexts[j].Context:=nil;
                 end;

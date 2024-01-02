@@ -68,26 +68,32 @@ begin
   finally
     r.Free;
   end;
+
   CoInitialize(nil);
+  SetErrorMode(SEM_FAILCRITICALERRORS);
   XxmProjectCache:=TXxmProjectCache.Create;
   ContextPool:=TXxmContextPool.Create(TXxmHttpContext);
   KeptConnections:=TXxmKeptConnections.Create;
   SpoolingConnections:=TXxmSpoolingConnections.Create;
   PageLoaderPool:=TXxmPageLoaderPool.Create(t);
+
   //IPv4
   FServer:=TTcpServer.Create(AF_INET);
   FServer.Bind('',p);
   FServer.Listen;
   FListener:=TXxmHttpServerListener.Create(FServer);
+
+  //IPv6
   FServer6:=TTcpServer.Create(AF_INET6);
   FListener6:=nil;//default
   try
     FServer6.Bind('',p);
-    FServer.Listen;
+    FServer6.Listen;
     FListener6:=TXxmHttpServerListener.Create(FServer6);
   except
     FServer6:=nil;
   end;
+
 end;
 
 procedure TxxmService.ServiceStop(Sender: TService; var Stopped: Boolean);
@@ -96,9 +102,16 @@ begin
   FListener6.Free;
   FServer.Free;
   FServer6.Free;
+
+  //first make ReleasingContexts/ReleaseProject run
+  try
+    FreeAndNil(XxmProjectCache);
+  except
+    //log?
+  end;
+
   KeptConnections.Free;
   SpoolingConnections.Free;
-  FreeAndNil(XxmProjectCache);
 end;
 
 end.

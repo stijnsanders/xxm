@@ -1,3 +1,7 @@
+v1.2.8.510
+- fixed bug with TXxmWebSocket and ReleaseContexts
+- fixed bug with xxm*Svc*.exe handlers
+
 v1.2.8.500
 - deprecated: xxmLocal, xxmRun
 - deprecated: xxm.xml auto-conversion (see v1.2.5)

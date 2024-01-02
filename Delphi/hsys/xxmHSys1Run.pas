@@ -135,7 +135,7 @@ begin
       DispatchMessage(Msg);
      end
   else
-    Sleep(1);//don't take 100% CPU!
+    SwitchToThread;//don't take 100% CPU!
 end;
 
 end.

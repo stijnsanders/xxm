@@ -12,5 +12,8 @@
 	"units": {
 		"ws1": {}
 	},
+	"resources": {
+		"xxmp.pas": {}
+	},
 	"lastModified": "2015-10-25T23:22:01"
 }

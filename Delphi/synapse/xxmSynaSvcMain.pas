@@ -83,6 +83,14 @@ end;
 procedure TxxmService.ServiceStop(Sender: TService; var Stopped: Boolean);
 begin
   FServer.Free;
+
+  //first make ReleasingContexts/ReleaseProject run
+  try
+    FreeAndNil(XxmProjectCache);
+  except
+    //log?
+  end;
+
   KeptConnections.Free;
   SpoolingConnections.Free;
 end;

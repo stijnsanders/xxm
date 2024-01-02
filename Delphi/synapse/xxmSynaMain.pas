@@ -207,6 +207,14 @@ begin
 
   finally
     Server.Free;
+
+    //first make ReleasingContexts/ReleaseProject run
+    try
+      FreeAndNil(XxmProjectCache);
+    except
+      //log?
+    end;
+
     KeptConnections.Free;
     SpoolingConnections.Free;
   end;
@@ -253,7 +261,8 @@ end;
 
 function TXxmSynaServer.Listening: boolean;
 begin
-  while not(Terminated) and not(FListening) do Sleep(10);
+  while not(Terminated) and not(FListening) do
+    SwitchToThread;//prevent 100% cpu
   Result:=FListening;
 end;
 

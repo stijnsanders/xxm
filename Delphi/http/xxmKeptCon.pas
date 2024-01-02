@@ -61,6 +61,8 @@ var
   i:integer;
 begin
   //TODO: maximum lingering connections? or close oldest on queue newer?
+  if Terminated then raise EXxmShuttingDown.Create(
+    'Connection Queue denied: service is shutting down');
   EnterCriticalSection(FLock);
   try
     Context.State:=SetState;
