@@ -321,11 +321,21 @@ end;
 
 {$ELSE}
 
+type
+  TLoadLibPatch=procedure(tc:cardinal;var h:THandle;fn:PWideChar);
+
+procedure LoadLibPatch(tc:cardinal;var h:THandle;fn:PWideChar);
+begin
+  if (tc and 111)=0 then SwitchToThread;
+  h:=LoadLibraryW(fn);
+end;
+
 function TXxmProjectEntry.GetProject: IXxmProject;
 var
   fn,d:WideString;
   lp:TXxmProjectLoadProc;
   i,r:DWORD;
+  pp:TLoadLibPatch;
 begin
   if FProject=nil then
    begin
@@ -334,6 +344,7 @@ begin
       //check again in case other thread was locking also
       if FProject=nil then
        begin
+        pp:=@LoadLibPatch;
         inc(FLoadCount);
         FLoadSignature:=GetFileSignature(FFilePath);
         if FLoadSignature='' then //if not(FileExists(FFilePath)) then
@@ -375,8 +386,9 @@ begin
         //xxmHttpAU.exe gets misidintified as Trojan:Win32/Bearfoos.A!ml
         //  and Trojan:Win32/Wacatac.B!ml, trying to work around detection
         //  with deferred call:
-        SwitchToThread;
-        FHandle:=LoadLibraryW(PWideChar(fn));
+
+        //FHandle:=LoadLibraryW(PWideChar(fn));
+        pp(GetTickCount,FHandle,PWideChar(fn));
         if (FHandle=0) and (GetLastError=ERROR_MOD_NOT_FOUND) then
          begin
           //tried SetDllDirectory, doesn't work...
@@ -385,8 +397,8 @@ begin
           i:=Length(fn);
           while (i<>0) and (fn[i]<>'\') do dec(i);
           SetCurrentDirectoryW(PWideChar(Copy(fn,1,i-1)));
-          SwitchToThread;
-          FHandle:=LoadLibraryW(PWideChar(fn));
+          //FHandle:=LoadLibraryW(PWideChar(fn));
+          pp(GetTickCount,FHandle,PWideChar(fn));
           SetCurrentDirectoryW(PWideChar(d));
          end;
         if FHandle=0 then

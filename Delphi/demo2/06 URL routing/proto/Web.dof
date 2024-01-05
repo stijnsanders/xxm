@@ -8,4 +8,4 @@ SearchPath=..\..\public
 UnitOutputDir=dcu
 [Parameters]
 RunParams=xxm://
-HostApplication=C:\Program Files\Internet Explorer\iexplore.exe
+HostApplication=C:\InetPub\xxm\xxmHttp.exe

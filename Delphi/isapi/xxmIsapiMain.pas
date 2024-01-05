@@ -397,7 +397,7 @@ function TXxmIsapiContext.SendData(const Buffer; Count: LongInt): LongInt;
 begin
   if Count=0 then Result:=0 else
    begin
-    while (FIOState and 1)<>0 do Sleep(1);
+    while (FIOState and 1)<>0 do SwitchToThread;
     if FIOState=IOState_Error then
       raise EXxmTransferError.Create(SysErrorMessage(DWORD(FIOStream)));
     Result:=Count;
@@ -556,7 +556,7 @@ begin
   //no inherited! override default behaviour:
   if (BufferSize<>0) and (FContentBuffer.Position>SpoolingThreshold) then
    begin
-    while (FIOState and 1)<>0 do Sleep(1);
+    while (FIOState and 1)<>0 do SwitchToThread;
     if FIOState=IOState_Error then
       raise EXxmTransferError.Create(SysErrorMessage(DWORD(FIOStream)));
     CheckSendStart(true);
@@ -578,7 +578,7 @@ begin
   if (BufferSize<>0) and (ADataSize>SpoolingThreshold) then
    begin
     //assert AData.Size=ADataSize
-    while (FIOState and 1)<>0 do Sleep(1);
+    while (FIOState and 1)<>0 do SwitchToThread;
     if FIOState=IOState_Error then
       raise EXxmTransferError.Create(SysErrorMessage(DWORD(FIOStream)));
     CheckSendStart(true);
@@ -620,7 +620,7 @@ procedure TXxmIsapiContext.Suspend(const EventKey: WideString;
 begin
   if State=ctSuspended then
     raise EXxmContextAlreadySuspended.Create(SXxmContextAlreadySuspended);
-  while (FIOState and 1)<>0 do Sleep(1);
+  while (FIOState and 1)<>0 do SwitchToThread;
   if FIOState=IOState_Error then
     raise EXxmTransferError.Create(SysErrorMessage(DWORD(FIOStream)));
   FResumeFragment:=ResumeFragment;
