@@ -98,7 +98,7 @@ begin
   Server:=TTcpServer.Create;
   Server6:=TTcpServer.Create(AF_INET6);
   try
-    Server.Bind('',HttpListenPort);
+    Server.Bind(HttpBindIPv4,HttpListenPort);
     //TODO: bind to multiple ports
     Server.Listen;
 
@@ -106,7 +106,7 @@ begin
       ShellExecute(GetDesktopWindow,nil,PChar(StartURL),nil,nil,SW_NORMAL);//check result?
 
     try
-      Server6.Bind('',HttpListenPort);
+      Server6.Bind(HttpBindIPv6,HttpListenPort);
       //TODO: bind to multiple ports
       Server6.Listen;
       Listener6:=TXxmHttpServerListener.Create(Server6);

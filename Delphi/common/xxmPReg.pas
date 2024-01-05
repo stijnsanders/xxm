@@ -482,23 +482,41 @@ begin
     //more? settings?
   then
     raise EXxmFileTypeAccessDenied.Create(SXxmFileTypeAccessDenied);
-
-  r:=TRegistry.Create;
-  try
-    r.RootKey:=HKEY_CLASSES_ROOT;
-    if r.OpenKeyReadOnly(x) and r.ValueExists('Content Type') then
-      Result:=r.ReadString('Content Type')
-    else
-      if (x='.log') or (x='.ini') then //override default for a few known types
-        Result:='text/plain'
-      else if x='.js' then Result:='text/javascript'
-      else if x='.css' then Result:='text/css'
-      //TODO: more? from config?
+  Result:='';//default, see below
+  if (x='') or (x[1]<>'.') or (Length(x)<2) then
+    Result:='application/octet-stream'
+  else
+    case x[2] of //default for a few known types
+      'c':if x='.css' then Result:='text/css';
+      'g':if x='.gif' then Result:='image/gif';
+      'h':if x='.html' then Result:='text/html' else
+          if x='.htm' then Result:='text/html';
+      'i':if x='.ini' then Result:='text/plain' else
+          if x='.ico' then Result:='image/x-icon';
+      'j':if x='.js' then Result:='text/javascript' else
+          if x='.jpg' then Result:='image/jpeg' else
+          if x='.jpeg' then Result:='image/jpeg' else
+          if x='.json' then Result:='application/json';
+      'l':if x='.log' then Result:='text/plain';
+      's':if x='.svg' then Result:='image/svg+xml';
+      't':if x='.txt' then Result:='text/plain';
+      'x':if x='.xml' then Result:='text/xml';
+      'z':if x='.zip' then Result:='application/x-zip-compressed';
+      //TODO: more from config?
+    end;
+  if Result='' then
+   begin
+    r:=TRegistry.Create;
+    try
+      r.RootKey:=HKEY_CLASSES_ROOT;
+      if r.OpenKeyReadOnly(x) and r.ValueExists('Content Type') then
+        Result:=r.ReadString('Content Type')
       else
         Result:='application/octet-stream';
-  finally
-    r.Free;
-  end;
+    finally
+      r.Free;
+    end;
+   end;
 end;
 
 {$IFNDEF XXM_INLINE_PROJECT}
@@ -555,6 +573,9 @@ var
   i:integer;
   r:TResourceStream;
   p:pointer;
+{$IFDEF XXM_INLINE_PROJECT}
+  s:string;
+{$ENDIF}
 const
   RT_HTML = MakeIntResource(23);
 begin
@@ -568,6 +589,17 @@ begin
 {$IFDEF XXM_INLINE_PROJECT}
   FProjectEntry:=TXxmProjectEntry.Create(XxmProjectName,'',false);
   FProjectEntry.FProject:=XxmProjectLoad(XxmProjectName);
+
+  SetLength(s,MAX_PATH);
+  SetLength(s,GetModuleFileName(HInstance,
+    PChar(s),MAX_PATH));
+  if Copy(s,1,4)='\\?\' then
+    s:=Copy(s,5,Length(s)-4);
+  i:=Length(s);
+  while (i<>0) and (s[i]<>PathDelim) do dec(i);
+  SetLength(s,i);
+
+  FProjectEntry.SetFilePath(s,false);
   FDefaultProject:=XxmProjectName;
   {$IFDEF HSYS1}{$DEFINE IgnoreProjectNameInURL}{$ENDIF}
   {$IFDEF HSYS2}{$DEFINE IgnoreProjectNameInURL}{$ENDIF}
@@ -590,7 +622,7 @@ begin
     FRegFilePath:=Copy(FRegFilePath,5,Length(FRegFilePath)-4);
   i:=Length(FRegFilePath);
   while (i<>0) and (FRegFilePath[i]<>PathDelim) do dec(i);
-  FRegFilePath:=Copy(FRegFilePath,1,i);
+  SetLength(FRegFilePath,i);
 
   //settings?
   
