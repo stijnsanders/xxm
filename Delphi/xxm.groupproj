@@ -108,21 +108,6 @@
         <Projects Include="hsys\xxmHSys2SvcAU.dproj">
             <Dependencies/>
         </Projects>
-        <Projects Include="synapse\xxmSyna.dproj">
-            <Dependencies/>
-        </Projects>
-        <Projects Include="synapse\xxmSynaAU.dproj">
-            <Dependencies/>
-        </Projects>
-        <Projects Include="synapse\xxmSynaDev.dproj">
-            <Dependencies/>
-        </Projects>
-        <Projects Include="synapse\xxmSynaSvc.dproj">
-            <Dependencies/>
-        </Projects>
-        <Projects Include="synapse\xxmSynaSvcAU.dproj">
-            <Dependencies/>
-        </Projects>
     </ItemGroup>
     <ProjectExtensions>
         <Borland.Personality>Default.Personality.12</Borland.Personality>
@@ -446,59 +431,14 @@
     <Target Name="xxmHSys2SvcAU:Make">
         <MSBuild Projects="hsys\xxmHSys2SvcAU.dproj" Targets="Make"/>
     </Target>
-    <Target Name="xxmSyna">
-        <MSBuild Projects="synapse\xxmSyna.dproj"/>
-    </Target>
-    <Target Name="xxmSyna:Clean">
-        <MSBuild Projects="synapse\xxmSyna.dproj" Targets="Clean"/>
-    </Target>
-    <Target Name="xxmSyna:Make">
-        <MSBuild Projects="synapse\xxmSyna.dproj" Targets="Make"/>
-    </Target>
-    <Target Name="xxmSynaAU">
-        <MSBuild Projects="synapse\xxmSynaAU.dproj"/>
-    </Target>
-    <Target Name="xxmSynaAU:Clean">
-        <MSBuild Projects="synapse\xxmSynaAU.dproj" Targets="Clean"/>
-    </Target>
-    <Target Name="xxmSynaAU:Make">
-        <MSBuild Projects="synapse\xxmSynaAU.dproj" Targets="Make"/>
-    </Target>
-    <Target Name="xxmSynaDev">
-        <MSBuild Projects="synapse\xxmSynaDev.dproj"/>
-    </Target>
-    <Target Name="xxmSynaDev:Clean">
-        <MSBuild Projects="synapse\xxmSynaDev.dproj" Targets="Clean"/>
-    </Target>
-    <Target Name="xxmSynaDev:Make">
-        <MSBuild Projects="synapse\xxmSynaDev.dproj" Targets="Make"/>
-    </Target>
-    <Target Name="xxmSynaSvc">
-        <MSBuild Projects="synapse\xxmSynaSvc.dproj"/>
-    </Target>
-    <Target Name="xxmSynaSvc:Clean">
-        <MSBuild Projects="synapse\xxmSynaSvc.dproj" Targets="Clean"/>
-    </Target>
-    <Target Name="xxmSynaSvc:Make">
-        <MSBuild Projects="synapse\xxmSynaSvc.dproj" Targets="Make"/>
-    </Target>
-    <Target Name="xxmSynaSvcAU">
-        <MSBuild Projects="synapse\xxmSynaSvcAU.dproj"/>
-    </Target>
-    <Target Name="xxmSynaSvcAU:Clean">
-        <MSBuild Projects="synapse\xxmSynaSvcAU.dproj" Targets="Clean"/>
-    </Target>
-    <Target Name="xxmSynaSvcAU:Make">
-        <MSBuild Projects="synapse\xxmSynaSvcAU.dproj" Targets="Make"/>
-    </Target>
     <Target Name="Build">
-        <CallTarget Targets="xxmConv;xxmProto;xxmProject;xxmIsapiEx;xxmIsapiAU;xxmIsapiDev;xxmHttp;xxmHttpAU;xxmHttpDev;xxmHttpSvc;xxmHttpSvcAU;xxmCGI;xxmHost;xxmHostAU;xxmHostDev;xxmHostSvc;xxmHostSvcAU;xxmSCGI;xxmSCGIAU;xxmSCGIDev;xxmSCGISvc;xxmSCGISvcAU;xxmAhttpd;xxmAhttpdAU;xxmAhttpdDev;xxmHSys1;xxmHSys1AU;xxmHSys1Dev;xxmHSys1Svc;xxmHSys1SvcAU;xxmHSys2;xxmHSys2AU;xxmHSys2Dev;xxmHSys2Svc;xxmHSys2SvcAU;xxmSyna;xxmSynaAU;xxmSynaDev;xxmSynaSvc;xxmSynaSvcAU"/>
+        <CallTarget Targets="xxmConv;xxmProto;xxmProject;xxmIsapiEx;xxmIsapiAU;xxmIsapiDev;xxmHttp;xxmHttpAU;xxmHttpDev;xxmHttpSvc;xxmHttpSvcAU;xxmCGI;xxmHost;xxmHostAU;xxmHostDev;xxmHostSvc;xxmHostSvcAU;xxmSCGI;xxmSCGIAU;xxmSCGIDev;xxmSCGISvc;xxmSCGISvcAU;xxmAhttpd;xxmAhttpdAU;xxmAhttpdDev;xxmHSys1;xxmHSys1AU;xxmHSys1Dev;xxmHSys1Svc;xxmHSys1SvcAU;xxmHSys2;xxmHSys2AU;xxmHSys2Dev;xxmHSys2Svc;xxmHSys2SvcAU"/>
     </Target>
     <Target Name="Clean">
-        <CallTarget Targets="xxmConv:Clean;xxmProto:Clean;xxmProject:Clean;xxmIsapiEx:Clean;xxmIsapiAU:Clean;xxmIsapiDev:Clean;xxmHttp:Clean;xxmHttpAU:Clean;xxmHttpDev:Clean;xxmHttpSvc:Clean;xxmHttpSvcAU:Clean;xxmCGI:Clean;xxmHost:Clean;xxmHostAU:Clean;xxmHostDev:Clean;xxmHostSvc:Clean;xxmHostSvcAU:Clean;xxmSCGI:Clean;xxmSCGIAU:Clean;xxmSCGIDev:Clean;xxmSCGISvc:Clean;xxmSCGISvcAU:Clean;xxmAhttpd:Clean;xxmAhttpdAU:Clean;xxmAhttpdDev:Clean;xxmHSys1:Clean;xxmHSys1AU:Clean;xxmHSys1Dev:Clean;xxmHSys1Svc:Clean;xxmHSys1SvcAU:Clean;xxmHSys2:Clean;xxmHSys2AU:Clean;xxmHSys2Dev:Clean;xxmHSys2Svc:Clean;xxmHSys2SvcAU:Clean;xxmSyna:Clean;xxmSynaAU:Clean;xxmSynaDev:Clean;xxmSynaSvc:Clean;xxmSynaSvcAU:Clean"/>
+        <CallTarget Targets="xxmConv:Clean;xxmProto:Clean;xxmProject:Clean;xxmIsapiEx:Clean;xxmIsapiAU:Clean;xxmIsapiDev:Clean;xxmHttp:Clean;xxmHttpAU:Clean;xxmHttpDev:Clean;xxmHttpSvc:Clean;xxmHttpSvcAU:Clean;xxmCGI:Clean;xxmHost:Clean;xxmHostAU:Clean;xxmHostDev:Clean;xxmHostSvc:Clean;xxmHostSvcAU:Clean;xxmSCGI:Clean;xxmSCGIAU:Clean;xxmSCGIDev:Clean;xxmSCGISvc:Clean;xxmSCGISvcAU:Clean;xxmAhttpd:Clean;xxmAhttpdAU:Clean;xxmAhttpdDev:Clean;xxmHSys1:Clean;xxmHSys1AU:Clean;xxmHSys1Dev:Clean;xxmHSys1Svc:Clean;xxmHSys1SvcAU:Clean;xxmHSys2:Clean;xxmHSys2AU:Clean;xxmHSys2Dev:Clean;xxmHSys2Svc:Clean;xxmHSys2SvcAU:Clean"/>
     </Target>
     <Target Name="Make">
-        <CallTarget Targets="xxmConv:Make;xxmProto:Make;xxmProject:Make;xxmIsapiEx:Make;xxmIsapiAU:Make;xxmIsapiDev:Make;xxmHttp:Make;xxmHttpAU:Make;xxmHttpDev:Make;xxmHttpSvc:Make;xxmHttpSvcAU:Make;xxmCGI:Make;xxmHost:Make;xxmHostAU:Make;xxmHostDev:Make;xxmHostSvc:Make;xxmHostSvcAU:Make;xxmSCGI:Make;xxmSCGIAU:Make;xxmSCGIDev:Make;xxmSCGISvc:Make;xxmSCGISvcAU:Make;xxmAhttpd:Make;xxmAhttpdAU:Make;xxmAhttpdDev:Make;xxmHSys1:Make;xxmHSys1AU:Make;xxmHSys1Dev:Make;xxmHSys1Svc:Make;xxmHSys1SvcAU:Make;xxmHSys2:Make;xxmHSys2AU:Make;xxmHSys2Dev:Make;xxmHSys2Svc:Make;xxmHSys2SvcAU:Make;xxmSyna:Make;xxmSynaAU:Make;xxmSynaDev:Make;xxmSynaSvc:Make;xxmSynaSvcAU:Make"/>
+        <CallTarget Targets="xxmConv:Make;xxmProto:Make;xxmProject:Make;xxmIsapiEx:Make;xxmIsapiAU:Make;xxmIsapiDev:Make;xxmHttp:Make;xxmHttpAU:Make;xxmHttpDev:Make;xxmHttpSvc:Make;xxmHttpSvcAU:Make;xxmCGI:Make;xxmHost:Make;xxmHostAU:Make;xxmHostDev:Make;xxmHostSvc:Make;xxmHostSvcAU:Make;xxmSCGI:Make;xxmSCGIAU:Make;xxmSCGIDev:Make;xxmSCGISvc:Make;xxmSCGISvcAU:Make;xxmAhttpd:Make;xxmAhttpdAU:Make;xxmAhttpdDev:Make;xxmHSys1:Make;xxmHSys1AU:Make;xxmHSys1Dev:Make;xxmHSys1Svc:Make;xxmHSys1SvcAU:Make;xxmHSys2:Make;xxmHSys2AU:Make;xxmHSys2Dev:Make;xxmHSys2Svc:Make;xxmHSys2SvcAU:Make"/>
     </Target>
     <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
 </Project>

@@ -1,3 +1,6 @@
+v1.?.?.?
+- deprecated: xxmSyna*
+
 v1.2.8.510
 - fixed bug with TXxmWebSocket and ReleaseContexts
 - fixed bug with xxm*Svc*.exe handlers

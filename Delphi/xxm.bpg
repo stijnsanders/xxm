@@ -16,8 +16,7 @@ PROJECTS = xxmConv.exe xxmProto.xxl xxmProject.exe xxmIsapiEx.dll \
   xxmSCGIDev.exe xxmSCGISvc.exe xxmSCGISvcAU.exe xxmAhttpd.dll xxmAhttpdAU.dll \
   xxmAhttpdDev.dll xxmHSys1.exe xxmHSys1AU.exe xxmHSys1Dev.exe xxmHSys1Svc.exe \
   xxmHSys1SvcAU.exe xxmHSys2.exe xxmHSys2AU.exe xxmHSys2Dev.exe xxmHSys2Svc.exe \
-  xxmHSys2SvcAU.exe xxmSyna.exe xxmSynaAU.exe xxmSynaDev.exe xxmSynaSvc.exe \
-  xxmSynaSvcAU.exe
+  xxmHSys2SvcAU.exe
 #------------------------------------------------------------------------------
 default: $(PROJECTS)
 #------------------------------------------------------------------------------
@@ -98,21 +97,6 @@ xxmHSys1Svc.exe: hsys\xxmHSys1Svc.dpr
   $(DCC)
 
 xxmHSys1SvcAU.exe: hsys\xxmHSys1SvcAU.dpr
-  $(DCC)
-
-xxmSyna.exe: synapse\xxmSyna.dpr
-  $(DCC)
-
-xxmSynaAU.exe: synapse\xxmSynaAU.dpr
-  $(DCC)
-
-xxmSynaDev.exe: synapse\xxmSynaDev.dpr
-  $(DCC)
-
-xxmSynaSvc.exe: synapse\xxmSynaSvc.dpr
-  $(DCC)
-
-xxmSynaSvcAU.exe: synapse\xxmSynaSvcAU.dpr
   $(DCC)
 
 xxmHSys2.exe: hsys\xxmHSys2.dpr
