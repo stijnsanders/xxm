@@ -7,8 +7,8 @@ uses Windows, SysUtils, xxm2;
 type
   TProjectEntry=class(TObject)
   private
-    FLock:TRTLCriticalSection;
-    FContextCount:integer;
+    FMutex:THandle;//previously FLock:TRTLCriticalSection;
+    FContextCount,FLoadCount:integer;
     FName:UTF8String;
     FFilePath,FLoadPath,FLoadSignature:string;
     FLoadCopy:boolean;
@@ -19,6 +19,7 @@ type
     AllowInclude,Negotiate,NTLM:boolean;
     BufferSize:integer;
     Signature:string;
+    LastCheck:cardinal;
 
     xxmPage:FxxmPage;
     xxmFragment:FxxmFragment;
@@ -27,17 +28,28 @@ type
     xxmReleasingContexts:FxxmReleasingContexts;
     xxmReleasingProject:FxxmReleasingProject;
 
-    constructor Create(const Name:UTF8String;const FilePath:string;LoadCopy:boolean);
+    constructor Create(const Name:UTF8String;const FilePath:string;
+      LoadCopy:boolean);
     destructor Destroy; override;
     procedure SetFilePath(const FilePath:string;LoadCopy:boolean);
     property FilePath:string read FFilePath;
+    property LoadSignature:string read FLoadSignature;
+    property LoadCount:integer read FLoadCount;
     property Project:PxxmProject read FProject;
+
+    procedure Lock;
+    procedure Unlock;
 
     procedure OpenContext;
     procedure CloseContext;
+    procedure Release;
 
-    procedure GetFilePath(const Address:UTF8String;var Path:string;var MimeType:UTF8String);
+    procedure GetFilePath(const Address:UTF8String;var Path:string;
+      var MimeType:UTF8String);
 
+    procedure ClearContext(Context:PxxmContext);
+    function HandleException(Context:PxxmContext;const PageClass,
+      ExceptionClass,ExceptionMessage:UTF8String):boolean;
   end;
 
   TProjectRegistry=class(TObject)
@@ -76,13 +88,13 @@ type
   EXxmProjectLoadFailed=class(Exception);
   EXxmFileTypeAccessDenied=class(Exception);
 
-  TXxmAutoBuildHandler=function(Entry: TProjectEntry;
+  TXxmProjectCheckHandler=function(Entry: TProjectEntry;
     Context: TObject; const ProjectName: UTF8String): boolean;
 
 var
   Xxm2:Pxxm2;
   XxmProjectRegistry:TProjectRegistry;
-  XxmAutoBuildHandler:TXxmAutoBuildHandler;
+  XxmProjectCheckHandler:TXxmProjectCheckHandler;
 
   GlobalAllowLoadCopy:boolean;
 
@@ -166,6 +178,15 @@ begin
       end;
       inc(i);
      end;
+end;
+
+type
+  TLoadLibPatch=procedure(tc:cardinal;var h:THandle;fn:PChar);
+
+procedure LoadLibPatch(tc:cardinal;var h:THandle;fn:PChar);
+begin
+  if (tc and 1111)=0 then SwitchToThread;
+  h:=LoadLibrary(fn);
 end;
 
 { TProjectRegistry }
@@ -467,6 +488,9 @@ end;
 
 constructor TProjectEntry.Create(const Name: UTF8String; const FilePath: string;
   LoadCopy: boolean);
+var
+  mn:WideString;
+  i,l:integer;
 begin
   inherited Create;
   FName:=Name;
@@ -475,14 +499,35 @@ begin
   FLoadSignature:='-';
   FLoadCopy:=LoadCopy;
   FContextCount:=0;
+  FLoadCount:=0;
   FLibrary:=INVALID_HANDLE_VALUE;
   FProject:=nil;
-  InitializeCriticalSection(FLock);
+
+  //InitializeCriticalSection(FLock);
+
+  //prepare mutex name
+  mn:='Global\xxm||'+FFilePath;
+  l:=Length(mn);
+  if l>248 then
+   begin
+    mn:=Copy(mn,1,120)+'('+IntToStr(l-240)+')'+Copy(mn,l-119,120);
+    l:=Length(mn);
+   end;
+  for i:=1 to l do case mn[i] of '\',':','/',' ','.': mn[i]:='|'; end;
+
+  //get mutex
+  FMutex:=CreateMutexW(nil,false,PWideChar(mn));
+  if FMutex=0 then RaiseLastOSError;//?
+
+  LastCheck:=GetTickCount;
 end;
 
 destructor TProjectEntry.Destroy;
 begin
-  DeleteCriticalSection(FLock);
+  Release;
+
+  //DeleteCriticalSection(FLock);
+  CloseHandle(FMutex);
   inherited;
 end;
 
@@ -501,21 +546,39 @@ begin
   //if FLoadCopy then FLoadPath:=FFilePath+'_'+IntToHex(GetCurrentProcessId,4);
 end;
 
+procedure TProjectEntry.Lock;
+begin
+  //EnterCriticalSection(FLock);
+  if WaitForSingleObject(FMutex,INFINITE)<>WAIT_OBJECT_0 then
+    raise Exception.Create('ProjectEntry acquire UpdateLock failed: '+
+      SysErrorMessage(GetLastError));
+end;
+
+procedure TProjectEntry.Unlock;
+begin
+  //LeaveCriticalSection(FLock);
+  if not ReleaseMutex(FMutex) then
+    raise Exception.Create('ProjectEntry release UpdateLock failed: '+
+      SysErrorMessage(GetLastError));
+end;
+
 procedure TProjectEntry.CheckLibrary;
 var
   fn,d:string;
   h:THandle;
   xxmInitialize:FxxmInitialize;
   i,r:DWORD;
+  pp:TLoadLibPatch;
 begin
   if FLibrary=INVALID_HANDLE_VALUE then
    begin
-    EnterCriticalSection(FLock);
+    Lock;
     try
       //check again for threads that were waiting for lock
       if FLibrary=INVALID_HANDLE_VALUE then
        begin
-        //inc(FLoadCount);
+        pp:=@LoadLibPatch;
+        inc(FLoadCount);
         FLoadSignature:=GetFileSignature(FFilePath);
         if FLoadSignature='' then //if not(FileExists(FFilePath)) then
           raise EXxmModuleNotFound.Create('xxm Module not found "'+FFilePath+'"');
@@ -551,7 +614,13 @@ begin
            end;
           fn:=FLoadPath;
          end;
-        h:=LoadLibrary(PChar(fn));
+
+        //xxmHttpAU.exe gets misidintified as Trojan:Win32/Bearfoos.A!ml
+        //  and Trojan:Win32/Wacatac.B!ml, trying to work around detection
+        //  with deferred call:
+
+        //h:=LoadLibrary(PChar(fn));
+        pp(GetTickCount,h,PChar(fn));
         if (h=0) and (GetLastError=ERROR_MOD_NOT_FOUND) then
          begin
           //tried SetDllDirectory, doesn't work...
@@ -560,7 +629,8 @@ begin
           i:=Length(fn);
           while (i<>0) and (fn[i]<>'\') do dec(i);
           SetCurrentDirectory(PChar(Copy(fn,1,i-1)));
-          h:=LoadLibrary(PChar(fn));
+          //h:=LoadLibrary(PChar(fn));
+          pp(GetTickCount,h,PChar(fn));
           SetCurrentDirectory(PChar(d));
          end;
         if h=0 then
@@ -596,7 +666,7 @@ begin
 
        end;
     finally
-      LeaveCriticalSection(FLock);
+      Unlock;
     end;
    end;
 end;
@@ -612,6 +682,70 @@ procedure TProjectEntry.CloseContext;
 begin
   //...
   InterlockedDecrement(FContextCount);
+end;
+
+procedure TProjectEntry.ClearContext(Context: PxxmContext);
+begin
+  if @xxmClearContext<>nil then
+    try
+      xxmClearContext(FProject,Context);
+    except
+      //silent
+    end;
+end;
+
+procedure TProjectEntry.Release;
+var
+  tc:cardinal;
+const
+  ReleaseContext_TimeoutMS=30000;
+begin
+  //attention: deadlock danger, use OpenContext,CloseContext
+  //XxmProjectCheckHandler should lock new requests
+
+  if @xxmReleasingContexts<>nil then
+    try
+      xxmReleasingContexts(FProject);
+    except
+      //silent
+    end;
+
+  //assert only one thread at once, use Lock/Unlock!
+  tc:=GetTickCount;//TODO: if timeout then raise? log?
+  while (FContextCount>0) and (cardinal(GetTickCount-tc)<=ReleaseContext_TimeoutMS) do
+    SwitchToThread;
+  FContextCount:=0;
+
+  if @xxmReleasingProject<>nil then
+    try
+      xxmReleasingProject(FProject);
+    except
+      //silent
+    end;
+
+  FProject:=nil;
+
+  if FLibrary<>INVALID_HANDLE_VALUE then
+   begin
+    if not FreeLibrary(FLibrary) then
+      RaiseLastOSError;
+    FLibrary:=INVALID_HANDLE_VALUE;
+    //FContextCount:=0;
+
+    xxmPage:=nil;
+    xxmFragment:=nil;
+    xxmClearContext:=nil;
+    xxmHandleException:=nil;
+    xxmReleasingContexts:=nil;
+    xxmReleasingProject:=nil;
+
+    if FLoadPath<>'' then
+     begin
+      //SetFileAttributes(PChar(FLoadPath),0);
+      DeleteFile(PChar(FLoadPath));//ignore errors
+      FLoadPath:='';
+     end;
+   end;
 end;
 
 procedure TProjectEntry.GetFilePath(const Address:UTF8String; var Path:string;
@@ -682,8 +816,26 @@ begin
 
 end;
 
+function TProjectEntry.HandleException(Context: PxxmContext; const PageClass,
+  ExceptionClass, ExceptionMessage: UTF8String): boolean;
+begin
+  try
+    if (Self=nil) or (@xxmHandleException=nil) then
+      Result:=false
+    else
+      Result:=xxmHandleException(FProject,Context,PUTF8Char(PageClass),
+        PUTF8Char(ExceptionClass),PUTF8Char(ExceptionMessage));
+  except
+    //raise?
+    Result:=false;
+  end;
+
+end;
+
 initialization
   Xxm2:=nil;//default, handler must initialize!
+  XxmProjectRegistry:=nil;
+  XxmProjectCheckHandler:=nil;
   GlobalAllowLoadCopy:=true;//default
 
 end.

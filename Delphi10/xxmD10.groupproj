@@ -6,6 +6,9 @@
         <Projects Include="http\xxmHttp.dproj">
             <Dependencies/>
         </Projects>
+        <Projects Include="http\xxmHttpAU.dproj">
+            <Dependencies/>
+        </Projects>
         <Projects Include="proto\xxmProto.dproj">
             <Dependencies/>
         </Projects>
@@ -26,6 +29,15 @@
     <Target Name="xxmHttp:Make">
         <MSBuild Projects="http\xxmHttp.dproj" Targets="Make"/>
     </Target>
+    <Target Name="xxmHttpAU">
+        <MSBuild Projects="http\xxmHttpAU.dproj"/>
+    </Target>
+    <Target Name="xxmHttpAU:Clean">
+        <MSBuild Projects="http\xxmHttpAU.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="xxmHttpAU:Make">
+        <MSBuild Projects="http\xxmHttpAU.dproj" Targets="Make"/>
+    </Target>
     <Target Name="xxmProto">
         <MSBuild Projects="proto\xxmProto.dproj"/>
     </Target>
@@ -36,13 +48,13 @@
         <MSBuild Projects="proto\xxmProto.dproj" Targets="Make"/>
     </Target>
     <Target Name="Build">
-        <CallTarget Targets="xxmHttp;xxmProto"/>
+        <CallTarget Targets="xxmHttp;xxmHttpAU;xxmProto"/>
     </Target>
     <Target Name="Clean">
-        <CallTarget Targets="xxmHttp:Clean;xxmProto:Clean"/>
+        <CallTarget Targets="xxmHttp:Clean;xxmHttpAU:Clean;xxmProto:Clean"/>
     </Target>
     <Target Name="Make">
-        <CallTarget Targets="xxmHttp:Make;xxmProto:Make"/>
+        <CallTarget Targets="xxmHttp:Make;xxmHttpAU:Make;xxmProto:Make"/>
     </Target>
     <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
 </Project>

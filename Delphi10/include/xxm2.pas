@@ -97,7 +97,7 @@ type
   TContext_Set_Data = procedure (Context:PxxmContext;Data:pointer); stdcall;
 
   TContext_Include = procedure (Context:PxxmContext;Address:PUTF8Char;
-    const Values:array of OleVariant;const Objects: array of TObject); stdcall;
+    const Values:array of Variant;const Objects:array of TObject); stdcall;
   TContext_PostData = function (Context:PxxmContext):TObject; stdcall;
   TContext_Set_ProgressCallback = procedure (Context:PxxmContext;Callback:CxxmProgress;
     RequestID,Flags,Step:NativeUInt); stdcall;

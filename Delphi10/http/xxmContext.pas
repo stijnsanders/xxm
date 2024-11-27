@@ -41,6 +41,9 @@ type
     FProjectName,FFragmentName:UTF8String;
     FProjectEntry:TProjectEntry;
     FPageClass:UTF8String;
+    FPage:CxxmFragment;
+    FIncludeCheck:TObject;
+    FIncludeDepth:cardinal;
     FSingleFileSent:string;
     FProgressCallback:CxxmProgress;
     FProgressRequestID,FProgressReportStep:NativeUInt;
@@ -79,6 +82,8 @@ type
     procedure Bind(Socket:TTcpSocket);
 
     procedure HandleRequest(Sender:TObject);
+    procedure Include(Address:PUTF8Char;const Values:array of Variant;
+      const Objects:array of pointer);
 
     procedure SendStream(s:TStream);
 
@@ -127,7 +132,11 @@ type
   EXxmTransferError=class(EXxmError);
   EXxmPageRedirected=class(EXxmError);
   EXxmResponseHeaderOnly=class(EXxmError);
-  EXxmAutoBuildFailed=class(EXxmError);
+  EXxmProjectCheckFailed=class(EXxmError);
+  EXxmIncludeOnlyOnBuild=class(Exception);
+  EXxmIncludeStackFull=class(Exception);
+  EXxmIncludeFragmentNotFound=class(Exception);
+  EXxmIncludeCrossProjectDisabled=class(Exception);
 
 var
   ContextPool:TxxmContextPool;
@@ -147,6 +156,7 @@ const
   CacheDataSize=$20000;
   CacheSizeGrowStep=8;
   PostDataThreshold=$200000;//2MiB
+  MaxIncludeDepth=64;
 
   UTF8ByteOrderMark:array[0..2] of UTF8Char=(#$EF,#$BB,#$BF);
   UTF16ByteOrderMark:array[0..1] of UTF8Char=(#$FF,#$FE);
@@ -228,6 +238,22 @@ begin
    end;
 end;
 
+type
+  TxxmBufferStore=class(TObject)
+  private
+    FLock: TRTLCriticalSection;
+    FBuffer: array of TMemoryStream;
+    FBufferSize: integer;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    procedure GetBuffer(var x:TMemoryStream);
+    procedure AddBuffer(var x:TMemoryStream);
+  end;
+
+var
+  BufferStore:TxxmBufferStore;
+
 { TxxmContextPool }
 
 function TxxmContextPool.GetContext: TxxmContext;
@@ -279,7 +305,7 @@ begin
   if (FCredNego.dwLower<>nil) or (FCredNego.dwUpper<>nil) then
     FreeCredentialsHandle(@FCredNego);
 
-  //TODO: BufferStore.AddBuffer(FContentBuffer);
+  //TODO BufferStore.AddBuffer(FContentBuffer);
 
   //TODO: EndRequest?
   try
@@ -319,6 +345,9 @@ begin
   FFragmentName:='';
   FProjectEntry:=nil;
   FPageClass:='';
+  FPage:=nil;
+  FIncludeCheck:=nil;
+  FIncludeDepth:=0;
   FSingleFileSent:='';
   FProgressCallback:=nil;
   FChunked:=false;
@@ -346,7 +375,6 @@ var
   p:PUTF8Char;
   s:UTF8String;
   ds:TStream;
-  page:CxxmFragment;
 
   x,y,z:UTF8String;
   fh:THandle;
@@ -544,160 +572,167 @@ begin
       //if FContentBuffer<>nil then FContentBuffer.Position:=0;
 
       //LoadPage;
-      if @XxmAutoBuildHandler<>nil then
-        if not(XxmAutoBuildHandler(FProjectEntry,Self,FProjectName)) then
+      if @XxmProjectCheckHandler<>nil then
+        if not(XxmProjectCheckHandler(FProjectEntry,Self,FProjectName)) then
          begin
           FProjectEntry:=nil;
-          raise EXxmAutoBuildFailed.Create(string(FProjectName));
+          raise EXxmProjectCheckFailed.Create(string(FProjectName));
          end;
       FProjectEntry.OpenContext;
-      if FProjectEntry.Negotiate then AuthSChannel('Negotiate',FCredNego) else
-        if FProjectEntry.NTLM then AuthSChannel('NTLM',FCredNTLM);
+      try
+        if FProjectEntry.Negotiate then AuthSChannel('Negotiate',FCredNego) else
+          if FProjectEntry.NTLM then AuthSChannel('NTLM',FCredNTLM);
 
-      //SetBufferSize(FProjectEntry.BufferSize);
-      page:=FProjectEntry.xxmPage(FProjectEntry.Project,Self,@FFragmentName[1]);
+        //TODO SetBufferSize(FProjectEntry.BufferSize);
+        FPage:=FProjectEntry.xxmPage(FProjectEntry.Project,Self,@FFragmentName[1]);
 
-      if @page=nil then
-       begin
-        //find a file
-        FPageClass:='['+FProjectName+']GetFilePath';
-        FProjectEntry.GetFilePath(FFragmentName,FSingleFileSent,x);
-        fh:=CreateFileW(PWideChar(FSingleFileSent),
-          GENERIC_READ,FILE_SHARE_READ,nil,OPEN_EXISTING,
-          FILE_ATTRIBUTE_NORMAL or FILE_FLAG_SEQUENTIAL_SCAN,0);
-        if (fh<>INVALID_HANDLE_VALUE) then
+        if @FPage=nil then
          begin
-          //TODO: GetRequestHeader('Range')
-          try
-            if GetFileInformationByHandle(fh,fd) then
-             begin
-              FileTimeToSystemTime(fd.ftLastWriteTime,st);
-              y:=UTF8String(RFC822DateGMT(SystemTimeToDateTime(st)));
-              fs:=fd.nFileSizeHigh shl 32 or fd.nFileSizeLow;
-             end
-            else
-             begin
-              y:='';
-              fs:=0;
-             end;
-            FAutoEncoding:=aeContentDefined;
-            SetResponseHeader('Content-Type',Store(x));
-            //TODO: Cache-Control max-age (and others?), other 'If-'s?
-            if (y<>'') and UTF8CmpI(GetRequestHeader('If-Modified-Since'),@y[1]) then
-             begin
-              FStatusCode:=304;
-              FStatusText:='Not Modified';
-              SendHeader;
-              CloseHandle(fh);
-             end
-            else
-             begin
-              //send the file
-              if y<>'' then SetResponseHeader('Last-Modified',Store(y));
-              if fs<>0 then SetResponseHeader('Content-Length',Store(IntToStr8(fs)));
-              FAutoEncoding:=aeContentDefined;
-
-              SendHeader;
-
-              ds:=TOwningHandleStream.Create(fh);//does CloseHandle(fh) when done
-  {//TODO
-              if fs>SpoolingThreshold then
+          //find a file
+          FPageClass:='['+FProjectName+']GetFilePath';
+          FProjectEntry.GetFilePath(FFragmentName,FSingleFileSent,x);
+          fh:=CreateFileW(PWideChar(FSingleFileSent),
+            GENERIC_READ,FILE_SHARE_READ,nil,OPEN_EXISTING,
+            FILE_ATTRIBUTE_NORMAL or FILE_FLAG_SEQUENTIAL_SCAN,0);
+          if (fh<>INVALID_HANDLE_VALUE) then
+           begin
+            //TODO: GetRequestHeader('Range')
+            try
+              if GetFileInformationByHandle(fh,fd) then
                begin
-                ds.Seek(0,soFromEnd);//used by SpoolingConnections.Add
-                SpoolingConnections.Add(Self,AData,true);
+                FileTimeToSystemTime(fd.ftLastWriteTime,st);
+                y:=UTF8String(RFC822DateGMT(SystemTimeToDateTime(st)));
+                fs:=fd.nFileSizeHigh shl 32 or fd.nFileSizeLow;
                end
               else
-  }
                begin
-                SendStream(ds);
-                //if FBufferSize<>0 then Flush;
+                y:='';
+                fs:=0;
                end;
+              FAutoEncoding:=aeContentDefined;
+              SetResponseHeader('Content-Type',Store(x));
+              //TODO: Cache-Control max-age (and others?), other 'If-'s?
+              if (y<>'') and UTF8CmpI(GetRequestHeader('If-Modified-Since'),@y[1]) then
+               begin
+                FStatusCode:=304;
+                FStatusText:='Not Modified';
+                SendHeader;
+                CloseHandle(fh);
+               end
+              else
+               begin
+                //send the file
+                if y<>'' then SetResponseHeader('Last-Modified',Store(y));
+                if fs<>0 then SetResponseHeader('Content-Length',Store(IntToStr8(fs)));
+                FAutoEncoding:=aeContentDefined;
 
-             end;
-          except //not finally!
-            CloseHandle(fh);
-            raise;
-          end;
-         end
-        else
-         begin
-          FPageClass:='['+FProjectName+']404:'+FFragmentName;
-          page:=FProjectEntry.xxmPage(FProjectEntry.Project,Self,'404.xxm');
-          if @page=nil then
-           begin
-            FStatusCode:=404;
-            FStatusText:='File not found';
-            x:=HTMLEncode(FFragmentName);
-            y:=UTF8String(UTF8ByteOrderMark)+
-              '<html><head><title>File not found: '+x+'</title></head>'
-              +#13#10'<body style="font-family:sans-serif;background-color:white;color:black;margin:0em;">'
-              +#13#10'<h1 style="background-color:red;color:white;margin:0em;padding:0.1em;">'
-                +HTMLEncode(FProjectName)+'</h1>'
-              +#13#10'<p style="margin:0.1em;">File not found.<br />'+x+'<br /><b>'
-                +HTMLEncode(UTF8Encode(FSingleFileSent))+'</b><br />'
-                +HTMLEncode(ContextString(csURL))+'</p>'
-              +#13#10'<p style="background-color:red;color:white;font-size:0.8em;margin:0em;padding:0.2em;text-align:right;">'
-              +#13#10'<a href="http://yoy.be/xxm/" style="color:white;">'
-                +HTMLEncode(SelfVersion)+'</a></p></body></html>'
-              ;
-            SetResponseHeader('Content-Length',Store(IntToStr8(Length(y))));
-            SetResponseHeader('Content-Type','text/html; charset="utf-8"');
-            FAutoEncoding:=aeContentDefined;//since included in y here
-            SendHeader;
-            FSocket.SendBuf(y[1],Length(y));
+                SendHeader;
+
+                ds:=TOwningHandleStream.Create(fh);//does CloseHandle(fh) when done
+{//TODO
+                if fs>SpoolingThreshold then
+                 begin
+                  ds.Seek(0,soFromEnd);//used by SpoolingConnections.Add
+                  SpoolingConnections.Add(Self,AData,true);
+                 end
+                else
+}
+                 begin
+                  SendStream(ds);
+                  //if FBufferSize<>0 then Flush;
+                 end;
+
+               end;
+            except //not finally!
+              CloseHandle(fh);
+              raise;
+            end;
            end
           else
            begin
-            page(Self,[FFragmentName,FSingleFileSent,x],[]);
-            //TODO: if FBufferSize<>0 then FlushFinal;
-           end;
-         end;
-
-       end
-      else
-       begin
-        //build the page
-        FPageClass:=FFragmentName;
-        SetResponseHeader('Content-Type','text/html');//default
-
-        //build page
-        page(Self,[],[]);
-
-  {//TODO
-        //close page
-        if State in [ctHeaderNotSent..ctResponding] then
-         begin
-          if State<>ctResponding then
-           begin
-            if FBufferSize=0 then i:=0 else i:=FContentBuffer.Position;
-            if (i=0) and (FStatusCode=200) then
+            FPageClass:='['+FProjectName+']404:'+FFragmentName;
+            FPage:=FProjectEntry.xxmPage(FProjectEntry.Project,Self,'404.xxm');
+            if @FPage=nil then
              begin
-              FStatusCode:=204;
-              FStatusText:='No Content';
-             end;
-            if (FStatusCode<>304) and not(FChunked) then //if State<>ctHeaderOnly then
-              SetResponseHeader('Content-Length',Store(IntToStr8(i)));
-            if i=0 then
-             begin
+              FStatusCode:=404;
+              FStatusText:='File not found';
+              x:=HTMLEncode(FFragmentName);
+              y:=UTF8String(UTF8ByteOrderMark)+
+                '<html><head><title>File not found: '+x+'</title></head>'
+                +#13#10'<body style="font-family:sans-serif;background-color:white;color:black;margin:0em;">'
+                +#13#10'<h1 style="background-color:red;color:white;margin:0em;padding:0.1em;">'
+                  +HTMLEncode(FProjectName)+'</h1>'
+                +#13#10'<p style="margin:0.1em;">File not found.<br />'+x+'<br /><b>'
+                  +HTMLEncode(UTF8Encode(FSingleFileSent))+'</b><br />'
+                  +HTMLEncode(ContextString(csURL))+'</p>'
+                +#13#10'<p style="background-color:red;color:white;font-size:0.8em;margin:0em;padding:0.2em;text-align:right;">'
+                +#13#10'<a href="http://yoy.be/xxm/" style="color:white;">'
+                  +HTMLEncode(SelfVersion)+'</a></p></body></html>'
+                ;
+              SetResponseHeader('Content-Length',Store(IntToStr8(Length(y))));
+              SetResponseHeader('Content-Type','text/html; charset="utf-8"');
+              FAutoEncoding:=aeContentDefined;//since included in y here
               SendHeader;
-              State:=ctHeaderOnly;
+              FSocket.SendBuf(y[1],Length(y));
+             end
+            else
+             begin
+              FPage(Self,[FFragmentName,FSingleFileSent,x],[]);
+              //TODO: if FBufferSize<>0 then FlushFinal;
              end;
            end;
-          FlushFinal;
+
+         end
+        else
+         begin
+          //build the page
+          FPageClass:=FFragmentName;
+          SetResponseHeader('Content-Type','text/html');//default
+
+          //build page
+          FPage(Self,[],[]);
+
+{//TODO
+          //close page
+          if State in [ctHeaderNotSent..ctResponding] then
+           begin
+            if State<>ctResponding then
+             begin
+              if FBufferSize=0 then i:=0 else i:=FContentBuffer.Position;
+              if (i=0) and (FStatusCode=200) then
+               begin
+                FStatusCode:=204;
+                FStatusText:='No Content';
+               end;
+              if (FStatusCode<>304) and not(FChunked) then //if State<>ctHeaderOnly then
+                SetResponseHeader('Content-Length',Store(IntToStr8(i)));
+              if i=0 then
+               begin
+                SendHeader;
+                //State:=ctHeaderOnly;
+               end;
+             end;
+            FlushFinal;
+           end;
+}
          end;
-  }
-       end;
+
+      finally
+        FProjectEntry.CloseContext;
+      end;
+      FProjectEntry.ClearContext(Self);
 
      end;
 
   except
     on EXxmPageRedirected do Flush;
     on EXxmResponseHeaderOnly do Flush;
-    on EXxmAutoBuildFailed do ;//assert output done
+    on EXxmProjectCheckFailed do ;//assert output done
     on EXxmConnectionLost do ;
     on e:Exception do
      begin
-      //TODO: if not HandleException(e) then
+      if not(FProjectEntry.HandleException(Self,FPageClass,
+        UTF8Encode(e.ClassName),UTF8Encode(e.Message))) then
        begin
         FStatusCode:=500;
         FStatusText:='Internal Server Error';
@@ -1025,6 +1060,103 @@ begin
         if FSocket.SendBuf(d[1],l)<>l then
           raise EXxmTransferError.Create(SysErrorMessage(GetLastError));
     until l=0;
+end;
+
+type
+  TxxmCrossProjectIncludeCheck=class(TObject)
+  public
+    Entry:TProjectEntry;
+    Next:TxxmCrossProjectIncludeCheck;
+    constructor Create(AEntry: TProjectEntry;
+      ANext: TxxmCrossProjectIncludeCheck);
+  end;
+
+procedure TxxmContext.Include(Address: PUTF8Char;
+  const Values: array of Variant; const Objects: array of pointer);
+var
+  p,pb:CxxmFragment;
+  pa,pc,pn:UTF8String;
+  pe:TProjectEntry;
+  px:TXxmCrossProjectIncludeCheck;
+  i,j,l:integer;
+begin
+  if @FPage=nil then
+    raise EXxmIncludeOnlyOnBuild.Create('Include only allowed when building a page');
+  if FIncludeDepth=MaxIncludeDepth then
+    raise EXxmIncludeStackFull.Create('Maximum level of includes exceeded');
+  pa:=Address;
+  pe:=FProjectEntry;
+  pn:=FProjectName;
+  pb:=FPage;
+  pc:=FPageClass;
+  inc(FIncludeDepth);
+  try
+    if Copy(pa,1,4)='xxm:' then
+      if pe.AllowInclude then
+       begin
+        //cross-project include
+        l:=Length(Address);
+        i:=5;
+        if (i<=l) and (pa[i]='/') then inc(i);
+        if (i<=l) and (pa[i]='/') then inc(i);
+        j:=i;
+        while (j<=l) and not(pa[j] in ['/','?','&','$','#']) do inc(j);
+        FProjectName:=Copy(pa,i,j-i);
+        if (j<=l) and (pa[j]='/') then inc(j);
+        FProjectEntry:=XxmProjectRegistry.GetProjectEntry(PUtf8Char(FProjectName));
+        //XxmProjectCheckHandler but check for recurring PE's to avoid deadlock
+        if @XxmProjectCheckHandler<>nil then
+         begin
+          px:=FIncludeCheck as TXxmCrossProjectIncludeCheck;
+          while (px<>nil) and (px.Entry<>FProjectEntry) do px:=px.Next;
+          if px=nil then
+            if not(XxmProjectCheckHandler(FProjectEntry,Self,FProjectName)) then
+              raise EXxmProjectCheckFailed.Create(string(FProjectName));
+          //if px<>nil then raise? just let the request complete
+         end;
+        p:=FProjectEntry.xxmFragment(FProjectEntry.Project,Self,PUTF8Char(
+          Copy(Address,j,l-j+1)));//TODO: RelativePath
+        if @p=nil then
+          raise EXxmIncludeFragmentNotFound.Create(
+            'Include fragment not found "'+string(pa)+'"');
+        FPage:=p;
+        px:=TXxmCrossProjectIncludeCheck.Create(pe,
+          FIncludeCheck as TxxmCrossProjectIncludeCheck);
+        try
+          FIncludeCheck:=px;
+          FProjectEntry.OpenContext;
+          try
+            FPageClass:=FProjectName+':'+pa+' < '+pc;
+            p(Self,Values,Objects);
+          finally
+            FProjectEntry.CloseContext;
+          end;
+        finally
+          FIncludeCheck:=px.Next;
+          px.Free;
+        end;
+       end
+      else
+        raise EXxmIncludeCrossProjectDisabled.Create(
+          'Cross-project includes disabled')
+    else
+     begin
+      //FPage.Project?
+      pn:='';
+      p:=FProjectEntry.xxmFragment(FProjectEntry.Project,Self,PUTF8Char(pa));//TODO: RelativePath
+      if @p=nil then
+        raise EXxmIncludeFragmentNotFound.Create(
+          'Include fragment not found "'+string(pa)+'"');
+      FPage:=p;
+      FPageClass:=pa+' < '+pc;
+      p(Self,Values,Objects);
+     end;
+    FPageClass:=pc; //not in finally: preserve on exception
+  finally
+    dec(FIncludeDepth);
+    FProjectEntry:=pe;
+    FPage:=pb;
+  end;
 end;
 
 procedure TxxmContext.Flush;
@@ -1457,14 +1589,13 @@ end;
 
 function Context_BufferSize(Context:PxxmContext):NativeUInt; stdcall;
 begin
-  //Result:=TxxmContext(Context).BufferSize;
-  //TODO
+  //TODO Result:=TxxmContext(Context).BufferSize;
   Result:=0;
 end;
 
 procedure Context_Set_BufferSize(Context:PxxmContext;Value:NativeUInt); stdcall;
 begin
-  //TxxmContext(Context).BufferSize:=Value;
+  //TODO TxxmContext(Context).BufferSize:=Value;
 end;
 
 function Context_Connected(Context:PxxmContext):boolean; stdcall;
@@ -1743,10 +1874,9 @@ begin
 end;
 
 procedure Context_Include(Context:PxxmContext;Address:PUTF8Char;
-  const Values:array of OleVariant;const Objects: array of TObject); stdcall;
+  const Values:array of Variant;const Objects:array of pointer); stdcall;
 begin
-  //TODO
-  //TxxmContext(Context).Include(
+  TxxmContext(Context).Include(Address,Values,Objects);
 end;
 
 function Context_PostData(Context:PxxmContext):TObject; stdcall;
@@ -2172,14 +2302,99 @@ begin
   Result:=not(Ensure(2)) or ((FData[FIndex]='-') and (FData[FIndex+1]='-'));
 end;
 
+{ TxxmCrossProjectIncludeCheck }
+
+constructor TxxmCrossProjectIncludeCheck.Create(AEntry: TProjectEntry;
+  ANext: TxxmCrossProjectIncludeCheck);
+begin
+  inherited Create;
+  Entry:=AEntry;
+  Next:=ANext;
+end;
+
+{ TxxmBufferStore }
+
+constructor TxxmBufferStore.Create;
+begin
+  inherited Create;
+  FBufferSize:=0;
+  InitializeCriticalSection(FLock);
+end;
+
+destructor TxxmBufferStore.Destroy;
+var
+  i:integer;
+begin
+  for i:=0 to FBufferSize-1 do //downto?
+    try
+      FreeAndNil(FBuffer[i]);
+    except
+      //silent
+    end;
+  DeleteCriticalSection(FLock);
+  inherited;
+end;
+
+procedure TxxmBufferStore.AddBuffer(var x: TMemoryStream);
+var
+  i:integer;
+begin
+  if x<>nil then
+   begin
+    EnterCriticalSection(FLock);
+    try
+      i:=0;
+      while (i<FBufferSize) and (FBuffer[i]<>nil) do inc(i);
+      if i=FBufferSize then
+       begin
+        inc(FBufferSize,$400);//grow
+        SetLength(FBuffer,FBufferSize);
+       end;
+      FBuffer[i]:=x;
+      x.Position:=0;
+    finally
+      LeaveCriticalSection(FLock);
+      x:=nil;
+    end;
+   end;
+end;
+
+procedure TxxmBufferStore.GetBuffer(var x: TMemoryStream);
+var
+  i:integer;
+begin
+  if x=nil then
+   begin
+    EnterCriticalSection(FLock);
+    try
+      i:=0;
+      while (i<FBufferSize) and (FBuffer[i]=nil) do inc(i);
+      if i=FBufferSize then
+       begin
+        x:=THeapStream.Create;//TODO: tmp file when large buffer
+       end
+      else
+       begin
+        x:=FBuffer[i];
+        FBuffer[i]:=nil;
+       end;
+    finally
+      LeaveCriticalSection(FLock);
+    end;
+   end;
+end;
+
 initialization
   GetSelfVersion;
   Randomize;
   SessionCookie:=UTF8String('xxm'+Format('%.6x%.6x%.6x%.6x',[
     Random($1000000),Random($1000000),Random($1000000),Random($1000000)]));
   ContextPool:=TxxmContextPool.Create;
+  BufferStore:=TXxmBufferStore.Create;
   SetupXxm2;
+
 finalization
   ContextPool.Free;
+  BufferStore.Free;
 
 end.
