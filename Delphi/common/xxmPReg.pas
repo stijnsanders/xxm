@@ -1085,7 +1085,7 @@ begin
     try
       i:=0;
       while (i<FAuthCacheIndex) and (FAuthCache[i].SessionID<>SessionID) do inc(i);
-      if (i<FAuthCacheIndex) and (FAuthCache[i].Expires>Now) then
+      if (i<FAuthCacheIndex) and (FAuthCache[i].Expires>UTCNow) then
         Result:=FAuthCache[i].AuthName;
     finally
       LeaveCriticalSection(FLock);
@@ -1117,7 +1117,7 @@ begin
        end;
       FAuthCache[i].SessionID:=SessionID;
       FAuthCache[i].AuthName:=AuthName;
-      FAuthCache[i].Expires:=Now+AuthCacheTimeoutMins/MinsPerDay;
+      FAuthCache[i].Expires:=UTCNow+AuthCacheTimeoutMins/MinsPerDay;
     finally
       LeaveCriticalSection(FLock);
     end;

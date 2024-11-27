@@ -72,6 +72,7 @@ type
   EXxmMaximumHeaderLines=class(Exception);
   EXxmContextStringUnknown=class(Exception);
   EXxmUnknownPostDataTymed=class(Exception);
+  EXxmAuthenticationError=class(Exception);
 
 var
   //TODO: array, spread evenly over background threads
@@ -91,6 +92,7 @@ const
   HTTPMaxHeaderParseTimeMS=10000;
   PostDataThreshold=$100000;//1MiB
   SpoolingThreshold=$10000;//64KiB
+  SecurityContextExpireInterval=2.0/24.0;//2h
 
 type
   EXxmConnectionLost=class(Exception);
@@ -429,7 +431,10 @@ begin
      begin
       if Cred.dwLower=nil then
         if AcquireCredentialsHandle(nil,PAnsiChar(Package),SECPKG_CRED_INBOUND,
-          nil,nil,nil,nil,@Cred,nil)<>0 then RaiseLastOSError;
+          nil,nil,nil,nil,@Cred,nil)=0 then //ptsExpiry is unreliable?
+          Cred.xExpires:=UTCNow+SecurityContextExpireInterval
+        else
+          RaiseLastOSError;
 
       SetLength(d,3);
       SetLength(t,$10000);
@@ -492,7 +497,7 @@ begin
         ResponseStr('<h1>Authorization required</h1>','401.1');
        end
       else
-        raise Exception.Create(SysErrorMessage(r));
+        raise EXxmAuthenticationError.Create(SysErrorMessage(r));
      end;
    end;
 end;

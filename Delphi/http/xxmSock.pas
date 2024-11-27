@@ -59,6 +59,8 @@ type
   TCredHandle=record
     dwLower:pointer;
     dwUpper:pointer;
+    //non Windows addition to keep track of security context age
+    xExpires:TDateTime;
   end;
   PCredHandle=^TCredHandle;
 

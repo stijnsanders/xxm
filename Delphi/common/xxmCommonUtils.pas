@@ -4,6 +4,7 @@ interface
 
 uses SysUtils, Classes;
 
+function UTCNow:TDateTime;
 function RFC822DateGMT(dd: TDateTime): string;
 function GetFileModifiedDateTime(const FilePath:AnsiString;
   var FileSize:Int64):TDateTime;
@@ -33,6 +34,16 @@ type
 implementation
 
 uses Windows;
+
+function UTCNow:TDateTime;
+var
+  st:TSystemTime;
+begin
+  GetSystemTime(st);
+  Result:=
+    EncodeDate(st.wYear,st.wMonth,st.wDay)+
+    EncodeTime(st.wHour,st.wMinute,st.wSecond,st.wMilliseconds);
+end;
 
 function RFC822DateGMT(dd: TDateTime): string;
 const
