@@ -12,6 +12,9 @@
         <Projects Include="proto\xxmProto.dproj">
             <Dependencies/>
         </Projects>
+        <Projects Include="project\xxmProject.dproj">
+            <Dependencies/>
+        </Projects>
     </ItemGroup>
     <ProjectExtensions>
         <Borland.Personality>Default.Personality.12</Borland.Personality>
@@ -47,14 +50,23 @@
     <Target Name="xxmProto:Make">
         <MSBuild Projects="proto\xxmProto.dproj" Targets="Make"/>
     </Target>
+    <Target Name="xxmProject">
+        <MSBuild Projects="project\xxmProject.dproj"/>
+    </Target>
+    <Target Name="xxmProject:Clean">
+        <MSBuild Projects="project\xxmProject.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="xxmProject:Make">
+        <MSBuild Projects="project\xxmProject.dproj" Targets="Make"/>
+    </Target>
     <Target Name="Build">
-        <CallTarget Targets="xxmHttp;xxmHttpAU;xxmProto"/>
+        <CallTarget Targets="xxmHttp;xxmHttpAU;xxmProto;xxmProject"/>
     </Target>
     <Target Name="Clean">
-        <CallTarget Targets="xxmHttp:Clean;xxmHttpAU:Clean;xxmProto:Clean"/>
+        <CallTarget Targets="xxmHttp:Clean;xxmHttpAU:Clean;xxmProto:Clean;xxmProject:Clean"/>
     </Target>
     <Target Name="Make">
-        <CallTarget Targets="xxmHttp:Make;xxmHttpAU:Make;xxmProto:Make"/>
+        <CallTarget Targets="xxmHttp:Make;xxmHttpAU:Make;xxmProto:Make;xxmProject:Make"/>
     </Target>
     <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
 </Project>
