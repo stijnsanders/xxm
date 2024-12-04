@@ -4,74 +4,74 @@ interface
 
 uses xxm2;
 
-procedure page2(Context:PxxmContext;
+procedure page2(Context:CxxmContext;
   const Values:array of Variant;const Objects:array of pointer); stdcall;
 
 implementation
 
 uses SysUtils, xxmProtoMain, xxmTools;
 
-procedure page2(Context:PxxmContext;
+procedure page2(Context:CxxmContext;
   const Values:array of Variant;const Objects:array of pointer); stdcall;
 var
   s:string;
   i:integer;
-  p:PXxmParameter;
-  p1,p2:PUTF8Char;
+  p:CXxmParameter;
+  p1,p2:UTF8String;
 begin
-  xxm.Context_SendHTML(Context,PUTF8Char('Hello world<br>'+
+  Context.SendHTML('Hello world<br>'+
     UTF8String(DateTimeToStr(Now))+'<br>'+
-    UTF8String(xxm.Context_ContextString(Context,csVersion))+'<br>'+
-    UTF8String(xxm.Context_URL(Context))));
+    Context.ContextString(csVersion)+'<br>'+
+    Context.URL);
 
-  xxm.Context_SendHTML(Context,'<p><a href="."><img src="http://yoy.be/yoy_bg.png"></a></p>');
+  Context.SendHTML('<p><a href="."><img src="http://yoy.be/yoy_bg.png"></a></p>');
 
-  s:=string(xxm.Context_ContextString(Context,csQueryString));
-  xxm.Context_SendHTML(Context,'<p><b>[</b>');
-  xxm.Context_SendHTML(Context,PUTF8Char(UTF8Encode(StringReplace(s,'&','&amp;',[rfReplaceAll]))));
-  xxm.Context_SendHTML(Context,'<b>]</b></p>');
+  s:=string(Context.ContextString(csQueryString));
+  Context.SendHTML('<p><b>[</b>');
+  Context.SendHTML(PUTF8Char(UTF8Encode(StringReplace(s,'&','&amp;',[rfReplaceAll]))));
+  Context.SendHTML('<b>]</b></p>');
 
   if xxm.Context_PostData(Context)=nil then
-    xxm.Context_SendHTML(Context,'<p><b>no post data</b></p>')
+    Context.SendHTML('<p><b>no post data</b></p>')
   else
    begin
-    xxm.Context_Send(Context,xxm.Context_ContextString(Context,csPostMimeType));
-    xxm.Context_SendHTML(Context,'<br />---');
-    //Context.PostData.ClassName ? no longer available since TStream changed to IStream
-    xxm.Context_SendHTML(Context,'<br /><xmp style="border: 2px solid red;">');
-    xxm.Context_SendStream(Context,xxm.Context_PostData(Context));
-    xxm.Context_SendHTML(Context,'</xmp>');
+    Context.Send(Context.ContextString(csPostMimeType));
+    Context.SendHTML('<br />---');
+    //Context.PostData.ClassName ?
+    Context.SendHTML('<br /><xmp style="border: 2px solid red;">');
+    Context.SendStream(xxm.Context_PostData(Context));
+    Context.SendHTML('</xmp>');
    end;
 
-  xxm.Context_SendHTML(Context,'<p style="border: 2px solid blue;">');
+  Context.SendHTML('<p style="border: 2px solid blue;">');
 
-  p:=xxm.Context_Parameter(Context,'uploadtest');
+  p:=Context['uploadtest'];
 
-  xxm.Context_Send(Context,xxm.Parameter_Value(p));
-  xxm.Context_SendHTML(Context,'</p>');
+  Context.Send(p.Value);
+  Context.SendHTML('</p>');
 
-  xxm.Context_SendHTML(Context,'<p><u>Parameters</u></p>');
+  Context.SendHTML('<p><u>Parameters</u></p>');
 
-  for i:=0 to xxm.Context_ParameterCount(Context)-1 do
+  for i:=0 to Context.ParameterCount-1 do
    begin
     try
-      p:=xxm.Context_ParameterByIdx(Context,i);
-      s:=string(xxm.Parameter_Origin(p));
-      xxm.Context_SendHTML(Context,PUTF8Char(UTF8Encode(
-        '<p><b>'+s+'</b>: '+ string(xxm.Parameter_Name(p)) +' = '+string(HTMLEncode(xxm.Parameter_Value(p)))+'</p>')));
+      p:=Context.GetParameter(i);
+      s:=string(p.Origin);
+      Context.SendHTML(UTF8Encode(
+        '<p><b>'+s+'</b>: '+ string(HTMLEncode(p.Name)) +' = '+string(HTMLEncode(p.Value))+'</p>'));
     except
       on e:Exception do
-        xxm.Context_SendHTML(Context,PUTF8Char(UTF8Encode(
-          '<p style="color: red;">'+HTMLEncode(UTF8Encode(e.Message))+'</p>')));
+        Context.SendHTML(UTF8Encode(
+          '<p style="color: red;">'+HTMLEncode(UTF8Encode(e.Message))+'</p>'));
     end;
    end;
 
-  xxm.Context_SendHTML(Context,'<p><u>RequestHeaders</u></p>');
+  Context.SendHTML('<p><u>RequestHeaders</u></p>');
 
-  for i:=0 to xxm.Context_RequestHeaderCount(Context)-1 do
+  for i:=0 to Context.RequestHeaderCount-1 do
     try
-      xxm.Context_RequestHeaderByIdx(Context,i,p1,p2);
-      xxm.Context_SendHTML(Context,PUTF8Char('<p><b>'+HTMLEncode(p1)+'</b>: '+HTMLEncode(p2)+'</p>'));
+      Context.GetRequestHeader(i,p1,p2);
+      Context.SendHTML(PUTF8Char('<p><b>'+HTMLEncode(p1)+'</b>: '+HTMLEncode(p2)+'</p>'));
       {
       if y<>nil then
        begin
@@ -83,12 +83,12 @@ begin
        }
     except
       on e:Exception do
-        xxm.Context_SendHTML(Context,PUTF8Char('<p style="color: red;">'+HTMLEncode(UTF8Encode(e.Message))+'</p>'));
+        Context.SendHTML(PUTF8Char('<p style="color: red;">'+HTMLEncode(UTF8Encode(e.Message))+'</p>'));
     end;
 
-  p:=xxm.Context_Parameter(Context,'uploadtest');
-  if xxm.Parameter_Origin(p)='FILE' then
-    xxm.Parameter_SaveToFile(p,'C:\temp\temp.dat');
+  p:=Context.Parameter['uploadtest'];
+  if p.Origin='FILE' then
+    p.SaveToFile('C:\temp\temp.dat');
 
 {//TODO
   with TStringContext.Create(Context,Self) do

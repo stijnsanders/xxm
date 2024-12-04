@@ -4,9 +4,6 @@ interface
 
 uses SysUtils, xxm2;
 
-var
-  xxm:Pxxm2;
-
 function XxmInitialize(APILevel:NativeUInt;xxm2:Pxxm2;
   AProjectName:PUTF8Char):PxxmProject; stdcall;
 
@@ -36,10 +33,10 @@ var
 begin
   n:=Address;
   if n='' then
-    Result:=page1
+    Result:=CxxmFragment(@page1)
   else
   if n='test.xxm' then
-    Result:=page2
+    Result:=CxxmFragment(@page2)
   else
     Result:=nil;
 end;

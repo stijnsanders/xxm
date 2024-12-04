@@ -133,6 +133,7 @@ type
   EXxmPageRedirected=class(EXxmError);
   EXxmResponseHeaderOnly=class(EXxmError);
   EXxmProjectCheckFailed=class(EXxmError);
+  EXxmIncludeNoFragmentHandler=class(Exception);
   EXxmIncludeOnlyOnBuild=class(Exception);
   EXxmIncludeStackFull=class(Exception);
   EXxmIncludeFragmentNotFound=class(Exception);
@@ -1114,6 +1115,9 @@ begin
               raise EXxmProjectCheckFailed.Create(string(FProjectName));
           //if px<>nil then raise? just let the request complete
          end;
+        if @FProjectEntry.xxmFragment=nil then
+          raise EXxmIncludeNoFragmentHandler.Create('Project "'+string(FProjectName)+
+            '" doesn''t provide a fragment handler');
         p:=FProjectEntry.xxmFragment(FProjectEntry.Project,Self,PUTF8Char(
           Copy(Address,j,l-j+1)));//TODO: RelativePath
         if @p=nil then
@@ -1143,6 +1147,8 @@ begin
      begin
       //FPage.Project?
       pn:='';
+      if @FProjectEntry.xxmFragment=nil then
+        raise EXxmIncludeNoFragmentHandler.Create('Nu fragment handler is available');
       p:=FProjectEntry.xxmFragment(FProjectEntry.Project,Self,PUTF8Char(pa));//TODO: RelativePath
       if @p=nil then
         raise EXxmIncludeFragmentNotFound.Create(
@@ -2020,10 +2026,16 @@ begin
   Result:=(Stream as TStream).CopyFrom(d,p.PostDataLen);//TODO: buffersize from config?
 end;
 
+procedure CompatibilityGuard; stdcall;
+begin
+  raise Exception.Create('This call is not yet available in this version');
+end;
+
 procedure SetupXxm2;
 var
   xxmHttp:Pxxm2;
   l,x:DWORD;
+  p0,p1:pointer;
 begin
   //l:=SizeOf(Txxm2);//TODO: get page size?
   l:=$400;
@@ -2086,6 +2098,16 @@ begin
   xxmHttp.Parameter_ContentType:=@Parameter_ContentType;
   xxmHttp.Parameter_SaveToFile:=@Parameter_SaveToFile;
   xxmHttp.Parameter_SaveToStream:=@Parameter_SaveToStream;
+
+  p0:=xxmHttp;
+  p1:=xxmHttp;
+  inc(NativeInt(p0),SizeOf(Txxm2));
+  inc(NativeInt(p1),l);
+  while NativeInt(p0)<NativeInt(p1) do
+   begin
+    pointer(p0^):=@CompatibilityGuard;
+    inc(NativeInt(p0),SizeOf(pointer));
+   end;
 
   VirtualProtect(xxmHttp,l,PAGE_READONLY,@x);
   //if not then RaiseLastOSError?

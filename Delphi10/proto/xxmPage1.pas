@@ -4,49 +4,49 @@ interface
 
 uses xxm2;
 
-procedure page1(Context:PxxmContext;
+procedure page1(Context:CxxmContext;
   const Values:array of Variant;const Objects:array of pointer); stdcall;
 
 implementation
 
 uses xxmProtoMain;
 
-procedure page1(Context:PxxmContext;
+procedure page1(Context:CxxmContext;
   const Values:array of Variant;const Objects:array of pointer); stdcall;
 begin
   //Context_Include('head.xxmi',['title',1]);
-  xxm.Context_SendHTML(Context,'<p><a href="test.xxm">test</a><p>');
+  Context.SendHTML('<p><a href="test.xxm">test</a><p>');
 
-  xxm.Context_SendHTML(Context,'<p><b>multipart</b></p>');
-  xxm.Context_SendHTML(Context,'<form action="test.xxm?getpar=x" method="post" enctype="multipart/form-data">');
-  xxm.Context_SendHTML(Context,'<input type="checkbox" name="iterate" value="1" /><br />');
-  xxm.Context_SendHTML(Context,'<input type="text" name="test" /><br />');
-  xxm.Context_SendHTML(Context,'<input type="image" src="http://yoy.be/yoy_bg.png" name="testimg" /><br />');
-  xxm.Context_SendHTML(Context,'<input type="file" name="uploadtest" /><br />');
-  xxm.Context_SendHTML(Context,'<input type="submit" />');
-  xxm.Context_SendHTML(Context,'</form>');
+  Context.SendHTML('<p><b>multipart</b></p>');
+  Context.SendHTML('<form action="test.xxm?getpar=x" method="post" enctype="multipart/form-data">');
+  Context.SendHTML('<input type="checkbox" name="iterate" value="1" /><br />');
+  Context.SendHTML('<input type="text" name="test" /><br />');
+  Context.SendHTML('<input type="image" src="http://yoy.be/yoy_bg.png" name="testimg" /><br />');
+  Context.SendHTML('<input type="file" name="uploadtest" /><br />');
+  Context.SendHTML('<input type="submit" />');
+  Context.SendHTML('</form>');
 
-  xxm.Context_SendHTML(Context,'<p><b>post</b></p>');
-  xxm.Context_SendHTML(Context,'<form action="test.xxm?getpar=x" method="post">');
-  xxm.Context_SendHTML(Context,'<input type="checkbox" name="iterate" value="1" /><br />');
-  xxm.Context_SendHTML(Context,'<input type="text" name="test" /><br />');
-  xxm.Context_SendHTML(Context,'<input type="image" src="http://yoy.be/yoy_bg.png" name="testimg" /><br />');
-  xxm.Context_SendHTML(Context,'<input type="file" name="uploadtest" /><br />');
-  xxm.Context_SendHTML(Context,'<input type="submit" />');
-  xxm.Context_SendHTML(Context,'</form>');
+  Context.SendHTML('<p><b>post</b></p>');
+  Context.SendHTML('<form action="test.xxm?getpar=x" method="post">');
+  Context.SendHTML('<input type="checkbox" name="iterate" value="1" /><br />');
+  Context.SendHTML('<input type="text" name="test" /><br />');
+  Context.SendHTML('<input type="image" src="http://yoy.be/yoy_bg.png" name="testimg" /><br />');
+  Context.SendHTML('<input type="file" name="uploadtest" /><br />');
+  Context.SendHTML('<input type="submit" />');
+  Context.SendHTML('</form>');
 
-  xxm.Context_SendHTML(Context,'<p><b>get</b></p>');
-  xxm.Context_SendHTML(Context,'<form action="test.xxm?getpar=x" method="get">');
-  xxm.Context_SendHTML(Context,'<input type="checkbox" name="iterate" value="1" /><br />');
-  xxm.Context_SendHTML(Context,'<input type="text" name="test" /><br />');
-  xxm.Context_SendHTML(Context,'<input type="image" src="http://yoy.be/yoy_bg.png" name="testimg" /><br />');
-  xxm.Context_SendHTML(Context,'<input type="file" name="uploadtest" /><br />');
-  xxm.Context_SendHTML(Context,'<input type="submit" />');
-  xxm.Context_SendHTML(Context,'</form>');
+  Context.SendHTML('<p><b>get</b></p>');
+  Context.SendHTML('<form action="test.xxm?getpar=x" method="get">');
+  Context.SendHTML('<input type="checkbox" name="iterate" value="1" /><br />');
+  Context.SendHTML('<input type="text" name="test" /><br />');
+  Context.SendHTML('<input type="image" src="http://yoy.be/yoy_bg.png" name="testimg" /><br />');
+  Context.SendHTML('<input type="file" name="uploadtest" /><br />');
+  Context.SendHTML('<input type="submit" />');
+  Context.SendHTML('</form>');
 
-  xxm.Context_Flush(Context);
+  Context.Flush;
 
-  //Context_Include('foot.xxmi');
+  //Context.Include('foot.xxmi');
 end;
 
 
