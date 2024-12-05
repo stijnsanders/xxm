@@ -25,11 +25,11 @@ object EditProjectForm: TEditProjectForm
     Anchors = [akLeft, akTop, akRight, akBottom]
     TabOrder = 0
     object tsProject: TTabSheet
-      BorderWidth = 4
+      BorderWidth = 3
       Caption = 'Project'
       DesignSize = (
-        409
-        436)
+        411
+        438)
       object Label2: TLabel
         Left = 3
         Top = 51
@@ -65,7 +65,7 @@ object EditProjectForm: TEditProjectForm
       object txtPreCompCmds: TMemo
         Left = 3
         Top = 72
-        Width = 403
+        Width = 405
         Height = 70
         Anchors = [akLeft, akTop, akRight]
         ScrollBars = ssBoth
@@ -76,7 +76,7 @@ object EditProjectForm: TEditProjectForm
       object txtCompCmds: TMemo
         Left = 3
         Top = 169
-        Width = 403
+        Width = 405
         Height = 70
         Anchors = [akLeft, akTop, akRight]
         ScrollBars = ssBoth
@@ -87,7 +87,7 @@ object EditProjectForm: TEditProjectForm
       object txtPostCompCmds: TMemo
         Left = 3
         Top = 266
-        Width = 403
+        Width = 405
         Height = 70
         Anchors = [akLeft, akTop, akRight]
         ScrollBars = ssBoth
@@ -107,7 +107,7 @@ object EditProjectForm: TEditProjectForm
       object txtProjectName: TEdit
         Left = 3
         Top = 24
-        Width = 403
+        Width = 405
         Height = 23
         Anchors = [akLeft, akTop, akRight]
         TabOrder = 4
@@ -115,14 +115,14 @@ object EditProjectForm: TEditProjectForm
       end
     end
     object tsFiles: TTabSheet
-      BorderWidth = 7
+      BorderWidth = 3
       Caption = 'Files'
       ImageIndex = 1
       object tvFiles: TTreeView
         Left = 0
         Top = 0
-        Width = 403
-        Height = 430
+        Width = 411
+        Height = 438
         Align = alClient
         Images = ImageList1
         Indent = 19
@@ -135,17 +135,17 @@ object EditProjectForm: TEditProjectForm
         OnCreateNodeClass = tvFilesCreateNodeClass
         OnDblClick = tvFilesDblClick
         OnExpanding = tvFilesExpanding
-        ExplicitLeft = -3
-        ExplicitTop = 3
+        ExplicitWidth = 403
+        ExplicitHeight = 430
       end
     end
     object tsParserVals: TTabSheet
-      BorderWidth = 4
+      BorderWidth = 3
       Caption = 'Parser Values'
       ImageIndex = 2
       DesignSize = (
-        409
-        436)
+        411
+        438)
       object Label3: TLabel
         Left = 3
         Top = 3
@@ -156,8 +156,8 @@ object EditProjectForm: TEditProjectForm
       end
       object Label4: TLabel
         Left = 3
-        Top = 418
-        Width = 403
+        Top = 420
+        Width = 405
         Height = 15
         Anchors = [akLeft, akRight, akBottom]
         AutoSize = False
@@ -173,11 +173,13 @@ object EditProjectForm: TEditProjectForm
         ParentColor = False
         ParentFont = False
         Transparent = False
+        ExplicitTop = 418
+        ExplicitWidth = 403
       end
       object cbParserValue: TComboBox
         Left = 3
         Top = 24
-        Width = 403
+        Width = 405
         Height = 23
         Style = csDropDownList
         Anchors = [akLeft, akTop, akRight]
@@ -201,12 +203,13 @@ object EditProjectForm: TEditProjectForm
           ',) Extra4 close'
           ';( Extra5 open'
           ';) Extra5 close')
+        ExplicitWidth = 403
       end
       object txtParserValue: TMemo
         Left = 3
         Top = 53
-        Width = 403
-        Height = 359
+        Width = 405
+        Height = 361
         Anchors = [akLeft, akTop, akRight, akBottom]
         Font.Charset = DEFAULT_CHARSET
         Font.Color = clWindowText
@@ -219,6 +222,43 @@ object EditProjectForm: TEditProjectForm
         WantTabs = True
         WordWrap = False
         OnChange = txtParserValueChange
+        ExplicitWidth = 403
+        ExplicitHeight = 359
+      end
+    end
+    object TabSheet1: TTabSheet
+      BorderWidth = 3
+      Caption = 'Advanced'
+      ImageIndex = 3
+      DesignSize = (
+        411
+        438)
+      object lblProtoPath: TLabel
+        Left = 3
+        Top = 3
+        Width = 123
+        Height = 15
+        Caption = 'Alternative proto folder'
+        FocusControl = txtProtoPath
+      end
+      object txtProtoPath: TEdit
+        Left = 3
+        Top = 24
+        Width = 374
+        Height = 23
+        Anchors = [akLeft, akTop, akRight]
+        TabOrder = 0
+        OnChange = txtChange
+      end
+      object btnProtoPathSelect: TButton
+        Left = 383
+        Top = 23
+        Width = 25
+        Height = 25
+        Anchors = [akTop, akRight]
+        Caption = '...'
+        TabOrder = 1
+        OnClick = btnProtoPathSelectClick
       end
     end
   end

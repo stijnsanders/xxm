@@ -30,15 +30,13 @@ function XxmPage(Project:PxxmProject;Context:PxxmContext;
   Address:PUTF8Char):CxxmFragment; stdcall;
 var
   n:UTF8String;
+  p:pointer;
 begin
   n:=Address;
-  if n='' then
-    Result:=CxxmFragment(@page1)
-  else
-  if n='test.xxm' then
-    Result:=CxxmFragment(@page2)
-  else
-    Result:=nil;
+  if n='' then p:=@page1 else
+  if n='test.xxm' then p:=@page2 else
+    p:=nil;
+  Result:=CxxmFragment(p);
 end;
 
 end.

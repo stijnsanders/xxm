@@ -3,11 +3,13 @@ unit xxmp;
 {
   xxm Project
 
-This is a default xxm Project class inheriting from TXxmProject. You are free to change this one for your project.
-Use LoadPage to process URL's as a requests is about to start.
-(Be carefull with sending content from here though.)
+This is a default xxm Project class inheriting from TXxmProject.
+You are free to change this one for your project.
+(It's advised to delete this comment block on the generated xxmp.pas.)
+Use LoadPage to process URL's as a request is about to start.
+(Be careful with sending content from there though!)
 It is advised to link each request to a session here, if you want session management.
-(See  an example xxmSession.pas in the public folder.)
+(See an example xxmSession.pas in the public folder.)
 Use LoadFragment to handle calls made to Context.Include.
 
   $Rev: 457 $ $Date: 2018-07-12 22:39:00 +0200 (do, 12 jul 2018) $

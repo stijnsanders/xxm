@@ -58,6 +58,10 @@ type
     Label4: TLabel;
     Label1: TLabel;
     txtProjectName: TEdit;
+    TabSheet1: TTabSheet;
+    lblProtoPath: TLabel;
+    txtProtoPath: TEdit;
+    btnProtoPathSelect: TButton;
     procedure txtProjectNameChange(Sender: TObject);
     procedure Exit1Click(Sender: TObject);
     procedure New1Click(Sender: TObject);
@@ -82,6 +86,7 @@ type
     procedure cbParserValueChange(Sender: TObject);
     procedure txtParserValueChange(Sender: TObject);
     procedure txtChange(Sender: TObject);
+    procedure btnProtoPathSelectClick(Sender: TObject);
   private
     Modified:boolean;
     ProjectPath,ProjectFolder:string;
@@ -107,24 +112,9 @@ type
 var
   EditProjectForm: TEditProjectForm;
 
-const
-  XxmProjectFileName='Web.xxmp';
-  XxmModuleExtension='.xxl';
-  XxmProtoExtension='.proto.pas';
-  DelphiProjectExtension='.dpr';
-  DelphiExtension='.pas';
-  ProjectLogExtension='.log';
-  SignaturesFileName='xxmp.~db';
-  SignaturesUpdateReasonKey='::';
-  LinesMapExtension='.~ln';
-
-  ProtoProjectDpr='Web.dpr';
-  ProtoProjectMask='Web.*';
-  ProtoProjectPas='xxmp.pas';
-  ProtoDirectory='proto';
-  SourceDirectory='src';
-
 implementation
+
+uses xxmDefs, Vcl.FileCtrl;
 
 {$R *.dfm}
 
@@ -508,7 +498,7 @@ begin
     Result:=true;//?
     fn:=Path;
     //Path could be by parameter, so resolve and expand
-    if DirectoryExists(fn) then
+    if SysUtils.DirectoryExists(fn) then
       fn:=IncludeTrailingPathDelimiter(fn)+XxmProjectFileName;
    end;
 
@@ -557,6 +547,7 @@ begin
     LoadMemo('postCompileCommand',txtPostCompCmds);
     LastParserValue:=-1;
     cbParserValue.ItemIndex:=-1;
+    txtProtoPath.Text:=VarToStr(ProjectData['protopath']);
 
     i:=Length(ProjectPath);
     while (i<>0) and (ProjectPath[i]<>PathDelim) do dec(i);
@@ -626,6 +617,8 @@ begin
   SaveMemo('preCompileCommand',txtPreCompCmds);
   SaveMemo('compileCommand',txtCompCmds);
   SaveMemo('postCompileCommand',txtPostCompCmds);
+  if txtProtoPath.Text='' then ProjectData.Delete('protopath') else
+    ProjectData['protopath']:=txtProtoPath.Text;
   ProjectData['lastModified']:=
     FormatDateTime('yyyy-mm-dd"T"hh:nn:ss',Now);//timezone?
   s:=#$EF#$BB#$BF+UTF8Encode(ProjectData.AsString);
@@ -648,24 +641,6 @@ const
     'Extra3Open','Extra3Close',
     'Extra4Open','Extra4Close',
     'Extra5Open','Extra5Close'
-  );
-
-type
-  TXxmFileType=(
-    ftPage,
-    ftInclude,
-    ftProject,
-    //add new here above
-    ft_Unknown
-  );
-
-const
-  XxmFileExtension:array[TXxmFileType] of string=(
-    '.xxm',
-    '.xxmi',
-    '.xxmp',
-    //add new here above
-    ''
   );
 
 procedure TEditProjectForm.Save1Click(Sender: TObject);
@@ -941,6 +916,22 @@ begin
    end;
   //txtParserValue.Modified:=false;
   LastParserValue:=cbParserValue.ItemIndex;
+end;
+
+procedure TEditProjectForm.btnProtoPathSelectClick(Sender: TObject);
+var
+  s,d:string;
+begin
+  s:=txtProtoPath.text;
+  d:=ExcludeTrailingPathDelimiter(ExtractFilePath(ProjectPath));
+  if s='' then s:=d;
+  if SelectDirectory('Select proto path','',s,
+    [sdNewUI,sdNewFolder,sdShowEdit,sdShowShares,sdValidateDir],Self) then
+   begin
+    if s=d then s:='';
+    txtProtoPath.Text:=s;
+    Modified:=true;
+   end;
 end;
 
 end.

@@ -3,7 +3,8 @@ program xxmProject;
 uses
   Vcl.Forms,
   xxmEditProject in 'xxmEditProject.pas' {EditProjectForm},
-  jsonDoc in '..\common\jsonDoc.pas';
+  jsonDoc in '..\common\jsonDoc.pas',
+  xxmDefs in 'xxmDefs.pas';
 
 {$R *.res}
 

@@ -1,7 +1,7 @@
 {
 	"name": "listprojects",
 	"uuid": "{B9DC538D-D879-42CA-9C71-C00BECBA8E5F}",
-	"compileCommand": "dcc32 -U[[HandlerPath]]public -Q [[ProjectName]].dpr",
+	"compileCommand": "C:\\Delphi7\\bin\\dcc32.exe -U[[HandlerPath]]public -Q [[ProjectName]].dpr",
 	"files": {
 		"default_xxm": {
 			"unitName": "default_xxm1",

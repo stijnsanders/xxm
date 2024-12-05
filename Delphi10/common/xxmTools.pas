@@ -25,7 +25,6 @@ function HTMLEncode(const Data:UTF8String):UTF8String;
 function Base64Encode(const x:UTF8String):UTF8String;
 function RFC822DateGMT(dd:TDateTime):string;
 
-
 type
   TKeyValues=record
     Data:UTF8String;
