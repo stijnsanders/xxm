@@ -11,7 +11,7 @@ Use XxmPage to process URL's as a request is about to start.
 It is advised to link each request to a session here, if you want session management.
 (See an example xxmSession.pas in the include folder.)
 
-  $Rev$ $Date$
+  $Rev: 522 $ $Date: 2024-12-05 23:37:31 +0100 (do, 05 dec 2024) $
 }
 
 interface
@@ -37,7 +37,9 @@ exports
 
 implementation
 
-uses System.WideStrUtils;
+uses System.WideStrUtils
+  {$I src/xxmFMap0.inc}
+  ;
 
 function XxmInitialize(APILevel: NativeUInt; xxm2: Pxxm2;
   AProjectName: PUTF8Char): PxxmProject; stdcall;
@@ -54,7 +56,7 @@ var
   r:pointer;  
 begin
   a:=UTF8LowerCase(Address);
-  {$I xxmFMap1.inc}
+  {$I src/xxmFMap1.inc}
   Result:=CxxmFragment(r);
 end;
 
@@ -65,7 +67,7 @@ var
   r:pointer;  
 begin
   a:=UTF8LowerCase(Address);
-  {$I xxmFMap2.inc}
+  {$I src/xxmFMap2.inc}
   Result:=CxxmFragment(r);
 end;
 

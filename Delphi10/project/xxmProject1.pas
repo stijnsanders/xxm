@@ -42,6 +42,7 @@ type
 
     property SrcFolder: string read FSrcFolder write FSrcFolder;
     property ProtoFolder: string read FProtoPath write FProtoPath;
+    property HandlerPath: string read FHandlerPath write FHandlerPath;
     property LineMaps: boolean read DoLineMaps write DoLineMaps;
   end;
 
@@ -58,11 +59,11 @@ uses System.Variants, System.Win.ComObj, xxmDefs, xxmTools, xxmProtoParse,
 
 const
   DefaultParserValues:TXxmPageParserValueList=(
-    (Code:'xxm.Context_Send(Context,';EOLs:0),//pvSend
+    (Code:'Context.Send(';EOLs:0),//pvSend
     (Code:');';EOLs:0),//pvSendClose
-    (Code:'xxm.Context_SendHTML(Context';EOLs:0),//pvSendHTML
+    (Code:'Context.SendHTML(';EOLs:0),//pvSendHTML
     (Code:');';EOLs:0),//pvSendHTMLClose
-    (Code:'xxm.Context_Send(Context,URLEncode([';EOLs:0),//pvURLEncode
+    (Code:'Context.Send(URLEncode([';EOLs:0),//pvURLEncode
     (Code:']));';EOLs:0),//pvURLEncodeClose
     (Code:'Extra1(';EOLs:0),(Code:');';EOLs:0),//pvExtra1
     (Code:'Extra2(';EOLs:0),(Code:');';EOLs:0),//pvExtra2
@@ -85,17 +86,19 @@ const
     ''
   );
 
-  FragmentMapNodeCaseSwitch=8;
+  FragmentMapNodeCaseSwitch1=8;
+  FragmentMapNodeCaseSwitch2=4;
 
 type
   TFragmentMapNode=class(TObject)
   private
-    FList:array[0..FragmentMapNodeCaseSwitch-1] of record
+    FList:array[0..FragmentMapNodeCaseSwitch1-1] of record
       Path,UnitName:UTF8String;
     end;
-    FListIndex,FMapIndex:integer;
+    FListIndex,FMapIndex,FMapCount:integer;
     FMap:array[0..255] of TFragmentMapNode;
-    FDefaultUnitName:UTF8String;
+    FDetectDefault:boolean;
+    FDefaultUnitName,FUnknownUnitName:UTF8String;
   protected
     procedure AddMap(const Path,UnitName:UTF8String;MapIndex:integer);
   public
@@ -142,6 +145,19 @@ begin
     +'  This file is re-constructed when the xxm project source changes.'#13#10
     +'  Any changes to this file will be overwritten.'#13#10
     +'}'#13#10;
+end;
+
+function XmlEncode(const x:string):AnsiString;
+begin
+  Result:=AnsiString(
+    StringReplace(
+    StringReplace(
+    StringReplace(
+      x
+      ,'&','&amp;',[rfReplaceAll])
+      ,'<','&lt;',[rfReplaceAll])
+      ,'>','&gt;',[rfReplaceAll])
+      );
 end;
 
 { TXxmProject }
@@ -317,7 +333,7 @@ var
   sl_i,i,cPathIndex,fExtIndex,fPathIndex:integer;
   cPathHash:int64;
   FragmentMap1,FragmentMap2:TFragmentMapNode;
-  fData:AnsiString;
+  uList:AnsiString;
   f:TFileStream;
 begin
   Result:=false;
@@ -442,10 +458,9 @@ begin
                 ptFragmentHeader:p.Output(q.AllSections(psHeader,m));
                 ptFragmentBody:p.Output(q.BuildBody(m));
                 ptFragmentFooter:p.Output(q.AllSections(psFooter,m));
-                pt_Unknown:
+                else//pt_Unknown:
                   if not p.Done then
                     p.Output(AnsiString(ExtraFields.Values[string(p.GetTagLabel)]));
-                //else raise?
               end;
             until p.Done;
             //m.MapLine(0,q.TotalLines);//map EOF?
@@ -533,6 +548,7 @@ begin
 
     //generate fragment map
     //TODO: if GenerateFragmentMap then
+    {$Q-}
     cPathHash:=0;
     e:=JSONEnum(DataFiles);
     while e.Next do
@@ -542,13 +558,20 @@ begin
         inc(cPathHash,xxHash64(UTF8Encode(LowerCase(VarToStr(d['path']))),11111));
      end;
     s:=IntToHex(cPathHash,16);
-    if Signatures.Values[SignatureFragmentMap]<>s then
+    if (Signatures.Values[SignatureFragmentMap]<>s)
+      or not(FileExists(FRootFolder+SourceDirectory+PathDelim+ProtoFragmentMap0))
+      or not(FileExists(FRootFolder+SourceDirectory+PathDelim+ProtoFragmentMap1))
+      or not(FileExists(FRootFolder+SourceDirectory+PathDelim+ProtoFragmentMap2))
+      then
      begin
       Signatures.Values[SignatureFragmentMap]:=s;
+      BuildOutput(':xxmFMap'#13#10);
       uext:=XxmFileExtension[ftInclude];
       FragmentMap1:=TFragmentMapNode.Create;
+      FragmentMap1.FDetectDefault:=true;//TODO: FDetectDefault on paths with '/'...
       FragmentMap2:=TFragmentMapNode.Create;
       try
+        uList:='';
         e:=JSONEnum(DataFiles);
         while e.Next do
          begin
@@ -561,12 +584,16 @@ begin
               FragmentMap1.Add(UTF8Encode(s),UTF8Encode(VarToStr(v)))
             else
               FragmentMap2.Add(UTF8Encode(s),UTF8Encode(VarToStr(v)));
+            //TODO: additionalPaths array?
+            uList:=uList+'  ,'+AnsiString(VarToStr(v))+#13#10;
            end;
          end;
         //TODO: FSrcFolder?
-        WriteString(FRootFolder+ProtoFragmentMap1,
+        WriteString(FRootFolder+SourceDirectory+PathDelim+ProtoFragmentMap0,
+          uList);
+        WriteString(FRootFolder+SourceDirectory+PathDelim+ProtoFragmentMap1,
           FragmentMapPrefix(ProtoFragmentMap1)+FragmentMap1.GenerateCode);
-        WriteString(FRootFolder+ProtoFragmentMap2,
+        WriteString(FRootFolder+SourceDirectory+PathDelim+ProtoFragmentMap2,
           FragmentMapPrefix(ProtoFragmentMap2)+FragmentMap2.GenerateCode);
       finally
         FragmentMap1.Free;
@@ -593,19 +620,24 @@ var
   d:IJSONDocument;
   fh:THandle;
   fd:TWin32FindData;
-  fn1,fn2,s:string;
+  fn,fn1,fn2,fn3,s:string;
   i:integer;
 begin
   Result:=false;
   //project files
-  fn1:=FSrcFolder+FProjectName+DelphiProjectExtension;
-  fn2:=FRootFolder+ProtoProjectPas;
-  if Modified or Rebuild or not(FileExists(fn1)) or not(FileExists(fn2)) then
+  fn1:=FSrcFolder+FProjectName+'.dpr';
+  fn2:=FSrcFolder+FProjectName+'.dproj';
+  fn3:=FRootFolder+ProtoProjectPas;
+  if Modified or Rebuild
+    or not(FileExists(fn1))
+    or not(FileExists(fn2))
+    or not(FileExists(fn3))
+    then
    begin
     p:=TXxmProtoParser.Create;
     try
       //[[ProjectName]].dpr
-      BuildOutput(AnsiString(FProjectName+DelphiProjectExtension+#13#10));
+      BuildOutput(AnsiString(FProjectName+'.dpr'#13#10));
       s:=FProtoPath+ProtoProjectDpr;
       if not(FileExists(s)) then s:=FProtoPathDef+ProtoProjectDpr;
       p.Parse(ReadString(s),ExtraFields);
@@ -643,7 +675,7 @@ begin
           ptProjectHeader:  p.Output(KeyText('header'));
           ptProjectBody:    p.Output(KeyText('body'));
           ptProjectSwitches:p.Output(KeyText('switches'));
-          pt_Unknown:
+          else//pt_Unknown:
             if not p.Done then
               p.Output(AnsiString(ExtraFields.Values[string(p.GetTagLabel)]));
         end;
@@ -651,8 +683,26 @@ begin
       ForceDirectories(FSrcFolder+'dcu');//TODO: setting "create dcu folder"?
       p.Save(fn1);
 
-      //xxmp.pas
-      if not(FileExists(fn2)) then
+      //[[ProjectName]].dproj
+      BuildOutput(AnsiString(FProjectName+'.dproj'#13#10));
+      s:=FProtoPath+ProtoProjectDproj;
+      if not(FileExists(s)) then s:=FProtoPathDef+ProtoProjectDproj;
+      p.Parse(ReadString(s),ExtraFields);
+      repeat
+        case p.GetNext of
+          ptProjectName:p.Output(XmlEncode(FProjectName));
+          ptProjectUUID:p.Output(XmlEncode(VarToStr(Data['uuid'])));//p.Output(AnsiString(CreateClassID));
+          ptHandlerPath:p.Output(XmlEncode(FHandlerPath));
+          else//pt_Unknown:
+            if not p.Done then
+              p.Output(XmlEncode(ExtraFields.Values[string(p.GetTagLabel)]));
+        end;
+      until p.Done;
+      ForceDirectories(FSrcFolder+'dcu');//TODO: setting "create dcu folder"?
+      p.Save(fn2);
+
+      //xxmp2.pas
+      if not(FileExists(fn3)) then //or Rebuild?
        begin
         BuildOutput(ProtoProjectPas+#13#10);
         s:=FProtoPath+ProtoProjectPas;
@@ -663,13 +713,12 @@ begin
             ptProjectName:p.Output(AnsiString(FProjectName));
             ptProjectPath:p.Output(AnsiString(FRootFolder));
             ptProtoFile:p.Output(AnsiString(FProtoPath+ProtoProjectPas));
-            pt_Unknown:
+            else//pt_Unknown:
               if not p.Done then
                 p.Output(AnsiString(ExtraFields.Values[string(p.GetTagLabel)]));
-            //else raise?
           end;
         until p.Done;
-        p.Save(fn2);
+        p.Save(fn3);
        end;
 
       //copy other files the first time (cfg,dof,res...)
@@ -682,11 +731,11 @@ begin
            begin
             i:=Length(s);
             while (i<>0) and (s[i]<>'.') do dec(i);
-            fn1:=FSrcFolder+FProjectName+Copy(s,i,Length(s)-i+1);
-            if not(FileExists(fn1)) then
+            fn:=FSrcFolder+FProjectName+Copy(s,i,Length(s)-i+1);
+            if not(FileExists(fn)) then
              begin
-              BuildOutput(AnsiString(fn1+#13#10));
-              CopyFile(PChar(FProtoPath+s),PChar(fn1),false);
+              BuildOutput(AnsiString(fn+#13#10));
+              CopyFile(PChar(FProtoPath+s),PChar(fn),false);
              end;
            end;
         until not(FindNextFile(fh,fd));
@@ -699,15 +748,15 @@ begin
        begin
         repeat
           s:=fd.cFileName;
-          if s<>ProtoProjectDpr then
+          if (s<>ProtoProjectDpr) and (s<>ProtoProjectDproj) then
            begin
             i:=Length(s);
             while (i<>0) and (s[i]<>'.') do dec(i);
-            fn1:=FSrcFolder+FProjectName+Copy(s,i,Length(s)-i+1);
-            if not(FileExists(fn1)) then
+            fn:=FSrcFolder+FProjectName+Copy(s,i,Length(s)-i+1);
+            if not(FileExists(fn)) then
              begin
-              BuildOutput(AnsiString(fn1+#13#10));
-              CopyFile(PChar(FProtoPathDef+s),PChar(fn1),false);
+              BuildOutput(AnsiString(fn+#13#10));
+              CopyFile(PChar(FProtoPathDef+s),PChar(fn),false);
              end;
            end;
         until not(FindNextFile(fh,fd));
@@ -1016,8 +1065,11 @@ begin
   inherited Create;
   FListIndex:=0;
   FMapIndex:=1;
+  FMapCount:=0;
   for i:=0 to 255 do FMap[i]:=nil;
+  FDetectDefault:=false;
   FDefaultUnitName:='';
+  FUnknownUnitName:='';
 end;
 
 destructor TFragmentMapNode.Destroy;
@@ -1033,22 +1085,28 @@ var
   i:integer;
 begin
   //assert Path over all calls unique
-  if FListIndex<FragmentMapNodeCaseSwitch then
+  if FListIndex<FragmentMapNodeCaseSwitch1 then
    begin
     FList[FListIndex].Path:=Path;
     FList[FListIndex].UnitName:=UnitName;
    end
   else
    begin
-    if FListIndex=FragmentMapNodeCaseSwitch then
-      for i:=0 to FragmentMapNodeCaseSwitch-1 do
+    if FListIndex=FragmentMapNodeCaseSwitch1 then
+      for i:=0 to FragmentMapNodeCaseSwitch1-1 do
         AddMap(FList[i].Path,FList[i].UnitName,FMapIndex);
     AddMap(Path,UnitName,FMapIndex);
    end;
   inc(FListIndex);
-  if (FMapIndex=1) and (FDefaultUnitName='') and
-    ((Path='default.xxm') or (Path='index.xxm')) then
-    FDefaultUnitName:=UnitName;
+  if FDetectDefault then
+   begin
+    if (FDefaultUnitName='') and
+      ((Path='default.xxm') or (Path='index.xxm')) then
+      FDefaultUnitName:=UnitName;
+    if (FUnknownUnitName='') and
+      (Path='404.xxm') then //or ? 'unknown.xxm'?
+      FUnknownUnitName:=UnitName;
+   end;
 end;
 
 procedure TFragmentMapNode.AddMap(const Path, UnitName: UTF8String;
@@ -1062,6 +1120,7 @@ begin
    begin
     FMap[c]:=TFragmentMapNode.Create;//(MapIndex);
     FMap[c].FMapIndex:=MapIndex+1;
+    inc(FMapCount);
    end;
   FMap[c].Add(Path,UnitName);
 end;
@@ -1071,24 +1130,44 @@ var
   i:integer;
   p:AnsiString;
 begin
-  p:='  ';
+  p:='';
   for i:=0 to FMapIndex-1 do p:=p+'  ';
-  if FListIndex>FragmentMapNodeCaseSwitch then
+  if FListIndex>FragmentMapNodeCaseSwitch1 then
    begin
-    Result:=p+'if Length(a)<'+AnsiString(IntToStr(FMapIndex))+' then r:=nil else'#13#10
-      +p+'case a['+AnsiString(IntToStr(FMapIndex))+'] of'#13#10;
-    for i:=0 to 255 do
-      if FMap[i]<>nil then
-       begin
-        //Result:=Result=p+'  #'+IntToStr(i)+':'#13#10
-        Result:=Result+p+'  ''';
-        if i=$27 then Result:=Result+'''''' else Result:=AnsiChar(i);
-        Result:=Result+''':'#13#10
-          +FMap[i].GenerateCode;
-       end;
-    Result:=Result
-      +p+'  else r:=nil;'#13#10
-      +p+'end'#13#10;
+    Result:=p+'if Length(a)<'+AnsiString(IntToStr(FMapIndex))+' then r:=nil else'#13#10;
+    if FMapCount>FragmentMapNodeCaseSwitch2 then
+     begin
+      Result:=Result
+        +p+'case a['+AnsiString(IntToStr(FMapIndex))+'] of'#13#10;
+      for i:=0 to 255 do
+        if FMap[i]<>nil then
+         begin
+          //Result:=Result=p+'  #'+IntToStr(i)+':'#13#10
+          Result:=Result+p+'  ''';
+          if i=$27 then Result:=Result+'''''' else Result:=AnsiChar(i);
+          Result:=Result+''':'#13#10
+            +FMap[i].GenerateCode;
+         end;
+      Result:=Result
+        +p+'  else r:=nil;'#13#10
+        +p+'end'#13#10;
+     end
+    else
+     begin
+      for i:=0 to 255 do
+        if FMap[i]<>nil then
+         begin
+           Result:=Result+p+'if a['+AnsiString(IntToStr(FMapIndex))+']=';
+          //Result:=Result='#'+IntToStr(i)+':'#13#10
+          Result:=Result+'''';
+          if i=$27 then Result:=Result+'''''' else Result:=AnsiChar(i);
+          Result:=Result+''' then'#13#10
+            +FMap[i].GenerateCode
+            +p+'else'#13#10;
+         end;
+      Result:=Result
+        +p+'  else r:=nil'#13#10;
+     end
    end
   else
    begin
@@ -1099,11 +1178,19 @@ begin
         +AnsiString(StringReplace(string(FList[i].Path),'''','''''',[rfReplaceAll]))
         +''' then r:=@'+AnsiString(FList[i].UnitName)+'.build else'#13#10;
     Result:=Result
-      +p+'  r:=nil;'#13#10;
+      +p+'  r:=nil'#13#10;
    end;
-  if (FMapIndex=1) and (FDefaultUnitName<>'') then
-    Result:=p+'if a='''' then r:=@'+AnsiString(FDefaultUnitName)+'.build else'#13#10
-      +Result;
+  if FDetectDefault then
+   begin
+    if FDefaultUnitName<>'' then
+      Result:=p+'if a='''' then r:=@'+AnsiString(FDefaultUnitName)
+        +'.build else'#13#10+Result;
+    if FUnknownUnitName<>'' then
+      Result:=p+'begin'#13#10+Result+p+';'#13#10
+        +p+'if r=nil then r:=@'+AnsiString(FUnknownUnitName)+'.build;'#13#10
+        +p+'end'#13#10;
+   end;
+  if FMapIndex=1 then Result:=Result+p+';'#13#10;
 end;
 
 end.

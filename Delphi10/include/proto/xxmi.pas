@@ -10,7 +10,7 @@ unit [[FragmentUnit]];
 
   Prototype-file used:
   "[[ProtoFile]]"
-  $Rev$ $Date$
+  $Rev: 522 $ $Date: 2024-12-05 23:37:31 +0100 (do, 05 dec 2024) $
 }
 
 interface

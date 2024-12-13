@@ -3,8 +3,8 @@ unit xxm2;
 interface
 
 const
-  //$Date$
-  XxmRevision = '$Rev$';
+  //$Date: 2024-12-05 23:37:31 +0100 (do, 05 dec 2024) $
+  XxmRevision = '$Rev: 522 $';
   XxmAPILevel = 2000;//v2.0
 
 type
@@ -251,7 +251,9 @@ type
     procedure SetAutoEncoding(AutoEncoding:TxxmAutoEncoding); inline;
     procedure DispositionAttach(const FileName:UTF8String); inline;
 
-    procedure Send(const Data:UTF8String); inline;
+    procedure Send(const Data:UTF8String); overload; inline;
+    procedure Send(Value:NativeInt); overload; inline;
+    procedure Send(const Data:Variant); overload; inline;
     procedure SendHTML(const HTML:UTF8String); inline;
     procedure SendFile(const FilePath:UTF8String); inline;
     procedure SendStream(Stream:TObject); inline;
@@ -287,6 +289,8 @@ type
   end;
 
 implementation
+
+uses SysUtils, Variants;
 
 { CxxmContext }
 
@@ -382,6 +386,16 @@ end;
 procedure CxxmContext.Send(const Data: UTF8String);
 begin
   xxm.Context_Send(__Context,PUTF8Char(Data));
+end;
+
+procedure CxxmContext.Send(Value: NativeInt);
+begin
+  xxm.Context_Send(__Context,PUTF8Char(UTF8String(IntToStr(Value))));
+end;
+
+procedure CxxmContext.Send(const Data: Variant);
+begin
+  xxm.Context_Send(__Context,PUTF8Char(Utf8Encode(VarToWideStr(Data))));
 end;
 
 procedure CxxmContext.SendHTML(const HTML: UTF8String);

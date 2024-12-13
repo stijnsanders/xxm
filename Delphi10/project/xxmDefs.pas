@@ -26,7 +26,6 @@ const
   XxmProjectFileName='Web.xxmp';
   XxmModuleExtension='.xxl';
   XxmProtoExtension='.proto.pas';
-  DelphiProjectExtension='.dpr';
   DelphiExtension='.pas';
   ProjectLogExtension='.log';
   SignaturesFileName='xxmp.~db';
@@ -35,8 +34,10 @@ const
   LinesMapExtension='.~ln';
 
   ProtoProjectDpr='Web.dpr';
+  ProtoProjectDproj='Web.dproj';
   ProtoProjectMask='Web.*';
   ProtoProjectPas='xxmp2.pas';
+  ProtoFragmentMap0='xxmFMap0.inc';
   ProtoFragmentMap1='xxmFMap1.inc';
   ProtoFragmentMap2='xxmFMap2.inc';
   ProtoDirectory='proto';

@@ -16,7 +16,7 @@ uses Winapi.Windows, System.SysUtils, System.Classes, xxmProject1,
 procedure xxmConvertProject;
 var
   i:integer;
-  s,protodir,srcdir:string;
+  s,protodir,srcdir,handlerdir:string;
   wait,rebuild,docompile,dolinemaps,doupdate:boolean;
   p:TXxmProject;
   extra:TStringList;
@@ -28,14 +28,15 @@ begin
     Writeln('Usage: ');
     Writeln('  xxmConv [<options>...] <file or dir>...');
     Writeln('    parses and compiles one or more xxm projects');
-    Writeln('    /wait         end with "Press enter to continue" message');
-    Writeln('    /rebuild      force processing of all files');
-    Writeln('    /nocompile    process files only, don''t compile');
-    Writeln('    /nolinemaps   don''t generate line map files');
-    Writeln('    /noupdate     don''t update files modified data');
-    Writeln('    /proto <dir>  use an alternative unit templates folder');
-    Writeln('    /src <dir>    use an alternative source output folder');
-    Writeln('    /x:XXX        define template value XXX');
+    Writeln('    /wait           end with "Press enter to continue" message');
+    Writeln('    /rebuild        force processing of all files');
+    Writeln('    /nocompile      process files only, don''t compile');
+    Writeln('    /nolinemaps     don''t generate line map files');
+    Writeln('    /noupdate       don''t update files modified data');
+    Writeln('    /proto <dir>    use an alternative unit templates folder');
+    Writeln('    /src <dir>      use an alternative source output folder');
+    Writeln('    /handler <dir>  use an alternative handler path');
+    Writeln('    /x:XXX          define template value XXX');
     Writeln('  xxmConv /install');
     Writeln('    registers a context-menu compile option on xxmp file type');
     Exit;
@@ -48,6 +49,7 @@ begin
   doupdate:=true;
   protodir:='';
   srcdir:='';
+  handlerdir:='';
   extra:=TStringList.Create;
   try
     i:=1;
@@ -88,6 +90,13 @@ begin
             //DirectoryExists? CheckFiles calls ForceDirectories
            end
           else
+          if s='/handler' then
+           begin
+            inc(i);
+            handlerdir:=IncludeTrailingPathDelimiter(ParamStr(i));
+            //DirectoryExists? CheckFiles calls ForceDirectories
+           end
+          else
            begin
             Writeln('Unknown option "'+s+'"');
             Exit;
@@ -102,6 +111,7 @@ begin
           try
             if protodir<>'' then p.ProtoFolder:=protodir;
             if srcdir<>'' then p.SrcFolder:=srcdir;
+            if handlerdir<>'' then p.HandlerPath:=handlerdir;            
             p.LineMaps:=dolinemaps;
             p.CheckFiles(rebuild,extra);
             if docompile then
