@@ -498,7 +498,7 @@ begin
     Result:=true;//?
     fn:=Path;
     //Path could be by parameter, so resolve and expand
-    if SysUtils.DirectoryExists(fn) then
+    if System.SysUtils.DirectoryExists(fn) then
       fn:=IncludeTrailingPathDelimiter(fn)+XxmProjectFileName;
    end;
 
@@ -732,8 +732,10 @@ begin
                    end;
                   if x=nil then n.ImageIndex:=iiPas;
                  end
-              else if fe=DelphiProjectExtension then //.dpr
+              else if (fe='.dpr') or (fe='.dproj') then
                 n.ImageIndex:=iiDpr
+              else if (fe='.xxl') or (fe='.xxu') then
+                n.ImageIndex:=iiXxl
               else if (fe='.cfg') or (fe='.dof') then
                 n.ImageIndex:=iiFileGenerated
               else

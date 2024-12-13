@@ -65,7 +65,7 @@ object EditProjectForm: TEditProjectForm
       object txtPreCompCmds: TMemo
         Left = 3
         Top = 72
-        Width = 405
+        Width = 403
         Height = 70
         Anchors = [akLeft, akTop, akRight]
         ScrollBars = ssBoth
@@ -76,7 +76,7 @@ object EditProjectForm: TEditProjectForm
       object txtCompCmds: TMemo
         Left = 3
         Top = 169
-        Width = 405
+        Width = 403
         Height = 70
         Anchors = [akLeft, akTop, akRight]
         ScrollBars = ssBoth
@@ -87,7 +87,7 @@ object EditProjectForm: TEditProjectForm
       object txtPostCompCmds: TMemo
         Left = 3
         Top = 266
-        Width = 405
+        Width = 403
         Height = 70
         Anchors = [akLeft, akTop, akRight]
         ScrollBars = ssBoth
@@ -107,7 +107,7 @@ object EditProjectForm: TEditProjectForm
       object txtProjectName: TEdit
         Left = 3
         Top = 24
-        Width = 405
+        Width = 403
         Height = 23
         Anchors = [akLeft, akTop, akRight]
         TabOrder = 4
@@ -135,8 +135,6 @@ object EditProjectForm: TEditProjectForm
         OnCreateNodeClass = tvFilesCreateNodeClass
         OnDblClick = tvFilesDblClick
         OnExpanding = tvFilesExpanding
-        ExplicitWidth = 403
-        ExplicitHeight = 430
       end
     end
     object tsParserVals: TTabSheet
@@ -203,7 +201,6 @@ object EditProjectForm: TEditProjectForm
           ',) Extra4 close'
           ';( Extra5 open'
           ';) Extra5 close')
-        ExplicitWidth = 403
       end
       object txtParserValue: TMemo
         Left = 3
@@ -222,8 +219,6 @@ object EditProjectForm: TEditProjectForm
         WantTabs = True
         WordWrap = False
         OnChange = txtParserValueChange
-        ExplicitWidth = 403
-        ExplicitHeight = 359
       end
     end
     object TabSheet1: TTabSheet

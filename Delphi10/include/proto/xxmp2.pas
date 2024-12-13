@@ -18,9 +18,6 @@ interface
 
 uses System.SysUtils, xxm2;
 
-var
-  xxm:Pxxm2;
-
 function XxmInitialize(APILevel: NativeUInt; xxm2: Pxxm2;
   AProjectName: PUTF8Char): PxxmProject; stdcall;
 

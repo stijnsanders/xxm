@@ -688,6 +688,7 @@ begin
          begin
           //build the page
           FPageClass:=FFragmentName;
+          if FPageClass='' then FPageClass:=FProjectName;//+'/'?
           SetResponseHeader('Content-Type','text/html');//default
 
           //build page
