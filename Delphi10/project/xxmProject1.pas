@@ -5,7 +5,7 @@ interface
 uses Winapi.Windows, System.SysUtils, System.Classes, jsonDoc, xxmPageParse;
 
 type
-  TXxmProjectOutput=procedure(const Msg:AnsiString);
+  TXxmProjectOutput=procedure(Subject: TObject; const Msg: AnsiString);
 
   TXxmProject=class(TObject)
   private
@@ -15,6 +15,7 @@ type
     FHandlerPath,FProtoPathDef,FProtoPath:string;
     Modified,DoLineMaps:boolean;
     Signatures:TStringList;
+    FSubject:TObject;
     FOnOutput:TXxmProjectOutput;
     FParserValues:TXxmPageParserValueList;
 
@@ -25,13 +26,13 @@ type
     procedure BuildOutput(const Msg: AnsiString);
   public
 
-    constructor Create(const SourcePath: string;
-      OnOutput: TXxmProjectOutput; CanCreate:boolean);
+    constructor Create(Subject: TObject; const SourcePath, HandlerPath,
+      ProtoPathDef: string; OnOutput: TXxmProjectOutput; CanCreate: boolean);
     destructor Destroy; override;
 
     function CheckFiles(Rebuild:boolean;ExtraFields:TStrings):boolean;
     function GenerateProjectFiles(Rebuild:boolean;ExtraFields:TStrings):boolean;
-    function ResolveErrorLines(const BuildOutput:WideString):WideString;
+    function ResolveErrorLines(const BuildOutput:UTF8String):UTF8string;
 
     function Compile: boolean;
     procedure Update;
@@ -162,8 +163,8 @@ end;
 
 { TXxmProject }
 
-constructor TXxmProject.Create(const SourcePath: string;
-  OnOutput: TXxmProjectOutput; CanCreate: boolean);
+constructor TXxmProject.Create(Subject: TObject; const SourcePath, HandlerPath,
+  ProtoPathDef: string; OnOutput: TXxmProjectOutput; CanCreate: boolean);
 var
   v:OleVariant;
   i,j,l:integer;
@@ -174,6 +175,7 @@ begin
   inherited Create;
   Modified:=false;
   DoLineMaps:=true;
+  FSubject:=Subject;
   FOnOutput:=OnOutput;
   FProjectName:='';
 
@@ -217,17 +219,21 @@ begin
         while (i<>0) and (FRootFolder[i]<>PathDelim) do dec(i);
         FProjectName:=Copy(FRootFolder,i+1,Length(FRootFolder)-i-1);
         WriteString(FRootFolder+DataFileName,
-          '{name:"'+AnsiString(FProjectName)+
-          '",compileCommand:"dcc32 -U[[HandlerPath]]include'+
-          ' -Q [[ProjectName]].dpr"}');
+          '{name:"'+AnsiString(FProjectName)+'",compileCommand:"'+DefaultCompileCommand+'"}');
        end
       else
         raise EXxmProjectNotFound.Create('xxmProject File not found "'+
           SourcePath+'"');
    end;
 
-  FHandlerPath:=GetSelfPath;
-  FProtoPathDef:=FHandlerPath+ProtoDirectory+PathDelim;
+  if HandlerPath='' then
+    FHandlerPath:=GetSelfPath
+  else
+    FHandlerPath:=IncludeTrailingPathDelimiter(HandlerPath);
+  if ProtoPathDef='' then
+    FProtoPathDef:=FHandlerPath+'include'+PathDelim+'proto'+PathDelim
+  else
+    FProtoPathDef:=IncludeTrailingPathDelimiter(ProtoPathDef);
   FSrcFolder:=FRootFolder+SourceDirectory+PathDelim;
 
   Data:=LoadJSON(FRootFolder+DataFileName);
@@ -693,6 +699,7 @@ begin
           ptProjectName:p.Output(XmlEncode(FProjectName));
           ptProjectUUID:p.Output(XmlEncode(VarToStr(Data['uuid'])));//p.Output(AnsiString(CreateClassID));
           ptHandlerPath:p.Output(XmlEncode(FHandlerPath));
+          ptProtoPath:p.Output(XmlEncode(FProtoPath));
           else//pt_Unknown:
             if not p.Done then
               p.Output(XmlEncode(ExtraFields.Values[string(p.GetTagLabel)]));
@@ -841,6 +848,8 @@ type
 {$IFEND}
 
 function TXxmProject.Compile:boolean;
+const
+  dSize=$10000;
 var
   cl:TStringList;
   cli:integer;
@@ -850,7 +859,7 @@ var
   h1,h2:THandle;
   sa:TSecurityAttributes;
   f:TFileStream;
-  d:array[0..$FFF] of AnsiChar;
+  d:array[0..dSize-1] of AnsiChar;
   procedure GetKeys(const Key: WideString; const Prefix: string);
   var
     v,vx:OleVariant;
@@ -878,7 +887,7 @@ var
       else
         cl.Add(prefix+VarToStr(v));
   end;
-  function DoCommand(const cmd,fld:string):boolean;
+  function DoCommand(const cmd,fld:string;ResolveErrors:boolean):boolean;
   var
     c:cardinal;
     running:boolean;
@@ -888,11 +897,13 @@ var
       StringReplace(
       StringReplace(
       StringReplace(
-        string(cmd),
-          '[[ProjectName]]',FProjectName,[rfReplaceAll]),
-          '[[SrcPath]]',FSrcFolder,[rfReplaceAll]),
-          '[[ProjectPath]]',FRootFolder,[rfReplaceAll]),
-          '[[HandlerPath]]',FHandlerPath,[rfReplaceAll])
+      StringReplace(
+        string(cmd)
+          ,'[[ProjectName]]',FProjectName,[rfReplaceAll])
+          ,'[[SrcPath]]',FSrcFolder,[rfReplaceAll])
+          ,'[[ProjectPath]]',FRootFolder,[rfReplaceAll])
+          ,'[[HandlerPath]]',FHandlerPath,[rfReplaceAll])
+          ,'[[ProtoPath]]',FProtoPath,[rfReplaceAll])
           //more?
       ),
       nil,nil,true,NORMAL_PRIORITY_CLASS,nil,PChar(fld),si,pi)) then
@@ -908,12 +919,15 @@ var
         if not PeekNamedPipe(h1,nil,0,nil,@c,nil) then c:=0;//RaiseLastOSError;
         if c<>0 then
          begin
-          if not ReadFile(h1,d[0],$FFF,c,nil) then c:=0;//RaiseLastOSError;
+          if not ReadFile(h1,d[0],dSize-1,c,nil) then c:=0;//RaiseLastOSError;
           if c<>0 then
            begin
             f.Write(d[0],c);
             d[c]:=#0;
-            BuildOutput(d);
+            if ResolveErrors then
+              BuildOutput(AnsiString(ResolveErrorLines(d)))
+            else
+              BuildOutput(d);
            end;
          end;
       until not(running) and (c=0);
@@ -976,7 +990,7 @@ begin
             if clx[1]<>'4' then
              begin
               SetCurrentDir(cld);
-              Result:=DoCommand(Copy(clx,2,Length(clx)-1),cld);
+              Result:=DoCommand(Copy(clx,2,Length(clx)-1),cld,clx[1]='2');
              end;
            end;
         finally
@@ -995,10 +1009,10 @@ end;
 
 procedure TXxmProject.BuildOutput(const Msg: AnsiString);
 begin
-  FOnOutput(Msg);
+  FOnOutput(FSubject, Msg);
 end;
 
-function TXxmProject.ResolveErrorLines(const BuildOutput: WideString): WideString;
+function TXxmProject.ResolveErrorLines(const BuildOutput: UTF8String): UTF8String;
 var
   sl_in,sl_out:TStringList;
   sl_x:integer;
@@ -1008,7 +1022,6 @@ var
   d:IJSONDocument;
   e:IJSONEnumerator;
 begin
-  //TODO: call ResolveErrorLines from xxmConv also
   map:=TXxmLineNumbersMap.Create;
   sl_in:=TStringList.Create;
   sl_out:=TStringList.Create;
@@ -1048,7 +1061,7 @@ begin
        end;
       if s<>'' then sl_out.Add(s);
      end;
-    Result:=sl_out.Text;
+    Result:=UTF8Encode(sl_out.Text);
   finally
     sl_in.Free;
     sl_out.Free;

@@ -85,6 +85,7 @@ type
     procedure Include(Address:PUTF8Char;const Values:array of Variant;
       const Objects:array of pointer);
 
+    function Context:CxxmContext; inline;
     procedure SendStream(s:TStream);
 
     procedure Redirect(URL:PUTF8Char;Relative:boolean);
@@ -142,9 +143,6 @@ type
 var
   ContextPool:TxxmContextPool;
   SelfVersion,SessionCookie:UTF8String;
-
-//forward
-procedure Context_SendHTML(Context:PxxmContext;HTML:PUTF8Char); stdcall;
 
 implementation
 
@@ -362,6 +360,11 @@ begin
   FProjectData:=nil;//TODO: free by project?
 end;
 
+function TxxmContext.Context: CxxmContext;
+begin
+  Result.__Context:=Self;
+end;
+
 procedure TxxmContext.Bind(Socket: TTcpSocket);
 begin
   //if FSocket<>nil then raise?
@@ -574,7 +577,7 @@ begin
 
       //LoadPage;
       if @XxmProjectCheckHandler<>nil then
-        if not(XxmProjectCheckHandler(FProjectEntry,Self,FProjectName)) then
+        if not(XxmProjectCheckHandler(FProjectEntry,Context,FProjectName)) then
          begin
           FProjectEntry:=nil;
           raise EXxmProjectCheckFailed.Create(string(FProjectName));
@@ -585,7 +588,7 @@ begin
           if FProjectEntry.NTLM then AuthSChannel('NTLM',FCredNTLM);
 
         //TODO SetBufferSize(FProjectEntry.BufferSize);
-        FPage:=FProjectEntry.xxmPage(FProjectEntry.Project,Self,@FFragmentName[1]);
+        FPage:=FProjectEntry.xxmPage(FProjectEntry.Project,Context,@FFragmentName[1]);
 
         if @FPage=nil then
          begin
@@ -652,7 +655,7 @@ begin
           else
            begin
             FPageClass:='['+FProjectName+']404:'+FFragmentName;
-            FPage:=FProjectEntry.xxmPage(FProjectEntry.Project,Self,'404.xxm');
+            FPage:=FProjectEntry.xxmPage(FProjectEntry.Project,Context,'404.xxm');
             if @FPage=nil then
              begin
               FStatusCode:=404;
@@ -678,7 +681,7 @@ begin
              end
             else
              begin
-              FPage(Self,[FFragmentName,FSingleFileSent,x],[]);
+              FPage(Context,[FFragmentName,FSingleFileSent,x],[]);
               //TODO: if FBufferSize<>0 then FlushFinal;
              end;
            end;
@@ -692,7 +695,7 @@ begin
           SetResponseHeader('Content-Type','text/html');//default
 
           //build page
-          FPage(Self,[],[]);
+          FPage(Context,[],[]);
 
 {//TODO
           //close page
@@ -722,7 +725,7 @@ begin
       finally
         FProjectEntry.CloseContext;
       end;
-      FProjectEntry.ClearContext(Self);
+      FProjectEntry.ClearContext(Context);
 
      end;
 
@@ -733,7 +736,7 @@ begin
     on EXxmConnectionLost do ;
     on e:Exception do
      begin
-      if not(FProjectEntry.HandleException(Self,FPageClass,
+      if not(FProjectEntry.HandleException(Context,FPageClass,
         UTF8Encode(e.ClassName),UTF8Encode(e.Message))) then
        begin
         FStatusCode:=500;
@@ -771,7 +774,7 @@ begin
         y:=y
           +#13#10'&nbsp;</p></body></html>'
           ;
-        Context_SendHTML(Self,PUTF8Char(y));//FSocket.SendBuf(y[1],Length(y));//attention FAutoEncoding could be set here!
+        Context.SendHTML(PUTF8Char(y));//FSocket.SendBuf(y[1],Length(y));//attention FAutoEncoding could be set here!
        end;
       //TODO: FlushFinal;
       FSocket.Disconnect;
@@ -1112,14 +1115,14 @@ begin
           px:=FIncludeCheck as TXxmCrossProjectIncludeCheck;
           while (px<>nil) and (px.Entry<>FProjectEntry) do px:=px.Next;
           if px=nil then
-            if not(XxmProjectCheckHandler(FProjectEntry,Self,FProjectName)) then
+            if not(XxmProjectCheckHandler(FProjectEntry,Context,FProjectName)) then
               raise EXxmProjectCheckFailed.Create(string(FProjectName));
           //if px<>nil then raise? just let the request complete
          end;
         if @FProjectEntry.xxmFragment=nil then
           raise EXxmIncludeNoFragmentHandler.Create('Project "'+string(FProjectName)+
             '" doesn''t provide a fragment handler');
-        p:=FProjectEntry.xxmFragment(FProjectEntry.Project,Self,PUTF8Char(
+        p:=FProjectEntry.xxmFragment(FProjectEntry.Project,Context,PUTF8Char(
           Copy(Address,j,l-j+1)));//TODO: RelativePath
         if @p=nil then
           raise EXxmIncludeFragmentNotFound.Create(
@@ -1132,7 +1135,7 @@ begin
           FProjectEntry.OpenContext;
           try
             FPageClass:=FProjectName+':'+pa+' < '+pc;
-            p(Self,Values,Objects);
+            p(Context,Values,Objects);
           finally
             FProjectEntry.CloseContext;
           end;
@@ -1150,13 +1153,13 @@ begin
       pn:='';
       if @FProjectEntry.xxmFragment=nil then
         raise EXxmIncludeNoFragmentHandler.Create('Nu fragment handler is available');
-      p:=FProjectEntry.xxmFragment(FProjectEntry.Project,Self,PUTF8Char(pa));//TODO: RelativePath
+      p:=FProjectEntry.xxmFragment(FProjectEntry.Project,Context,PUTF8Char(pa));//TODO: RelativePath
       if @p=nil then
         raise EXxmIncludeFragmentNotFound.Create(
           'Include fragment not found "'+string(pa)+'"');
       FPage:=p;
       FPageClass:=pa+' < '+pc;
-      p(Self,Values,Objects);
+      p(Context,Values,Objects);
      end;
     FPageClass:=pc; //not in finally: preserve on exception
   finally
@@ -1562,16 +1565,16 @@ end;
 
 { xxm2 implementation }
 
-function Context_URL(Context:PxxmContext):PUTF8Char; stdcall;
+function Context_URL(Context:CxxmContext):PUTF8Char; stdcall;
 begin
-  Result:=TxxmContext(Context).ContextString(csURL);
+  Result:=TxxmContext(Context.__Context).ContextString(csURL);
 end;
 
-function Context_SessionID(Context:PxxmContext):PUTF8Char; stdcall;
+function Context_SessionID(Context:CxxmContext):PUTF8Char; stdcall;
 var
-  c:TxxmContext absolute Context;
+  c:TxxmContext absolute Context.__Context;
 begin
-  //c:=TxxmContext(Context);//see absolute above
+  //c:=TxxmContext(Context.__Context);//see absolute above
   if c.FSessionID='' then
    begin
     c.FSessionID:=c.GetCookie(PUTF8Char(SessionCookie));
@@ -1589,30 +1592,30 @@ begin
   Result:=PUTF8Char(c.FSessionID);
 end;
 
-function Context_ContextString(Context:PxxmContext;Value:TxxmContextString):PUTF8Char; stdcall;
+function Context_ContextString(Context:CxxmContext;Value:TxxmContextString):PUTF8Char; stdcall;
 begin
-  Result:=TxxmContext(Context).ContextString(Value);
+  Result:=TxxmContext(Context.__Context).ContextString(Value);
 end;
 
-function Context_BufferSize(Context:PxxmContext):NativeUInt; stdcall;
+function Context_BufferSize(Context:CxxmContext):NativeUInt; stdcall;
 begin
-  //TODO Result:=TxxmContext(Context).BufferSize;
+  //TODO Result:=TxxmContext(Context.__Context).BufferSize;
   Result:=0;
 end;
 
-procedure Context_Set_BufferSize(Context:PxxmContext;Value:NativeUInt); stdcall;
+procedure Context_Set_BufferSize(Context:CxxmContext;Value:NativeUInt); stdcall;
 begin
-  //TODO TxxmContext(Context).BufferSize:=Value;
+  //TODO TxxmContext(Context.__Context).BufferSize:=Value;
 end;
 
-function Context_Connected(Context:PxxmContext):boolean; stdcall;
+function Context_Connected(Context:CxxmContext):boolean; stdcall;
 begin
-  Result:=TxxmContext(Context).Socket.Connected;
+  Result:=TxxmContext(Context.__Context).Socket.Connected;
 end;
 
-procedure Context_Set_Status(Context:PxxmContext;Status:word;Text:PUTF8Char); stdcall;
+procedure Context_Set_Status(Context:CxxmContext;Status:word;Text:PUTF8Char); stdcall;
 var
-  c:TxxmContext absolute Context;
+  c:TxxmContext absolute Context.__Context;
 begin
   if c.FHeaderSent then
     raise EXxmHeaderAlreadySent.Create('Header already sent.');
@@ -1620,26 +1623,26 @@ begin
   c.FStatusText:=Text;
 end;
 
-procedure Context_Redirect(Context:PxxmContext;RedirectURL:PUTF8Char;
+procedure Context_Redirect(Context:CxxmContext;RedirectURL:PUTF8Char;
   Relative:boolean); stdcall;
 begin
-  TxxmContext(Context).Redirect(RedirectURL,Relative);
+  TxxmContext(Context.__Context).Redirect(RedirectURL,Relative);
 end;
 
-function Context_Cookie(Context:PxxmContext;Name:PUTF8Char):PUTF8Char; stdcall;
+function Context_Cookie(Context:CxxmContext;Name:PUTF8Char):PUTF8Char; stdcall;
 begin
-  Result:=TxxmContext(Context).GetCookie(Name);
+  Result:=TxxmContext(Context.__Context).GetCookie(Name);
 end;
 
-procedure Context_Set_Cookie(Context:PxxmContext;Name,Value:PUTF8Char); stdcall;
+procedure Context_Set_Cookie(Context:CxxmContext;Name,Value:PUTF8Char); stdcall;
 var
-  c:TxxmContext absolute Context;
+  c:TxxmContext absolute Context.__Context;
 begin
   //TODO: validate/sanitize name,value
   c.SetResponseHeader('Set-Cookie',c.Store(UTF8String(Name)+'='+UTF8String(Value)),true);
 end;
 
-procedure Context_Set_CookieEx(Context:PxxmContext;Name,Value:PUTF8Char;
+procedure Context_Set_CookieEx(Context:CxxmContext;Name,Value:PUTF8Char;
   KeepSeconds:NativeUInt;Comment,Domain,Path:PUTF8Char;Secure,HttpOnly:boolean); stdcall;
 
   function CheckColon(p:PUTF8Char):UTF8String;
@@ -1656,7 +1659,7 @@ procedure Context_Set_CookieEx(Context:PxxmContext;Name,Value:PUTF8Char;
 
 var
   x:UTF8String;
-  c:TxxmContext absolute Context;
+  c:TxxmContext absolute Context.__Context;
 begin
   //TODO: sanitize name,value?
   x:=UTF8String(Name)+'='+CheckColon(Value);
@@ -1678,14 +1681,14 @@ begin
   c.SetResponseHeader('Set-Cookie',c.Store(x),true);
 end;
 
-function Context_ContentType(Context:PxxmContext):PUTF8Char; stdcall;
+function Context_ContentType(Context:CxxmContext):PUTF8Char; stdcall;
 begin
-  Result:=TxxmContext(Context).GetResponseHeader('Content-Type');
+  Result:=TxxmContext(Context.__Context).GetResponseHeader('Content-Type');
 end;
 
-procedure Context_Set_ContentType(Context:PxxmContext;ContentType:PUTF8Char); stdcall;
+procedure Context_Set_ContentType(Context:CxxmContext;ContentType:PUTF8Char); stdcall;
 var
-  c:TxxmContext absolute Context;
+  c:TxxmContext absolute Context.__Context;
 begin
   if c.FHeaderSent then
     raise EXxmHeaderAlreadySent.Create('Header already sent.');
@@ -1693,25 +1696,25 @@ begin
   c.FAutoEncoding:=aeContentDefined;
 end;
 
-function Context_AutoEncoding(Context:PxxmContext):TxxmAutoEncoding; stdcall;
+function Context_AutoEncoding(Context:CxxmContext):TxxmAutoEncoding; stdcall;
 begin
-  Result:=TxxmContext(Context).FAutoEncoding;
+  Result:=TxxmContext(Context.__Context).FAutoEncoding;
 end;
 
-procedure Context_Set_AutoEncoding(Context:PxxmContext;AutoEncoding:TxxmAutoEncoding); stdcall;
+procedure Context_Set_AutoEncoding(Context:CxxmContext;AutoEncoding:TxxmAutoEncoding); stdcall;
 var
-  c:TxxmContext absolute Context;
+  c:TxxmContext absolute Context.__Context;
 begin
   if c.FHeaderSent then
     raise EXxmHeaderAlreadySent.Create('Header already sent.');
   c.FAutoEncoding:=AutoEncoding;
 end;
 
-procedure Context_DispositionAttach(Context:PxxmContext;FileName:PUTF8Char); stdcall;
+procedure Context_DispositionAttach(Context:CxxmContext;FileName:PUTF8Char); stdcall;
 var
   fn:UTF8String;
   i:integer;
-  c:TxxmContext absolute Context;
+  c:TxxmContext absolute Context.__Context;
 begin
   fn:=FileName;
   for i:=1 to Length(fn) do
@@ -1719,9 +1722,9 @@ begin
   c.SetResponseHeader('Content-Disposition',c.Store('attachment; filename="'+fn+'"'));
 end;
 
-procedure Context_Send(Context:PxxmContext;Data:PUTF8Char); stdcall;
+procedure Context_Send(Context:CxxmContext;Data:PUTF8Char); stdcall;
 var
-  c:TxxmContext absolute Context;
+  c:TxxmContext absolute Context.__Context;
   x:UTF8String;
   w:WideString;
   l:integer;
@@ -1743,9 +1746,9 @@ begin
    end;
 end;
 
-procedure Context_SendHTML(Context:PxxmContext;HTML:PUTF8Char); stdcall;
+procedure Context_SendHTML(Context:CxxmContext;HTML:PUTF8Char); stdcall;
 var
-  c:TxxmContext absolute Context;
+  c:TxxmContext absolute Context.__Context;
   p:PUTF8Char;
   w:WideString;
   l:integer;
@@ -1768,7 +1771,7 @@ begin
    end;
 end;
 
-procedure Context_SendFile(Context:PxxmContext;FilePath:PUTF8Char); stdcall;
+procedure Context_SendFile(Context:CxxmContext;FilePath:PUTF8Char); stdcall;
 var
   f:TFileStream;
 begin
@@ -1777,56 +1780,57 @@ begin
   //TODO: spooled delivery?
   f:=TFileStream.Create(string(FilePath),fmOpenRead or fmShareDenyWrite);
   try
-    TxxmContext(Context).SendStream(f);
+    TxxmContext(Context.__Context).SendStream(f);
   finally
     f.Free;
   end;
 end;
 
-procedure Context_SendStream(Context:PxxmContext;Stream:TObject); stdcall;
+procedure Context_SendStream(Context:CxxmContext;Stream:TObject); stdcall;
 begin
-  TxxmContext(Context).SendStream(Stream as TStream);
+  TxxmContext(Context.__Context).SendStream(Stream as TStream);
 end;
 
-procedure Context_Flush(Context:PxxmContext); stdcall;
+procedure Context_Flush(Context:CxxmContext); stdcall;
 begin
-  TxxmContext(Context).Flush;
+  TxxmContext(Context.__Context).Flush;
 end;
 
-function Context_Parameter(Context:PxxmContext;Name:PUTF8Char):PxxmParameter; stdcall;
+function Context_Parameter(Context:CxxmContext;Name:PUTF8Char):CxxmParameter; stdcall;
 begin
-  Result:=TxxmContext(Context).GetParam(Name);
+  Result.__Parameter:=TxxmContext(Context.__Context).GetParam(Name);
 end;
 
-function Context_ParameterCount(Context:PxxmContext):NativeUInt; stdcall;
+function Context_ParameterCount(Context:CxxmContext):NativeUInt; stdcall;
 begin
-  Result:=TxxmContext(Context).GetParamCount;
+  Result:=TxxmContext(Context.__Context).GetParamCount;
 end;
 
-function Context_ParameterByIdx(Context:PxxmContext;Index:NativeUInt):PxxmParameter; stdcall;
+function Context_ParameterByIdx(Context:CxxmContext;Index:NativeUInt):CxxmParameter; stdcall;
 begin
-  Result:=TxxmContext(Context).GetParamByIdx(Index);
+  Result.__Parameter:=TxxmContext(Context.__Context).GetParamByIdx(Index);
 end;
 
-procedure Context_Add_Parameter(Context:PxxmContext;Origin,Name,Value:PUTF8Char); stdcall;
+procedure Context_Add_Parameter(Context:CxxmContext;Origin,Name,Value:PUTF8Char); stdcall;
 begin
   //TODO
+  raise Exception.Create('Not implemented (yet)');
 end;
 
-function Context_RequestHeader(Context:PxxmContext;Name:PUTF8Char):PUTF8Char; stdcall;
+function Context_RequestHeader(Context:CxxmContext;Name:PUTF8Char):PUTF8Char; stdcall;
 begin
-  Result:=TxxmContext(Context).GetRequestHeader(Name);
+  Result:=TxxmContext(Context.__Context).GetRequestHeader(Name);
 end;
 
-function Context_RequestHeaderCount(Context:PxxmContext):NativeUInt; stdcall;
+function Context_RequestHeaderCount(Context:CxxmContext):NativeUInt; stdcall;
 begin
-  Result:=TxxmContext(Context).FHeadersIndexIn;
+  Result:=TxxmContext(Context.__Context).FHeadersIndexIn;
 end;
 
-procedure Context_RequestHeaderByIdx(Context:PxxmContext;Index:NativeUInt;
+procedure Context_RequestHeaderByIdx(Context:CxxmContext;Index:NativeUInt;
   var Name,Value:PUTF8Char); stdcall;
 var
-  c:TxxmContext absolute Context;
+  c:TxxmContext absolute Context.__Context;
 begin
   if {(Index>=0) and} (Index<c.FHeadersIndexIn) then
    begin
@@ -1837,22 +1841,22 @@ begin
     raise ERangeError.Create('RequestHeaderByIdx: index out of range');
 end;
 
-function Context_ResponseHeader(Context:PxxmContext;Name:PUTF8Char):PUTF8Char; stdcall;
+function Context_ResponseHeader(Context:CxxmContext;Name:PUTF8Char):PUTF8Char; stdcall;
 begin
-  Result:=TxxmContext(Context).GetResponseHeader(Name);
+  Result:=TxxmContext(Context.__Context).GetResponseHeader(Name);
 end;
 
-function Context_ResponseHeaderCount(Context:PxxmContext):NativeUInt; stdcall;
+function Context_ResponseHeaderCount(Context:CxxmContext):NativeUInt; stdcall;
 var
-  c:TxxmContext absolute Context;
+  c:TxxmContext absolute Context.__Context;
 begin
   Result:=c.FHeadersIndexOut-c.FHeadersIndexIn;
 end;
 
-procedure Context_ResponseHeaderByIdx(Context:PxxmContext;Index:NativeUInt;
+procedure Context_ResponseHeaderByIdx(Context:CxxmContext;Index:NativeUInt;
   var Name,Value:PUTF8Char); stdcall;
 var
-  c:TxxmContext absolute Context;
+  c:TxxmContext absolute Context.__Context;
   l:NativeUInt;
 begin
   l:=c.FHeadersIndexOut-c.FHeadersIndexIn;
@@ -1865,36 +1869,36 @@ begin
     raise ERangeError.Create('ResponseHeaderByIdx: index out of range');
 end;
 
-procedure Context_Set_ResponseHeader(Context:PxxmContext;Name,Value:PUTF8Char); stdcall;
+procedure Context_Set_ResponseHeader(Context:CxxmContext;Name,Value:PUTF8Char); stdcall;
 begin
-  TxxmContext(Context).SetResponseHeader(Name,Value);
+  TxxmContext(Context.__Context).SetResponseHeader(Name,Value);
 end;
 
-function Context_Data(Context:PxxmContext):pointer; stdcall;
+function Context_Data(Context:CxxmContext):pointer; stdcall;
 begin
-  Result:=TxxmContext(Context).FProjectData;
+  Result:=TxxmContext(Context.__Context).FProjectData;
 end;
 
-procedure Context_Set_Data(Context:PxxmContext;Data:pointer); stdcall;
+procedure Context_Set_Data(Context:CxxmContext;Data:pointer); stdcall;
 begin
-  TxxmContext(Context).FProjectData:=Data;
+  TxxmContext(Context.__Context).FProjectData:=Data;
 end;
 
-procedure Context_Include(Context:PxxmContext;Address:PUTF8Char;
+procedure Context_Include(Context:CxxmContext;Address:PUTF8Char;
   const Values:array of Variant;const Objects:array of pointer); stdcall;
 begin
-  TxxmContext(Context).Include(Address,Values,Objects);
+  TxxmContext(Context.__Context).Include(Address,Values,Objects);
 end;
 
-function Context_PostData(Context:PxxmContext):TObject; stdcall;
+function Context_PostData(Context:CxxmContext):TObject; stdcall;
 begin
-  Result:=TxxmContext(Context).FPostData;
+  Result:=TxxmContext(Context.__Context).FPostData;
 end;
 
-procedure Context_Set_ProgressCallback(Context:PxxmContext;Callback:CxxmProgress;
+procedure Context_Set_ProgressCallback(Context:CxxmContext;Callback:CxxmProgress;
   RequestID,Flags,Step:NativeUInt); stdcall;
 var
-  c:TxxmContext absolute Context;
+  c:TxxmContext absolute Context.__Context;
 begin
   if @c.FProgressCallback<>nil then
     raise EXxmError.Create('Only one Context_Set_ProgressCallback per request allowed');
@@ -1908,11 +1912,11 @@ begin
 end;
 
 
-function Parameter_Origin(Parameter:PxxmParameter):PUTF8Char; stdcall; //'GET','POST','FILE'...
+function Parameter_Origin(Parameter:CxxmParameter):PUTF8Char; stdcall; //'GET','POST','FILE'...
 var
-  p:PParamInfo absolute Parameter;
+  p:PParamInfo absolute Parameter.__Parameter;
 begin
-  if Parameter=nil then
+  if Parameter.__Parameter=nil then
     Result:='NONE' //default value (raise?)
   else
    begin
@@ -1922,9 +1926,9 @@ begin
    end;
 end;
 
-function Parameter_Name(Parameter:PxxmParameter):PUTF8Char; stdcall;
+function Parameter_Name(Parameter:CxxmParameter):PUTF8Char; stdcall;
 var
-  p:PParamInfo absolute Parameter;
+  p:PParamInfo absolute Parameter.__Parameter;
 begin
   //if Parameter=nil then raise?
   if p<>@(p.Context as TxxmContext).FParams[p.Index] then
@@ -1932,11 +1936,11 @@ begin
   Result:=p.Name;
 end;
 
-function Parameter_Value(Parameter:PxxmParameter):PUTF8Char; stdcall;
+function Parameter_Value(Parameter:CxxmParameter):PUTF8Char; stdcall;
 var
-  p:PParamInfo absolute Parameter;
+  p:PParamInfo absolute Parameter.__Parameter;
 begin
-  if Parameter=nil then
+  if Parameter.__Parameter=nil then
     Result:=nil //default value
   else
    begin
@@ -1946,27 +1950,28 @@ begin
    end;
 end;
 
-function Parameter_AsInteger(Parameter:PxxmParameter):NativeInt; stdcall;
+function Parameter_AsInteger(Parameter:CxxmParameter):NativeInt; stdcall;
 var
+  p:PParamInfo absolute Parameter.__Parameter;
   s:string;
 begin
-  if Parameter=nil then
+  if Parameter.__Parameter=nil then
     Result:=0 //default value
   else
    begin
-    s:=Trim(string(PParamInfo(Parameter).Value));
+    s:=Trim(string(p.Value));
     if s='' then
       Result:=0
     else
       if not NativeInt.TryParse(s,Result) then
         raise EConvertError.Create('Parameter value "'+
-          string(PParamInfo(Parameter).Name)+'" is not numeric');
+          string(p.Name)+'" is not numeric');
    end;
 end;
 
-function Parameter_NextBySameName(Parameter:PxxmParameter):PxxmParameter; stdcall;
+function Parameter_NextBySameName(Parameter:CxxmParameter):CxxmParameter; stdcall;
 var
-  p:PParamInfo absolute Parameter;
+  p:PParamInfo absolute Parameter.__Parameter;
   c:TxxmContext;
   i:NativeUInt;
 begin
@@ -1975,14 +1980,14 @@ begin
   i:=p.index;
   while (i<c.FParamsIndex) and not(UTF8CmpI(p.Name,c.FParams[i].Name)) do inc(i);
   if i<c.FParamsIndex then
-    Result:=@c.FParams[i]
+    Result.__Parameter:=@c.FParams[i]
   else
-    Result:=nil;
+    Result.__Parameter:=nil;
 end;
 
-function Parameter_ContentType(Parameter:PxxmParameter):PUTF8Char; stdcall;
+function Parameter_ContentType(Parameter:CxxmParameter):PUTF8Char; stdcall;
 var
-  p:PParamInfo absolute Parameter;
+  p:PParamInfo absolute Parameter.__Parameter;
 begin
   if p<>@(p.Context as TxxmContext).FParams[p.Index] then
     raise EInvalidPointer.Create('Invalid parameter');
@@ -1992,9 +1997,9 @@ begin
   Result:=p.ContentType;
 end;
 
-function Parameter_SaveToFile(Parameter:PxxmParameter;FilePath:PUTF8Char):NativeUInt; stdcall;
+function Parameter_SaveToFile(Parameter:CxxmParameter;FilePath:PUTF8Char):NativeUInt; stdcall;
 var
-  p:PParamInfo absolute Parameter;
+  p:PParamInfo absolute Parameter.__Parameter;
   d:TStream;
   f:TFileStream;
 begin
@@ -2013,9 +2018,9 @@ begin
   end;
 end;
 
-function Parameter_SaveToStream(Parameter:PxxmParameter;Stream:TObject):NativeUInt; stdcall;
+function Parameter_SaveToStream(Parameter:CxxmParameter;Stream:TObject):NativeUInt; stdcall;
 var
-  p:PParamInfo absolute Parameter;
+  p:PParamInfo absolute Parameter.__Parameter;
   d:TStream;
 begin
   if p<>@(p.Context as TxxmContext).FParams[p.Index] then
@@ -2113,7 +2118,7 @@ begin
   VirtualProtect(xxmHttp,l,PAGE_READONLY,@x);
   //if not then RaiseLastOSError?
 
-  xxmPReg.Xxm2:=xxmHttp;
+  xxm2.xxm:=xxmHttp;
 end;
 
 { TStreamNozzle }
@@ -2303,13 +2308,13 @@ begin
         dec(x);
         if x=0 then
          begin
-          FProgress(FOwner,FieldName,FileName,FRequestID,s);
+          FProgress(FOwner.Context,FieldName,FileName,FRequestID,s);
           x:=FReportStep;
          end
         else
           inc(x);
        end;
-      FProgress(FOwner,FieldName,FileName,FRequestID,s);
+      FProgress(FOwner.Context,FieldName,FileName,FRequestID,s);
      end;
    end;
   Len:=FDone+FIndex-(Pos+1);

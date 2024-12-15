@@ -18,8 +18,9 @@ type
   public
     AllowInclude,Negotiate,NTLM:boolean;
     BufferSize:integer;
-    Signature:string;
+    Signature,ProtoPath,HandlerPath:string;
     LastCheck:cardinal;
+    LastResult:UTF8String;
 
     xxmPage:FxxmPage;
     xxmFragment:FxxmFragment;
@@ -47,8 +48,8 @@ type
     procedure GetFilePath(const Address:UTF8String;var Path:string;
       var MimeType:UTF8String);
 
-    procedure ClearContext(Context:PxxmContext);
-    function HandleException(Context:PxxmContext;const PageClass,
+    procedure ClearContext(Context:CxxmContext);
+    function HandleException(Context:CxxmContext;const PageClass,
       ExceptionClass,ExceptionMessage:UTF8String):boolean;
   end;
 
@@ -64,6 +65,7 @@ type
     end;
     FProjectsIndex,FProjectsSize:integer;
     FDefaultProject,FSingleProject:UTF8String;
+    FHandlerPath,FProtoPath:string;
     FHosts:array of record
       Host,DefaultProject,SingleProject:UTF8String;
       Projects:array of UTF8String;
@@ -81,6 +83,9 @@ type
 
     function GetProjectName(Host,Name:PUTF8Char):PUTF8Char;
     function GetProjectEntry(Name:PUTF8Char):TProjectEntry;
+
+    property HandlerPath:string read FHandlerPath;
+    property ProtoPath:string read FProtoPath;
   end;
 
   EXxmProjectNotFound=class(Exception);
@@ -89,10 +94,9 @@ type
   EXxmFileTypeAccessDenied=class(Exception);
 
   TXxmProjectCheckHandler=function(Entry: TProjectEntry;
-    Context: TObject; const ProjectName: UTF8String): boolean;
+    Context: CxxmContext; const ProjectName: UTF8String): boolean;
 
 var
-  Xxm2:Pxxm2;
   XxmProjectRegistry:TProjectRegistry;
   XxmProjectCheckHandler:TXxmProjectCheckHandler;
 
@@ -206,6 +210,8 @@ begin
   FRegLastCheckTC:=GetTickCount-XxmRegCheckIntervalMS-1;//see CheckRegistry below
   FDefaultProject:='';
   FSingleProject:='';
+  FHandlerPath:='';
+  FProtoPath:='';
   FHostsIndex:=0;
   FHostsSize:=0;
 
@@ -273,6 +279,8 @@ begin
           FDefaultProject:=UTF8Encode(VarToWideStr(d['defaultProject']));
           if FDefaultProject='' then FDefaultProject:='xxm';
           FSingleProject:=UTF8Encode(VarToWideStr(d['singleProject']));
+          FHandlerPath:=VarToStr(d['handlerPath']);
+          FProtoPath:=VarToStr(d['protoPath']);
 
           for i:=0 to FProjectsIndex-1 do FProjects[i].LoadCheck:=false;
           e:=JSONEnum(d['projects']);
@@ -325,6 +333,8 @@ begin
             FProjects[i].Entry.BufferSize:=BSize(VarToStr(d1['bufferSize']));
             FProjects[i].Entry.Negotiate:=VarToBool(d1['negotiate']);
             FProjects[i].Entry.NTLM:=VarToBool(d1['ntlm']);
+            FProjects[i].Entry.ProtoPath:=VarToStr(d1['protoPath']);
+            FProjects[i].Entry.HandlerPath:=VarToStr(d1['handlerPath']);
            end;
           //clean-up projects removed from config
           for i:=0 to FProjectsIndex-1 do
@@ -519,7 +529,9 @@ begin
   FMutex:=CreateMutexW(nil,false,PWideChar(mn));
   if FMutex=0 then RaiseLastOSError;//?
 
-  LastCheck:=GetTickCount;
+  //for use by ProjectCheckHandlers
+  LastCheck:=GetTickCount-3600000;
+  LastResult:='';
 end;
 
 destructor TProjectEntry.Destroy;
@@ -657,7 +669,7 @@ begin
 
         //initialize:
         try
-          FProject:=xxmInitialize(XxmAPILevel,Xxm2,PUTF8Char(FName));
+          FProject:=xxmInitialize(XxmAPILevel,xxm2.xxm,PUTF8Char(FName));
           FLibrary:=h;
         except
           FreeLibrary(h);
@@ -684,7 +696,7 @@ begin
   InterlockedDecrement(FContextCount);
 end;
 
-procedure TProjectEntry.ClearContext(Context: PxxmContext);
+procedure TProjectEntry.ClearContext(Context: CxxmContext);
 begin
   if @xxmClearContext<>nil then
     try
@@ -816,7 +828,7 @@ begin
 
 end;
 
-function TProjectEntry.HandleException(Context: PxxmContext; const PageClass,
+function TProjectEntry.HandleException(Context: CxxmContext; const PageClass,
   ExceptionClass, ExceptionMessage: UTF8String): boolean;
 begin
   try
@@ -833,7 +845,6 @@ begin
 end;
 
 initialization
-  Xxm2:=nil;//default, handler must initialize!
   XxmProjectRegistry:=nil;
   XxmProjectCheckHandler:=nil;
   GlobalAllowLoadCopy:=true;//default

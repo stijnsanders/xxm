@@ -2,17 +2,17 @@ unit xxmAutoUpdate;
 
 interface
 
-uses SysUtils, xxmPReg;
+uses SysUtils, xxm2, xxmPReg;
 
 function ProjectCheck_AutoUpdate(Entry: TProjectEntry;
-  Context: TObject; const ProjectName: UTF8String): boolean;
+  Context: CxxmContext; const ProjectName: UTF8String): boolean;
 
 implementation
 
 uses Windows, xxmTools, xxmContext;
 
 function ProjectCheck_AutoUpdate(Entry: TProjectEntry;
-  Context: TObject; const ProjectName: UTF8String): boolean;
+  Context: CxxmContext; const ProjectName: UTF8String): boolean;
 var
   fn,fn1,s,s1:string;
   i,lc:integer;
@@ -59,7 +59,7 @@ begin
     on e:Exception do
      begin
       em:=HTMLEncode(UTF8Encode('AutoUpdate failed ['+e.ClassName+'] '+e.Message));
-      Context_SendHTML(Context,PUTF8Char(em));
+      Context.SendHTML(PUTF8Char(em));
       Result:=false;//caller raises EXxmProjectCheckFailed
      end;
   end;

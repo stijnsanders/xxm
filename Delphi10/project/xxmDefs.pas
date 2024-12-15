@@ -43,6 +43,8 @@ const
   ProtoDirectory='proto';
   SourceDirectory='src';
 
+  DefaultCompileCommand='dcc32 "-U[[HandlerPath]]include" -Q "[[ProjectName]].dpr"';
+
 procedure ListFilesInPath(FileList: TStringList;const Path: string);
 function GetInternalIdentifier(const FileName: string;
   var cPathIndex,fExtIndex,fPathIndex:integer): string;

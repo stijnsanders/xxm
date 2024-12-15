@@ -533,7 +533,7 @@ begin
       i:=j-1;
       while (i>0) and (fn[i]<>PathDelim) do dec(i);
       ProjectData['name']:=Copy(fn,i+1,j-i-1);
-      ProjectData['compileCommand']:='dcc32 "-U[[HandlerPath]]include" -Q "[[ProjectName]].dpr"';
+      ProjectData['compileCommand']:=DefaultCompileCommand;
       ProjectData['files']:=JSON;
       ProjectData['units']:=JSON;
       ProjectData['resources']:=JSON;

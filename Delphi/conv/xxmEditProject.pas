@@ -444,6 +444,8 @@ begin
                  end
               else if fe=DelphiProjectExtension then //.dpr
                 n.ImageIndex:=iiDpr
+              else if fe=XxmModuleExtension then //.xxl
+                n.ImageIndex:=iiXxl
               else if (fe='.cfg') or (fe='.dof') then
                 n.ImageIndex:=iiFileGenerated
               else
@@ -787,7 +789,7 @@ begin
    begin
     t:=txtProjectName.Text;
     if t='' then raise Exception.Create('Project name required');
-    s:=ProjectFolder+t+'.xxl';
+    s:=ProjectFolder+t+XxmModuleExtension;
     if odXxmJson.Execute then
      begin
       fn:=odXxmJson.FileName;

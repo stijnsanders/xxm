@@ -6,17 +6,29 @@ procedure xxmConvertProject;
 
 procedure WelcomeMessage;
 procedure RegisterCompileOption;
-procedure DoWrite(const Msg:AnsiString);
 
 implementation
 
 uses Winapi.Windows, System.SysUtils, System.Classes, xxmProject1,
   System.Win.Registry;
 
+procedure DoWrite(Subject:TObject;const Msg:AnsiString);
+begin
+  Write(Msg);//stdout
+end;
+
+function GetFolder(var i:integer;const CheckMsg:string):string;
+begin
+  inc(i);
+  Result:=IncludeTrailingPathDelimiter(ParamStr(i));
+  if (CheckMsg<>'') and not(DirectoryExists(Result)) then
+    raise Exception.Create(CheckMsg+' not found "'+Result+'"');
+end;
+
 procedure xxmConvertProject;
 var
   i:integer;
-  s,protodir,srcdir,handlerdir:string;
+  s,protodir,protodef,srcdir,handlerdir:string;
   wait,rebuild,docompile,dolinemaps,doupdate:boolean;
   p:TXxmProject;
   extra:TStringList;
@@ -34,6 +46,7 @@ begin
     Writeln('    /nolinemaps     don''t generate line map files');
     Writeln('    /noupdate       don''t update files modified data');
     Writeln('    /proto <dir>    use an alternative unit templates folder');
+    Writeln('    /protodef <dif> use this default templates folder');
     Writeln('    /src <dir>      use an alternative source output folder');
     Writeln('    /handler <dir>  use an alternative handler path');
     Writeln('    /x:XXX          define template value XXX');
@@ -48,6 +61,7 @@ begin
   dolinemaps:=true;
   doupdate:=true;
   protodir:='';
+  protodef:='';
   srcdir:='';
   handlerdir:='';
   extra:=TStringList.Create;
@@ -72,31 +86,10 @@ begin
           if s='/nocompile' then docompile:=false else
           if s='/nolinemaps' then dolinemaps:=false else
           if s='/noupdate' then doupdate:=false else
-          if s='/proto' then
-           begin
-            inc(i);
-            protodir:=IncludeTrailingPathDelimiter(ParamStr(i));
-            if not DirectoryExists(protodir) then
-             begin
-              Writeln('Proto dir not found "'+protodir+'"');
-              Exit;
-             end;
-           end
-          else
-          if s='/src' then
-           begin
-            inc(i);
-            srcdir:=IncludeTrailingPathDelimiter(ParamStr(i));
-            //DirectoryExists? CheckFiles calls ForceDirectories
-           end
-          else
-          if s='/handler' then
-           begin
-            inc(i);
-            handlerdir:=IncludeTrailingPathDelimiter(ParamStr(i));
-            //DirectoryExists? CheckFiles calls ForceDirectories
-           end
-          else
+          if s='/proto' then protodir:=GetFolder(i,'Proto path') else
+          if s='/protodef' then protodef:=GetFolder(i,'Default Proto path') else
+          if s='/src' then srcdir:=GetFolder(i,'') else //CheckFiles calls ForceDirectories
+          if s='/handler' then handlerdir:=GetFolder(i,'') else
            begin
             Writeln('Unknown option "'+s+'"');
             Exit;
@@ -107,7 +100,7 @@ begin
         try
           s:=ExpandFileName(s);
           Writeln('--- '+s);
-          p:=TXxmProject.Create(s,DoWrite,true);
+          p:=TXxmProject.Create(nil,s,protodef,DoWrite,true);
           try
             if protodir<>'' then p.ProtoFolder:=protodir;
             if srcdir<>'' then p.SrcFolder:=srcdir;
@@ -194,11 +187,6 @@ begin
     r.Free;
   end;
   Writeln('Compile option registered on xxmp filetype');
-end;
-
-procedure DoWrite(const Msg:AnsiString);
-begin
-  Write(Msg);//stdout
 end;
 
 end.
