@@ -14,13 +14,13 @@ type
   private
     FHeap:THandle;
   protected
-    function Realloc(var NewCapacity: Integer): Pointer; override;
+    function Realloc(var NewCapacity: NativeInt): Pointer; override;
   public
     procedure AfterConstruction; override;
   end;
 
 function GetFileSignature(const Path: string): string;
-function UTF8CmpI(a,b:PUTF8Char):boolean;
+function UTF8CmpI(a,b:PUTF8Char):NativeInt;
 function HTMLEncode(const Data:UTF8String):UTF8String;
 function Base64Encode(const x:UTF8String):UTF8String;
 function RFC822DateGMT(dd:TDateTime):string;
@@ -60,21 +60,33 @@ begin
    end;
 end;
 
-function UTF8CmpI(a,b:PUTF8Char):boolean;
+function UTF8CmpI(a,b:PUTF8Char):NativeInt;
 begin
-  if (a=nil) or (b=nil) then
-    Result:=a=b
+  if a=nil then
+    if b=nil then
+      Result:=0
+    else
+      Result:=-1
   else
-   begin
-    while (a^<>#0) and (b^<>#0) and ((a^=b^) or
-      ((word(a^) in [$40..$5A]) and (word(b^) in [$60..$7A]) and ((word(a^) and $1F)=(word(b^) and $1F))) or
-      ((word(a^) in [$60..$7A]) and (word(b^) in [$40..$5A]) and ((word(a^) and $1F)=(word(b^) and $1F)))) do
+    if b=nil then
+      Result:=1
+    else
      begin
-      inc(a);
-      inc(b);
+      while (a^<>#0) and (b^<>#0) and ((a^=b^) or
+        ((word(a^) in [$40..$5A]) and (word(b^) in [$60..$7A]) and ((word(a^) and $1F)=(word(b^) and $1F))) or
+        ((word(a^) in [$60..$7A]) and (word(b^) in [$40..$5A]) and ((word(a^) and $1F)=(word(b^) and $1F)))) do
+       begin
+        inc(a);
+        inc(b);
+       end;
+      if a^=b^ then
+        Result:=0
+      else
+        if a^<b^ then
+          Result:=-1
+        else
+          Result:=1;
      end;
-    Result:=(a^=#0) and (b^=#0);
-   end;
 end;
 
 function HTMLEncode(const Data:UTF8String):UTF8String;
@@ -208,7 +220,7 @@ begin
   FHeap:=GetProcessHeap;
 end;
 
-function THeapStream.Realloc(var NewCapacity: Integer): Pointer;
+function THeapStream.Realloc(var NewCapacity: NativeInt): Pointer;
 const
   BlockSize=$10000;
 begin
@@ -303,7 +315,7 @@ var
   i:integer;
 begin
   i:=0;
-  while (i<KeysIndex) and not(UTF8CmpI(Key,Keys[i].Key)) do inc(i);
+  while (i<KeysIndex) and (UTF8CmpI(Key,Keys[i].Key)<>0) do inc(i);
   if i<KeysIndex then
     Result:=Keys[i].Value
   else

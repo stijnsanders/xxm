@@ -11,7 +11,7 @@ Use XxmPage to process URL's as a request is about to start.
 It is advised to link each request to a session here, if you want session management.
 (See an example xxmSession.pas in the include folder.)
 
-  $Rev: 523 $ $Date: 2024-12-13 23:42:42 +0100 (vr, 13 dec 2024) $
+  $Rev: 526 $ $Date: 2025-01-16 22:47:33 +0100 (do, 16 jan 2025) $
 }
 
 interface
@@ -24,7 +24,7 @@ function XxmInitialize(APILevel: NativeUInt; xxm2: Pxxm2;
 function XxmPage(Project: PxxmProject; Context: PxxmContext;
   Address: PUTF8Char): CxxmFragment; stdcall;
 
-function xxmFragment(Project: PxxmProject; Context: PxxmContext;
+function XxmFragment(Project: PxxmProject; Context: PxxmContext;
   Address: PUTF8Char): CxxmFragment; stdcall;
 
 exports

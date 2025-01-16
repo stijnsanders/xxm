@@ -885,7 +885,7 @@ begin
           for i:=0 to FProjectsCount-1 do
             if not FProjects[i].LoadCheck then
              begin
-              FProjects[i].Name:='';
+              //FProjects[i].Name:='';//keep name and sortindex
               FProjects[i].Alias:='';
               try
                 FreeAndNil(FProjects[i].Entry);
@@ -962,14 +962,17 @@ begin
         FindProject(FProjects[i].Alias,n,i,a);
        end;
     if i=-1 then
-      raise EXxmProjectNotFound.Create(StringReplace(
-        SXxmProjectNotFound,'__',Name,[]))
+      e:=nil
     else
       e:=FProjects[i].Entry;
   finally
     LeaveCriticalSection(FLock);
   end;
-  Result:=e;
+  if e=nil then
+    raise EXxmProjectNotFound.Create(StringReplace(
+      SXxmProjectNotFound,'__',Name,[]))
+  else
+    Result:=e;
 end;
 
 procedure TXxmProjectCache.ReleaseProject(const Name: WideString);
@@ -984,7 +987,7 @@ begin
     //if i=-1 then raise?
     if i<>-1 then
      begin
-      FProjects[i].Name:='';
+      //FProjects[i].Name:='';//keep Name and SortIndex
       FProjects[i].Alias:='';
       try
         FreeAndNil(FProjects[i].Entry);

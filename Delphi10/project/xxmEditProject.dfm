@@ -25,11 +25,10 @@ object EditProjectForm: TEditProjectForm
     Anchors = [akLeft, akTop, akRight, akBottom]
     TabOrder = 0
     object tsProject: TTabSheet
-      BorderWidth = 3
       Caption = 'Project'
       DesignSize = (
-        411
-        438)
+        417
+        444)
       object Label2: TLabel
         Left = 3
         Top = 51
@@ -65,7 +64,7 @@ object EditProjectForm: TEditProjectForm
       object txtPreCompCmds: TMemo
         Left = 3
         Top = 72
-        Width = 403
+        Width = 411
         Height = 70
         Anchors = [akLeft, akTop, akRight]
         ScrollBars = ssBoth
@@ -76,7 +75,7 @@ object EditProjectForm: TEditProjectForm
       object txtCompCmds: TMemo
         Left = 3
         Top = 169
-        Width = 403
+        Width = 411
         Height = 70
         Anchors = [akLeft, akTop, akRight]
         ScrollBars = ssBoth
@@ -87,7 +86,7 @@ object EditProjectForm: TEditProjectForm
       object txtPostCompCmds: TMemo
         Left = 3
         Top = 266
-        Width = 403
+        Width = 411
         Height = 70
         Anchors = [akLeft, akTop, akRight]
         ScrollBars = ssBoth
@@ -97,17 +96,17 @@ object EditProjectForm: TEditProjectForm
       end
       object btnRegisterFile: TButton
         Left = 3
-        Top = 360
-        Width = 153
+        Top = 352
+        Width = 166
         Height = 25
-        Caption = 'Register with xxm.json...'
+        Caption = 'Register with xxm2.json...'
         TabOrder = 3
         OnClick = btnRegisterFileClick
       end
       object txtProjectName: TEdit
         Left = 3
         Top = 24
-        Width = 403
+        Width = 411
         Height = 23
         Anchors = [akLeft, akTop, akRight]
         TabOrder = 4
@@ -138,12 +137,11 @@ object EditProjectForm: TEditProjectForm
       end
     end
     object tsParserVals: TTabSheet
-      BorderWidth = 3
       Caption = 'Parser Values'
       ImageIndex = 2
       DesignSize = (
-        411
-        438)
+        417
+        444)
       object Label3: TLabel
         Left = 3
         Top = 3
@@ -154,8 +152,8 @@ object EditProjectForm: TEditProjectForm
       end
       object Label4: TLabel
         Left = 3
-        Top = 420
-        Width = 405
+        Top = 426
+        Width = 411
         Height = 15
         Anchors = [akLeft, akRight, akBottom]
         AutoSize = False
@@ -177,7 +175,7 @@ object EditProjectForm: TEditProjectForm
       object cbParserValue: TComboBox
         Left = 3
         Top = 24
-        Width = 405
+        Width = 411
         Height = 23
         Style = csDropDownList
         Anchors = [akLeft, akTop, akRight]
@@ -205,8 +203,8 @@ object EditProjectForm: TEditProjectForm
       object txtParserValue: TMemo
         Left = 3
         Top = 53
-        Width = 405
-        Height = 361
+        Width = 411
+        Height = 367
         Anchors = [akLeft, akTop, akRight, akBottom]
         Font.Charset = DEFAULT_CHARSET
         Font.Color = clWindowText
@@ -222,12 +220,11 @@ object EditProjectForm: TEditProjectForm
       end
     end
     object TabSheet1: TTabSheet
-      BorderWidth = 3
       Caption = 'Advanced'
       ImageIndex = 3
       DesignSize = (
-        411
-        438)
+        417
+        444)
       object lblProtoPath: TLabel
         Left = 3
         Top = 3
@@ -239,14 +236,14 @@ object EditProjectForm: TEditProjectForm
       object txtProtoPath: TEdit
         Left = 3
         Top = 24
-        Width = 374
+        Width = 380
         Height = 23
         Anchors = [akLeft, akTop, akRight]
         TabOrder = 0
         OnChange = txtChange
       end
       object btnProtoPathSelect: TButton
-        Left = 383
+        Left = 389
         Top = 23
         Width = 25
         Height = 25
@@ -918,9 +915,9 @@ object EditProjectForm: TEditProjectForm
   end
   object odXxmJson: TOpenDialog
     DefaultExt = 'json'
-    FileName = 'xxm.json'
-    Filter = 'xxm.json|xxm.json|All files (*.*)|*.*'
-    Title = 'Select xxm.json to register with'
+    FileName = 'xxm2.json'
+    Filter = 'xxm2.json|xxm2.json|xxm.json|xxm.json|All files (*.*)|*.*'
+    Title = 'Select xxm2.json to register with'
     Left = 272
     Top = 424
   end

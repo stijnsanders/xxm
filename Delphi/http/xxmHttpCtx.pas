@@ -122,6 +122,8 @@ begin
   FreeAndNil(FSocket);
   FReqHeaders.Free;
   FResHeaders.Free;
+  if (FCtxt.dwLower<>nil) or (FCtxt.dwUpper<>nil) then
+    DeleteSecurityContext(@FCtxt);
   if (FCredNTLM.dwLower<>nil) or (FCredNTLM.dwUpper<>nil) then
     FreeCredentialsHandle(@FCredNTLM);
   if (FCredNego.dwLower<>nil) or (FCredNego.dwUpper<>nil) then
@@ -429,12 +431,15 @@ begin
      end
     else
      begin
-      if Cred.dwLower=nil then
+      if (Cred.dwLower=nil) or (Cred.xExpires<UTCNow) then
+       begin
+        if Cred.dwLower<>nil then FreeCredentialsHandle(@Cred);
         if AcquireCredentialsHandle(nil,PAnsiChar(Package),SECPKG_CRED_INBOUND,
           nil,nil,nil,nil,@Cred,nil)=0 then //ptsExpiry is unreliable?
           Cred.xExpires:=UTCNow+SecurityContextExpireInterval
         else
           RaiseLastOSError;
+       end;
 
       SetLength(d,3);
       SetLength(t,$10000);

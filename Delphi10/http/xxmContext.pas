@@ -71,6 +71,7 @@ type
     function AuthValue(cs:TXxmContextString):UTF8String;
     procedure AuthSet(const Name,Pwd:UTF8String);
     procedure ParseParams;
+    procedure AddParam(const Name,Value:UTF8String);
     function GetCookie(Name:PUTF8Char):PUTF8Char;
     function GetParam(Name:PUTF8Char):PParamInfo;
     function GetParamCount:integer;
@@ -499,7 +500,7 @@ begin
     FRedirectPrefix:='/'+FProjectName;
     FProjectEntry:=XxmProjectRegistry.GetProjectEntry(p);
     if FProjectEntry=nil then
-      if UTF8CmpI(PUTF8Char(FProjectName),'favicon.ico') then
+      if UTF8CmpI(PUTF8Char(FProjectName),'favicon.ico')=0 then
        begin
         n:=Length(XxmProjectRegistry.FavIcon);
         SetResponseHeader('Content-Length',Store(IntToStr8(n)));
@@ -616,7 +617,7 @@ begin
               FAutoEncoding:=aeContentDefined;
               SetResponseHeader('Content-Type',Store(x));
               //TODO: Cache-Control max-age (and others?), other 'If-'s?
-              if (y<>'') and UTF8CmpI(GetRequestHeader('If-Modified-Since'),@y[1]) then
+              if (y<>'') and (UTF8CmpI(GetRequestHeader('If-Modified-Since'),@y[1])=0) then
                begin
                 FStatusCode:=304;
                 FStatusText:='Not Modified';
@@ -769,7 +770,7 @@ begin
         x:=ContextString(csReferer);
         if (x<>'') and (x<>z) then y:=y
           +#13#10'<a href="'+HTMLEncode(x)+'" style="color:white;">back</a>';
-        if UTF8CmpI(FVerb,'GET') then y:=y
+        if UTF8CmpI(FVerb,'GET')=0 then y:=y
           +#13#10'<a href="'+HTMLEncode(z)+'" style="color:white;">refresh</a>';
         y:=y
           +#13#10'&nbsp;</p></body></html>'
@@ -865,7 +866,7 @@ var
 begin
   i:=0;
   //TODO: search binary tree?
-  while (i<FHeadersIndexIn) and not(UTF8CmpI(Name,FHeaders[i].Name)) do inc(i);
+  while (i<FHeadersIndexIn) and (UTF8CmpI(Name,FHeaders[i].Name)<>0) do inc(i);
   if i<FHeadersIndexIn then
     Result:=FHeaders[i].Value
   else
@@ -889,7 +890,7 @@ begin
    begin
     //find by name
     i:=FHeadersIndexIn;
-    while (i<FHeadersIndexOut) and not(UTF8CmpI(FHeaders[i].Name,Name)) do inc(i);
+    while (i<FHeadersIndexOut) and (UTF8CmpI(FHeaders[i].Name,Name)<>0) do inc(i);
    end;
   if i=FHeadersIndexOut then
    begin
@@ -911,7 +912,7 @@ var
 begin
   //read-only! use SetResponseHeader to modify/overwrite
   i:=FHeadersIndexIn;
-  while (i<FHeadersIndexOut) and not(UTF8CmpI(FHeaders[i].Name,Name)) do inc(i);
+  while (i<FHeadersIndexOut) and (UTF8CmpI(FHeaders[i].Name,Name)<>0) do inc(i);
   if i<FHeadersIndexOut then
     Result:=FHeaders[i].Value
   else
@@ -1152,7 +1153,8 @@ begin
       //FPage.Project?
       pn:='';
       if @FProjectEntry.xxmFragment=nil then
-        raise EXxmIncludeNoFragmentHandler.Create('Nu fragment handler is available');
+        raise EXxmIncludeNoFragmentHandler.Create('No fragment handler is available "'+
+          string(Address)+'"');
       p:=FProjectEntry.xxmFragment(FProjectEntry.Project,Context,PUTF8Char(pa));//TODO: RelativePath
       if @p=nil then
         raise EXxmIncludeFragmentNotFound.Create(
@@ -1498,14 +1500,14 @@ begin
           sn.GetHeader(h);
           for i:=0 to h.KeysIndex-1 do
            begin
-            if UTF8CmpI(h.Keys[i].Key,'Content-Disposition') then
+            if UTF8CmpI(h.Keys[i].Key,'Content-Disposition')=0 then
              begin
               v.SplitHeaderValue(h.Keys[i].Value,true);//assert results 'form-data'
               pn:=v['name'];
               pv:=v['filename'];
              end
             else
-            if UTF8CmpI(h.Keys[i].Key,'Content-Type') then
+            if UTF8CmpI(h.Keys[i].Key,'Content-Type')=0 then
               pt:=h.Keys[i].Value
             else
               ;//raise EXxmError.Create('Unknown multipart header "'+h.Keys[i].Key+'"');
@@ -1535,13 +1537,31 @@ begin
   FParamsParsed:=true;
 end;
 
+procedure TxxmContext.AddParam(const Name,Value:UTF8String);
+begin
+  if FParamsIndex=FParamsSize then
+   begin
+    inc(FParamsSize,$100);//grow step
+    SetLength(FParams,FParamsSize);
+   end;
+  FParams[FParamsIndex].Context:=Self;
+  FParams[FParamsIndex].Index:=FParamsIndex;
+  FParams[FParamsIndex].Origin:='CONTEXT';
+  FParams[FParamsIndex].Name:=Store(Name);
+  FParams[FParamsIndex].Value:=Store(Value);
+  FParams[FParamsIndex].ContentType:=nil;
+  FParams[FParamsIndex].PostDataPos:=0;
+  FParams[FParamsIndex].PostDataLen:=0;
+  inc(FParamsIndex);
+end;
+
 function TxxmContext.GetParam(Name: PUTF8Char): PParamInfo;
 var
   i:NativeUInt;
 begin
   if not FParamsParsed then ParseParams;
   i:=0;
-  while (i<FParamsIndex) and not(UTF8CmpI(Name,FParams[i].Name)) do inc(i);
+  while (i<FParamsIndex) and (UTF8CmpI(Name,FParams[i].Name)<>0) do inc(i);
   if i<FParamsIndex then
     Result:=@FParams[i]
   else
@@ -1813,8 +1833,7 @@ end;
 
 procedure Context_Add_Parameter(Context:CxxmContext;Origin,Name,Value:PUTF8Char); stdcall;
 begin
-  //TODO
-  raise Exception.Create('Not implemented (yet)');
+  TxxmContext(Context.__Context).AddParam(Name,Value);
 end;
 
 function Context_RequestHeader(Context:CxxmContext;Name:PUTF8Char):PUTF8Char; stdcall;
@@ -1978,7 +1997,7 @@ begin
   //if Parameter=nil then raise?
   c:=p.Context as TxxmContext;
   i:=p.index;
-  while (i<c.FParamsIndex) and not(UTF8CmpI(p.Name,c.FParams[i].Name)) do inc(i);
+  while (i<c.FParamsIndex) and (UTF8CmpI(p.Name,c.FParams[i].Name)<>0) do inc(i);
   if i<c.FParamsIndex then
     Result.__Parameter:=@c.FParams[i]
   else

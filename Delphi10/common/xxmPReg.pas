@@ -59,8 +59,9 @@ type
     FRegFilePath,FRegSignature:string;
     FRegLastCheckTC:cardinal;
     FProjects:array of record
-      Name:UTF8String;
+      Name,Alias:UTF8String;
       Entry:TProjectEntry;
+      SortIndex:integer;
       LoadCheck:boolean;
     end;
     FProjectsIndex,FProjectsSize:integer;
@@ -69,11 +70,12 @@ type
     FHosts:array of record
       Host,DefaultProject,SingleProject:UTF8String;
       Projects:array of UTF8String;
+      SortIndex:integer;
       LoadCheck:boolean;
     end;
     FHostsIndex,FHostsSize:integer;
-    function FindProject(Name:PUTF8Char):integer;
-    function FindHost(Host:PUTF8Char):integer;
+    procedure FindProject(Name:PUTF8Char;var i,a:integer);
+    procedure FindHost(Host:PUTF8Char;var i,a:integer);
   public
     FavIcon:array of byte;
 
@@ -91,6 +93,7 @@ type
   EXxmProjectNotFound=class(Exception);
   EXxmModuleNotFound=class(Exception);
   EXxmProjectLoadFailed=class(Exception);
+  EXxmProjectAliasDepth=class(Exception);
   EXxmFileTypeAccessDenied=class(Exception);
 
   TXxmProjectCheckHandler=function(Entry: TProjectEntry;
@@ -255,7 +258,7 @@ procedure TProjectRegistry.CheckRegistry;
 var
   fn,s:string;
   n:UTF8String;
-  i,j:integer;
+  i,j,a:integer;
   d,d1:IJSONDocument;
   e:IJSONEnumerator;
   v:Variant;
@@ -288,7 +291,7 @@ begin
            begin
             n:=UTF8Encode(e.Key);
             d1:=JSON(e.Value);
-            i:=FindProject(PUTF8Char(n));
+            FindProject(PUTF8Char(n),i,a);
             if (i<>-1) and (FProjects[i].LoadCheck) then i:=-1;//duplicate! raise?
             if i=-1 then
              begin
@@ -306,43 +309,68 @@ begin
                end;
               FProjects[i].Name:=n;
               FProjects[i].Entry:=nil;//create see below
+              //sort index
+              j:=i;
+              while j>a do
+               begin
+                FProjects[j].SortIndex:=FProjects[j-1].SortIndex;
+                dec(j);
+               end;
+              FProjects[j].SortIndex:=i;
              end;
             FProjects[i].LoadCheck:=true;
-            fn:=StringReplace(
-              VarToStr(d1['path']),'/',PathDelim,[rfReplaceAll]);
-            if fn='' then raise EXxmProjectNotFound.Create(
-              'xxm Project invalid path "'+e.Key+'"');
-            {
-            if PathIsRelative(fn) then
+            FProjects[i].Alias:=UTF8Encode(VarToStr(d1['alias']));
+            if FProjects[i].Alias='' then
              begin
-              SetLength(fn,MAX_PATH);
-              PathCombine(PChar(fn),PChar(FRegFilePath),PChar());
-              SetLength(fn,Length(fn));
-             end;
-            }
-            if (Length(fn)>2) and not((fn[2]=':') or ((fn[1]='\') and (fn[2]='\'))) then
-              fn:=FRegFilePath+fn;
-            if FProjects[i].Entry=nil then
-              FProjects[i].Entry:=TProjectEntry.Create(n,fn,
-                VarToBool(d1['loadCopy']))
+              fn:=StringReplace(
+                VarToStr(d1['path']),'/',PathDelim,[rfReplaceAll]);
+              if fn='' then raise EXxmProjectNotFound.Create(
+                'xxm Project invalid path "'+e.Key+'"');
+              {
+              if PathIsRelative(fn) then
+               begin
+                SetLength(fn,MAX_PATH);
+                PathCombine(PChar(fn),PChar(FRegFilePath),PChar());
+                SetLength(fn,Length(fn));
+               end;
+              }
+              if (Length(fn)>2) and not((fn[2]=':') or ((fn[1]='\') and (fn[2]='\'))) then
+                fn:=FRegFilePath+fn;
+              if FProjects[i].Entry=nil then
+                FProjects[i].Entry:=TProjectEntry.Create(n,fn,
+                  VarToBool(d1['loadCopy']))
+              else
+                if fn<>FProjects[i].Entry.FilePath then
+                  FProjects[i].Entry.SetFilePath(fn,VarToBool(d1['loadCopy']));
+              FProjects[i].Entry.AllowInclude:=VarToBool(d1['allowInclude']);
+              FProjects[i].Entry.Signature:=VarToStr(d1['signature']);
+              FProjects[i].Entry.BufferSize:=BSize(VarToStr(d1['bufferSize']));
+              FProjects[i].Entry.Negotiate:=VarToBool(d1['negotiate']);
+              FProjects[i].Entry.NTLM:=VarToBool(d1['ntlm']);
+              FProjects[i].Entry.ProtoPath:=VarToStr(d1['protoPath']);
+              FProjects[i].Entry.HandlerPath:=VarToStr(d1['handlerPath']);
+             end
             else
-              if fn<>FProjects[i].Entry.FilePath then
-                FProjects[i].Entry.SetFilePath(fn,VarToBool(d1['loadCopy']));
-            FProjects[i].Entry.AllowInclude:=VarToBool(d1['allowInclude']);
-            FProjects[i].Entry.Signature:=VarToStr(d1['signature']);
-            FProjects[i].Entry.BufferSize:=BSize(VarToStr(d1['bufferSize']));
-            FProjects[i].Entry.Negotiate:=VarToBool(d1['negotiate']);
-            FProjects[i].Entry.NTLM:=VarToBool(d1['ntlm']);
-            FProjects[i].Entry.ProtoPath:=VarToStr(d1['protoPath']);
-            FProjects[i].Entry.HandlerPath:=VarToStr(d1['handlerPath']);
+             begin
+              try
+                FreeAndNil(FProjects[i].Entry);
+              except
+                //silent
+              end;
+              //TODO: inc(FCacheIndex);
+             end;
            end;
           //clean-up projects removed from config
           for i:=0 to FProjectsIndex-1 do
             if not FProjects[i].LoadCheck then
              begin
-              FProjects[i].Name:='';
-              //FProjects[i].Alias:='';
-              FreeAndNil(FProjects[i].Entry);
+              //FProjects[i].Name:='';//keep Name and SortIndex
+              FProjects[i].Alias:='';
+              try
+                FreeAndNil(FProjects[i].Entry);
+              except
+                //silent
+              end;
              end;
           {//TODO
           if FSingleProject<>'' then
@@ -355,7 +383,7 @@ begin
            begin
             n:=UTF8Encode(e.Key);
             d1:=JSON(e.Value);
-            i:=FindHost(PUTF8Char(n));
+            FindHost(PUTF8Char(n),i,a);
             if (i<>-1) and (FHosts[i].LoadCheck) then i:=-1;//duplicate! raise?
             if i=-1 then
              begin
@@ -372,6 +400,14 @@ begin
                 inc(FHostsIndex);
                end;
               FHosts[i].Host:=n;
+              //sort index
+              j:=i;
+              while j>a do
+               begin
+                FHosts[j].SortIndex:=FHosts[j-1].SortIndex;
+                dec(j);
+               end;
+              FHosts[j].SortIndex:=i;
              end;
             FHosts[i].LoadCheck:=true;
 
@@ -392,7 +428,12 @@ begin
           //clean-up hosts removed from config
           for i:=0 to FHostsIndex-1 do
             if not FHosts[i].LoadCheck then
-              FHosts[i].Host:='';
+             begin
+              //FHosts[i].Host:='';//Keep Name,SortIndex
+              FHosts[i].DefaultProject:='';
+              FHosts[i].SingleProject:='';
+              SetLength(FHosts[i].Projects,0);
+             end;
          end;
       end;
     finally
@@ -401,46 +442,74 @@ begin
    end;
 end;
 
-function TProjectRegistry.FindProject(Name:PUTF8Char):integer;
+procedure TProjectRegistry.FindProject(Name:PUTF8Char;var i,a:integer);
 var
-  i:integer;
+  b,c,m:integer;
 begin
+  //TODO: FLock?
+  i:=-1;
   if (Name=nil) or (Name^=#0) then
-    Result:=-1
+    a:=-1
   else
    begin
-    i:=0;
-    while (i<FProjectsIndex) and not(UTF8CmpI(Name,PUTF8Char(FProjects[i].Name))) do inc(i);
-    if i<FProjectsIndex then
-      Result:=i
-    else
-      Result:=-1;
+    a:=0;
+    b:=FProjectsIndex-1;
+    while a<=b do
+     begin
+      c:=(a+b) div 2;
+      m:=UTF8CmpI(Name,PUTF8Char(FProjects[FProjects[c].SortIndex].Name));
+      if m<0 then
+        if b=c then dec(b) else b:=c
+      else
+      if m>0 then
+        if a=c then inc(a) else a:=c
+      else
+       begin
+        a:=c;
+        b:=a-1;//end loop
+        i:=FProjects[c].SortIndex;
+       end;
+     end;
    end;
 end;
 
-function TProjectRegistry.FindHost(Host:PUTF8Char):integer;
+procedure TProjectRegistry.FindHost(Host:PUTF8Char;var i,a:integer);
 var
-  i:integer;
+  b,c,m:integer;
 begin
+  //TODO: FLock?
+  i:=-1;
   if (Host=nil) or (Host^=#0) then
-    Result:=-1
+    a:=-1
   else
    begin
-    i:=0;
-    while (i<FHostsIndex) and not(UTF8CmpI(Host,PUTF8Char(FHosts[i].Host))) do inc(i);
-    if i<FHostsIndex then
-      Result:=i
-    else
-      Result:=-1;
+    a:=0;
+    b:=FHostsIndex-1;
+    while a<=b do
+     begin
+      c:=(a+b) div 2;
+      m:=UTF8CmpI(Host,PUTF8Char(FHosts[FHosts[c].SortIndex].Host));
+      if m<0 then
+        if b=c then dec(b) else b:=c
+      else
+      if m>0 then
+        if a=c then inc(a) else a:=c
+      else
+       begin
+        a:=c;
+        b:=a-1;//end loop
+        i:=FHosts[c].SortIndex;
+       end;
+     end;
    end;
 end;
 
 function TProjectRegistry.GetProjectName(Host,Name:PUTF8Char):PUTF8Char;
 var
-  i,j,l:integer;
+  i,j,l,a:integer;
 begin
   //TODO: lock?
-  i:=FindHost(Host);
+  FindHost(Host,i,a);
   if i=-1 then
    begin
     if FSingleProject<>'' then
@@ -472,7 +541,7 @@ begin
       else
        begin
         j:=0;
-        while (j<l) and not(UTF8CmpI(Name,PUTF8Char(FHosts[i].Projects[j]))) do inc(j);
+        while (j<l) and (UTF8CmpI(Name,PUTF8Char(FHosts[i].Projects[j]))<>0) do inc(j);
         if j<l then
           Result:=PUTF8Char(FHosts[i].Projects[j])
         else
@@ -484,14 +553,31 @@ end;
 
 function TProjectRegistry.GetProjectEntry(Name:PUTF8Char):TProjectEntry;
 var
-  i:integer;
+  n:PUTF8Char;
+  i,a,d:integer;
 begin
-  i:=0;
-  while (i<FProjectsIndex) and not(UTF8CmpI(Name,PUTF8Char(FProjects[i].Name))) do inc(i);
-  if i<FProjectsIndex then
-    Result:=FProjects[i].Entry
-  else
-    Result:=nil;
+  Result:=nil;//default
+  n:=Name;
+  d:=0;
+  while n<>nil do
+   begin
+    FindProject(Name,i,a);
+    if i=-1 then
+      n:=nil//end loop
+    else
+      if FProjects[i].Alias<>'' then
+       begin
+        n:=PUTF8Char(FProjects[i].Alias);
+        inc(d);
+        if d=8 then raise EXxmProjectAliasDepth.Create(
+          'xxm Project aliasses are limited to 8 in sequence "'+string(Name)+'"');
+       end
+      else
+       begin
+        n:=nil;//end loop
+        Result:=FProjects[i].Entry
+       end;
+   end;
 end;
 
 { TProjectEntry }

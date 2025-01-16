@@ -1,5 +1,6 @@
 v1.?.?.?
 - deprecated: xxmSyna*
+- fixed bug with live removing a project from xxm.json
 
 v1.2.8.510
 - fixed bug with TXxmWebSocket and ReleaseContexts

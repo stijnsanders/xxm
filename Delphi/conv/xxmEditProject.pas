@@ -705,6 +705,7 @@ var
   s,t,u:string;
   i,j,l,fi,fl,fc:integer;
 begin
+  odIncludeUnit.InitialDir:=ProjectFolder;
   if odIncludeUnit.Execute then
    begin
     fc:=0;
