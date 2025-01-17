@@ -1,0 +1,17 @@
+<link rel="stylesheet" type="text/css" href="http://xxm.sourceforge.net/xxm.css" />
+<h3>xxm Demo Projects - 01 Hello World</h3>
+<p>This is a basic demo project showing the basic files of an xxm project.</p>
+<dl>
+<dt>Web.xxmp</dt>
+<dd>The project file, contains an internal list of the files of the project, and other data about the project.<br />
+Use <i>xxmProject.exe</i> to edit and manage project settings.</dd>
+<dt>xxmp2.pas</dt>
+<dd>The project's main unit. When this file is missing form the project, xxm creates one for you.</dd>
+<dt>Default.xxm</dt>
+<dd>The website's default page. It contains the code of a basic HTML page, a hyperlink to Hello1.xxm and the Delphi code to output the string 'Hello world'.</dd>
+<dt>Hello1.xxm</dt>
+<dd>A second page of the website. It contains code to include Chunk.xxmi a number of times. If no count parameter value is provided, it is included 10 times.
+You can define a different count value by appending a query string to the URL, e.g.: <code>http://localhost/demo01/Hello1.xxm<b>?count=20</b></code></dd>
+<dt>Chunk.xxmi</dt>
+<dd>An include file. It displays the value that's passed to it, followed by "#: Hello World!"</dd>
+</dl>

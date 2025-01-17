@@ -1,0 +1,21 @@
+[[@xxmSession,]]
+<p>[[=Context.SessionID]]</p>
+
+[[
+if Session.Authenticated then
+ begin
+  <<p><b>Hello, [[=Session.Name]]</b></p>
+  <form action="Logout.xxm" method="post">
+  <input type="submit" value="logout" />
+  </form>>
+ end
+else
+ begin
+  <<form action="Login.xxm" method="post">
+  name:<input type="text" name="name" /><br />
+  pwd:[...]<br />
+  <input type="submit" value="login" />
+  </form>>
+ end;
+]]
+

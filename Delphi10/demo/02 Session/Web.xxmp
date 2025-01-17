@@ -1,0 +1,25 @@
+{
+	"name": "demo",
+	"uuid": "{BC704362-392B-4720-90D3-8320F9BD84DD}",
+	"compileCommand": "dcc32 -U[[HandlerPath]]public -Q [[ProjectName]].dpr",
+	"files": {
+		"default_xxm": {
+			"path": "Default.xxm",
+			"unitName": "default_xxm1",
+			"unitPath": ""
+		},
+		"login_xxm": {
+			"path": "Login.xxm",
+			"unitName": "login_xxm1",
+			"unitPath": ""
+		},
+		"logout_xxm": {
+			"path": "Logout.xxm",
+			"unitName": "logout_xxm1",
+			"unitPath": ""
+		}
+	},
+	"units": {
+		"xxmSession": {}
+	}
+}

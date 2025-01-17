@@ -1,17 +1,13 @@
 unit xxmp2;
 
 {
-  xxm Module Management Unit
+  xxm Project Unit
+  demo: 02 Session
 
-This is a default xxm Module Management Unit.
-You are free to change this for your project.
-(It's advised to delete this comment block on the generated xxmp2.pas.)
-Use XxmPage to process URL's as a request is about to start.
-(Be careful with sending content from there though!)
-It is advised to link each request to a session here, if you want session management.
-(See an example xxmSession.pas in the include folder.)
-
-  $Rev: 527 $ $Date: 2025-01-17 22:19:51 +0100 (vr, 17 jan 2025) $
+Please note this xxmp2.pas was first created from the xxmp2.pas template,
+but has been modified to include xxmSession in the uses clause (implementation section),
+and to call SetSession(Context); in XxmPage, linking this request either to a new session (using Context.SessionID)
+or to an existing session that was created for the SessionID.
 }
 
 interface
@@ -34,7 +30,7 @@ exports
 
 implementation
 
-uses System.WideStrUtils
+uses System.WideStrUtils, xxmSession
   {$I src/xxmFMap0.inc}
   ;
 
@@ -52,7 +48,7 @@ var
   a:UTF8String;
   r:pointer;  
 begin
-  //SetSession(Context);
+  SetSession(Context);
   a:=UTF8LowerCase(Address);
   {$I src/xxmFMap1.inc}
   Result:=CxxmFragment(r);

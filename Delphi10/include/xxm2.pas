@@ -3,8 +3,8 @@ unit xxm2;
 interface
 
 const
-  //$Date: 2024-12-15 20:09:52 +0100 (zo, 15 dec 2024) $
-  XxmRevision = '$Rev: 524 $';
+  //$Date: 2025-01-17 22:19:51 +0100 (vr, 17 jan 2025) $
+  XxmRevision = '$Rev: 527 $';
   XxmAPILevel = 2000;//v2.0
 
 type
@@ -37,8 +37,8 @@ const
 
 
 type
-  PxxmContext=type pointer; //opaque
   PxxmProject=type pointer; //opaque
+  PxxmContext=type pointer; //opaque
   PxxmParameter=type pointer; //opaque
 
   CxxmParameter=record
@@ -266,7 +266,7 @@ var
 type
   //expected export 'XxmInitialize'
   FxxmInitialize=function(APILevel: NativeUInt; xxm2: Pxxm2;
-    const AProjectName: PUTF8Char):PxxmProject; stdcall;
+    const AProjectName: PUTF8Char): PxxmProject; stdcall;
 
   //expected export 'XxmPage'
   FxxmPage=function (Project: PxxmProject; Context: CxxmContext;

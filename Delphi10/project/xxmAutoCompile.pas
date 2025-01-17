@@ -57,58 +57,61 @@ begin
         if hp='' then hp:=XxmProjectRegistry.HandlerPath;
         pp:=Entry.ProtoPath;
         if pp='' then pp:=XxmProjectRegistry.ProtoPath;
-        //CanCreate would disturb standalone xxl
-        Project:=TXxmProject.Create(Entry,fn,hp,pp,BuildOutput,false);
         try
+          //CanCreate would disturb standalone xxl
+          Project:=TXxmProject.Create(Entry,fn,hp,pp,BuildOutput,false);
           try
-            b:=Project.CheckFiles(false,nil);
-            if not(b) then
-             begin
-              lr:='';
-              Entry.LastResult:='';
-              Result:=true;
-              wsig:=GetFileSignature(
-                Project.RootFolder+Project.ProjectFile);
-              if Entry.Signature<>wsig then
-                b:=Project.GenerateProjectFiles(false,nil);
-             end;
-            if b or not(FileExists(fn)) then
-             begin
-              Entry.Release;
-              //only compile when changes detected
-              //only save when compile success
-              if Project.Compile then
+            try
+              b:=Project.CheckFiles(false,nil);
+              if not(b) then
                begin
-                Project.Update;
-                wsig:=GetFileSignature(
-                  Project.RootFolder+Project.ProjectFile);
-                Entry.Signature:=wsig;
                 lr:='';
                 Entry.LastResult:='';
                 Result:=true;
-               end
-              else
+                wsig:=GetFileSignature(
+                  Project.RootFolder+Project.ProjectFile);
+                if Entry.Signature<>wsig then
+                  b:=Project.GenerateProjectFiles(false,nil);
+               end;
+              if b or not(FileExists(fn)) then
                begin
-                lr:=BuildError('Build failed: '+HTMLEncode(ProjectName),
-                  '<xmp style="margin:0.1em;">'+UTF8Encode(Entry.LastResult)+'</xmp>'#13#10,//<xmp> doesn't need HTMLEncode
-                  '<a href="'+HTMLEncode(Context.URL)+'" style="float:left;color:white;">refresh</a>'#13#10);
+                Entry.Release;
+                //only compile when changes detected
+                //only save when compile success
+                if Project.Compile then
+                 begin
+                  Project.Update;
+                  wsig:=GetFileSignature(
+                    Project.RootFolder+Project.ProjectFile);
+                  Entry.Signature:=wsig;
+                  lr:='';
+                  Entry.LastResult:='';
+                  Result:=true;
+                 end
+                else
+                 begin
+                  lr:=BuildError('Build failed: '+HTMLEncode(ProjectName),
+                    '<xmp style="margin:0.1em;">'+UTF8Encode(Entry.LastResult)+'</xmp>'#13#10,//<xmp> doesn't need HTMLEncode
+                    '<a href="'+HTMLEncode(Context.URL)+'" style="float:left;color:white;">refresh</a>'#13#10);
+                  Result:=false;
+                 end;
+                Entry.LastCheck:=GetTickCount;
+               end;
+            except
+              on e:Exception do
+               begin
+                lr:=BuildError('Error building: '+HTMLEncode(ProjectName),
+                  '<p style="margin:0.1em;">An error occurred while building the module.<br />'#13#10
+                  +'<i>'+HTMLEncode(UTF8Encode(e.ClassName))+'</i><br /><b>'+HTMLEncode(UTF8Encode(e.Message))+'</b></p>'#13#10
+                  +'</p>','');
                 Result:=false;
                end;
-              Entry.LastCheck:=GetTickCount;
-             end;
-          except
-            on EXxmProjectNotFound do Result:=true;//assert xxl only
-            on e:Exception do
-             begin
-              lr:=BuildError('Error building: '+HTMLEncode(ProjectName),
-                '<p style="margin:0.1em;">An error occurred while building the module.<br />'#13#10
-                +'<i>'+HTMLEncode(UTF8Encode(e.ClassName))+'</i><br /><b>'+HTMLEncode(UTF8Encode(e.Message))+'</b></p>'#13#10
-                +'</p>','');
-              Result:=false;
-             end;
+            end;
+          finally
+            Project.Free;
           end;
-        finally
-          Project.Free;
+        except
+          on EXxmProjectNotFound do Result:=true;//assert xxl only
         end;
        end
       else

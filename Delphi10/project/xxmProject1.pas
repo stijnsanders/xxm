@@ -47,14 +47,12 @@ type
     property LineMaps: boolean read DoLineMaps write DoLineMaps;
   end;
 
-  EXxmProjectNotFound=class(Exception);
-  EXxmProjectLoad=class(Exception);
   EXxmProjectCompile=class(Exception);
 
 implementation
 
 uses System.Variants, System.Win.ComObj, xxmDefs, xxmTools, xxmProtoParse,
-  xxHash;
+  xxmPReg, xxHash;
 
 {  }
 
@@ -533,6 +531,17 @@ begin
        end;
      end;
     //missing? delete?
+
+    uname:=ProtoProjectPas;
+    s:=GetFileSignature(FRootFolder+uname);
+    if Signatures.Values[uname]<>s then
+     begin
+      Signatures.Values[uname]:=s;
+      Modified:=true;
+      if not Result then
+        Signatures.Values[SignaturesUpdateReasonKey]:=uname;
+      Result:=true;
+     end;
 
     //check resource files
     e:=JSONEnum(Data['resources']);
@@ -1030,7 +1039,7 @@ begin
     for sl_x:=0 to sl_in.Count-1 do
      begin
       s:=sl_in[sl_x];
-      if (s='') or (s[2]=':') or (s[2]='\') then i:=0 else i:=Pos('.pas(',s);
+      if (s='') or (s[1]='[') or (s[2]=':') or (s[2]='\') then i:=0 else i:=Pos('.pas(',s);
       if i<>0 then
        begin
         k:=i;

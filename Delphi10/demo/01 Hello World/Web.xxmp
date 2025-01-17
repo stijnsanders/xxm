@@ -1,0 +1,22 @@
+{
+	"name": "demo",
+  "uuid": "{0AAE00BB-1A19-4EAF-8152-FD78C5A4B3F9}",
+	"compileCommand": "dcc32 -U[[HandlerPath]]public -Q [[ProjectName]].dpr",
+	"files": {
+		"default_xxm": {
+			"path": "Default.xxm",
+			"unitName": "default_xxm1",
+			"unitPath": ""
+		},
+		"hello1_xxm": {
+			"path": "Hello1.xxm",
+			"unitName": "hello1_xxm1",
+			"unitPath": ""
+		},
+		"chunk_xxmi": {
+			"path": "Chunk.xxmi",
+			"unitName": "chunk_xxmi1",
+			"unitPath": ""
+		}
+	}
+}
