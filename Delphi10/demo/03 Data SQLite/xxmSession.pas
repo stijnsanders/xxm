@@ -14,12 +14,15 @@ Add this unit to the uses clause of the project source file (xxmp.pas) and add t
 
 interface
 
-uses xxm2;
+uses xxm2, SQLiteData;
 
 type
   TXxmSession=class(TObject)
   private
     FSessionID: UTF8String;
+
+    function GetDbCon: TSQLiteConnection;
+
   public
 
     //TODO: full properties?
@@ -33,6 +36,7 @@ type
     procedure CheckProtect(Context: CXxmContext);
 
     property SessionID: UTF8String read FSessionID;
+    property DbCon: TSQLiteConnection read GetDbCon;
   end;
 
 procedure SetSession(Context: CXxmContext);
@@ -43,11 +47,14 @@ threadvar
 
 implementation
 
-uses SysUtils;
+uses SysUtils, Windows;
 
 var
   SessionStore: array of TXxmSession;
   SessionStoreIndex, SessionStoreSize: integer;
+
+threadvar
+  ThreadDbCon:TSQLiteConnection;
 
 function UTF8Cmp(const aa, bb: UTF8String): NativeInt; inline;
 var
@@ -199,6 +206,21 @@ begin
    end
   else
     raise Exception.Create('xxmSession.CheckProtect only works on POST requests.');
+end;
+
+function TXxmSession.GetDbCon: TSQLiteConnection;
+var
+  fn:string;
+begin
+  if ThreadDbCon=nil then
+   begin
+    SetLength(fn,1024);
+    SetLength(fn,GetModuleFileName(HInstance,PChar(fn),1024));
+    ThreadDbCon:=TSQLiteConnection.Create(ExtractFilePath(fn)+'demo.db');//TODO from setting?
+    ThreadDbCon.Execute('pragma journal_mode=wal');//or =persist?
+    ThreadDbCon.BusyTimeout:=30000;
+   end;
+  Result:=ThreadDbCon;
 end;
 
 procedure SessionStore_CleanUp;

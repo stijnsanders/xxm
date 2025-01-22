@@ -1,0 +1,35 @@
+<link rel="stylesheet" type="text/css" href="http://xxm.sourceforge.net/xxm.css" />
+<h3>xxm Demo Projects - 03 Data SQLite</h3>
+<p>This is a demo project showing how to set up a database connection in an xxm project, using SQLite3.dll.</p>
+<p>Download SQLite3.dll from <a href="http://www.sqlite.org/download.html">www.sqlite.org</a>.</p>
+<p>Download SQLite.pas and SQLiteData.pas from <a href="https://github.com/stijnsanders/TSQLite">github.com/stijnsanders/TSQLite</a>.</p>
+<p style="background-color:gold;padding:0.4em;"><b>Important:</b> Some website-platforms use multiple processes to host a website.
+Since this demonstration project uses a single array to store session data using the sorted SessionID's,
+the processes won't be able to access eachother's session data in this case, which results in unexpected behavior.<br />
+For advanced projects it is strongly advised to use a central session object store (e.g.: a database, COM or COM+ server),
+or to disable multiple processes (IIS: limit to 1 worker processes, Apache: single-process mode "-X") or use a the xxm SCGI service.</p>
+<dl>
+<dt>Web.xxmp</dt>
+<dd>The project file, contains an internal list of the files of the project, and other data about the project.<br />
+Use <i>xxmProject.exe</i> to edit and manage project settings.</dd>
+<dt>xxmp2.pas</dt>
+<dd>The project's main unit. When this file is missing form the project, xxm creates one for you.<br />
+This one has been modified to include the <code>SetSession(Context);</code> call in <code>function XxmPage</code>, linking each request to a new or existing session object.</dd>
+<dt>SQLite.pas</dt>
+<dd>The Pascal version of the sqlite.h file with the declarations for sqlite3.dll.</dd>
+<dt>SQLiteData.pas</dt>
+<dd>This unit defines the TSQLiteConnection and TSQLiteStatement classes.</dd>
+<dt>xxmSession.pas</dt>
+<dd>This unit defines the TxxmSession class. This website uses a single database connection for each worker thread.</dd>
+<dt>demo.db</dt>
+<dd>This is the SQLite database file. In a real website scenario this file should be stored in a folder that is not accessible over the website.<br />
+(Depending on the <code>journal_mode</code>, SQLite may generate a number of extra files that start with <code>demo.db-</code>.)
+</dd>
+<dt>Default.xxm</dt>
+<dd>The website's default page. It lists the items of <code>Table1</code>, displaying an <i>edit</i> and <i>delete</i> link for each item. It also displays an <i>add</i> link.
+When looping over the query result, <code>Context.Connected</code> is checked, allowing the visitor to abort building the page when the list gets too long.</dd>
+<dt>Edit.xxm</dt>
+<dd>This page edits or adds an item in <code>Table1</code>.</dd>
+<dt>Delete.xxm</dt>
+<dd>This page deletes an item of <code>Table1</code>.</dd>
+</dl>

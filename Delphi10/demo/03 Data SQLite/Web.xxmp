@@ -1,0 +1,28 @@
+{
+	"name": "demo",
+	"uuid": "{E4C21F1A-0EE4-48DF-94A8-DEB92E467C9F}",
+	"compileCommand_BAK": "dcc32 -U[[HandlerPath]]public -Q [[ProjectName]].dpr",
+	"compileCommand": "D:\\Data\\2023\\d\\fixdpb.exe [[ProjectName]].dproj",
+	"files": {
+		"default_xxm": {
+			"path": "Default.xxm",
+			"unitName": "default_xxm1",
+			"unitPath": ""
+		},
+		"delete_xxm": {
+			"path": "Delete.xxm",
+			"unitName": "delete_xxm1",
+			"unitPath": ""
+		},
+		"edit_xxm": {
+			"path": "Edit.xxm",
+			"unitName": "edit_xxm1",
+			"unitPath": ""
+		}
+	},
+	"units": {
+		"xxmSession": {},
+		"SQLite": {},
+		"SQLiteData": {}
+	}
+}
