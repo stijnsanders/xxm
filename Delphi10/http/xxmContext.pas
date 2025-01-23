@@ -71,7 +71,7 @@ type
     function AuthValue(cs:TXxmContextString):UTF8String;
     procedure AuthSet(const Name,Pwd:UTF8String);
     procedure ParseParams;
-    procedure AddParam(const Name,Value:UTF8String);
+    procedure AddParam(const Origin,Name,Value:UTF8String);
     function GetCookie(Name:PUTF8Char):PUTF8Char;
     function GetParam(Name:PUTF8Char):PParamInfo;
     function GetParamCount:integer;
@@ -120,8 +120,8 @@ type
     procedure CheckBoundary(var Boundary: UTF8String);
     procedure GetHeader(var Params: TKeyValues);
     function GetString(const Boundary: UTF8String): PUTF8Char;
-    procedure GetData(Boundary, FieldName, FileName: PUTF8Char;
-      var Pos, Len: NativeUInt);
+    procedure GetData(const Boundary: UTF8String; FieldName, FileName,
+      FileType: PUTF8Char; var Pos, Len: NativeUInt);
     function MultiPartDone: boolean;
   end;
 
@@ -236,6 +236,12 @@ begin
         SelfVersion:=UTF8String(p)+' '+SelfVersion;
      end;
    end;
+end;
+
+function AsStream(Stream:TObject):TStream; inline;
+begin
+  //Result:=Stream as TStream; //strange, raises "Invalid class type cast"!
+  Result:=TStream(Stream);
 end;
 
 type
@@ -497,7 +503,7 @@ begin
      end;
     d1:=d2;
     FPageClass:='['+UTF8String(p)+']';
-    FRedirectPrefix:='/'+FProjectName;
+    FRedirectPrefix:='/'+FProjectName+'/';
     FProjectEntry:=XxmProjectRegistry.GetProjectEntry(p);
     if FProjectEntry=nil then
       if UTF8CmpI(PUTF8Char(FProjectName),'favicon.ico')=0 then
@@ -1520,7 +1526,7 @@ begin
            begin
             i:=AddPar('FILE',pn,pv);
             FParams[i].ContentType:=pt;
-            sn.GetData(pn,pv,pt,FParams[i].PostDataPos,FParams[i].PostDataLen);
+            sn.GetData(pb,pn,pv,pt,FParams[i].PostDataPos,FParams[i].PostDataLen);
            end;
 
          end;
@@ -1537,8 +1543,13 @@ begin
   FParamsParsed:=true;
 end;
 
-procedure TxxmContext.AddParam(const Name,Value:UTF8String);
+procedure TxxmContext.AddParam(const Origin,Name,Value:UTF8String);
+var
+  o:PUTF8Char;
 begin
+  o:=PUTF8Char(Origin);
+  if (UTF8CmpI(o,'GET')=0) or (UTF8CmpI(o,'POST')=0) or (UTF8CmpI(o,'FILE')=0) then
+    raise EXxmError.Create('Add_Paramter Origin "GET", "POST" and "FILE" are reserved for request handling');
   if FParamsIndex=FParamsSize then
    begin
     inc(FParamsSize,$100);//grow step
@@ -1546,7 +1557,7 @@ begin
    end;
   FParams[FParamsIndex].Context:=Self;
   FParams[FParamsIndex].Index:=FParamsIndex;
-  FParams[FParamsIndex].Origin:='CONTEXT';
+  FParams[FParamsIndex].Origin:=Store(Origin);
   FParams[FParamsIndex].Name:=Store(Name);
   FParams[FParamsIndex].Value:=Store(Value);
   FParams[FParamsIndex].ContentType:=nil;
@@ -1808,7 +1819,7 @@ end;
 
 procedure Context_SendStream(Context:CxxmContext;Stream:TObject); stdcall;
 begin
-  TxxmContext(Context.__Context).SendStream(Stream as TStream);
+  TxxmContext(Context.__Context).SendStream(AsStream(Stream));
 end;
 
 procedure Context_Flush(Context:CxxmContext); stdcall;
@@ -1833,7 +1844,7 @@ end;
 
 procedure Context_Add_Parameter(Context:CxxmContext;Origin,Name,Value:PUTF8Char); stdcall;
 begin
-  TxxmContext(Context.__Context).AddParam(Name,Value);
+  TxxmContext(Context.__Context).AddParam(Origin,Name,Value);
 end;
 
 function Context_RequestHeader(Context:CxxmContext;Name:PUTF8Char):PUTF8Char; stdcall;
@@ -1996,7 +2007,7 @@ var
 begin
   //if Parameter=nil then raise?
   c:=p.Context as TxxmContext;
-  i:=p.index;
+  i:=p.Index+1;
   while (i<c.FParamsIndex) and (UTF8CmpI(p.Name,c.FParams[i].Name)<>0) do inc(i);
   if i<c.FParamsIndex then
     Result.__Parameter:=@c.FParams[i]
@@ -2048,7 +2059,7 @@ begin
     raise EXxmError.Create('Parameter is not a FILE parameter');
   d:=(p.Context as TxxmContext).FPostData;
   d.Position:=p.PostDataPos;
-  Result:=(Stream as TStream).CopyFrom(d,p.PostDataLen);//TODO: buffersize from config?
+  Result:=AsStream(Stream).CopyFrom(d,p.PostDataLen);//TODO: buffersize from config?
 end;
 
 procedure CompatibilityGuard; stdcall;
@@ -2291,12 +2302,12 @@ begin
   Flush;
 end;
 
-procedure TStreamNozzle.GetData(Boundary, FieldName, FileName: PUTF8Char;
-  var Pos, Len: NativeUInt);
+procedure TStreamNozzle.GetData(const Boundary: UTF8String;
+  FieldName, FileName, FileType: PUTF8Char; var Pos, Len: NativeUInt);
 var
   l,p,x,s:NativeUInt;
 begin
-  Pos:=FDone+FIndex-1;
+  Pos:=FDone+FIndex;
   l:=Length(Boundary);
   p:=0;
   if (FReportStep=0) or (@FProgress=nil) then
@@ -2327,16 +2338,16 @@ begin
         dec(x);
         if x=0 then
          begin
-          FProgress(FOwner.Context,FieldName,FileName,FRequestID,s);
+          FProgress(FOwner.Context,FieldName,FileName,FileType,FRequestID,s);
           x:=FReportStep;
          end
         else
           inc(x);
        end;
-      FProgress(FOwner.Context,FieldName,FileName,FRequestID,s);
+      FProgress(FOwner.Context,FieldName,FileName,FileType,FRequestID,s);
      end;
    end;
-  Len:=FDone+FIndex-(Pos+1);
+  Len:=FDone+FIndex-Pos;
   //skip boundary
   inc(FIndex,l);
   SkipWhiteSpace;

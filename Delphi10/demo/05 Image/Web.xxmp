@@ -1,0 +1,12 @@
+{
+	"name": "demo",
+	"uuid": "{863FF72D-54A0-4FAE-BDC3-52CAA1ED8DB3}",
+	"compileCommand": "dcc32 -U[[HandlerPath]]public -Q [[ProjectName]].dpr",
+	"files": {
+		"default_xxm": {
+			"path": "Default.xxm",
+			"unitName": "default_xxm1",
+			"unitPath": ""
+		}
+	}
+}

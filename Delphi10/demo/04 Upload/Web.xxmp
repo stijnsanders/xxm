@@ -1,0 +1,47 @@
+{
+	"name": "demo",
+	"uuid": "{019D7A30-EDBF-4121-A32B-F7C27BE331E6}",
+	"compileCommand": "dcc32 -U[[HandlerPath]]public -Q [[ProjectName]].dpr",
+	"files": {
+		"default_xxm": {
+			"path": "Default.xxm",
+			"unitName": "default_xxm1",
+			"unitPath": ""
+		},
+		"ihead_xxmi": {
+			"path": "iHead.xxmi",
+			"unitName": "ihead_xxmi1",
+			"unitPath": ""
+		},
+		"ifoot_xxmi": {
+			"path": "iFoot.xxmi",
+			"unitName": "ifoot_xxmi1",
+			"unitPath": ""
+		},
+		"fadd_xxm": {
+			"path": "fAdd.xxm",
+			"unitName": "fadd_xxm1",
+			"unitPath": ""
+		},
+		"aadd_xxm": {
+			"path": "aAdd.xxm",
+			"unitName": "aadd_xxm1",
+			"unitPath": ""
+		},
+		"files__default_xxm": {
+			"path": "files/Default.xxm",
+			"unitName": "default_xxm2",
+			"unitPath": "files/"
+		},
+		"fmulti_xxm": {
+			"path": "fMulti.xxm",
+			"unitName": "fmulti_xxm1",
+			"unitPath": ""
+		},
+		"amulti_xxm": {
+			"path": "aMulti.xxm",
+			"unitName": "amulti_xxm1",
+			"unitPath": ""
+		}
+	}
+}

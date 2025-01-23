@@ -52,9 +52,9 @@
         <SanitizedProjectName>xxmConv</SanitizedProjectName>
         <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
         <VerInfo_MajorVer>2</VerInfo_MajorVer>
-        <VerInfo_Build>520</VerInfo_Build>
+        <VerInfo_Build>525</VerInfo_Build>
         <VerInfo_Locale>1033</VerInfo_Locale>
-        <VerInfo_Keys>CompanyName=;FileDescription=xxm Conversion Utility;FileVersion=2.0.0.520;InternalName=xxmConv;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProgramID=be.yoy.xxm.$(MSBuildProjectName);ProductName=$(MSBuildProjectName);ProductVersion=2.0.0.0;Comments=http://yoy.be/xxm/</VerInfo_Keys>
+        <VerInfo_Keys>CompanyName=;FileDescription=xxm Conversion Utility;FileVersion=2.0.0.525;InternalName=xxmConv;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProgramID=be.yoy.xxm.$(MSBuildProjectName);ProductName=$(MSBuildProjectName);ProductVersion=2.0.0.0;Comments=http://yoy.be/xxm/</VerInfo_Keys>
         <DCC_Define>JSONDOC_STOREINDENTING;$(DCC_Define)</DCC_Define>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base_Win32)'!=''">
@@ -110,6 +110,8 @@
         <DCCReference Include="xxmProtoParse.pas"/>
         <DCCReference Include="..\common\xxmTools.pas"/>
         <DCCReference Include="xxHash.pas"/>
+        <DCCReference Include="..\include\xxm2.pas"/>
+        <DCCReference Include="xxmPReg.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

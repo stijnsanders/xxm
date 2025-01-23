@@ -1,0 +1,14 @@
+[[Context.Include('iHead.xxmi');]]
+<script language="javascript"><!--
+function form1submit()
+{
+	var x=document.getElementById('submitbutton1');
+	x.disabled=true;
+	x.value="uploading...";
+}
+//--></script>
+<form action="aAdd.xxm" method="post" enctype="multipart/form-data" onsubmit="form1submit();">
+<input type="file" name="doc" /><br />
+<input type="submit" id="submitbutton1" value="add" />
+</form>
+[[Context.Include('iFoot.xxmi');]]

@@ -301,12 +301,12 @@ var
 begin
   if Modified then
    begin
+    Data['lastModified']:=
+      FormatDateTime('yyyy-mm-dd"T"hh:nn:ss',Now);//timezone?
     s:=AnsiString(Data.ToString);//TODO: UTF8
     //TODO: if Data.Dirty
     if DataStartSize<>Length(s) then
      begin
-      Data['lastModified']:=
-        FormatDateTime('yyyy-mm-dd"T"hh:nn:ss',Now);//timezone?
       WriteString(FRootFolder+DataFileName,s);
       Modified:=false;
      end;
@@ -860,6 +860,7 @@ function TXxmProject.Compile:boolean;
 const
   dSize=$10000;
 var
+  rDoc:IJSONDocument;
   cl:TStringList;
   cli:integer;
   clx,cld,d1:string;
@@ -874,7 +875,8 @@ var
     v,vx:OleVariant;
     v1,v2:integer;
   begin
-    v:=Data[Key];
+    if rDoc<>nil then v:=rDoc[Key];//registry override?
+    if VarIsNull(v) then v:=Data[Key];
     if not(VarIsNull(v)) then
       if VarIsArray(v) then
        begin
@@ -962,6 +964,7 @@ var
 begin
   cl:=TStringList.Create;
   try
+    rDoc:=XxmProjectRegistry.GetProjectData(FProjectName) as IJSONDocument;
     GetKeys('preCompileCommand','1');
     GetKeys('compileCommand','2');
     GetKeys('postCompileCommand','3');

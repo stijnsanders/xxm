@@ -1,0 +1,18 @@
+<link rel="stylesheet" type="text/css" href="http://xxm.sourceforge.net/xxm.css" />
+<h3>xxm Demo Projects - 06 URL routing</h3>
+<p>This is a demo project showing how to implement alternative URL routing, and take alternative parameters from URLs.</p>
+<dl>
+<dt>Web.xxmp</dt>
+<dd>The project file, contains an internal list of the files of the project, and other data about the project.<br />
+Use <i>xxmProject.exe</i> to edit and manage project settings.</dd>
+<dt>FRegRouting.pas</dt>
+<dd>This is an alternative fragment registry. Parsing any parameters written as a sequence of directories is done by <code>GetPageAndParameters</code>.</dd>
+<dt>proto\</dt>
+<dd>Because the project uses an alternative fragment registry, all source files for pages and includes need to be generated using a template that registers with the alternative fragment registry. There's also an adapted template for <code>xxmp2.pas</code> that uses the alternative registry.</dd>
+<dt>Default.xxm</dt>
+<dd>The website's default page. It lists any parameters passed to it. It also shows a list of example URL's with parameters written as directories that the alternative fragment registry picks up.</dd>
+<dt>Search.xxm</dt>
+<dd>A second page of the website. If a page exists with the same name as the first part of the fraction of the URL that gets passed to the xxm project, it will get loaded to process the request.</dd>
+<dt>files\</dt>
+<dd>Because URLs get parsed by default, all static files (e.g.: images, stylesheets) need to be put in the files folder, so that the 'files/' exception in <code>GetPageAndParameters</code> can let xxm take over in these cases to response by sending the appropriate file. You <i>could</i> pass the files from code (e.g. by using Context.SendStream), but this would prevent any extra feature the HTTP server offers such as caching, compression and connection control.</dd>
+</dl>

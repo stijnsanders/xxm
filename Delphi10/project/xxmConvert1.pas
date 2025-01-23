@@ -10,7 +10,7 @@ procedure RegisterCompileOption;
 implementation
 
 uses Winapi.Windows, System.SysUtils, System.Classes, xxmProject1,
-  System.Win.Registry;
+  System.Win.Registry, xxmPReg;
 
 procedure DoWrite(Subject:TObject;const Msg:AnsiString);
 begin
@@ -22,6 +22,14 @@ begin
   inc(i);
   Result:=IncludeTrailingPathDelimiter(ParamStr(i));
   if (CheckMsg<>'') and not(DirectoryExists(Result)) then
+    raise Exception.Create(CheckMsg+' not found "'+Result+'"');
+end;
+
+function GetFile(var i:integer;const CheckMsg:string):string;
+begin
+  inc(i);
+  Result:=ParamStr(i);
+  if (CheckMsg<>'') and not(FileExists(Result)) then
     raise Exception.Create(CheckMsg+' not found "'+Result+'"');
 end;
 
@@ -49,6 +57,7 @@ begin
     Writeln('    /protodef <dif> use this default templates folder');
     Writeln('    /src <dir>      use an alternative source output folder');
     Writeln('    /handler <dir>  use an alternative handler path');
+    Writeln('    /reg <file>     use project registry overrides');
     Writeln('    /x:XXX          define template value XXX');
     Writeln('  xxmConv /install');
     Writeln('    registers a context-menu compile option on xxmp file type');
@@ -90,6 +99,7 @@ begin
           if s='/protodef' then protodef:=GetFolder(i,'Default Proto path') else
           if s='/src' then srcdir:=GetFolder(i,'') else //CheckFiles calls ForceDirectories
           if s='/handler' then handlerdir:=GetFolder(i,'') else
+          if s='/reg' then XxmProjectRegDataFilePath:=GetFile(i,'Registry data file') else
            begin
             Writeln('Unknown option "'+s+'"');
             Exit;
@@ -100,7 +110,7 @@ begin
         try
           s:=ExpandFileName(s);
           Writeln('--- '+s);
-          p:=TXxmProject.Create(nil,s,protodef,DoWrite,true);
+          p:=TXxmProject.Create(nil,s,handlerdir,protodef,DoWrite,true);
           try
             if protodir<>'' then p.ProtoFolder:=protodir;
             if srcdir<>'' then p.SrcFolder:=srcdir;

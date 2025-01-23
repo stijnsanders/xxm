@@ -1,0 +1,12 @@
+[[@Windows,]][[!var
+doc:CXxmParameter;
+dir:string;
+]][[
+
+SetLength(dir,MAX_PATH);
+SetLength(dir,GetModuleFileName(HInstance,PChar(dir),MAX_PATH));
+
+doc:=Context.Parameter['doc'];
+//assert doc.Origin='FILE'
+doc.SaveToFile(UTF8Encode(ExtractFilePath(dir)+'files\'+ExtractFileName(string(doc.Value))));
+Context.Redirect('Default.xxm',true);

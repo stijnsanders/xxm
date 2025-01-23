@@ -3,8 +3,8 @@ unit xxm2;
 interface
 
 const
-  //$Date: 2025-01-17 22:19:51 +0100 (vr, 17 jan 2025) $
-  XxmRevision = '$Rev: 527 $';
+  //$Date: 2025-01-23 23:55:26 +0100 (do, 23 jan 2025) $
+  XxmRevision = '$Rev: 529 $';
   XxmAPILevel = 2000;//v2.0
 
 type
@@ -48,6 +48,7 @@ type
     function Value:UTF8String; inline;
     function AsInteger:NativeInt; inline;
     function NextBySameName:CxxmParameter; inline;
+    function HasValue:boolean; inline;
 
     function ContentType:UTF8String; inline;
     function SaveToFile(const FilePath:UTF8String):NativeUInt; inline;
@@ -121,11 +122,11 @@ type
 
 
 type
-  CxxmFragment=procedure (Context:CxxmContext;
-    const Values:array of Variant;const Objects:array of pointer); stdcall;
+  CxxmFragment=procedure (Context: CxxmContext;
+    const Values: array of Variant; const Objects: array of pointer); stdcall;
 
-  CxxmProgress=procedure (Context:CxxmContext;FieldName,FileName:PUTF8Char;
-    RequestID,Position:NativeUInt); stdcall;
+  CxxmProgress=procedure (Context: CxxmContext; FieldName, FileName,
+    FileType: PUTF8Char; RequestID, Position: NativeUInt); stdcall;
 
 const
   xxmProgress_PostData   = 1;
@@ -529,6 +530,11 @@ begin
   Result:=xxm.Parameter_NextBySameName(Self);
 end;
 
+function CxxmParameter.HasValue: boolean;
+begin
+  Result:=__Parameter<>nil;
+end;
+
 class operator CxxmContext.Implicit(c: CxxmContext): pointer;
 begin
   Result:=c.__Context;
@@ -556,5 +562,6 @@ end;
 
 initialization
   xxm:=nil;//handler or XxmInitialize must initialize
+  IsMultiThread:=true;
 end.
 

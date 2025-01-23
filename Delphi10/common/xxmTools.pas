@@ -2,6 +2,10 @@ unit xxmTools;
 
 interface
 
+{$D-}
+{$Y-}
+{$L-}
+
 uses SysUtils, Classes;
 
 type
@@ -37,7 +41,6 @@ type
     function GetValue(Key:PUTF8Char):PUTF8Char;
     property Value[Key:PUTF8Char]:PUTF8Char read GetValue; default;
   end;
-
 
 implementation
 

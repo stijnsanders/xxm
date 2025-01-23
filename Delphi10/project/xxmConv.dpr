@@ -12,7 +12,9 @@ uses
   xxmPageParse in 'xxmPageParse.pas',
   xxmProtoParse in 'xxmProtoParse.pas',
   xxmTools in '..\common\xxmTools.pas',
-  xxHash in 'xxHash.pas';
+  xxHash in 'xxHash.pas',
+  xxm2 in '..\include\xxm2.pas',
+  xxmPReg in 'xxmPReg.pas';
 
 begin
   xxmConvertProject;

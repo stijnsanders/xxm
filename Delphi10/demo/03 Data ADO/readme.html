@@ -1,0 +1,42 @@
+<link rel="stylesheet" type="text/css" href="http://xxm.sourceforge.net/xxm.css" />
+<h3>xxm Demo Projects - 03 Data</h3>
+<p>This is a demo project showing how to set up a database connection in an xxm project, using ADO (or ODBC).</p>
+<p style="background-color:gold;padding:0.4em;"><b>Important:</b> Some website-platforms use multiple processes to host a website.
+Since this demonstration project uses a single array to store session data using the sorted SessionID's,
+the processes won't be able to access eachother's session data in this case, which results in unexpected behavior.<br />
+For advanced projects it is strongly advised to use a central session object store (e.g.: a database, COM or COM+ server),
+or to disable multiple processes (IIS: limit to 1 worker processes, Apache: single-process mode "-X") or use a the xxm SCGI service.</p>
+<dl>
+<dt>Web.xxmp</dt>
+<dd>The project file, contains an internal list of the files of the project, and other data about the project.<br />
+Use <i>xxmProject.exe</i> to edit and manage project settings.</dd>
+<dt>xxmp2.pas</dt>
+<dd>The project's main unit. When this file is missing form the project, xxm creates one for you.<br />
+This one has been modified to include the <code>SetSession(Context);</code> call in <code>function XxmPage</code>, linking each request to a new or existing session object.</dd>
+<dt>ADODB_TLB.pas</dt>
+<dd>A generated unit based on the Type Library of the Microsoft ActiveX Data Objects (ADO).</dd>
+<dt>queries.sql</dt>
+<dd>An SQL file holding the queries the project uses.<br />
+Each query is preceded with a line of the form <code>--"QueryName"</code>.<br />
+It is included into Web.xxmp as a resource file, so a change to this file will force a re-start of the project, if you use a auto-compile xxm handler.</dd>
+<dt>xxmData.pas</dt>
+<dd>This unit defines the TQueryResult and TDataChanger classes. It also defines the QueryStore that is used to store SQL queries. When initialized, <code>queries.sql</code> is loaded into memory.</dd>
+<dt>xxmSession.pas</dt>
+<dd>This unit defines the TxxmSession class. This website uses a single database connection object for each session. This works good for a small number of visitors, but websites that expect a larger number of visitors should implement a connection pool.<br />
+Also note that the TxxmSession constructor checks if the QueryStore is already initialized.
+This can not be done when the project's DLL is started because this may happen in a different thread than the xxm project will run in.</dd>
+<dt>demo.udl</dt>
+<dd>This data-link file is used to have a fixed ADO connection string: "<code>File Name=demo.udl</code>".<br />
+It is included into Web.xxmp as a resource file, so a change to this file will force a re-start of the project.</dd>
+<dt>demo.mdb</dt>
+<dd>The demo UDL links to this file, also depending on the current directory.<br />
+In a real website scenario this file should be stored in a folder that is not accessible over the website.</dd>
+<dt>Default.xxm</dt>
+<dd>The website's default page. It lists the items of <code>Table1</code>, displaying an <i>edit</i> and <i>delete</i> link for each item. It also displays an <i>add</i> link.
+When looping over the query result, <code>Context.Connected</code> is checked, allowing the visitor to abort building the page when the list gets too long.</dd>
+<dt>Edit.xxm</dt>
+<dd>This page edits an item of <code>Table1</code>. It can also add an item to <code>Table1</code>.
+By querying for the item with <i>id=0</i> (which doesn't exist), TQueryResult returns default values for the edit form.</dd>
+<dt>Delete.xxm</dt>
+<dd>This page deletes an item of <code>Table1</code>.</dd>
+</dl>

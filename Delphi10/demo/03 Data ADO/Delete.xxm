@@ -1,0 +1,4 @@
+[[@xxmData,]][[
+TDataChanger.Execute('DeleteItem',[Context.Parameter['id'].AsInteger]);
+<<p>item deleted</p>
+<p><a href="Default.xxm">back</a></p>

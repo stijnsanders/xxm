@@ -1,0 +1,20 @@
+[[@xxmSession,mongoWire,jsonDoc,]][[!var
+qr:TMongoWireQuery;
+d:IJSONDocument;
+<<ul>>
+d:=JSON;
+qr:=TMongoWireQuery.Create(Session.DbCon);
+try
+  qr.Query(xxmDemoCollection,nil);			
+  while qr.Next(d) and Context.Connected do
+   begin
+    <<li>[[=d['text']]]<br />
+	<a href="Edit.xxm?id=[[=d['id']]]">edit</a>
+	<a href="Delete.xxm?id=[[=d['id']]]" onclick="return confirm('Are you sure to delete this item?');">delete</a>
+	</li>>
+   end;
+finally
+  qr.Free;
+end;
+<</ul>
+<p><a href="Edit.xxm">add</a></p>

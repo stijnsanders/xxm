@@ -1,6 +1,6 @@
 {
 	"name": "demo",
-	"uuid": "{E4C21F1A-0EE4-48DF-94A8-DEB92E467C9F}",
+	"uuid": "{29518182-D3F3-47F6-9640-B73A0E5C546B}",
 	"compileCommand": "dcc32 -U[[HandlerPath]]public -Q [[ProjectName]].dpr",
 	"files": {
 		"default_xxm": {
@@ -21,7 +21,11 @@
 	},
 	"units": {
 		"xxmSession": {},
-		"SQLite": {},
-		"SQLiteData": {}
+		"ADODB_TLB": {},
+		"xxmData": {}
+	},
+	"resources": {
+		"demo.udl": {},
+		"queries.sql": {}
 	}
 }

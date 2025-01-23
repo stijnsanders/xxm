@@ -85,6 +85,7 @@ type
 
     function GetProjectName(Host,Name:PUTF8Char):PUTF8Char;
     function GetProjectEntry(Name:PUTF8Char):TProjectEntry;
+    function GetProjectData(const Name:string):IUnknown;//:IJSONDocument;
 
     property HandlerPath:string read FHandlerPath;
     property ProtoPath:string read FProtoPath;
@@ -579,6 +580,18 @@ begin
        end;
    end;
 end;
+
+function TProjectRegistry.GetProjectData(const Name: string): IUnknown;
+var
+  fn:string;
+  d:IJSONDocument;
+begin
+  //for use by auto-update or auto-compile handlers
+  fn:=FRegFilePath+XxmRegFileName;
+  d:=LoadJSON(fn);
+  Result:=JSON(JSON(d['projects'])[Name]);
+end;
+
 
 { TProjectEntry }
 

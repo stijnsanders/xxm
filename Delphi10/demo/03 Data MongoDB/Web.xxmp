@@ -1,7 +1,7 @@
 {
 	"name": "demo",
-	"uuid": "{E4C21F1A-0EE4-48DF-94A8-DEB92E467C9F}",
-	"compileCommand": "dcc32 -U[[HandlerPath]]public -Q [[ProjectName]].dpr",
+	"uuid": "{9E3D0489-4F20-493D-A326-E4CF511A23ED}",
+	"compileCommand": "C:\\\\Delphi7\\\\Bin\\\\dcc32.exe -U[[HandlerPath]]public -Q [[ProjectName]].dpr",
 	"files": {
 		"default_xxm": {
 			"path": "Default.xxm",
@@ -21,7 +21,9 @@
 	},
 	"units": {
 		"xxmSession": {},
-		"SQLite": {},
-		"SQLiteData": {}
+		"jsonDoc": {},
+		"bsonTools": {},
+		"simpleSock": {},
+		"mongoWire": {}
 	}
 }

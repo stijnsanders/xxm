@@ -1,0 +1,1 @@
+{"name":"demo","uuid":"{A3C3F020-3CA6-47AE-B5AF-DADE868EB4E7}","compileCommand":"dcc32 -U[[HandlerPath]]public -Q [[ProjectName]].dpr","files":{"default_xxm":{"path":"Default.xxm","unitName":"default_xxm1","unitPath":""},"search_xxm":{"path":"Search.xxm","unitName":"search_xxm1","unitPath":""}},"units":{"FRegRouting":{}},"lastModified":"2025-01-23T23:25:28"}
