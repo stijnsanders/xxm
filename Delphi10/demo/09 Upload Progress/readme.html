@@ -1,0 +1,36 @@
+<link rel="stylesheet" type="text/css" href="http://xxm.sourceforge.net/xxm.css" />
+<h3>xxm Demo Projects - 09 Upload Progress</h3>
+<p>This is a demo project showing how show the progress of large file uploads.</p>
+<p style="background-color:gold;padding:0.4em;"><b>Important:</b> Some website-platforms use multiple processes to host a website.
+Since this demonstration project uses a single TStringList object to store session data under the sorted SessionID's,
+the processes won't be able to access eachother's session data in this case, which results in unexpected behavior.<br />
+For advanced projects it is strongly advised to use a central session object store (e.g.: a database, COM or COM+ server),
+or to disable multiple processes (IIS: limit to 1 worker processes, Apache: single-process mode "-X") or use the xxm SCGI service.</p>
+<dl>
+<dt>Web.xxmp</dt>
+<dd>The project file, contains an internal list of the files of the project, and other data about the project.<br />
+Use <i>xxmProject.exe</i> to edit and manage project settings.</dd>
+<dt>xxmp2.pas</dt>
+<dd>The project's main unit. When this file is missing form the project, xxm creates one for you.<br />
+This one has been modified to include the <code>SetSession(Context);</code> call in <code>function XxmPage</code>, linking each request to a new or existing session object.<br />
+A session is needed to link incoming file uploads with requests to query the upload progress.</dd>
+<dt>xxmSession.pas</dt>
+<dd>This unit defines the TxxmSession class, and SetSession and AbandonSession procedures.<br />
+This demo only uses the session to store upload progress information.</dd>
+<dt>iHead.xxmi</dt>
+<dd>An include file for pages to use with the HTML header</dd>
+<dt>iFoot.xxmi</dt>
+<dd>An include file for pages to use with the HTML footer</dd>
+<dt>demo9.css</dt>
+<dd>The website's style sheet, linked to by <code>iHead.xxmi</code>, and thus by any page that includes <code>iHead.xxmi</code>.</dd>
+<dt>files\</dt>
+<dd>Directory uploaded files will be stored in. <b>Attention:</b> storing uploaded files within a directory of the website poses a security risk, especially when sensitive information is passed between pages using client side scripting.</dd>
+<dt>Default.xxm</dt>
+<dd>The website's default page. It displays a list of the files that have already been uploaded, and a link to the upload form.</dd>
+<dt>fAdd.xxm</dt>
+<dd>The upload form. An iframe element is used to display the upload progress when the form is posted.</dd>
+<dt>aAdd.xxm</dt>
+<dd>Accepts the upload form post. An upload progress report agent is attached to the context.</dd>
+<dt>Progress.xxm</dt>
+<dd>Displays the upload progress.</dd>
+</dl>

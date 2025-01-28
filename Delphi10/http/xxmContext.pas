@@ -114,8 +114,8 @@ type
     procedure Flush;
     procedure SkipWhiteSpace;
   public
-    constructor Create(Owner: TxxmContext; Progress: CxxmProgress;
-      RequestID, ReportStep: NativeUInt);
+    constructor Create(Owner: TxxmContext;
+      Progress: CxxmProgress; RequestID, ReportStep: NativeUInt);
     destructor Destroy; override;
     procedure CheckBoundary(var Boundary: UTF8String);
     procedure GetHeader(var Params: TKeyValues);
@@ -648,10 +648,12 @@ begin
                  end
                 else
 }
-                 begin
-                  SendStream(ds);
-                  //if FBufferSize<>0 then Flush;
-                 end;
+                  try
+                    SendStream(ds);
+                    //if FBufferSize<>0 then Flush;
+                  finally
+                    ds.Free;
+                  end;
 
                end;
             except //not finally!
@@ -791,7 +793,6 @@ begin
   //TODO: prevent empty request? (if not FHeaderSent then bad request?
   //TODO: endRequest in all except cases?
   FSocket.Disconnect;
-
 end;
 
 function TxxmContext.ContextString(Value: integer): PUTF8Char;
@@ -1116,6 +1117,8 @@ begin
         FProjectName:=Copy(pa,i,j-i);
         if (j<=l) and (pa[j]='/') then inc(j);
         FProjectEntry:=XxmProjectRegistry.GetProjectEntry(PUtf8Char(FProjectName));
+        if FProjectEntry=nil then
+          raise EXxmProjectNotFound.Create('xxm Project not found "'+string(FProjectName)+'"');
         //XxmProjectCheckHandler but check for recurring PE's to avoid deadlock
         if @XxmProjectCheckHandler<>nil then
          begin
@@ -2153,8 +2156,8 @@ end;
 
 { TStreamNozzle }
 
-constructor TStreamNozzle.Create(Owner: TxxmContext; Progress: CxxmProgress;
-  RequestID, ReportStep: NativeUInt);
+constructor TStreamNozzle.Create(Owner: TxxmContext;
+  Progress: CxxmProgress; RequestID, ReportStep: NativeUInt);
 begin
   inherited Create;
   FOwner:=Owner;
@@ -2163,7 +2166,7 @@ begin
   FIndex:=0;
   FDone:=0;
   FSourceAtEnd:=false;
-  FProgress:=FProgress;
+  FProgress:=Progress;
   FRequestID:=RequestID;
   FReportStep:=ReportStep;
 end;
@@ -2335,16 +2338,14 @@ begin
        begin
         inc(FIndex);
         inc(s);
-        dec(x);
         if x=0 then
          begin
           FProgress(FOwner.Context,FieldName,FileName,FileType,FRequestID,s);
           x:=FReportStep;
          end
         else
-          inc(x);
+          dec(x);
        end;
-      FProgress(FOwner.Context,FieldName,FileName,FileType,FRequestID,s);
      end;
    end;
   Len:=FDone+FIndex-Pos;

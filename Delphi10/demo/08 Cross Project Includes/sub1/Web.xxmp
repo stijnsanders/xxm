@@ -1,0 +1,18 @@
+{
+	"name": "sub1",
+	"uuid": "{C19FCE4B-2EC0-46A4-9D86-D0D316F57ACC}",
+	"compileCommand": "dcc32 -U[[HandlerPath]]public -Q [[ProjectName]].dpr",
+	"files": {
+		"default_xxm": {
+			"path": "Default.xxm",
+			"unitName": "default_xxm1",
+			"unitPath": ""
+		},
+		"a_xxmi": {
+			"path": "A.xxmi",
+			"unitName": "a_xxmi1",
+			"unitPath": ""
+		}
+	},
+	"lastModified": "2025-01-27T21:47:39"
+}

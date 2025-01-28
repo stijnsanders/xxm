@@ -1,7 +1,7 @@
 unit xxmp2;
 
 {
-  xxm Project Unit
+  xxm Module Management Unit
   demo: 01 Hello World
 
 Please note this xxmp2.pas was created from the xxmp2.pas template.
@@ -43,7 +43,7 @@ function XxmPage(Project: PxxmProject; Context: CxxmContext;
   Address: PUTF8Char): CxxmFragment; stdcall;
 var
   a:UTF8String;
-  r:pointer;  
+  r:pointer;
 begin
   a:=UTF8LowerCase(Address);
   {$I src/xxmFMap1.inc}
@@ -54,7 +54,7 @@ function XxmFragment(Project: PxxmProject; Context: CxxmContext;
   Address: PUTF8Char): CxxmFragment; stdcall;
 var
   a:UTF8String;
-  r:pointer;  
+  r:pointer;
 begin
   a:=UTF8LowerCase(Address);
   {$I src/xxmFMap2.inc}

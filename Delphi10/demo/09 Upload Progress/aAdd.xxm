@@ -1,0 +1,39 @@
+[[@Windows,xxmSession]][[:
+
+
+procedure demoProgressCallback(Context: CxxmContext; FieldName, FileName,
+  FileType: PUTF8Char; RequestID, Position: NativeUInt); stdcall;
+begin
+  //Context.Data as TxxmSession?
+  Session.UploadProgressFileName:=FileName;
+  Session.UploadProgressPosition:=Position;
+  Sleep(250);//slow it down for this demonstration
+end;
+
+]][[!var
+doc:CXxmParameter;
+dir:string;
+]][[
+
+SetLength(dir,MAX_PATH);
+SetLength(dir,GetModuleFileName(HInstance,PChar(dir),MAX_PATH));
+dir:=ExtractFilePath(dir)+'files\';
+
+//TODO: support multiple concurrent uploads per session with upload identifiers
+Session.UploadProgressFileName:='...';
+Session.UploadProgressLength:=StrToIntDef(string(Context.RequestHeader['Content-Length']),0);
+Session.UploadProgressPosition:=0;
+xxm.Context_Set_ProgressCallback(Context,@demoProgressCallback,0,0,$100);
+  //xxmUploadProgressAttach_PostData,0);
+  //xxmUploadProgressAttach_FileFields,0);
+
+doc:=Context.Parameter['doc'];
+while doc.HasValue do
+ begin
+  if doc.Origin<>'FILE' then raise Exception.Create('Parameter "doc" is not a file upload.');
+  if doc.Value<>'' then
+    doc.SaveToFile(dir+ExtractFileName(doc.Value));
+  doc:=doc.NextBySameName;
+ end;
+
+Context.Redirect('Default.xxm',true);

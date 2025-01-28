@@ -43,7 +43,7 @@ function XxmPage(Project: PxxmProject; Context: CxxmContext;
   Address: PUTF8Char): CxxmFragment; stdcall;
 var
   a:UTF8String;
-  r:pointer;  
+  r:pointer;
 begin
   SetSession(Context);
   a:=UTF8LowerCase(Address);
@@ -55,7 +55,7 @@ function XxmFragment(Project: PxxmProject; Context: CxxmContext;
   Address: PUTF8Char): CxxmFragment; stdcall;
 var
   a:UTF8String;
-  r:pointer;  
+  r:pointer;
 begin
   a:=UTF8LowerCase(Address);
   {$I src/xxmFMap2.inc}

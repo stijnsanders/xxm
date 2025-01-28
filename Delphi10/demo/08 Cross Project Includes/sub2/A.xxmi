@@ -1,0 +1,14 @@
+[[!var
+i:integer;
+]][[
+i:=Values[0];
+if i=0 then
+ begin
+  <<p>counter reached zero in project sub2!</p>>
+ end
+else
+ begin
+  <<p><b>sub2:</b> [[=i]]</p>>
+  Context.Include('xxm:sub1/A.xxmi',[i-1]);
+ end;
+]]

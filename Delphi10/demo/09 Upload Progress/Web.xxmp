@@ -1,0 +1,46 @@
+{
+	"name": "demo",
+	"uuid": "{C328CEF5-380E-4A29-8659-C7584F56A134}",
+	"compileCommand": "dcc32 -U[[HandlerPath]]public -Q [[ProjectName]].dpr",
+	"files": {
+		"default_xxm": {
+			"path": "Default.xxm",
+			"unitName": "default_xxm1",
+			"unitPath": ""
+		},
+		"ihead_xxmi": {
+			"path": "iHead.xxmi",
+			"unitName": "ihead_xxmi1",
+			"unitPath": ""
+		},
+		"aadd_xxm": {
+			"path": "aAdd.xxm",
+			"unitName": "aadd_xxm1",
+			"unitPath": ""
+		},
+		"fadd_xxm": {
+			"path": "fAdd.xxm",
+			"unitName": "fadd_xxm1",
+			"unitPath": ""
+		},
+		"ifoot_xxmi": {
+			"path": "iFoot.xxmi",
+			"unitName": "ifoot_xxmi1",
+			"unitPath": ""
+		},
+		"progress_xxm": {
+			"path": "Progress.xxm",
+			"unitName": "progress_xxm1",
+			"unitPath": ""
+		},
+		"files__default_xxm": {
+			"path": "files/Default.xxm",
+			"unitName": "default_xxm2",
+			"unitPath": "files/"
+		}
+	},
+	"units": {
+		"xxmSession": {}
+	},
+	"lastModified": "2025-01-29T00:23:57"
+}

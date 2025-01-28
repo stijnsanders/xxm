@@ -7,7 +7,7 @@
 Since this demonstration project uses a single array to store session data using the sorted SessionID's,
 the processes won't be able to access eachother's session data in this case, which results in unexpected behavior.<br />
 For advanced projects it is strongly advised to use a central session object store (e.g.: a database, COM or COM+ server),
-or to disable multiple processes (IIS: limit to 1 worker processes, Apache: single-process mode "-X") or use a the xxm SCGI service.</p>
+or to disable multiple processes (IIS: limit to 1 worker processes, Apache: single-process mode "-X") or use the xxm SCGI service.</p>
 <dl>
 <dt>Web.xxmp</dt>
 <dd>The project file, contains an internal list of the files of the project, and other data about the project.<br />

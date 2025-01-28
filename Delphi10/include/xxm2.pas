@@ -3,8 +3,8 @@ unit xxm2;
 interface
 
 const
-  //$Date: 2025-01-23 23:55:26 +0100 (do, 23 jan 2025) $
-  XxmRevision = '$Rev: 529 $';
+  //$Date: 2025-01-29 00:41:44 +0100 (wo, 29 jan 2025) $
+  XxmRevision = '$Rev: 530 $';
   XxmAPILevel = 2000;//v2.0
 
 type
@@ -435,7 +435,7 @@ end;
 
 function CxxmContext.GetRequestHeader(const Name: UTF8String): UTF8String;
 begin
-  Result:=xxm.Context_ResponseHeader(Self,PUTF8Char(Name));
+  Result:=xxm.Context_RequestHeader(Self,PUTF8Char(Name));
 end;
 
 function CxxmContext.RequestHeaderCount: NativeUInt;

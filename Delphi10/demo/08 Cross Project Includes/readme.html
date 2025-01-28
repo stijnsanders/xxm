@@ -1,0 +1,35 @@
+<link rel="stylesheet" type="text/css" href="http://xxm.sourceforge.net/xxm.css" />
+<h3>xxm Demo Projects - 08 Cross Project Includes</h3>
+<p>This is a demo project showing how to include a fragment from another project.
+This demonstration has a main project and two sub-projects,
+each with a fragment that displays the counter,
+decreases it by one and passes it to the fragment of the other sub-project until the counter reaches zero.
+This also demonstrates re-including fragments from a project that has already been included will not deadlock.
+(Auto-build/auto-update is limited to the first include for each project called for cross-project including.)</p>
+<p>To set up this project:</p>
+<ul>
+<li>Register Web.xxmp with an xxm handler (e.g. xxmHttpDev.exe)</li>
+<li>Register sub1\Web.xxmp with an xxm handler</li>
+<li>Register sub2\Web.xxmp with an xxm handler</li>
+<li>Set <code>"allowInclude":true</code> on all three project registries (<code>xxm2.json</code>)</li>
+</ul>
+<dl>
+<dt>Web.xxmp</dt>
+<dd>The project file, contains an internal list of the files of the project, and other data about the project.</dd>
+<dt>xxmp2.pas</dt>
+<dd>The project's main unit. When this file is missing form the project, xxm creates one for you.</dd>
+<dt>Default.xxm</dt>
+<dd>The website's default page. It calls A.xxmi in project sub1 with a selected counter value.</dd>
+<dt>sub1\Web.xxmp</dt>
+<dd>The project file for project 'sub1'</dd>
+<dt>sub1\Default.xxm</dt>
+<dd>A start page for project 'sub1'</dd>
+<dt>sub1\A.xxmi</dt>
+<dd>A fragment that displays a counter, decrements it and passes it to A.xxmi in project 'sub2' if the counter has not reached zero.</dd>
+<dt>sub2\Web.xxmp</dt>
+<dd>The project file for project 'sub2'</dd>
+<dt>sub2\Default.xxm</dt>
+<dd>A start page for project 'sub2'</dd>
+<dt>sub2\A.xxmi</dt>
+<dd>A fragment that displays a counter, decrements it and passes it to A.xxmi in project 'sub1' if the counter has not reached zero.</dd>
+</dl>
