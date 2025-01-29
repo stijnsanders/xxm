@@ -1,9 +1,12 @@
-[[@Windows,xxmSession]][[:
-
+[[@Windows,xxmSession,xxmp2]][[:
 
 procedure demoProgressCallback(Context: CxxmContext; FieldName, FileName,
   FileType: PUTF8Char; RequestID, Position: NativeUInt); stdcall;
 begin
+
+  if AbortAll then
+    raise Exception.Create('xxm Project needs restarting, aborting all current upload requests.');
+
   //Context.Data as TxxmSession?
   Session.UploadProgressFileName:=FileName;
   Session.UploadProgressPosition:=Position;

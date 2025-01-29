@@ -23,10 +23,16 @@ function XxmPage(Project: PxxmProject; Context: CxxmContext;
 function XxmFragment(Project: PxxmProject; Context: CxxmContext;
   Address: PUTF8Char): CxxmFragment; stdcall;
 
+procedure XxmReleasingContexts(Project: PxxmProject); stdcall;
+
+var
+  AbortAll:boolean;
+
 exports
   XxmInitialize,
   XxmPage,
-  XxmFragment;
+  XxmFragment,
+  XxmReleasingContexts;
 
 implementation
 
@@ -39,6 +45,7 @@ function XxmInitialize(APILevel: NativeUInt; xxm2: Pxxm2;
 begin
   xxm:=xxm2;
   //XxmProjectName:=AProjectName;
+  AbortAll:=false;
   Result:=nil;
 end;
 
@@ -63,6 +70,11 @@ begin
   a:=UTF8LowerCase(Address);
   {$I src/xxmFMap2.inc}
   Result:=CxxmFragment(r);
+end;
+
+procedure XxmReleasingContexts(Project: PxxmProject); stdcall;
+begin
+  AbortAll:=true;
 end;
 
 end.

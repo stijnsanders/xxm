@@ -2,7 +2,7 @@ unit xxmPReg;
 
 interface
 
-uses Windows, SysUtils, xxm2;
+uses Windows, SysUtils, xxm2, jsonDoc;
 
 type
   TProjectEntry=class(TObject)
@@ -15,11 +15,14 @@ type
     FLibrary:THandle;
     FProject:PxxmProject;
     procedure CheckLibrary;
+  protected
+    procedure SetFilePath(const FilePath:string;LoadCopy:boolean);
+    procedure LoadConfiguration(d: IJSONDocument);
   public
     AllowInclude,Negotiate,NTLM:boolean;
     BufferSize:integer;
     Signature,ProtoPath,HandlerPath:string;
-    LastCheck:cardinal;
+    LastCheck,ReleaseContextsTimeoutMS:cardinal;
     LastResult:UTF8String;
 
     xxmPage:FxxmPage;
@@ -32,7 +35,6 @@ type
     constructor Create(const Name:UTF8String;const FilePath:string;
       LoadCopy:boolean);
     destructor Destroy; override;
-    procedure SetFilePath(const FilePath:string;LoadCopy:boolean);
     property FilePath:string read FFilePath;
     property LoadSignature:string read FLoadSignature;
     property LoadCount:integer read FLoadCount;
@@ -85,7 +87,7 @@ type
 
     function GetProjectName(Host,Name:PUTF8Char):PUTF8Char;
     function GetProjectEntry(Name:PUTF8Char):TProjectEntry;
-    function GetProjectData(const Name:string):IUnknown;//:IJSONDocument;
+    function GetProjectData(const Name:string):IJSONDocument;
 
     property HandlerPath:string read FHandlerPath;
     property ProtoPath:string read FProtoPath;
@@ -108,7 +110,7 @@ var
 
 implementation
 
-uses Classes, Variants, jsonDoc, xxmTools, Registry;
+uses Classes, Variants, xxmTools, Registry;
 
 const
   XxmRegFileName='xxm2.json';
@@ -343,13 +345,7 @@ begin
               else
                 if fn<>FProjects[i].Entry.FilePath then
                   FProjects[i].Entry.SetFilePath(fn,VarToBool(d1['loadCopy']));
-              FProjects[i].Entry.AllowInclude:=VarToBool(d1['allowInclude']);
-              FProjects[i].Entry.Signature:=VarToStr(d1['signature']);
-              FProjects[i].Entry.BufferSize:=BSize(VarToStr(d1['bufferSize']));
-              FProjects[i].Entry.Negotiate:=VarToBool(d1['negotiate']);
-              FProjects[i].Entry.NTLM:=VarToBool(d1['ntlm']);
-              FProjects[i].Entry.ProtoPath:=VarToStr(d1['protoPath']);
-              FProjects[i].Entry.HandlerPath:=VarToStr(d1['handlerPath']);
+              FProjects[i].Entry.LoadConfiguration(d1);
              end
             else
              begin
@@ -581,7 +577,7 @@ begin
    end;
 end;
 
-function TProjectRegistry.GetProjectData(const Name: string): IUnknown;
+function TProjectRegistry.GetProjectData(const Name: string): IJSONDocument;
 var
   fn:string;
   d:IJSONDocument;
@@ -591,7 +587,6 @@ begin
   d:=LoadJSON(fn);
   Result:=JSON(JSON(d['projects'])[Name]);
 end;
-
 
 { TProjectEntry }
 
@@ -782,6 +777,23 @@ begin
    end;
 end;
 
+procedure TProjectEntry.LoadConfiguration(d: IJSONDocument);
+var
+  v:Variant;
+  i:integer;
+begin
+  AllowInclude:=VarToBool(d['allowInclude']);
+  Signature:=VarToStr(d['signature']);
+  BufferSize:=BSize(VarToStr(d['bufferSize']));
+  Negotiate:=VarToBool(d['negotiate']);
+  NTLM:=VarToBool(d['ntlm']);
+  ProtoPath:=VarToStr(d['protoPath']);
+  HandlerPath:=VarToStr(d['handlerPath']);
+  v:=d['releaseContextsTimeout'];
+  if VarIsNull(v) then i:=30 else i:=v;
+  ReleaseContextsTimeoutMS:=i*1000;
+end;
+
 procedure TProjectEntry.OpenContext;
 begin
   //TODO
@@ -808,8 +820,6 @@ end;
 procedure TProjectEntry.Release;
 var
   tc:cardinal;
-const
-  ReleaseContext_TimeoutMS=30000;
 begin
   //attention: deadlock danger, use OpenContext,CloseContext
   //XxmProjectCheckHandler should lock new requests
@@ -823,7 +833,7 @@ begin
 
   //assert only one thread at once, use Lock/Unlock!
   tc:=GetTickCount;//TODO: if timeout then raise? log?
-  while (FContextCount>0) and (cardinal(GetTickCount-tc)<=ReleaseContext_TimeoutMS) do
+  while (FContextCount>0) and (cardinal(GetTickCount-tc)<=ReleaseContextsTimeoutMS) do
     SwitchToThread;
   FContextCount:=0;
 

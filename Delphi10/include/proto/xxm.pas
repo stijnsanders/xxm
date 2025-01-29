@@ -10,7 +10,7 @@ unit [[FragmentUnit]];
 
   Prototype-file used:
   "[[ProtoFile]]"
-  $Rev: 529 $ $Date: 2025-01-23 23:55:26 +0100 (do, 23 jan 2025) $
+  $Rev: 531 $ $Date: 2025-01-29 22:05:00 +0100 (wo, 29 jan 2025) $
 }
 
 interface
@@ -23,10 +23,7 @@ procedure build(Context: CxxmContext;
 
 implementation
 
-uses
-  SysUtils,
-  [[UsesClause]]
-  xxmp2;
+uses SysUtils, [[UsesClause]];
   
 [[FragmentDefinitions]]
 { [[FragmentID]] }

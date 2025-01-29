@@ -22,10 +22,7 @@ procedure build(Context: CxxmContext;
 
 implementation
 
-uses 
-  SysUtils, Variants,
-  [[UsesClause]]
-  xxmp2, FRegRouting;
+uses SysUtils, Variants, [[UsesClause]], FRegRouting;
   
 [[FragmentDefinitions]]
 { [[FragmentID]] }

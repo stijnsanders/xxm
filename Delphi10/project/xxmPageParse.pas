@@ -853,6 +853,8 @@ begin
         inc(j);
        end;
      end;
+  while (j<>0) and (Result[j-1]<=' ') do dec(j);
+  if (j<>0) and (Result[j-1]=',') then dec(j);
   SetLength(Result,j-1);
 end;
 
