@@ -1,4 +1,4 @@
-[[!var
+[[@xxmp2]][[!var
 i,l:integer;
 n:string;
 p:CXxmParameter;

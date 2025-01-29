@@ -22,7 +22,10 @@ procedure build(Context: CxxmContext;
 
 implementation
 
-uses SysUtils, Variants, [[UsesClause]] FRegRouting;
+uses
+  SysUtils,
+  [[UsesClause]]
+  xxmp2;
   
 [[FragmentDefinitions]]
 { [[FragmentID]] }
@@ -31,10 +34,22 @@ procedure build(Context: CxxmContext;
   const Values: array of Variant;
   const Objects: array of pointer); stdcall;
 [[FragmentHeader]]
+
+var
+  ExLogPrefix:string;
 begin
+  try
+    ExLogPrefix:='ExLogPrefix:0';
 [[FragmentBody]]
+  except
+    on e:Exception do
+     begin
+      e.Message:=e.Message+#13#10+ExLogPrefix;
+      raise;
+     end;
+  end;
 end;
 
 initialization
-  RegisterPage('[[FragmentAddress]]',build);
+[[FragmentFooter]]
 end.

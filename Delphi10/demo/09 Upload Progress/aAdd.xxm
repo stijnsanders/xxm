@@ -1,4 +1,4 @@
-[[@Windows,xxmSession,xxmp2]][[:
+[[@Windows,xxmSession]][[:
 
 procedure demoProgressCallback(Context: CxxmContext; FieldName, FileName,
   FileType: PUTF8Char; RequestID, Position: NativeUInt); stdcall;

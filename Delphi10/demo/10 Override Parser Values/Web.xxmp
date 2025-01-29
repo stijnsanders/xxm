@@ -1,6 +1,6 @@
 {
 	"name": "demo",
-	"uuid": "{36ABD35D-F0CC-4640-B1BF-173C3052D192}",
+	"uuid": "{FDF985E3-BBCE-421F-B8E9-56347288E833}",
 	"compileCommand": "dcc32 -U[[HandlerPath]]public -Q [[ProjectName]].dpr",
 	"files": {
 		"default_xxm": {
@@ -8,5 +8,9 @@
 			"unitName": "default_xxm1",
 			"unitPath": ""
 		}
+	},
+	"parserValues": {
+		"SendOpen": "ExLogPrefix:='ExLogPrefix:$l';$d",
+		"SendHTMLOpen": "ExLogPrefix:='ExLogPrefix:$l';$d"
 	}
 }

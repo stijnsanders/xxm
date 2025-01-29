@@ -1,0 +1,15 @@
+<link rel="stylesheet" type="text/css" href="http://xxm.sourceforge.net/xxm.css" />
+<h3>xxm Demo Projects - 10 Override Parser Values</h3>
+<p>This is a demo project showing what you can do with parser values and the different ways to override them.</p>
+<dl>
+<dt>Web.xxmp</dt>
+<dd>The project file, contains an internal list of the files of the project, and other data about the project.<br />
+Use <i>xxmProject.exe</i> to edit and manage project settings.<br />
+Also defines a first set of parser values overrides, here adding extra information to any exceptions handled.</dd>
+<dt>xxmp2.pas</dt>
+<dd>The project's main unit. When this file is missing form the project, xxm creates one for you.</dd>
+<dt>Default.xxm</dt>
+<dd>The website's default page. It demonstrates how to override parser values as a shorthand in constructing output, and revert. Then throws an error to demonstrate how to add information to exceptions.</dd>
+<dt>proto\xxm.pas<br/>proto\xxmi.pas</dt>
+<dd>Alternative proto files used by the code generator. Adds a variable and exception handling used by the project global parser values override.</dd>
+</dl>
