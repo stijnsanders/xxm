@@ -62,11 +62,12 @@ type
     function GetValue(Idx:OleVariant):OleVariant;
     procedure SetValue(Idx,Value:OleVariant);
   public
-    constructor Create(const TableName, PKName: AnsiString; Id: integer);
+    constructor Create(const TableName, PKName: AnsiString; const Id: Variant);
     destructor Destroy; override;
 
     class function Execute(const QueryName: AnsiString; const Values: array of Variant): integer; overload;
 
+    function CheckNew: boolean;
     procedure Update;
     procedure Cancel;
 
@@ -194,6 +195,7 @@ begin
     FQueries[q].ID:=Copy(s,s1,s2-s1);
     FQueries[q].SQL:=Copy(s,r1,i-r1+1);
     inc(q);
+    SetLength(FQueries,q);
    end;
 end;
 
@@ -451,18 +453,27 @@ end;
 
 { TDataChanger }
 
-constructor TDataChanger.Create(const TableName, PKName: AnsiString; Id: integer);
+constructor TDataChanger.Create(const TableName, PKName: AnsiString; const Id: Variant);
+var
+  sql:string;
+  idX:int64;
 begin
   inherited Create;
   FRecordSet:=CoRecordset.Create;
   //TODO: adCmdTable and find PK? first col?
-  FRecordSet.Open(
-    'SELECT * FROM '+TableName+' WHERE '+PKName+'='+IntToStr(id),
+  if VarIsNumeric(Id) then
+   begin
+    idX:=Id;
+    sql:='SELECT * FROM '+TableName+' WHERE '+PKName+'='+IntToStr(idX);
+   end
+  else
+    sql:='SELECT * FROM '+TableName+' WHERE '+PKName+'='''+StringReplace(VarToStr(Id),'''','''''',[rfReplaceAll])+'''';
+  FRecordSet.Open(sql,
     Session.Connection,
     adOpenKeyset,//?
     adLockOptimistic,//adLockPessimistic?
     adCmdText);
-  if id=0 then FRecordSet.AddNew(EmptyParam,EmptyParam);
+  if VarIsNull(Id) or (Id=0) then FRecordSet.AddNew(EmptyParam,EmptyParam);
   //else editmode?
 end;
 
@@ -471,6 +482,17 @@ begin
   //FRecordSet.Close;
   FRecordSet:=nil;
   inherited;
+end;
+
+function TDataChanger.CheckNew: boolean;
+begin
+  if FRecordSet.EOF then
+   begin
+    FRecordSet.AddNew(EmptyParam,EmptyParam);
+    Result:=true;
+   end
+  else
+    Result:=false;
 end;
 
 procedure TDataChanger.Update;

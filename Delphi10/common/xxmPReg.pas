@@ -20,7 +20,7 @@ type
     procedure LoadConfiguration(d: IJSONDocument);
   public
     AllowInclude,Negotiate,NTLM:boolean;
-    BufferSize:integer;
+    BufferSize:NativeUInt;
     Signature,ProtoPath,HandlerPath:string;
     LastCheck,ReleaseContextsTimeoutMS:cardinal;
     LastResult:UTF8String;
@@ -150,7 +150,7 @@ begin
   Result:=not(VarIsNull(v)) and boolean(v);
 end;
 
-function BSize(const x:string):integer;
+function BSize(const x:string):NativeUInt;
 var
   i,l:integer;
 begin
@@ -354,7 +354,7 @@ begin
               except
                 //silent
               end;
-              //TODO: inc(FCacheIndex);
+              //TODO: invalidate project cache(s)
              end;
            end;
           //clean-up projects removed from config
@@ -369,10 +369,6 @@ begin
                 //silent
               end;
              end;
-          {//TODO
-          if FSingleProject<>'' then
-            LoadFavIcon(FSingleProject+'.ico');
-          }
 
           for i:=0 to FHostsIndex-1 do FHosts[i].LoadCheck:=false;
           e:=JSONEnum(d['hosts']);
