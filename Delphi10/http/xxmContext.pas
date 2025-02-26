@@ -19,9 +19,12 @@ type
   end;
   PParamInfo=^TParamInfo;
 
+  TxxmSendBufHandler=function(const Buf; Count: LongInt): LongInt of object;
+
   TxxmContext=class(TObject)
   private
     FSocket:TTcpSocket;
+    FSend:TxxmSendBufHandler;
     FCache:array of record
       Data:array of UTF8Char;
       Index:NativeUInt;
@@ -36,6 +39,8 @@ type
     FStatusCode:word;
     FStatusText:PUTF8Char;
     FRedirectPrefix,FSessionID:UTF8String;
+    FBufferSize:NativeUInt;
+    FBuffer:TMemoryStream;
     FPostData:TStream;
     FPostTempFile:string;
     FProjectName,FFragmentName:UTF8String;
@@ -56,6 +61,8 @@ type
     FParamsIndex,FParamsSize:NativeUInt;
     FCredNTLM,FCredNego:TCredHandle;
     FCtxt:TCtxtHandle;
+    procedure SetBufferSize(ABufferSize:NativeUInt);
+    function SendChunked(const Buf;Count: LongInt): LongInt;
   protected
     FProjectData:pointer;
     function GetRequestHeader(Name:PUTF8Char):PUTF8Char;
@@ -66,6 +73,7 @@ type
 
     procedure SendHeader;
     procedure Flush;
+    procedure FlushFinal;
     procedure AuthSChannel(const Package:UTF8String;var Cred:TCredHandle);
     function AuthParse(const Scheme:UTF8String):UTF8String;
     function AuthValue(cs:TXxmContextString):UTF8String;
@@ -78,6 +86,7 @@ type
     function GetParamByIdx(Index:NativeUInt):PParamInfo;
   public
     constructor Create;
+    destructor Destroy; override;
 
     procedure Clear;
     procedure Bind(Socket:TTcpSocket);
@@ -92,7 +101,9 @@ type
     procedure Redirect(URL:PUTF8Char;Relative:boolean);
     function ContextString(Value:integer):PUTF8Char;
 
-    property Socket:TTcpSocket read FSocket;
+    procedure CheckFlush; inline;
+    property Buffer:TMemoryStream read FBuffer;
+    property BufferSize:NativeUInt read FBufferSize write SetBufferSize;
   end;
 
   TxxmContextPool=class(TObject)
@@ -132,6 +143,7 @@ type
   EXxmHeaderAlreadySent=class(EXxmError);
   EXxmUnknownPostMime=class(EXxmError);
   EXxmTransferError=class(EXxmError);
+  EXxmBufferSizeInvalid=class(EXxmError);
   EXxmPageRedirected=class(EXxmError);
   EXxmResponseHeaderOnly=class(EXxmError);
   EXxmProjectCheckFailed=class(EXxmError);
@@ -248,8 +260,8 @@ type
   TxxmBufferStore=class(TObject)
   private
     FLock: TRTLCriticalSection;
-    FBuffer: array of TMemoryStream;
-    FBufferSize: integer;
+    FBuffers: array of TMemoryStream;
+    FBuffersSize: integer;
   public
     constructor Create;
     destructor Destroy; override;
@@ -285,6 +297,7 @@ begin
   FHeadersSize:=0;
   FPostTempFile:='';
   FParamsSize:=0;
+  FBuffer:=nil;
 
   FCredNTLM.dwUpper:=nil;
   FCredNTLM.dwLower:=nil;
@@ -294,6 +307,13 @@ begin
   FCtxt.dwLower:=nil;
 
   Clear;
+end;
+
+destructor TxxmContext.Destroy;
+begin
+  //Clear?
+  BufferStore.AddBuffer(FBuffer);
+  inherited;
 end;
 
 procedure TxxmContext.Clear;
@@ -346,6 +366,8 @@ begin
   FStatusText:='OK';
   FSessionID:='';
   FRedirectPrefix:='';
+  FBufferSize:=0;
+  if FBuffer<>nil then FBuffer.Position:=0;//re-use existing
   FPostData:=nil;
   FProjectName:='';
   FFragmentName:='';
@@ -375,7 +397,9 @@ end;
 procedure TxxmContext.Bind(Socket: TTcpSocket);
 begin
   //if FSocket<>nil then raise?
+  //assert FBufferSize=0
   FSocket:=Socket;
+  FSend:=FSocket.SendBuf;
 end;
 
 procedure TxxmContext.HandleRequest(Sender: TObject);
@@ -479,8 +503,6 @@ begin
     FCache[0].Index:=dLine;
     FHeadersIndexOut:=FHeadersIndexIn;
 
-    //buffer:
-
     //TODO: streaming requests: keep reading requests while response is streaming out
 
     XxmProjectRegistry.CheckRegistry;//TODO: behind the scenes thread?
@@ -560,10 +582,9 @@ begin
      begin
       FStatusCode:=501;
       FStatusText:='Not Implemented';
-      x:='<h1>Not Implemented</h1>';
+      SendHeader;
+      x:={UTF8ByteOrderMark+}'<h1>Not Implemented</h1>';
       FSocket.SendBuf(x[1],Length(x));
-      //SendStr();
-      //Flush;
      end
     else
      begin
@@ -579,10 +600,7 @@ begin
         SetResponseHeader('Content-Length','0');
        end;
 
-      //clear buffer just in case
-      //if FContentBuffer<>nil then FContentBuffer.Position:=0;
-
-      //LoadPage;
+      //load page
       if @XxmProjectCheckHandler<>nil then
         if not(XxmProjectCheckHandler(FProjectEntry,Context,FProjectName)) then
          begin
@@ -593,8 +611,6 @@ begin
       try
         if FProjectEntry.Negotiate then AuthSChannel('Negotiate',FCredNego) else
           if FProjectEntry.NTLM then AuthSChannel('NTLM',FCredNTLM);
-
-        //TODO SetBufferSize(FProjectEntry.BufferSize);
         FPage:=FProjectEntry.xxmPage(FProjectEntry.Project,Context,@FFragmentName[1]);
 
         if @FPage=nil then
@@ -650,7 +666,6 @@ begin
 }
                   try
                     SendStream(ds);
-                    //if FBufferSize<>0 then Flush;
                   finally
                     ds.Free;
                   end;
@@ -702,41 +717,32 @@ begin
           FPageClass:=FFragmentName;
           if FPageClass='' then FPageClass:=FProjectName;//+'/'?
           SetResponseHeader('Content-Type','text/html');//default
+          SetBufferSize(FProjectEntry.BufferSize);
 
           //build page
           FPage(Context,[],[]);
 
-{//TODO
-          //close page
-          if State in [ctHeaderNotSent..ctResponding] then
-           begin
-            if State<>ctResponding then
-             begin
-              if FBufferSize=0 then i:=0 else i:=FContentBuffer.Position;
-              if (i=0) and (FStatusCode=200) then
-               begin
-                FStatusCode:=204;
-                FStatusText:='No Content';
-               end;
-              if (FStatusCode<>304) and not(FChunked) then //if State<>ctHeaderOnly then
-                SetResponseHeader('Content-Length',Store(IntToStr8(i)));
-              if i=0 then
-               begin
-                SendHeader;
-                //State:=ctHeaderOnly;
-               end;
-             end;
-            FlushFinal;
-           end;
-}
          end;
-
       finally
         FProjectEntry.CloseContext;
       end;
       FProjectEntry.ClearContext(Context);
-
      end;
+
+    //close page
+    if not FHeaderSent then
+     begin
+      if FBufferSize=0 then n:=0 else n:=FBuffer.Position;
+      if (n=0) and (FStatusCode=200) then
+       begin
+        FStatusCode:=204;
+        FStatusText:='No Content';
+       end;
+      if (FStatusCode<>304) and not(FChunked) then
+        SetResponseHeader('Content-Length',Store(IntToStr8(n)));
+      //SendHeader;
+     end;
+    FlushFinal;
 
   except
     on EXxmPageRedirected do Flush;
@@ -750,6 +756,7 @@ begin
        begin
         FStatusCode:=500;
         FStatusText:='Internal Server Error';
+        FAllowChunked:=false;//?
         if not FHeaderSent then SendHeader;
         x:=HTMLEncode(FPageClass);
         y:=
@@ -783,10 +790,9 @@ begin
         y:=y
           +#13#10'&nbsp;</p></body></html>'
           ;
-        Context.SendHTML(PUTF8Char(y));//FSocket.SendBuf(y[1],Length(y));//attention FAutoEncoding could be set here!
+        Context.SendHTML(PUTF8Char(y));
        end;
-      //TODO: FlushFinal;
-      FSocket.Disconnect;
+      FlushFinal;
      end;
   end;
 
@@ -987,7 +993,18 @@ begin
       SetResponseHeader('Content-Type',Store(UTF8String(p)
         +AutoEncodingCharset[FAutoEncoding]),false);
 
+  //chunked
+  if (FBufferSize=0) and FAllowChunked and
+    (GetResponseHeader('Content-Length')='') and
+    (GetResponseHeader('Transfer-Encoding')='') then
+   begin
+    FChunked:=true;
+    FSend:=SendChunked;//see also SetBufferSize
+    SetResponseHeader('Transfer-Encoding','chunked');
+   end;
+
   //TODO: calculate total length beforehand
+  if FVersion=nil then FVersion:='HTTP/1.1';//default
   s:=UTF8String(FVersion)+' '+IntToStr8(FStatusCode)+' '+UTF8String(FStatusText)+#13#10;
   i:=FHeadersIndexIn;
   while i<FHeadersIndexOut do
@@ -998,20 +1015,8 @@ begin
    end;
   s:=s+#13#10;
 
-  {
-  //TODO
-        if (FBufferSize<>0) and AllowChunked and
-          (GetResponseHeader('Content-Length')='') and
-          (GetResponseHeader('Transfer-Encoding')='') then
-         begin
-          FChunked:=true;
-          AddResponseHeader('Transfer-Encoding','chunked');
-         end;
-}
-
-
   //auto-encoding: byte-order-mark?
-  if (FVerb<>'HEAD') and (FVerb<>'OPTIONS') then //see also below
+  if (FVerb<>'HEAD') and (FVerb<>'OPTIONS') and not(FChunked) then //see also below
     case FAutoEncoding of
       aeUtf8:s:=s+UTF8String(UTF8ByteOrderMark);
       aeUtf16:s:=s+UTF8String(UTF16ByteOrderMark);
@@ -1027,6 +1032,12 @@ begin
 
   if (FVerb='HEAD') or (FVerb='OPTIONS') then
     raise EXxmResponseHeaderOnly.Create(string(FVerb));
+
+  if FChunked then
+    case FAutoEncoding of
+      aeUtf8:SendChunked(UTF8ByteOrderMark[0],3);
+      aeUtf16:SendChunked(UTF16ByteOrderMark[0],2);
+    end;
 end;
 
 procedure TxxmContext.SendStream(s: TStream);
@@ -1180,9 +1191,109 @@ begin
   end;
 end;
 
-procedure TxxmContext.Flush;
+procedure TxxmContext.SetBufferSize(ABufferSize: NativeUInt);
+const
+  MaxBufferSize=$10000000;//128MB
+  BufferSizeStep=$10000;//64KB
 begin
-  //TODO:
+  if ABufferSize>MaxBufferSize then
+    raise EXxmBufferSizeInvalid.Create('Buffer size exceeds maximum');
+  if FBufferSize>ABufferSize then Flush;
+  FBufferSize:=ABufferSize;
+  if FBufferSize=0 then
+   begin
+    if FChunked then FSend:=SendChunked else FSend:=FSocket.SendBuf;
+    BufferStore.AddBuffer(FBuffer);
+   end
+  else
+   begin
+    BufferStore.GetBuffer(FBuffer);
+    if FBuffer.Position>ABufferSize then Flush;
+    if FBuffer.Size<ABufferSize then
+     begin
+      if (ABufferSize and (BufferSizeStep-1))<>0 then
+        ABufferSize:=((ABufferSize div BufferSizeStep)+1)*BufferSizeStep;
+      FBuffer.Size:=ABufferSize;
+     end;
+    FSend:=FBuffer.Write;
+   end;
+end;
+
+function TxxmContext.SendChunked(const Buf;Count:LongInt):LongInt;
+const
+  hex:array[0..15] of AnsiChar='0123456789ABCDEF';
+var
+  d:array of byte;
+  i,k,l:integer;
+begin
+  //assert FChunked
+  //assert BufferSize=0 (unless called by Flush)
+  //assert header sent
+  if Count<>0 then
+   begin
+    SetLength(d,Count+12);
+    d[8]:=13;//CR
+    d[9]:=10;//LF
+    i:=8;
+    k:=Count;
+    repeat
+      dec(i);
+      d[i]:=byte(hex[k and $F]);
+      k:=k shr 4;
+    until k=0;
+    Move(Buf,d[10],Count);
+    d[Count+10]:=13;//CR
+    d[Count+11]:=10;//LF
+    l:=Count+12-i;
+    if FSocket.SendBuf(d[i],l)<>l then
+      raise EXxmTransferError.Create(SysErrorMessage(GetLastError));
+   end;
+  Result:=Count;
+end;
+
+procedure TxxmContext.CheckFlush;
+begin
+  if (FBufferSize<>0) and (FBuffer.Position>=FBufferSize) then Flush;
+end;
+
+procedure TxxmContext.Flush;
+var
+  i:int64;
+begin
+  if not FHeaderSent then SendHeader;  
+  if FBufferSize<>0 then
+   begin
+    i:=FBuffer.Position;
+    if i<>0 then
+     begin
+      if FChunked then
+        SendChunked(FBuffer.Memory^,i)
+      else
+        if FSocket.SendBuf(FBuffer.Memory^,i)<>i then
+          raise EXxmTransferError.Create(SysErrorMessage(GetLastError));
+      FBuffer.Position:=0;
+     end;
+   end;
+end;
+
+procedure TxxmContext.FlushFinal;
+const
+  Chunk0:array[0..4] of AnsiChar='0'#13#10#13#10;
+begin
+  {//TODO
+  if (BufferSize<>0) //and (FBuffer.Position<>0) then
+    and not(FChunked)
+    and (FBuffer.Position>SpoolingThreshold) then
+   begin
+    if not FHeaderSent then SendHeader;
+    SpoolingConnections.Add(Self,FContentBuffer,false);
+    FBuffer:=nil;//since spooling will free it when done
+   end
+  else
+  }
+    Flush;
+
+  if FChunked then FSocket.SendBuf(Chunk0[0],5);
 end;
 
 procedure TxxmContext.AuthSChannel(const Package:UTF8String;var Cred:TCredHandle);
@@ -1633,18 +1744,17 @@ end;
 
 function Context_BufferSize(Context:CxxmContext):NativeUInt; stdcall;
 begin
-  //TODO Result:=TxxmContext(Context.__Context).BufferSize;
-  Result:=0;
+  Result:=TxxmContext(Context.__Context).BufferSize;
 end;
 
 procedure Context_Set_BufferSize(Context:CxxmContext;Value:NativeUInt); stdcall;
 begin
-  //TODO TxxmContext(Context.__Context).BufferSize:=Value;
+  TxxmContext(Context.__Context).BufferSize:=Value;
 end;
 
 function Context_Connected(Context:CxxmContext):boolean; stdcall;
 begin
-  Result:=TxxmContext(Context.__Context).Socket.Connected;
+  Result:=TxxmContext(Context.__Context).FSocket.Connected;
 end;
 
 procedure Context_Set_Status(Context:CxxmContext;Status:word;Text:PUTF8Char); stdcall;
@@ -1769,15 +1879,16 @@ begin
    begin
     w:=UTF8ToWideString(x);
     l:=Length(w)*2;
-    if c.Socket.SendBuf(w[1],l)<>l then
+    if c.FSend(w[1],l)<>l then
       raise EXxmTransferError.Create(SysErrorMessage(GetLastError));
    end
   else
    begin
     l:=Length(x);
-    if c.Socket.SendBuf(x[1],l)<>l then
+    if c.FSend(x[1],l)<>l then
       raise EXxmTransferError.Create(SysErrorMessage(GetLastError));
    end;
+  if (c.BufferSize<>0) and (c.Buffer.Position>c.BufferSize) then c.Flush;
 end;
 
 procedure Context_SendHTML(Context:CxxmContext;HTML:PUTF8Char); stdcall;
@@ -1792,7 +1903,7 @@ begin
    begin
     w:=UTF8ToWideString(HTML);
     l:=Length(w)*2;
-    if c.Socket.SendBuf(w[1],l)<>l then
+    if c.FSend(w[1],l)<>l then
       raise EXxmTransferError.Create(SysErrorMessage(GetLastError));
    end
   else
@@ -1800,9 +1911,10 @@ begin
     p:=HTML;
     while p^<>#0 do inc(p);
     l:=NativeUInt(p)-NativeUInt(HTML);
-    if c.Socket.SendBuf(HTML^,l)<>l then
+    if c.FSend(HTML^,l)<>l then
       raise EXxmTransferError.Create(SysErrorMessage(GetLastError));
    end;
+  if (c.BufferSize<>0) and (c.Buffer.Position>c.BufferSize) then c.Flush;
 end;
 
 procedure Context_SendFile(Context:CxxmContext;FilePath:PUTF8Char); stdcall;
@@ -2376,7 +2488,7 @@ end;
 constructor TxxmBufferStore.Create;
 begin
   inherited Create;
-  FBufferSize:=0;
+  FBuffersSize:=0;
   InitializeCriticalSection(FLock);
 end;
 
@@ -2384,9 +2496,9 @@ destructor TxxmBufferStore.Destroy;
 var
   i:integer;
 begin
-  for i:=0 to FBufferSize-1 do //downto?
+  for i:=0 to FBuffersSize-1 do //downto?
     try
-      FreeAndNil(FBuffer[i]);
+      FreeAndNil(FBuffers[i]);
     except
       //silent
     end;
@@ -2403,13 +2515,13 @@ begin
     EnterCriticalSection(FLock);
     try
       i:=0;
-      while (i<FBufferSize) and (FBuffer[i]<>nil) do inc(i);
-      if i=FBufferSize then
+      while (i<FBuffersSize) and (FBuffers[i]<>nil) do inc(i);
+      if i=FBuffersSize then
        begin
-        inc(FBufferSize,$400);//grow
-        SetLength(FBuffer,FBufferSize);
+        inc(FBuffersSize,$400);//grow
+        SetLength(FBuffers,FBuffersSize);
        end;
-      FBuffer[i]:=x;
+      FBuffers[i]:=x;
       x.Position:=0;
     finally
       LeaveCriticalSection(FLock);
@@ -2427,15 +2539,15 @@ begin
     EnterCriticalSection(FLock);
     try
       i:=0;
-      while (i<FBufferSize) and (FBuffer[i]=nil) do inc(i);
-      if i=FBufferSize then
+      while (i<FBuffersSize) and (FBuffers[i]=nil) do inc(i);
+      if i=FBuffersSize then
        begin
         x:=THeapStream.Create;//TODO: tmp file when large buffer
        end
       else
        begin
-        x:=FBuffer[i];
-        FBuffer[i]:=nil;
+        x:=FBuffers[i];
+        FBuffers[i]:=nil;
        end;
     finally
       LeaveCriticalSection(FLock);
