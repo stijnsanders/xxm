@@ -1,0 +1,17 @@
+[[!var
+th,tm,ts,tz:word;
+cd:TDemo12ContextData;
+]][[
+
+DecodeTime(Now,th,tm,ts,tz);
+
+<p>>=[FormatDateTime('hh:nn:ss',Now),', ',th,'+',tm,'+',ts,' = ',th+tm+ts]<</p>
+
+cd:=Context.Data;
+inc(cd.Counter);
+if cd.Counter=10 then
+ begin
+  <p>Ten events shown</p>
+ end
+else
+  xxm.Context_Suspend(Context,'demo12');

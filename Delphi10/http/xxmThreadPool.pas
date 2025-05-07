@@ -5,7 +5,7 @@ interface
 uses Windows, Classes, xxmContext, xxmSock;
 
 type
-  TXxmContextEvent=procedure(Sender:TObject) of object;
+  TxxmContextEvent=procedure(Sender:TObject) of object;
 
   TxxmPageLoader=class(TThread)
   private
@@ -29,8 +29,8 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-    procedure Queue(Event:TXxmContextEvent);
-    procedure Unqueue(var Job:TxxmContextEvent);
+    procedure Queue(Event: TxxmContextEvent);
+    procedure Unqueue(var Job: TxxmContextEvent);
   end;
 
 var
@@ -59,7 +59,7 @@ begin
   inherited;
 end;
 
-procedure TxxmPageLoaderPool.Queue(Event:TXxmContextEvent);
+procedure TxxmPageLoaderPool.Queue(Event: TxxmContextEvent);
 var
   i:integer;
 begin
@@ -103,7 +103,7 @@ begin
   FLoader[i].SignalNextJob;
 end;
 
-procedure TxxmPageLoaderPool.Unqueue(var Job:TxxmContextEvent);
+procedure TxxmPageLoaderPool.Unqueue(var Job: TxxmContextEvent);
 var
   i:integer;
 begin

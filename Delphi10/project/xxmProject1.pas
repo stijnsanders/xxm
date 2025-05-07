@@ -875,6 +875,7 @@ var
     v,vx:OleVariant;
     v1,v2:integer;
   begin
+    v:=Null;//default
     if rDoc<>nil then v:=rDoc[Key];//registry override?
     if VarIsNull(v) then v:=Data[Key];
     if not(VarIsNull(v)) then

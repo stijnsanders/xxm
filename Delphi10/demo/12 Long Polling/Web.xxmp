@@ -1,0 +1,43 @@
+{
+	"name": "demo",
+	"uuid": "{80F0BF6A-1D93-49DE-BFDE-8DDDC9D6C4EA}",
+	"compileCommand": "dcc32 -U[[HandlerPath]]public -Q [[ProjectName]].dpr",
+	"files": {
+		"default_xxm": {
+			"path": "Default.xxm",
+			"unitName": "default_xxm1",
+			"unitPath": ""
+		},
+		"drop_xxmi": {
+			"path": "Drop.xxmi",
+			"unitName": "drop_xxmi1",
+			"unitPath": ""
+		},
+		"next_xxmi": {
+			"path": "Next.xxmi",
+			"unitName": "next_xxmi1",
+			"unitPath": ""
+		},
+		"es_xxm": {
+			"path": "ES.xxm",
+			"unitName": "es_xxm1",
+			"unitPath": ""
+		},
+		"es1_xxm": {
+			"path": "ES1.xxm",
+			"unitName": "es1_xxm1",
+			"unitPath": ""
+		},
+		"es2_xxmi": {
+			"path": "ES2.xxmi",
+			"unitName": "es2_xxmi1",
+			"unitPath": ""
+		},
+		"es3_xxmi": {
+			"path": "ES3.xxmi",
+			"unitName": "es3_xxmi1",
+			"unitPath": ""
+		}
+	},
+	"lastModified": "2025-05-07T21:49:45"
+}

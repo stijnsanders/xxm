@@ -31,7 +31,7 @@ type
     end;
     FCacheIndex,FCacheSize:integer;
     FVerb,FURI,FVersion,FQueryString:PUTF8Char;
-    FAllowChunked,FHeaderSent:boolean;
+    FAllowChunked,FHeaderSent,FSuspended:boolean;
     FHeaders:array of record
       Name,Value:PUTF8Char;
     end;
@@ -63,6 +63,7 @@ type
     FCtxt:TCtxtHandle;
     procedure SetBufferSize(ABufferSize:NativeUInt);
     function SendChunked(const Buf;Count: LongInt): LongInt;
+    procedure HandleException(e:Exception);
   protected
     FProjectData:pointer;
     function GetRequestHeader(Name:PUTF8Char):PUTF8Char;
@@ -333,7 +334,6 @@ begin
 
   //TODO BufferStore.AddBuffer(FContentBuffer);
 
-  //TODO: EndRequest?
   try
     if FPostTempFile<>'' then
      begin
@@ -387,6 +387,7 @@ begin
   FParamsParsed:=false;
   FParamsSize:=0;
   FProjectData:=nil;//TODO: free by project?
+  FSuspended:=false;
 end;
 
 function TxxmContext.Context: CxxmContext;
@@ -411,7 +412,7 @@ var
   s:UTF8String;
   ds:TStream;
 
-  x,y,z:UTF8String;
+  x,y:UTF8String;
   fh:THandle;
   fd:TByHandleFileInformation;
   fs:int64;
@@ -442,7 +443,7 @@ begin
          end
         else
           inc(dIndex,n);
-        if cardinal(GetTickCount-tc)>HTTPMaxHeaderParseTimeMS then
+        if DWORD(GetTickCount-tc)>HTTPMaxHeaderParseTimeMS then
          begin
           FSocket.Disconnect;
           raise ExxmHeaderParseTimeExceeded.Create('Header parse time limit exceeded');
@@ -726,7 +727,14 @@ begin
       finally
         FProjectEntry.CloseContext;
       end;
-      FProjectEntry.ClearContext(Context);
+      if FSuspended then
+       begin
+        if not FHeaderSent then SendHeader;
+       end
+      else
+       begin
+        FProjectEntry.ClearContext(Context);
+       end;
      end;
 
     //close page
@@ -742,64 +750,71 @@ begin
         SetResponseHeader('Content-Length',Store(IntToStr8(n)));
       //SendHeader;
      end;
-    FlushFinal;
+    if not FSuspended then FlushFinal;
 
   except
     on EXxmPageRedirected do Flush;
     on EXxmResponseHeaderOnly do Flush;
     on EXxmProjectCheckFailed do ;//assert output done
     on EXxmConnectionLost do ;
-    on e:Exception do
-     begin
-      if not(FProjectEntry.HandleException(Context,FPageClass,
-        UTF8Encode(e.ClassName),UTF8Encode(e.Message))) then
-       begin
-        FStatusCode:=500;
-        FStatusText:='Internal Server Error';
-        FAllowChunked:=false;//?
-        if not FHeaderSent then SendHeader;
-        x:=HTMLEncode(FPageClass);
-        y:=
-          '<html><head><title>Error: '+x+'</title></head>'
-          +#13#10'<body style="font-family:sans-serif;background-color:white;color:black;margin:0em;">'
-          +#13#10'<h1 style="background-color:red;color:white;margin:0em;padding:0.1em;">'+x+'</h1>'
-          +#13#10'<p style="margin:0.1em;">An error occurred while rendering this page.<br />'
-            +HTMLEncode(ContextString(csURL))+' <i>'+HTMLEncode(UTF8String(e.ClassName))+'</i><br />'
-          +#13#10'<b>'+HTMLEncode(UTF8String(e.Message))+'</b><br />'
-          +#13#10'QueryString: '+HTMLEncode(ContextString(csQueryString))+'<br />'
-          +#13#10'Post data: '
-          ;
-        try
-          if FPostData=nil then
-            y:=y+'none'
-          else
-            y:=y+IntToStr8(FPostData.Size)+' bytes';
-        except
-          y:=y+'unknown';
-        end;
-        y:=y+'</p>'
-          +#13#10'<p style="background-color:red;color:white;font-size:0.8em;margin:0em;padding:0.2em;">'
-          +#13#10'<a href="http://yoy.be/xxm/" style="float:right;color:white;">'+HTMLEncode(SelfVersion)+'</a>'
-          ;
-        z:=ContextString(csURL);
-        x:=ContextString(csReferer);
-        if (x<>'') and (x<>z) then y:=y
-          +#13#10'<a href="'+HTMLEncode(x)+'" style="color:white;">back</a>';
-        if UTF8CmpI(FVerb,'GET')=0 then y:=y
-          +#13#10'<a href="'+HTMLEncode(z)+'" style="color:white;">refresh</a>';
-        y:=y
-          +#13#10'&nbsp;</p></body></html>'
-          ;
-        Context.SendHTML(PUTF8Char(y));
-       end;
-      FlushFinal;
-     end;
+    on e:Exception do HandleException(e);
   end;
 
-  //TODO: prevent empty request? (if not FHeaderSent then bad request?
-  //TODO: endRequest in all except cases?
-  FSocket.Disconnect;
+  //TODO: prevent empty response? (if not FHeaderSent then bad request?
+  if not FSuspended then
+    FSocket.Disconnect;
 end;
+
+procedure TxxmContext.HandleException(e:Exception);
+var
+  x,y,z:UTF8String;
+begin
+  FSuspended:=false;//?
+  if not(FProjectEntry.HandleException(Context,FPageClass,
+    UTF8Encode(e.ClassName),UTF8Encode(e.Message))) then
+   begin
+    FStatusCode:=500;
+    FStatusText:='Internal Server Error';
+    FAllowChunked:=false;//?
+    if not FHeaderSent then SendHeader;
+    x:=HTMLEncode(FPageClass);
+    y:=
+      '<html><head><title>Error: '+x+'</title></head>'
+      +#13#10'<body style="font-family:sans-serif;background-color:white;color:black;margin:0em;">'
+      +#13#10'<h1 style="background-color:red;color:white;margin:0em;padding:0.1em;">'+x+'</h1>'
+      +#13#10'<p style="margin:0.1em;">An error occurred while rendering this page.<br />'
+        +HTMLEncode(ContextString(csURL))+' <i>'+HTMLEncode(UTF8String(e.ClassName))+'</i><br />'
+      +#13#10'<b>'+HTMLEncode(UTF8String(e.Message))+'</b><br />'
+      +#13#10'QueryString: '+HTMLEncode(ContextString(csQueryString))+'<br />'
+      +#13#10'Post data: '
+      ;
+    try
+      if FPostData=nil then
+        y:=y+'none'
+      else
+        y:=y+IntToStr8(FPostData.Size)+' bytes';
+    except
+      y:=y+'unknown';
+    end;
+    y:=y+'</p>'
+      +#13#10'<p style="background-color:red;color:white;font-size:0.8em;margin:0em;padding:0.2em;">'
+      +#13#10'<a href="http://yoy.be/xxm/" style="float:right;color:white;">'+HTMLEncode(SelfVersion)+'</a>'
+      ;
+    z:=ContextString(csURL);
+    x:=ContextString(csReferer);
+    if (x<>'') and (x<>z) then y:=y
+      +#13#10'<a href="'+HTMLEncode(x)+'" style="color:white;">back</a>';
+    if UTF8CmpI(FVerb,'GET')=0 then y:=y
+      +#13#10'<a href="'+HTMLEncode(z)+'" style="color:white;">refresh</a>';
+    y:=y
+      +#13#10'&nbsp;</p></body></html>'
+      ;
+    Context.SendHTML(PUTF8Char(y));
+   end;
+  FProjectEntry.ClearContext(Context);//?
+  FlushFinal;
+end;
+
 
 function TxxmContext.ContextString(Value: integer): PUTF8Char;
 var
@@ -1140,29 +1155,29 @@ begin
               raise EXxmProjectCheckFailed.Create(string(FProjectName));
           //if px<>nil then raise? just let the request complete
          end;
-        if @FProjectEntry.xxmFragment=nil then
-          raise EXxmIncludeNoFragmentHandler.Create('Project "'+string(FProjectName)+
-            '" doesn''t provide a fragment handler');
-        p:=FProjectEntry.xxmFragment(FProjectEntry.Project,Context,PUTF8Char(
-          Copy(Address,j,l-j+1)));//TODO: RelativePath
-        if @p=nil then
-          raise EXxmIncludeFragmentNotFound.Create(
-            'Include fragment not found "'+string(pa)+'"');
-        FPage:=p;
-        px:=TXxmCrossProjectIncludeCheck.Create(pe,
-          FIncludeCheck as TxxmCrossProjectIncludeCheck);
+        FProjectEntry.OpenContext;
         try
-          FIncludeCheck:=px;
-          FProjectEntry.OpenContext;
+          if @FProjectEntry.xxmFragment=nil then
+            raise EXxmIncludeNoFragmentHandler.Create('Project "'+string(FProjectName)+
+              '" doesn''t provide a fragment handler');
+          p:=FProjectEntry.xxmFragment(FProjectEntry.Project,Context,PUTF8Char(
+            Copy(Address,j,l-j+1)));//TODO: RelativePath
+          if @p=nil then
+            raise EXxmIncludeFragmentNotFound.Create(
+              'Include fragment not found "'+string(pa)+'"');
+          FPage:=p;
+          px:=TXxmCrossProjectIncludeCheck.Create(pe,
+            FIncludeCheck as TxxmCrossProjectIncludeCheck);
           try
+            FIncludeCheck:=px;
             FPageClass:=FProjectName+':'+pa+' < '+pc;
             p(Context,Values,Objects);
           finally
-            FProjectEntry.CloseContext;
+            FIncludeCheck:=px.Next;
+            px.Free;
           end;
         finally
-          FIncludeCheck:=px.Next;
-          px.Free;
+          FProjectEntry.CloseContext;
         end;
        end
       else
@@ -1260,7 +1275,7 @@ procedure TxxmContext.Flush;
 var
   i:int64;
 begin
-  if not FHeaderSent then SendHeader;  
+  if not FHeaderSent then SendHeader;
   if FBufferSize<>0 then
    begin
     i:=FBuffer.Position;
@@ -2056,6 +2071,55 @@ begin
   c.FProgressReportStep:=Step;
 end;
 
+procedure Context_RegisterEvent(Context:CxxmContext;EventKey:PUTF8Char;
+  CheckHandler:CxxmCheckEvent;CheckIntervalMS,MaxWaitTimeSec:NativeUInt;
+  ResumeFragment:PUTF8Char;const ResumeValues:array of Variant;
+  DropFragment:PUTF8Char;const DropValues:array of Variant); stdcall;
+var
+  pe:TProjectEntry;
+  c:TxxmContext absolute Context.__Context;
+begin
+  if c=nil then
+    if XxmIntializingProjectEntry=nil then
+      raise EXxmError.Create('RegisterEvent: not currently intializing')
+    else
+      pe:=XxmIntializingProjectEntry
+  else
+    pe:=c.FProjectEntry;
+  pe.EventsController.RegisterEvent(EventKey,CheckHandler,
+    CheckIntervalMS,MaxWaitTimeSec,ResumeFragment,ResumeValues,
+    DropFragment,DropValues);
+end;
+
+procedure Context_Suspend(Context:CxxmContext;EventKey:PUTF8Char); stdcall;
+var
+  c:TxxmContext absolute Context.__Context;
+begin
+  c.FProjectEntry.EventsController.SuspendContext(Context,EventKey);
+  c.FSuspended:=true;
+end;
+
+procedure Context_Resume(Entry: TProjectEntry;
+  Context: CxxmContext; const EventKey, Fragment: UTF8String;
+  const Values: array of Variant);
+var
+  c:TxxmContext absolute Context.__Context;
+begin
+  //assume OpenContext,CloseContext done by EventsController
+  try
+    c.FSuspended:=false;
+    c.Include(PUTF8Char(Fragment),Values,[]);
+  except
+    on EXxmConnectionLost do ;
+    on e:Exception do c.HandleException(e);
+  end;
+  if not c.FSuspended then
+   begin
+    c.FProjectEntry.ClearContext(Context);
+    c.FlushFinal;
+    c.FSocket.Disconnect;
+   end;
+end;
 
 function Parameter_Origin(Parameter:CxxmParameter):PUTF8Char; stdcall; //'GET','POST','FILE'...
 var
@@ -2239,6 +2303,8 @@ begin
   xxmHttp.Context_Include:=@Context_Include;
   xxmHttp.Context_PostData:=@Context_PostData;
   xxmHttp.Context_Set_ProgressCallback:=@Context_Set_ProgressCallback;
+  xxmHttp.Context_RegisterEvent:=@Context_RegisterEvent;
+  xxmHttp.Context_Suspend:=@Context_Suspend;
 
   xxmHttp.Parameter_Origin:=@Parameter_Origin; //'GET','POST','FILE'...
   xxmHttp.Parameter_Name:=@Parameter_Name;
@@ -2560,6 +2626,7 @@ initialization
   Randomize;
   SessionCookie:=UTF8String('xxm'+Format('%.6x%.6x%.6x%.6x',[
     Random($1000000),Random($1000000),Random($1000000),Random($1000000)]));
+  XxmContextResumeHandler:=Context_Resume;
   ContextPool:=TxxmContextPool.Create;
   BufferStore:=TXxmBufferStore.Create;
   SetupXxm2;

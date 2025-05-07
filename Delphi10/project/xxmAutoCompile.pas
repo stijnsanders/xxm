@@ -44,13 +44,13 @@ const
 begin
   lr:=Entry.LastResult;
   Result:=lr='';//default
-  if cardinal(GetTickCount-Entry.LastCheck)>NoNextBuildAfter then
+  if DWORD(GetTickCount-Entry.LastCheck)>NoNextBuildAfter then
    begin
     fn:=Entry.FilePath;
     Entry.Lock;
     try
       //again for those that waited on lock
-      if cardinal(GetTickCount-Entry.LastCheck)>NoNextBuildAfter then
+      if DWORD(GetTickCount-Entry.LastCheck)>NoNextBuildAfter then
        begin
         Entry.LastResult:=Context.ContextString(csVersion)+#13#10;
         hp:=Entry.HandlerPath;

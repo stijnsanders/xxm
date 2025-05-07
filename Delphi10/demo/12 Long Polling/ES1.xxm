@@ -1,0 +1,14 @@
+[[!var
+cd:TDemo12ContextData;
+]][[
+
+Context.ContentType:='text/event-stream';
+Context.ResponseHeader['Cache-Control']:='no-cache';
+
+xxm.Context_RegisterEvent(Context,'demo12_ES',Demo12CheckEvent,250,1000,'ES2.xxmi',[],'ES3.xxmi',[]);
+
+cd:=TDemo12ContextData.Create;
+cd.Counter:=0;
+Context.Data:=cd;
+
+xxm.Context_Suspend(Context,'demo12_ES');

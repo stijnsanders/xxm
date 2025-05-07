@@ -2,64 +2,16 @@ unit xxmPReg;
 
 interface
 
-uses Windows, SysUtils, xxm2, jsonDoc;
+uses Windows, SysUtils, Classes, xxm2, jsonDoc;
 
 type
-  TProjectEntry=class(TObject)
-  private
-    FMutex:THandle;//previously FLock:TRTLCriticalSection;
-    FContextCount,FLoadCount:integer;
-    FName:UTF8String;
-    FFilePath,FLoadPath,FLoadSignature:string;
-    FLoadCopy:boolean;
-    FLibrary:THandle;
-    FProject:PxxmProject;
-    procedure CheckLibrary;
-  protected
-    procedure SetFilePath(const FilePath:string;LoadCopy:boolean);
-    procedure LoadConfiguration(d: IJSONDocument);
-  public
-    AllowInclude,Negotiate,NTLM:boolean;
-    BufferSize:NativeUInt;
-    Signature,ProtoPath,HandlerPath:string;
-    LastCheck,ReleaseContextsTimeoutMS:cardinal;
-    LastResult:UTF8String;
-
-    xxmPage:FxxmPage;
-    xxmFragment:FxxmFragment;
-    xxmClearContext:FxxmClearContext;
-    xxmHandleException:FxxmHandleException;
-    xxmReleasingContexts:FxxmReleasingContexts;
-    xxmReleasingProject:FxxmReleasingProject;
-
-    constructor Create(const Name:UTF8String;const FilePath:string;
-      LoadCopy:boolean);
-    destructor Destroy; override;
-    property FilePath:string read FFilePath;
-    property LoadSignature:string read FLoadSignature;
-    property LoadCount:integer read FLoadCount;
-    property Project:PxxmProject read FProject;
-
-    procedure Lock;
-    procedure Unlock;
-
-    procedure OpenContext;
-    procedure CloseContext;
-    procedure Release;
-
-    procedure GetFilePath(const Address:UTF8String;var Path:string;
-      var MimeType:UTF8String);
-
-    procedure ClearContext(Context:CxxmContext);
-    function HandleException(Context:CxxmContext;const PageClass,
-      ExceptionClass,ExceptionMessage:UTF8String):boolean;
-  end;
+  TProjectEntry=class; //forward
 
   TProjectRegistry=class(TObject)
   private
     FLock:TRTLCriticalSection;
     FRegFilePath,FRegSignature:string;
-    FRegLastCheckTC:cardinal;
+    FRegLastCheckTC:DWORD;
     FProjects:array of record
       Name,Alias:UTF8String;
       Entry:TProjectEntry;
@@ -93,24 +45,130 @@ type
     property ProtoPath:string read FProtoPath;
   end;
 
+  TXxmProjectCheckHandler=function(Entry: TProjectEntry;
+    Context: CxxmContext; const ProjectName: UTF8String): boolean;
+
+  TXxmContextResumeHandler=procedure(Entry: TProjectEntry;
+    Context: CxxmContext; const EventKey, Fragment: UTF8String;
+    const Values: array of Variant);
+
+  TEventsController=class;//forward
+  TContextHolder=class;//forward
+
+  TProjectEntry=class(TObject)
+  private
+    FMutex:THandle;//previously FLock:TRTLCriticalSection;
+    FContextCount,FLoadCount:integer;
+    FName:UTF8String;
+    FFilePath,FLoadPath,FLoadSignature:string;
+    FLoadCopy:boolean;
+    FLibrary:THandle;
+    FProject:PxxmProject;
+    FEventsController:TEventsController;
+    procedure CheckLibrary;
+  protected
+    procedure SetFilePath(const FilePath:string;LoadCopy:boolean);
+    procedure LoadConfiguration(d: IJSONDocument);
+  public
+    AllowInclude,Negotiate,NTLM:boolean;
+    BufferSize:NativeUInt;
+    Signature,ProtoPath,HandlerPath:string;
+    LastCheck,ReleaseContextsTimeoutMS:DWORD;
+    LastResult:UTF8String;
+
+    xxmPage:FxxmPage;
+    xxmFragment:FxxmFragment;
+    xxmClearContext:FxxmClearContext;
+    xxmHandleException:FxxmHandleException;
+    xxmReleasingContexts:FxxmReleasingContexts;
+    xxmReleasingProject:FxxmReleasingProject;
+
+    constructor Create(const Name:UTF8String;const FilePath:string;
+      LoadCopy:boolean);
+    destructor Destroy; override;
+    property FilePath:string read FFilePath;
+    property LoadSignature:string read FLoadSignature;
+    property LoadCount:integer read FLoadCount;
+    property Project:PxxmProject read FProject;
+
+    procedure Lock;
+    procedure Unlock;
+
+    procedure OpenContext;
+    procedure CloseContext;
+    procedure Release;
+
+    procedure GetFilePath(const Address:UTF8String;var Path:string;
+      var MimeType:UTF8String);
+
+    procedure ClearContext(Context:CxxmContext);
+    function HandleException(Context:CxxmContext;const PageClass,
+      ExceptionClass,ExceptionMessage:UTF8String):boolean;
+    function EventsController: TEventsController;
+  end;
+
+  TEventsController=class(TThread)
+  private
+    FParent:TProjectEntry;
+    FLock:TRTLCriticalSection;
+    FEvents:array of record
+      Key:UTF8String;
+      SortIndex:integer;
+      Check:CxxmCheckEvent;
+      Active:boolean;
+      CheckedLastTC:DWORD;
+      CheckIntervalMS,MaxWaitTimeSec:NativeUInt;
+      ResumeFragment:UTF8String;
+      ResumeValues:array of Variant;
+      DropFragment:UTF8String;
+      DropValues:array of Variant
+    end;
+    FEventsIndex,FEventsSize:integer;
+    FContexts:array of TContextHolder;
+    FContextsIndex,FContextsSize:integer;
+    procedure FindKey(Key:PUTF8Char;var i,a:integer);
+  protected
+    procedure Execute; override;
+  public
+    constructor Create(Parent:TProjectEntry);
+    destructor Destroy; override;
+    procedure RegisterEvent(const EventKey:UTF8String;
+      CheckHandler:CxxmCheckEvent;CheckIntervalMS,MaxWaitTimeSec:NativeUInt;
+      const ResumeFragment:UTF8String;const ResumeValues:array of Variant;
+      const DropFragment:UTF8String;const DropValues:array of Variant);
+    procedure SuspendContext(Context:CxxmContext;const EventKey:UTF8String);
+  end;
+
+  TContextHolder=class(TObject)
+  private
+    FParent:TEventsController;
+    FEventIndex:integer;
+    FContext:CxxmContext;
+    FSinceTC,FSuspendMax:DWORD;
+    procedure Resume(Sender: TObject);
+    procedure Drop(Sender: TObject);
+  end;
+
   EXxmProjectNotFound=class(Exception);
   EXxmModuleNotFound=class(Exception);
+  EXxmEventNotFound=class(Exception);
   EXxmProjectLoadFailed=class(Exception);
   EXxmProjectAliasDepth=class(Exception);
   EXxmFileTypeAccessDenied=class(Exception);
 
-  TXxmProjectCheckHandler=function(Entry: TProjectEntry;
-    Context: CxxmContext; const ProjectName: UTF8String): boolean;
-
 var
   XxmProjectRegistry:TProjectRegistry;
   XxmProjectCheckHandler:TXxmProjectCheckHandler;
+  XxmContextResumeHandler:TXxmContextResumeHandler;
 
   GlobalAllowLoadCopy:boolean;
 
+threadvar
+  XxmIntializingProjectEntry: TProjectEntry;
+
 implementation
 
-uses Classes, Variants, xxmTools, Registry;
+uses Variants, xxmTools, Registry, xxmThreadPool;
 
 const
   XxmRegFileName='xxm2.json';
@@ -191,9 +249,9 @@ begin
 end;
 
 type
-  TLoadLibPatch=procedure(tc:cardinal;var h:THandle;fn:PChar);
+  TLoadLibPatch=procedure(tc:DWORD;var h:THandle;fn:PChar);
 
-procedure LoadLibPatch(tc:cardinal;var h:THandle;fn:PChar);
+procedure LoadLibPatch(tc:DWORD;var h:THandle;fn:PChar);
 begin
   if (tc and 1111)=0 then SwitchToThread;
   h:=LoadLibrary(fn);
@@ -266,12 +324,12 @@ var
   e:IJSONEnumerator;
   v:Variant;
 begin
-  if cardinal(GetTickCount-FRegLastCheckTC)>XxmRegCheckIntervalMS then
+  if DWORD(GetTickCount-FRegLastCheckTC)>XxmRegCheckIntervalMS then
    begin
     EnterCriticalSection(FLock);
     try
       //check again for threads that were waiting for lock
-      if cardinal(GetTickCount-FRegLastCheckTC)>XxmRegCheckIntervalMS then
+      if DWORD(GetTickCount-FRegLastCheckTC)>XxmRegCheckIntervalMS then
        begin
         //signature
         FRegLastCheckTC:=GetTickCount;
@@ -602,6 +660,7 @@ begin
   FLoadCount:=0;
   FLibrary:=INVALID_HANDLE_VALUE;
   FProject:=nil;
+  FEventsController:=nil;
 
   //InitializeCriticalSection(FLock);
 
@@ -758,11 +817,14 @@ begin
         @xxmReleasingProject:=GetProcAddress(h,'XxmReleasingProject');
 
         //initialize:
+        XxmIntializingProjectEntry:=Self;
         try
           FProject:=xxmInitialize(XxmAPILevel,xxm2.xxm,PUTF8Char(FName));
           FLibrary:=h;
+          XxmIntializingProjectEntry:=nil;
         except
           FreeLibrary(h);
+          XxmIntializingProjectEntry:=nil;
           raise;
         end;
 
@@ -815,7 +877,7 @@ end;
 
 procedure TProjectEntry.Release;
 var
-  tc:cardinal;
+  tc:DWORD;
 begin
   //attention: deadlock danger, use OpenContext,CloseContext
   //XxmProjectCheckHandler should lock new requests
@@ -827,9 +889,12 @@ begin
       //silent
     end;
 
+  if FEventsController<>nil then
+    FreeAndNil(FEventsController);
+
   //assert only one thread at once, use Lock/Unlock!
   tc:=GetTickCount;//TODO: if timeout then raise? log?
-  while (FContextCount>0) and (cardinal(GetTickCount-tc)<=ReleaseContextsTimeoutMS) do
+  while (FContextCount>0) and (DWORD(GetTickCount-tc)<=ReleaseContextsTimeoutMS) do
     SwitchToThread;
   FContextCount:=0;
 
@@ -949,9 +1014,313 @@ begin
 
 end;
 
+function TProjectEntry.EventsController: TEventsController;
+begin
+  if @XxmContextResumeHandler=nil then
+    raise Exception.Create('xxm Handler did not provide context resume handler');
+
+  Lock;//EnterCriticalSection(FLock);
+  try
+    if FEventsController=nil then
+      FEventsController:=TEventsController.Create(Self);
+    Result:=FEventsController;
+  finally
+    Unlock;//LeaveCriticalSection(FLock);
+  end;
+end;
+
+{ TEventsController }
+
+constructor TEventsController.Create(Parent:TProjectEntry);
+begin
+  inherited Create;
+  FParent:=Parent;
+  FEventsIndex:=0;
+  FEventsSize:=0;
+  FContextsIndex:=0;
+  FContextsSize:=0;
+  InitializeCriticalSection(FLock);
+end;
+
+destructor TEventsController.Destroy;
+begin
+  DeleteCriticalSection(FLock);
+  inherited;
+end;
+
+procedure TEventsController.Execute;
+var
+  ii,i,k,l:integer;
+  x,y,z,tc:DWORD;
+  c:TContextHolder;
+begin
+  inherited;
+  x:=0;
+  while not Terminated do
+    try
+      if x<>0 then Sleep(x);
+      x:=250;//default
+      if FEventsIndex<>0 then
+       begin
+        EnterCriticalSection(FLock);
+        try
+          tc:=GetTickCount;
+          ii:=0;
+          i:=FEventsIndex;
+          z:=0;
+          while ii<FEventsIndex do
+           begin
+            if FEvents[ii].Active then
+             begin
+              y:=DWORD(tc-FEvents[ii].CheckedLastTC);
+              if y>FEvents[ii].CheckIntervalMS then
+               begin
+                if (y>z) or (i=FEventsIndex) then
+                 begin
+                  z:=y;
+                  i:=ii;
+                  if FEvents[ii].CheckIntervalMS<x then
+                    x:=FEvents[ii].CheckIntervalMS;
+                 end;
+               end
+              else
+                if y<x then x:=y;
+             end;
+            inc(ii);
+           end;
+          if i<>FEventsIndex then
+           begin
+            try
+              if FEvents[i].Check(FParent.FProject,PUTF8Char(FEvents[i].Key),
+                FEvents[i].CheckIntervalMS) then
+               begin
+                //resume
+                for k:=0 to FContextsIndex-1 do
+                  if (FContexts[k].FEventIndex=i) and (FContexts[k].FContext.__Context<>nil) then
+                    PageLoaderPool.Queue(FContexts[k].Resume);
+                FEvents[i].Active:=false;
+               end
+              else
+               begin
+                //drop any past SuspendMax or that lost connection
+                l:=0;
+                for k:=0 to FContextsIndex-1 do
+                 begin
+                  c:=FContexts[k];
+                  if (c.FEventIndex=i) and (c.FContext.__Context<>nil) then
+                    if not(xxm.Context_Connected(c.FContext)) or
+                      ((c.FSuspendMax<>0) and (integer(tc)-integer(c.FSuspendMax)>0)) then
+                      PageLoaderPool.Queue(FContexts[k].Drop)
+                    else
+                      inc(l);
+                 end;
+                FEvents[i].Active:=l<>0;
+               end;
+            except
+              //TODO: HandleException(?
+              //drop all
+              for k:=0 to FContextsIndex-1 do
+                if (FContexts[k].FEventIndex=i) and (FContexts[k].FContext.__Context<>nil) then
+                  PageLoaderPool.Queue(FContexts[k].Drop);
+              FEvents[i].Active:=false;//?
+            end;
+            FEvents[i].CheckedLastTC:=GetTickCount;
+           end;
+        finally
+          LeaveCriticalSection(FLock);
+        end;
+       end;
+    except
+      //silent (log?)
+    end;
+
+  //terminate: drop any waiting (force CloseContext)
+  try
+    for k:=0 to FContextsIndex-1 do
+      if (FContexts[k].FContext.__Context<>nil) then
+        PageLoaderPool.Queue(FContexts[k].Drop);
+  except
+    //silent (log?)
+  end;
+end;
+
+procedure TEventsController.FindKey(Key: PUTF8Char; var i, a: integer);
+var
+  b,c,m:integer;
+begin
+  //assert entered into FLock
+  i:=-1;
+  if (Key=nil) or (Key^=#0) then
+    a:=-1
+  else
+   begin
+    a:=0;
+    b:=FEventsIndex-1;
+    while a<=b do
+     begin
+      c:=(a+b) div 2;
+      m:=UTF8CmpI(Key,PUTF8Char(FEvents[FEvents[c].SortIndex].Key));
+      if m<0 then
+        if b=c then dec(b) else b:=c
+      else
+      if m>0 then
+        if a=c then inc(a) else a:=c
+      else
+       begin
+        a:=c;
+        b:=a-1;//end loop
+        i:=FEvents[c].SortIndex;
+       end;
+     end;
+   end;
+end;
+
+procedure TEventsController.RegisterEvent(const EventKey:UTF8String;
+  CheckHandler:CxxmCheckEvent;CheckIntervalMS,MaxWaitTimeSec:NativeUInt;
+  const ResumeFragment:UTF8String;const ResumeValues:array of Variant;
+  const DropFragment:UTF8String;const DropValues:array of Variant);
+var
+  i,j,a,vi,vl:integer;
+  tc:DWORD;
+begin
+  EnterCriticalSection(FLock);
+  try
+    tc:=GetTickCount;
+    FindKey(PUtf8Char(EventKey),i,a);
+    if i=-1 then
+     begin
+      //new key
+
+      i:=FEventsIndex;
+      if FEventsIndex=FEventsSize then
+       begin
+        inc(FEventsSize,$20);//grow
+        SetLength(FEvents,FEventsSize);
+       end;
+      inc(FEventsIndex);
+
+      FEvents[i].Key:=EventKey;
+      FEvents[i].Check:=CheckHandler;
+      FEvents[i].Active:=false;//see SuspendContext
+      FEvents[i].CheckedLastTC:=tc;
+      FEvents[i].CheckIntervalMS:=CheckIntervalMS;
+      FEvents[i].MaxWaitTimeSec:=MaxWaitTimeSec;
+
+      FEvents[i].ResumeFragment:=ResumeFragment;
+      //FEvents[i].ResumeValues:=ResumeValues;
+      vl:=Length(ResumeValues);
+      SetLength(FEvents[i].ResumeValues,vl);
+      for vi:=0 to vl-1 do FEvents[i].ResumeValues[vi]:=ResumeValues[vi];
+
+      FEvents[i].DropFragment:=DropFragment;
+      //FEvents[i].DropValues:=DropValues;
+      vl:=Length(DropValues);
+      SetLength(FEvents[i].DropValues,vl);
+      for vi:=0 to vl-1 do FEvents[i].DropValues[vi]:=DropValues[vi];
+
+      //sort index
+      j:=i;
+      while j>a do
+       begin
+        FEvents[j].SortIndex:=FEvents[j-1].SortIndex;
+        dec(j);
+       end;
+      FEvents[j].SortIndex:=i;
+
+     end
+    else
+     begin
+      //existing key
+
+      if CheckIntervalMS<FEvents[i].CheckIntervalMS then
+        FEvents[i].CheckIntervalMS:=CheckIntervalMS;
+      if DWORD(tc-FEvents[i].CheckedLastTC)>FEvents[i].CheckIntervalMS then
+        FEvents[i].CheckedLastTC:=tc;
+      //TODO: check/force other values equal?
+      //(update if not?)
+
+     end;
+  finally
+    LeaveCriticalSection(FLock);
+  end;
+end;
+
+procedure TEventsController.SuspendContext(Context:CxxmContext;
+  const EventKey:UTF8String);
+var
+  i,j,a:integer;
+  tc:DWORD;
+begin
+  EnterCriticalSection(FLock);
+  try
+    tc:=GetTickCount;
+    FindKey(PUTF8Char(EventKey),i,a);
+    if i=-1 then
+      raise EXxmEventNotFound.Create('Event "'+string(EventKey)+'" not found');
+
+    //if not(FEvents[i].Active) then FEvents[i].CheckedLastTC:=tc;//?
+    FEvents[i].Active:=true;
+    FParent.OpenContext;//see TContextHolder Resume,Drop
+
+    j:=0;
+    while (j<FContextsIndex) and (FContexts[j].FContext.__Context<>nil) do inc(j);
+    if j=FContextsIndex then
+     begin
+      if FContextsIndex=FContextsSize then
+       begin
+        inc(FContextsSize,$20);//grow
+        SetLength(FContexts,FContextsSize);
+       end;
+      FContexts[j]:=TContextHolder.Create;
+      FContexts[j].FParent:=Self;
+      inc(FContextsIndex);
+     end;
+    FContexts[j].FEventIndex:=i;
+    FContexts[j].FContext:=Context;
+    FContexts[j].FSinceTC:=tc;
+    if FEvents[i].MaxWaitTimeSec=0 then FContexts[j].FSuspendMax:=0 else
+     begin
+      FContexts[j].FSuspendMax:=tc+FEvents[i].MaxWaitTimeSec*1000;
+      if FContexts[j].FSuspendMax=0 then inc(FContexts[j].FSuspendMax);
+     end;
+
+  finally
+    LeaveCriticalSection(FLock);
+  end;
+end;
+
+{ TContextHolder }
+
+procedure TContextHolder.Resume(Sender: TObject);
+begin
+  try
+    XxmContextResumeHandler(FParent.FParent,FContext,
+      FParent.FEvents[FEventIndex].Key,
+      FParent.FEvents[FEventIndex].ResumeFragment,
+      FParent.FEvents[FEventIndex].ResumeValues);
+  finally
+    FParent.FParent.CloseContext;
+    FContext.__Context:=nil;//release holding position
+  end;
+end;
+
+procedure TContextHolder.Drop(Sender: TObject);
+begin
+  try
+    XxmContextResumeHandler(FParent.FParent,FContext,
+      FParent.FEvents[FEventIndex].Key,
+      FParent.FEvents[FEventIndex].DropFragment,
+      FParent.FEvents[FEventIndex].DropValues);
+  finally
+    FParent.FParent.CloseContext;
+    FContext.__Context:=nil;//release holding position
+  end;
+end;
+
 initialization
   XxmProjectRegistry:=nil;
   XxmProjectCheckHandler:=nil;
+  XxmContextResumeHandler:=nil;
   GlobalAllowLoadCopy:=true;//default
 
 end.

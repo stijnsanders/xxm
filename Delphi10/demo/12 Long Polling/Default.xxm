@@ -1,0 +1,17 @@
+<!doctype html>
+<h1>Long Polling Demo</h1>
+<p>Showing maximum 10 lines when the time reaches a value where <i>hours+minutes+seconds</i> is a prime number:
+<br />(<a href="ES.xxm">Click here</a> for an EventSource version.)</p>
+[[!var
+cd:TDemo12ContextData;
+]][[
+
+
+//since we're only using a single event key, you could also register this from xxmp2.pas' XxmInitialize
+xxm.Context_RegisterEvent(Context,'demo12',Demo12CheckEvent,250,1000,'Next.xxmi',[],'Drop.xxmi',[]);
+
+cd:=TDemo12ContextData.Create;
+cd.Counter:=0;
+Context.Data:=cd;
+
+xxm.Context_Suspend(Context,'demo12');

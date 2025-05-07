@@ -53,7 +53,7 @@ type
     function ContentType:UTF8String; inline;
     function SaveToFile(const FilePath:UTF8String):NativeUInt; inline;
     function SaveToStream(Stream:TObject):NativeUInt; inline;//TStream
-    class operator Implicit(c:CxxmParameter):pointer;
+    class operator Implicit(c:CxxmParameter):pointer; inline;
   end;
 
   CxxmContext=record
@@ -85,7 +85,9 @@ type
     procedure Send(const Data:UTF8String); overload; inline;
     procedure Send(Value:NativeInt); overload; inline;
     procedure Send(const Data:Variant); overload; inline;
-    procedure SendHTML(const HTML:UTF8String); inline;
+    procedure Send(const Values:array of Variant); overload;
+    procedure SendHTML(const HTML:UTF8String); overload; inline;
+    procedure SendHTML(const Values:array of Variant); overload;
     procedure SendFile(const FilePath:UTF8String); inline;
     procedure SendStream(Stream:TObject); inline;
     procedure Flush; inline;
@@ -116,9 +118,8 @@ type
     procedure Include(const Address:UTF8String;
       const Values:array of Variant;const Objects:array of TObject); overload;
 
-    class operator Implicit(c:CxxmContext):pointer;
+    class operator Implicit(c:CxxmContext):pointer; inline;
   end;
-
 
 
 type
@@ -127,6 +128,10 @@ type
 
   CxxmProgress=procedure (Context: CxxmContext; FieldName, FileName,
     FileType: PUTF8Char; RequestID, Position: NativeUInt); stdcall;
+
+  CxxmCheckEvent=function (Project: PxxmProject; EventKey: PUTF8Char;
+    var CheckIntervalMS: NativeUInt): boolean; stdcall;
+
 
 const
   xxmProgress_PostData   = 1;
@@ -182,6 +187,11 @@ type
   TContext_PostData = function (Context:CxxmContext):TObject; stdcall;
   TContext_Set_ProgressCallback = procedure (Context:CxxmContext;Callback:CxxmProgress;
     RequestID,Flags,Step:NativeUInt); stdcall;
+  TContext_RegisterEvent = procedure (Context:CxxmContext;EventKey:PUTF8Char;
+    CheckHandler:CxxmCheckEvent;CheckIntervalMS,MaxWaitTimeSec:NativeUInt;
+    ResumeFragment:PUTF8Char;const ResumeValues:array of Variant;
+    DropFragment:PUTF8Char;const DropValues:array of Variant); stdcall;
+  TContext_Suspend = procedure (Context:CxxmContext;EventKey:PUTF8Char); stdcall;
 
   TParameter_Origin = function (Parameter:CxxmParameter):PUTF8Char; stdcall; //'GET','POST','FILE'...
   TParameter_Name = function (Parameter:CxxmParameter):PUTF8Char; stdcall;
@@ -241,6 +251,8 @@ type
     Context_Include: TContext_Include;
     Context_PostData: TContext_PostData;
     Context_Set_ProgressCallback: TContext_Set_ProgressCallback;
+    Context_RegisterEvent: TContext_RegisterEvent;
+    Context_Suspend: TContext_Suspend;
 
     Parameter_Origin: TParameter_Origin;
     Parameter_Name: TParameter_Name;
@@ -252,10 +264,7 @@ type
     Parameter_SaveToFile: TParameter_SaveToFile;
     Parameter_SaveToStream: TParameter_SaveToStream;
 
-    //TODO: IxxmContextSuspend
-    //TODO: IxxmProjectEvents2
     //TODO: IxxmRawSocket
-    //TODO: IxxmSocketSuspend
 
   end;
 
@@ -286,7 +295,6 @@ type
   FxxmReleasingContexts=procedure (Project: PxxmProject); stdcall;
   //optional export 'XxmReleasingProject'
   FxxmReleasingProject=procedure (Project: PxxmProject); stdcall;
-
 
 implementation
 
@@ -398,9 +406,25 @@ begin
   xxm.Context_Send(Self,PUTF8Char(Utf8Encode(VarToWideStr(Data))));
 end;
 
+procedure CxxmContext.Send(const Values: array of Variant);
+var
+  i:integer;
+begin
+  for i:=0 to Length(Values)-1 do
+    xxm.Context_Send(Self,PUTF8Char(Utf8Encode(VarToWideStr(Values[i]))));
+end;
+
 procedure CxxmContext.SendHTML(const HTML: UTF8String);
 begin
   xxm.Context_SendHTML(Self,PUTF8Char(HTML));
+end;
+
+procedure CxxmContext.SendHTML(const Values: array of Variant);
+var
+  i:integer;
+begin
+  for i:=0 to Length(Values)-1 do
+    xxm.Context_SendHTML(Self,PUTF8Char(Utf8Encode(VarToWideStr(Values[i]))));
 end;
 
 procedure CxxmContext.SendFile(const FilePath: UTF8String);

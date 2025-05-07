@@ -1,0 +1,44 @@
+<link rel="stylesheet" type="text/css" href="http://xxm.sourceforge.net/xxm.css" />
+<h3>xxm Demo Projects - 12 Long Polling</h3>
+<p>This is a demo project showing how to use Context_RegisterEvent and Context_Suspend to implement a long polling scenario.</p>
+<p>If you want to implement a <a href="https://en.wikipedia.org/wiki/Long_polling">Long polling</a> scenario,
+it might be tempting to write something like this:</p>
+
+<p><code><b>while</b> Context.Connected <b>do</b> <br />
+<b>begin</b><br />
+&nbsp;&nbsp;<b>while</b> <b>not</b> NewDataIsAvailable <b>do</b> Sleep(500);<br />
+&nbsp;&nbsp;Context.SendHTML(GetDataAsHTML);<br />
+&nbsp;&nbsp;Context.Flush; <i>//for in case <a href="http://xxm.sourceforge.net/ref.html#buffersize">Context.BufferSize</a> is set</i><br />
+<b>end</b>;<br />
+</code></p>
+<p>This will keep the worker thread occupied for the duration of the connection,
+and the number of worker threads is limited by the thread pool size configuration.<br />
+This method doesn't adapt to situations where the server has to handle more requests, or is asked to shut down cleanly.<br />
+If you want to use long polling requests, use <code>Context_RegisterEvent</code> to register an event handler that checks when to
+resume suspended connections, and use <code>Context_Suspend</code> to transfer control to the event controller.</p>
+
+<dl>
+<dt>Web.xxmp</dt>
+<dd>The project file, contains an internal list of the files of the project, and other data about the project.<br />
+Use <i>xxmProject.exe</i> to edit and manage project settings.</dd>
+<dt>xxmp2.pas</dt>
+<dd>The project's main unit. When this file is missing form the project, xxm creates one for you.<br />
+Here, <code>Demo12CheckEvent</code> and <code>TDemo12ContextData</code> are declared to handle the suspended connections.<br />
+Also <code>XxmClearContext</code> is declared to destroy any <code>TDemo12ContextData</code> instances.</dd>
+<dt>Default.xxm</dt>
+<dd>The website's default page. Shows introductory information, then suspends the context.</dd>
+<dt>Next.xxmi</dt>
+<dd>Is used for resuming connections when <code>Demo12CheckEvent</code> returns true.
+Shows information about the event and suspends the context again, up till the tenth call.</dd>
+<dt>Drop.xxmi</dt>
+<dd>Is used for resuming connections when <code>Demo12CheckEvent</code> returns false.</dd>
+<dt>ES.xxm</dt>
+<dd>Similar to <i>Default.xxm</i> but uses an <code>EventSource</code> object (if your browser supports this)
+to process a <code>text/event-stream</code> request.</dd>
+<dt>ES1.xxm</dt>
+<dd>The end-point for <code>EventSource</code>, sets the content type to <code>text/event-stream</code> format, then suspends the context.</dd>
+<dt>ES2.xxmi</dt>
+<dd>Similar to <i>Next.xxmi</i>, but offers data in <code>text/event-stream</code> format.</dd>
+<dt>ES3.xxmi</dt>
+<dd>Similar to <i>Drop.xxmi</i>, but offers data in <code>text/event-stream</code> format.</dd>
+</dl>
