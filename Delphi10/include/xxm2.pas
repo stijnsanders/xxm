@@ -3,8 +3,8 @@ unit xxm2;
 interface
 
 const
-  //$Date: 2025-01-29 00:41:44 +0100 (wo, 29 jan 2025) $
-  XxmRevision = '$Rev: 530 $';
+  //$Date: 2025-05-07 23:46:23 +0200 (wo, 07 mei 2025) $
+  XxmRevision = '$Rev: 535 $';
   XxmAPILevel = 2000;//v2.0
 
 type

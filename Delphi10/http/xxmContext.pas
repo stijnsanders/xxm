@@ -2,7 +2,7 @@ unit xxmContext;
 
 interface
 
-uses SysUtils, Classes, xxm2, xxmSock, xxmTools, xxmPReg, xxmSChannel;
+uses Windows, SysUtils, Classes, xxm2, xxmSock, xxmTools, xxmPReg, xxmSChannel;
 
 type
   TNameValues=record
@@ -105,12 +105,32 @@ type
     procedure CheckFlush; inline;
     property Buffer:TMemoryStream read FBuffer;
     property BufferSize:NativeUInt read FBufferSize write SetBufferSize;
+    property Chunked:boolean read FChunked;
+    property Socket:TTcpSocket read FSocket;
   end;
 
   TxxmContextPool=class(TObject)
+  private
+    FLock:TRTLCriticalSection;
+    FStore:array of TxxmContext;
+    FStoreIndex,FStoreSize:cardinal;
   public
+    constructor Create;
+    destructor Destroy; override;
     function GetContext:TxxmContext;
     procedure Recycle(Context:TxxmContext);
+  end;
+
+  TxxmBufferStore=class(TObject)
+  private
+    FLock: TRTLCriticalSection;
+    FBuffers: array of TMemoryStream;
+    FBuffersSize: integer;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    procedure GetBuffer(var x:TMemoryStream);
+    procedure AddBuffer(var x:TMemoryStream);
   end;
 
   TStreamNozzle=class(TObject)
@@ -156,11 +176,10 @@ type
 
 var
   ContextPool:TxxmContextPool;
+  BufferStore:TxxmBufferStore;
   SelfVersion,SessionCookie:UTF8String;
 
 implementation
-
-uses Windows;
 
 const
   //TODO: from configuration
@@ -257,35 +276,79 @@ begin
   Result:=TStream(Stream);
 end;
 
-type
-  TxxmBufferStore=class(TObject)
-  private
-    FLock: TRTLCriticalSection;
-    FBuffers: array of TMemoryStream;
-    FBuffersSize: integer;
-  public
-    constructor Create;
-    destructor Destroy; override;
-    procedure GetBuffer(var x:TMemoryStream);
-    procedure AddBuffer(var x:TMemoryStream);
-  end;
-
-var
-  BufferStore:TxxmBufferStore;
-
 { TxxmContextPool }
 
-function TxxmContextPool.GetContext: TxxmContext;
+constructor TxxmContextPool.Create;
 begin
-  //...
-  Result:=TxxmContext.Create;
+  inherited;
+  FStoreIndex:=0;
+  FStoreSize:=0;
+  InitializeCriticalSection(FLock);
+end;
+
+destructor TxxmContextPool.Destroy;
+var
+  i:cardinal;
+begin
+  if FStoreIndex<>0 then
+    for i:=0 to FStoreIndex-1 do
+      try
+        FreeAndNil(FStore[i]);
+      except
+        //silent
+      end;
+  DeleteCriticalSection(FLock);
+  inherited;
+end;
+
+function TxxmContextPool.GetContext: TxxmContext;
+var
+  i:cardinal;
+begin
+  EnterCriticalSection(FLock);
+  try
+    i:=0;
+    while (i<FStoreIndex) and (FStore[i]=nil) do inc(i);
+    if i=FStoreIndex then
+      Result:=TxxmContext.Create
+    else
+     begin
+      Result:=FStore[i];
+      FStore[i]:=nil;
+     end;
+  finally
+    LeaveCriticalSection(FLock);
+  end;
 end;
 
 procedure TxxmContextPool.Recycle(Context: TxxmContext);
+var
+  i:cardinal;
 begin
-  //Context.Clear;
-  Context.Free;
-  //TODO
+  Context.Clear;
+  EnterCriticalSection(FLock);
+  try
+    i:=0;
+    while (i<FStoreIndex) and (FStore[i]<>Context) do inc(i);
+    if i=FStoreIndex then
+     begin
+      i:=0;
+      while (i<FStoreIndex) and (FStore[i]<>nil) do inc(i);
+      if i=FStoreIndex then
+       begin
+        if FStoreIndex=FStoreSize then
+         begin
+          //grow
+          inc(FStoreSize,$1000);
+          SetLength(FStore,FStoreSize);
+         end;
+        inc(FStoreIndex);
+       end;
+      FStore[i]:=Context;
+     end;
+  finally
+    LeaveCriticalSection(FLock);
+  end;
 end;
 
 { TxxmContext }
@@ -385,7 +448,7 @@ begin
   FAutoEncoding:=aeUtf8;//default (setting?)
   FCookie.Data:='';
   FParamsParsed:=false;
-  FParamsSize:=0;
+  FParamsIndex:=0;
   FProjectData:=nil;//TODO: free by project?
   FSuspended:=false;
 end;
@@ -762,7 +825,10 @@ begin
 
   //TODO: prevent empty response? (if not FHeaderSent then bad request?
   if not FSuspended then
+   begin
     FSocket.Disconnect;
+    ContextPool.Recycle(Self);
+   end;
 end;
 
 procedure TxxmContext.HandleException(e:Exception);
@@ -2118,6 +2184,7 @@ begin
     c.FProjectEntry.ClearContext(Context);
     c.FlushFinal;
     c.FSocket.Disconnect;
+    ContextPool.Recycle(c);
    end;
 end;
 
