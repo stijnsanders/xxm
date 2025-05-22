@@ -181,6 +181,8 @@ var
 
 implementation
 
+uses xxmStores;
+
 const
   //TODO: from configuration
   HTTPMaxHeaderLines=$400;//1KiB
@@ -188,6 +190,7 @@ const
   CacheDataSize=$20000;
   CacheSizeGrowStep=8;
   PostDataThreshold=$200000;//2MiB
+  SpoolingThreshold=$10000;//64KiB
   MaxIncludeDepth=64;
 
   UTF8ByteOrderMark:array[0..2] of UTF8Char=(#$EF,#$BB,#$BF);
@@ -395,8 +398,6 @@ begin
   if (FCredNego.dwLower<>nil) or (FCredNego.dwUpper<>nil) then
     FreeCredentialsHandle(@FCredNego);
 
-  //TODO BufferStore.AddBuffer(FContentBuffer);
-
   try
     if FPostTempFile<>'' then
      begin
@@ -430,7 +431,9 @@ begin
   FSessionID:='';
   FRedirectPrefix:='';
   FBufferSize:=0;
-  if FBuffer<>nil then FBuffer.Position:=0;//re-use existing
+  if FBuffer<>nil then
+    //BufferStore.AddBuffer?
+    FBuffer.Position:=0;//re-use existing
   FPostData:=nil;
   FProjectName:='';
   FFragmentName:='';
@@ -720,14 +723,13 @@ begin
                 SendHeader;
 
                 ds:=TOwningHandleStream.Create(fh);//does CloseHandle(fh) when done
-{//TODO
                 if fs>SpoolingThreshold then
                  begin
-                  ds.Seek(0,soFromEnd);//used by SpoolingConnections.Add
-                  SpoolingConnections.Add(Self,AData,true);
+                  ds.Seek(0,soFromEnd);//needed by SpoolingConnections.Add
+                  SpoolingConnections.Add(Self,ds,true);
+                  FSuspended:=true;//see below
                  end
                 else
-}
                   try
                     SendStream(ds);
                   finally
@@ -1361,20 +1363,19 @@ procedure TxxmContext.FlushFinal;
 const
   Chunk0:array[0..4] of AnsiChar='0'#13#10#13#10;
 begin
-  {//TODO
-  if (BufferSize<>0) //and (FBuffer.Position<>0) then
-    and not(FChunked)
+  if (FBufferSize<>0) and not(FChunked)
     and (FBuffer.Position>SpoolingThreshold) then
    begin
     if not FHeaderSent then SendHeader;
-    SpoolingConnections.Add(Self,FContentBuffer,false);
-    FBuffer:=nil;//since spooling will free it when done
+    SpoolingConnections.Add(Self,FBuffer,false);
+    FBuffer:=nil;//SpoolingConnections does AddBuffer
+    FSuspended:=true;
    end
   else
-  }
     Flush;
 
-  if FChunked then FSocket.SendBuf(Chunk0[0],5);
+  if FChunked and not(FSuspended) then
+    FSocket.SendBuf(Chunk0[0],5);
 end;
 
 procedure TxxmContext.AuthSChannel(const Package:UTF8String;var Cred:TCredHandle);
@@ -1716,10 +1717,10 @@ begin
            end;
 
           if pt=nil then
-            AddPar('POST',pn,sn.GetString(pb))
+            AddPar('POST',Store(pn),Store(sn.GetString(pb)))
           else
            begin
-            i:=AddPar('FILE',pn,pv);
+            i:=AddPar('FILE',Store(pn),Store(pv));
             FParams[i].ContentType:=pt;
             sn.GetData(pb,pn,pv,pt,FParams[i].PostDataPos,FParams[i].PostDataLen);
            end;

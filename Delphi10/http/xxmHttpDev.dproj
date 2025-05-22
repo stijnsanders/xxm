@@ -145,6 +145,7 @@
         <DCCReference Include="..\project\xxmProtoParse.pas"/>
         <DCCReference Include="..\project\xxHash.pas"/>
         <DCCReference Include="..\project\xxmDefs.pas"/>
+        <DCCReference Include="xxmStores.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

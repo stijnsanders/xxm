@@ -16,7 +16,8 @@ uses
   xxmPageParse in '..\project\xxmPageParse.pas',
   xxmProtoParse in '..\project\xxmProtoParse.pas',
   xxHash in '..\project\xxHash.pas',
-  xxmDefs in '..\project\xxmDefs.pas';
+  xxmDefs in '..\project\xxmDefs.pas',
+  xxmStores in 'xxmStores.pas';
 
 {$R *.res}
 
