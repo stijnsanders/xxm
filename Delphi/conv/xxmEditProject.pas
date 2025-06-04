@@ -222,12 +222,12 @@ begin
         SetLength(fu,i);
         if i<>f.Read(fu[1],i) then RaiseLastOSError;
         if (i>=3) and (fu[1]=#$EF) and (fu[2]=#$BB) and (fu[3]=#$BF) then
-            fd:=UTF8ToWideString(Copy(fu,4,i-3))
+          fd:=UTF8ToWideString(Copy(fu,4,i-3))
         else
           if (i>=2) and (fu[1]=#$FF) and (fu[2]=#$FE) then
-              fd:=PWideChar(@fu[1])
+            fd:=PWideChar(@fu[3])
           else
-              fd:=WideString(fu);
+            fd:=WideString(fu);
       finally
         f.Free;
       end;
@@ -807,10 +807,10 @@ begin
           if (i>=3) and (fu[1]=#$EF) and (fu[2]=#$BB) and (fu[3]=#$BF) then
             fd:=UTF8ToWideString(Copy(fu,4,i-3))
           else
-          if (i>=2) and (fu[1]=#$FF) and (fu[2]=#$FE) then
-            fd:=PWideChar(@fu[1])
-          else
-            fd:=WideString(fu);
+            if (i>=2) and (fu[1]=#$FF) and (fu[2]=#$FE) then
+              fd:=PWideChar(@fu[3])
+            else
+              fd:=WideString(fu);
         finally
           f.Free;
         end;
