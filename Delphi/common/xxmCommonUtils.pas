@@ -5,7 +5,7 @@ interface
 uses SysUtils, Classes;
 
 function UTCNow:TDateTime;
-function RFC822DateGMT(dd: TDateTime): string;
+function RFC822DateUTC(dd: TDateTime): string;
 function GetFileModifiedDateTime(const FilePath:AnsiString;
   var FileSize:Int64):TDateTime;
 function GetFileSignature(const Path: string): string;
@@ -44,8 +44,8 @@ begin
     EncodeDate(st.wYear,st.wMonth,st.wDay)+
     EncodeTime(st.wHour,st.wMinute,st.wSecond,st.wMilliseconds);
 end;
+function RFC822DateUTC(dd: TDateTime): string;
 
-function RFC822DateGMT(dd: TDateTime): string;
 const
   Days:array [1..7] of string=
     ('Sun','Mon','Tue','Wed','Thu','Fri','Sat');
@@ -61,7 +61,7 @@ begin
   dg:=dd+tz.Bias/1440;
   DecodeDateFully(dg,y,m,d,wd);
   DecodeTime(dg,th,tm,ts,tms);
-  FmtStr(Result, '%s, %d %s %d %.2d:%.2d:%.2d GMT',
+  FmtStr(Result, '%s, %d %s %d %.2d:%.2d:%.2d UTC',
     [Days[wd],d,Months[m],y,th,tm,ts]);
 end;
 

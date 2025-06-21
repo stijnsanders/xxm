@@ -485,7 +485,7 @@ begin
       if GetFileInformationByHandle(fh,fd) then
        begin
         FileTimeToSystemTime(fd.ftLastWriteTime,st);
-        y:=RFC822DateGMT(SystemTimeToDateTime(st));
+        y:=RFC822DateUTC(SystemTimeToDateTime(st));
         fs:=fd.nFileSizeHigh shl 32 or fd.nFileSizeLow;
        end
       else
@@ -1262,7 +1262,7 @@ begin
     x:=x+'; Path='+Path;
   if KeepSeconds<>0 then
     x:=x+'; Max-Age='+IntToStr(KeepSeconds)+
-      '; Expires='+RFC822DateGMT(Now+KeepSeconds/86400);
+      '; Expires='+RFC822DateUTC(UTCNow+KeepSeconds/86400);
   if Secure then
     x:=x+'; Secure';
   if HttpOnly then

@@ -225,7 +225,11 @@ begin
           fd:=UTF8ToWideString(Copy(fu,4,i-3))
         else
           if (i>=2) and (fu[1]=#$FF) and (fu[2]=#$FE) then
-            fd:=PWideChar(@fu[3])
+           begin
+            dec(i,2);
+            SetLength(fd,i div 2);
+            Move(fu[3],fd[1],i);
+           end
           else
             fd:=WideString(fu);
       finally
@@ -807,10 +811,14 @@ begin
           if (i>=3) and (fu[1]=#$EF) and (fu[2]=#$BB) and (fu[3]=#$BF) then
             fd:=UTF8ToWideString(Copy(fu,4,i-3))
           else
-            if (i>=2) and (fu[1]=#$FF) and (fu[2]=#$FE) then
-              fd:=PWideChar(@fu[3])
-            else
-              fd:=WideString(fu);
+          if (i>=2) and (fu[1]=#$FF) and (fu[2]=#$FE) then
+           begin
+            dec(i,2);
+            SetLength(fd,i div 2);
+            Move(fu[3],fd[1],i);
+           end
+          else
+            fd:=WideString(fu);
         finally
           f.Free;
         end;

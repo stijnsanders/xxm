@@ -733,8 +733,9 @@ begin
     else
     if (i>=2) and (s[1]=#$FF) and (s[2]=#$FE) then
      begin
-      SetLength(w,(i div 2)-1);
-      Move(s[3],w[1],(i*2)-1);
+      dec(i,2);
+      SetLength(w,i div 2);
+      Move(s[3],w[1],i);
       Result.Parse(w);
      end
     else
