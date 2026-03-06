@@ -44,6 +44,7 @@ begin
     EncodeDate(st.wYear,st.wMonth,st.wDay)+
     EncodeTime(st.wHour,st.wMinute,st.wSecond,st.wMilliseconds);
 end;
+
 function RFC822DateUTC(dd: TDateTime): string;
 
 const

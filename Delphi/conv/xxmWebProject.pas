@@ -881,7 +881,8 @@ begin
           while (e<>nil) and (e.Next) do
            begin
             d:=JSON(e.Value);
-            if (VarToStr(d['unitName'])=t) then //and (VarToStr(d['unitPath'])=) then
+            //if VarToStr(d['unitPath'])+VarToStr(d['unitName'])=t then
+            if VarToStr(d['unitName'])=u then
              begin
               s:=VarToStr(d['path'])+
                 '['+map.GetXxmLines(StrToInt(Copy(s,i,j-i)))+
