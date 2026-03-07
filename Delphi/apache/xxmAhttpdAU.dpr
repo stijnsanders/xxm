@@ -1,5 +1,6 @@
 library xxmAhttpdAU;
 
+{$R 'xxmAhttpdAU_ver.res' 'xxmAhttpdAU_ver.rc'}
 {$R 'xxmData.res' '..\common\xxmData.rc'}
 
 uses

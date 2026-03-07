@@ -1,5 +1,6 @@
 library xxmIsapiDev;
 
+{$R 'xxmIsapiDev_ver.res' 'xxmIsapiDev_ver.rc'}
 {$R 'xxmData.res' '..\common\xxmData.rc'}
 {$R 'xxmDataDev.res' '..\common\xxmDataDev.rc'}
 

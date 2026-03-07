@@ -53,15 +53,7 @@
         <DCC_DcuOutput>..\dcu</DCC_DcuOutput>
         <DCC_UsePackage>vcl;rtl;dbrtl;adortl;vcldb;vclx;bdertl;vcldbx;ibxpress;dsnap;cds;bdecds;qrpt;teeui;teedb;tee;dss;teeqr;visualclx;visualdbclx;dsnapcrba;dsnapcon;VclSmp;vclshlctrls;vclie;xmlrtl;inet;inetdbbde;inetdbxpress;inetdb;nmfast;webdsnap;websnap;soaprtl;dbexpress;dbxcds;indy;dclOffice2k;dxEdtrD6;dxcomnd6;EQTLD6;ECQDBCD6;EQGridD6;dxGrEdD6;dxExELD6;dxELibD6;rbDAD66;rbDBDE66;rbDIDE66;$(DCC_UsePackage)</DCC_UsePackage>
         <DCC_Define>JSONDOC_STOREINDENTING;$(DCC_Define)</DCC_Define>
-        <SanitizedProjectName>xxmConv</SanitizedProjectName>
-        <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
-        <VerInfo_MinorVer>2</VerInfo_MinorVer>
-        <VerInfo_Release>8</VerInfo_Release>
-        <VerInfo_Build>488</VerInfo_Build>
-        <VerInfo_Locale>1033</VerInfo_Locale>
-        <DCC_Namespace>System;Xml;Data;Datasnap;Web;Soap;Winapi;System.Win;Vcl;$(DCC_Namespace)</DCC_Namespace>
-        <VerInfo_Keys>CompanyName=;FileDescription=xxm Conversion Utility;FileVersion=1.2.8.488;InternalName=xxmConv;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductName=xxm;ProductVersion=1.0.0.0;Comments=http://yoy.be/xxm/</VerInfo_Keys>
-        <Icon_MainIcon>$(BDS)\bin\delphi_PROJECTICON.ico</Icon_MainIcon>
+        <SanitizedProjectName>xxmConv</SanitizedProjectName>        <DCC_Namespace>System;Xml;Data;Datasnap;Web;Soap;Winapi;System.Win;Vcl;$(DCC_Namespace)</DCC_Namespace>        <Icon_MainIcon>$(BDS)\bin\delphi_PROJECTICON.ico</Icon_MainIcon>
         <Icns_MainIcns>$(BDS)\bin\delphi_PROJECTICNS.icns</Icns_MainIcns>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base_Win32)'!=''">
@@ -75,9 +67,7 @@
     <PropertyGroup Condition="'$(Base_Win64)'!=''">
         <Icon_MainIcon>xxmConv_Icon.ico</Icon_MainIcon>
         <DCC_Namespace>Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;$(DCC_Namespace)</DCC_Namespace>
-        <BT_BuildType>Debug</BT_BuildType>
-        <VerInfo_IncludeVerInfo>false</VerInfo_IncludeVerInfo>
-        <DCC_ExeOutput>..\bin64</DCC_ExeOutput>
+        <BT_BuildType>Debug</BT_BuildType>        <DCC_ExeOutput>..\bin64</DCC_ExeOutput>
         <DCC_DcuOutput>..\dcu64</DCC_DcuOutput>
         <Manifest_File>(None)</Manifest_File>
     </PropertyGroup>

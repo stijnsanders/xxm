@@ -1,5 +1,6 @@
 program xxmHttpDev;
 
+{$R 'xxmHttpDev_ver.res' 'xxmHttpDev_ver.rc'}
 {$R 'xxmData.res' '..\common\xxmData.rc'}
 {$R 'xxmDataDev.res' '..\common\xxmDataDev.rc'}
 

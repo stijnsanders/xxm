@@ -3,6 +3,8 @@ program xxmConv;
 {$APPTYPE CONSOLE}
 {$DEFINE JSONDOC_STOREINDENTING}
 
+{$R 'xxmConv_ver.res' 'xxmConv_ver.rc'}
+
 uses
   SysUtils,
   ActiveX,

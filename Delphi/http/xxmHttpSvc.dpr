@@ -1,5 +1,6 @@
 program xxmHttpSvc;
 
+{$R 'xxmHttpSvc_ver.res' 'xxmHttpSvc_ver.rc'}
 {$R 'xxmData.res' '..\common\xxmData.rc'}
 
 uses

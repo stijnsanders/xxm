@@ -1,5 +1,6 @@
 program xxmHostAU;
 
+{$R 'xxmHostAU_ver.res' 'xxmHostAU_ver.rc'}
 {$R 'xxmData.res' '..\common\xxmData.rc'}
 {$R 'xxmAU_manifest.res' '..\common\xxmAU_manifest.rc'}
 

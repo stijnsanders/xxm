@@ -72,13 +72,7 @@
         <DCC_UsePackage>vcl;rtl;vclie;xmlrtl;inet;inetdbbde;inetdbxpress;vclx;dbrtl;soaprtl;dsnap;VclSmp;dbexpress;vcldb;dbxcds;adortl;ibxpress;vclactnband;bdertl;vclshlctrls;dclOfficeXP;IndyCore70;IndySystem70;IndyProtocols70;Siggma;MozillaControl;GeckoSDK;$(DCC_UsePackage)</DCC_UsePackage>
         <DCC_Define>HSYS2;$(DCC_Define)</DCC_Define>
         <SanitizedProjectName>xxmHSys2Svc</SanitizedProjectName>
-        <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
-        <VerInfo_MinorVer>2</VerInfo_MinorVer>
-        <VerInfo_Release>8</VerInfo_Release>
-        <VerInfo_Build>510</VerInfo_Build>
-        <VerInfo_Locale>1033</VerInfo_Locale>
         <DCC_Namespace>System;Xml;Data;Datasnap;Web;Soap;Vcl;Winapi;System.Win;$(DCC_Namespace)</DCC_Namespace>
-        <VerInfo_Keys>CompanyName=;FileDescription=xxm HTTPAPI2 handler;FileVersion=1.2.8.510;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductName=xxm;ProductVersion=1.0.0.0;Comments=http://yoy.be/xxm/</VerInfo_Keys>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base_Win32)'!=''">
         <DCC_Namespace>Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;Bde;$(DCC_Namespace)</DCC_Namespace>
@@ -128,6 +122,9 @@
         <DelphiCompile Include="$(MainSource)">
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
+        <RcCompile Include="xxmHSys2Svc_ver.rc">
+            <Form>xxmHSys2Svc_ver.res</Form>
+        </RcCompile>
         <RcCompile Include="..\common\xxmData.rc">
             <Form>xxmData.res</Form>
         </RcCompile>
@@ -178,7 +175,7 @@
                 <Platform value="Win32">True</Platform>
                 <Platform value="Win64">True</Platform>
             </Platforms>
-                    </BorlandProject>
+        </BorlandProject>
         <ProjectFileVersion>12</ProjectFileVersion>
     </ProjectExtensions>
     <Import Project="$(BDS)\Bin\CodeGear.Delphi.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Delphi.Targets')"/>

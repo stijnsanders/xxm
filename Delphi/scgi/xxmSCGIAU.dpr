@@ -1,5 +1,6 @@
 program xxmSCGIAU;
 
+{$R 'xxmSCGIAU_ver.res' 'xxmSCGIAU_ver.rc'}
 {$R 'xxmData.res' '..\common\xxmData.rc'}
 {$R 'xxmAU_manifest.res' '..\common\xxmAU_manifest.rc'}
 

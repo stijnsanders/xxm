@@ -1,7 +1,8 @@
 program xxmHSys2;
 
-{$R 'xxmData.res' '..\common\xxmData.rc'}
 {$IFNDEF HSYS2}{$MESSAGE FATAL 'HSYS2 not defined.'}{$ENDIF}
+{$R 'xxmData.res' '..\common\xxmData.rc'}
+{$R 'xxmHSys2_ver.res' 'xxmHSys2_ver.rc'}
 
 uses
   SysUtils,

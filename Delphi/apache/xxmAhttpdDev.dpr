@@ -1,5 +1,6 @@
 library xxmAhttpdDev;
 
+{$R 'xxmAhttpdDev_ver.res' 'xxmAhttpdDev_ver.rc'}
 {$R 'xxmData.res' '..\common\xxmData.rc'}
 {$R 'xxmDataDev.res' '..\common\xxmDataDev.rc'}
 

@@ -58,15 +58,7 @@
         <DCC_UsePackage>vcl;rtl;vclie;xmlrtl;inet;inetdbbde;inetdbxpress;vclx;dbrtl;soaprtl;dsnap;VclSmp;dbexpress;vcldb;dbxcds;adortl;ibxpress;vclactnband;bdertl;vclshlctrls;dclOfficeXP;IndyCore70;IndySystem70;IndyProtocols70;Siggma;MozillaControl;$(DCC_UsePackage)</DCC_UsePackage>
         <DCC_Define>JSONDOC_STOREINDENTING;$(DCC_Define)</DCC_Define>
         <GenDll>true</GenDll>
-        <SanitizedProjectName>xxmIsapiDev</SanitizedProjectName>
-        <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
-        <VerInfo_MinorVer>2</VerInfo_MinorVer>
-        <VerInfo_Release>8</VerInfo_Release>
-        <VerInfo_Build>510</VerInfo_Build>
-        <VerInfo_DLL>true</VerInfo_DLL>
-        <VerInfo_Locale>1033</VerInfo_Locale>
-        <VerInfo_Keys>CompanyName=;FileDescription=xxm ISAPI Handler (AutoBuild);FileVersion=1.2.8.510;InternalName=xxmIsapiDev;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductName=xxm;ProductVersion=1.0.0.0;Comments=http://yoy.be/xxm/</VerInfo_Keys>
-        <DCC_Namespace>System;Xml;Data;Datasnap;Web;Soap;Winapi;System.Win;Vcl;$(DCC_Namespace)</DCC_Namespace>
+        <SanitizedProjectName>xxmIsapiDev</SanitizedProjectName>        <DCC_Namespace>System;Xml;Data;Datasnap;Web;Soap;Winapi;System.Win;Vcl;$(DCC_Namespace)</DCC_Namespace>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base_Win32)'!=''">
         <DCC_Namespace>Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;Bde;$(DCC_Namespace)</DCC_Namespace>
@@ -80,9 +72,7 @@
         <BT_BuildType>Debug</BT_BuildType>
         <DCC_ExeOutput>..\bin64</DCC_ExeOutput>
         <DCC_DcuOutput>..\dcu64</DCC_DcuOutput>
-        <Manifest_File>(None)</Manifest_File>
-        <VerInfo_Build>0</VerInfo_Build>
-    </PropertyGroup>
+        <Manifest_File>(None)</Manifest_File>    </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_1)'!=''">
         <DCC_Define>RELEASE;$(DCC_Define)</DCC_Define>
         <DCC_DebugInformation>0</DCC_DebugInformation>

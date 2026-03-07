@@ -1,5 +1,6 @@
 program xxmHttp;
 
+{$R 'xxmHttp_ver.res' 'xxmHttp_ver.rc'}
 {$R 'xxmData.res' '..\common\xxmData.rc'}
 
 uses

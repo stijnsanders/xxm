@@ -1,5 +1,6 @@
 library xxmAhttpd;
 
+{$R 'xxmAhttpd_ver.res' 'xxmAhttpd_ver.rc'}
 {$R 'xxmData.res' '..\common\xxmData.rc'}
 
 uses

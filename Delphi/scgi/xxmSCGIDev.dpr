@@ -1,5 +1,6 @@
 program xxmSCGIDev;
 
+{$R 'xxmSCGIDev_ver.res' 'xxmSCGIDev_ver.rc'}
 {$R 'xxmData.res' '..\common\xxmData.rc'}
 {$R 'xxmDataDev.res' '..\common\xxmDataDev.rc'}
 

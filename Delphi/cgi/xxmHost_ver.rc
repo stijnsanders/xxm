@@ -1,0 +1,19 @@
+1 VERSIONINFO
+FILEVERSION 1, 2, 9, 540
+BEGIN
+BLOCK "StringFileInfo"
+BEGIN
+BLOCK "040904E4"
+BEGIN
+VALUE "FileDescription", "xxm CGI Host\000"
+VALUE "InternalName", "xxmHost\000"
+VALUE "ProductName", "xxm\000"
+VALUE "ProductVersion", "1.0\000"
+VALUE "Comments", "http://yoy.be/xxm/\000"
+END
+END
+BLOCK "VarFileInfo"
+BEGIN
+VALUE "Translation", 0x0409, 0x04E4
+END
+END
