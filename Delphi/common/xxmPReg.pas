@@ -721,7 +721,6 @@ var
 begin
   //assert in FLock
   //assert CoInitialize called
-  Result:=JSON;
   f:=TFileStream.Create(FRegFilePath+XxmRegFileName,
     fmOpenRead or fmShareDenyWrite);
   try
@@ -729,20 +728,21 @@ begin
     SetLength(s,i);
     if f.Read(s[1],i)<>i then RaiseLastOSError;
     if (i>=3) and (s[1]=#$EF) and (s[2]=#$BB) and (s[3]=#$BF) then
-      Result.Parse(UTF8ToWideString(Copy(s,4,i-3)))
+      w:=UTF8ToWideString(Copy(s,4,i-3))
     else
     if (i>=2) and (s[1]=#$FF) and (s[2]=#$FE) then
      begin
       dec(i,2);
       SetLength(w,i div 2);
       Move(s[3],w[1],i);
-      Result.Parse(w);
      end
     else
-      Result.Parse(WideString(s));
+      w:=WideString(s);
   finally
     f.Free;
   end;
+  Result:=JSON;
+  Result.Parse(w);
 end;
 
 function BSize(const x:string):integer;

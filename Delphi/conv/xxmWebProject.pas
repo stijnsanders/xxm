@@ -10,7 +10,7 @@ type
   TXxmWebProject=class(TObject)
   private
     Data:IJSONDocument;
-    DataStartSize:integer;
+    DataStartSize,DataStartSum:integer;
     DataFileName,FProjectName,FRootFolder,FSrcFolder,
     FHandlerPath,FProtoPathDef,FProtoPath:string;
     Modified,DoLineMaps:boolean;
@@ -85,6 +85,13 @@ const
 
 //TODO: project defaults (folder defaults?)
 
+{$IF not Declared(UTF8ToWideString)}
+function UTF8ToWideString(const s: UTF8String): WideString;
+begin
+  Result:=UTF8Decode(s);
+end;
+{$IFEND}
+
 { TXxmWebProject }
 
 const
@@ -97,6 +104,7 @@ var
   v:OleVariant;
   i,j,l:integer;
   s:AnsiString;
+  w:WideString;
   f:TFileStream;
   d:IJSONDocument;
   pv:TXxmPageParserValues;
@@ -167,15 +175,31 @@ begin
 
   f:=TFileStream.Create(FRootFolder+DataFileName,fmOpenRead);
   try
-    DataStartSize:=f.Size;
-    SetLength(s,DataStartSize);
-    f.Read(s[1],DataStartSize);
+    i:=f.Size;
+    DataStartSize:=i;
+    SetLength(s,i);
+    if f.Read(s[1],i)<>i then RaiseLastOSError;
+    if (i>=3) and (s[1]=#$EF) and (s[2]=#$BB) and (s[3]=#$BF) then
+      w:=UTF8ToWideString(Copy(s,4,i-3))
+    else
+    if (i>=2) and (s[1]=#$FF) and (s[2]=#$FE) then
+     begin
+      dec(i,2);
+      SetLength(w,i div 2);
+      Move(s[3],w[1],i);
+     end
+    else
+      w:=WideString(s);
   finally
     f.Free;
   end;
 
+  DataStartSum:=0;
+  for i:=1 to DataStartSize do
+    inc(DataStartSum,word(w[i]));
+
   Data:=JSON;
-  Data.Parse(WideString(s));
+  Data.Parse(w);
   v:=Data['uuid'];
   if VarIsNull(v) then Data['uuid']:=CreateClassID;//other random info?
 
@@ -236,15 +260,32 @@ var
   f:TFileStream;
   fn:string;
   s:AnsiString;
+  w:WideString;
+  i,wl,ws:integer;
 begin
   if Modified then
    begin
-    s:=AnsiString(Data.ToString);//TODO: UTF8
+    w:=Data.ToString;
+    wl:=Length(w);
+    ws:=0;
     //TODO: if Data.Dirty
-    if DataStartSize<>Length(s) then
+    if DataStartSize=wl then
+      for i:=1 to wl do
+        inc(ws,word(w[i]));
+    if (DataStartSize<>Length(s)) or (DataStartSum<>ws) then
      begin
       Data['lastModified']:=
         FormatDateTime('yyyy-mm-dd"T"hh:nn:ss',Now);//timezone?
+      w:=Data.ToString;
+      wl:=Length(w);
+      ws:=0;
+      for i:=1 to wl do
+        inc(ws,word(w[i]));
+      DataStartSize:=wl;
+      DataStartSum:=ws;
+      s:=
+        #$EF#$BB#$BF+//Utf8ByteOrderMark+
+        UTF8Encode(w);
       f:=TFileStream.Create(FRootFolder+DataFileName,fmCreate);
       try
         f.Write(s[1],Length(s));

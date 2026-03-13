@@ -1,5 +1,6 @@
 v1.?.?.?
 - deprecated: xxmSyna*
+- storage of Web.xxmp now in UTF-8
 - fixed bug with live removing a project from xxm.json
 - fixed bug with error line resolution on files in subfolders
 
