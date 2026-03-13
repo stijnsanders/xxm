@@ -1,5 +1,6 @@
 program xxmHttpSvcAU;
 
+{$R 'xxmHttpSvcAU_ver.res' 'xxmHttpSvcAU_ver.rc'}
 {$R 'xxmData.res' '..\common\xxmData.rc'}
 
 uses

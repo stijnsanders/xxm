@@ -1,5 +1,6 @@
 program xxmSCGISvc;
 
+{$R 'xxmSCGISvc_ver.res' 'xxmSCGISvc_ver.rc'}
 {$R 'xxmData.res' '..\common\xxmData.rc'}
 
 uses

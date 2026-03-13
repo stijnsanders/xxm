@@ -1,5 +1,6 @@
 program xxmHSys2Dev;
 
+{$R 'xxmHSys2Dev_ver.res' 'xxmHSys2Dev_ver.rc'}
 {$R 'xxmData.res' '..\common\xxmData.rc'}
 {$R 'xxmDataDev.res' '..\common\xxmDataDev.rc'}
 {$IFNDEF HSYS2}{$MESSAGE FATAL 'HSYS2 not defined.'}{$ENDIF}

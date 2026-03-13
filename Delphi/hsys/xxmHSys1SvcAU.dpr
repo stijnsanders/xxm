@@ -1,5 +1,6 @@
 program xxmHSys1SvcAU;
 
+{$R 'xxmHSys1SvcAU_ver.res' 'xxmHSys1SvcAU_ver.rc'}
 {$R 'xxmData.res' '..\common\xxmData.rc'}
 {$IFNDEF HSYS1}{$MESSAGE FATAL 'HSYS1 not defined.'}{$ENDIF}
 

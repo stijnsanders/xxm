@@ -1,5 +1,6 @@
 program xxmSCGI;
 
+{$R 'xxmSCGI_ver.res' 'xxmSCGI_ver.rc'}
 {$R 'xxmData.res' '..\common\xxmData.rc'}
 
 uses

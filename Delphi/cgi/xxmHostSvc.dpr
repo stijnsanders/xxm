@@ -1,5 +1,6 @@
 program xxmHostSvc;
 
+{$R 'xxmHostSvc_ver.res' 'xxmHostSvc_ver.rc'}
 {$R 'xxmData.res' '..\common\xxmData.rc'}
 
 uses

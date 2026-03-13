@@ -1,5 +1,6 @@
 library xxmIsapiAU;
 
+{$R 'xxmIsapiAU_ver.res' 'xxmIsapiAU_ver.rc'}
 {$R 'xxmData.res' '..\common\xxmData.rc'}
 
 uses
