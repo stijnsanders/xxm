@@ -1,5 +1,7 @@
 program xxmHttpAU;
 
+{$R 'xxmHttpAU_ver.res' 'xxmHttpAU_ver.rc'}
+
 uses
   SysUtils,
   xxm2 in '..\include\xxm2.pas',

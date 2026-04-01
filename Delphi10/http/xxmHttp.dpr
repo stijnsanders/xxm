@@ -1,5 +1,7 @@
 program xxmHttp;
 
+{$R 'xxmHttp_ver.res' 'xxmHttp_ver.rc'}
+
 uses
   SysUtils,
   xxm2 in '..\include\xxm2.pas',
