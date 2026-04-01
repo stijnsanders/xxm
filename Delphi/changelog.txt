@@ -3,6 +3,7 @@ v1.?.?.?
 - storage of Web.xxmp now in UTF-8
 - fixed bug with live removing a project from xxm.json
 - fixed bug with error line resolution on files in subfolders
+- key hash tree look-up of parameters
 
 v1.2.8.510
 - fixed bug with TXxmWebSocket and ReleaseContexts

@@ -108,6 +108,9 @@
         <DelphiCompile Include="$(MainSource)">
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
+        <RcCompile Include="xxmHttpAU_ver.rc">
+            <Form>xxmHttpAU_ver.res</Form>
+        </RcCompile>
         <RcCompile Include="..\common\xxmData.rc">
             <Form>xxmData.res</Form>
         </RcCompile>

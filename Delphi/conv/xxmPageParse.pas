@@ -196,7 +196,7 @@ var
   s:Int64;
 begin
   PasLineNr:=1;
-  f:=TFileStream.Create(FilePath,fmOpenRead);
+  f:=TFileStream.Create(FilePath,fmOpenRead or fmShareDenyWrite);
   try
     s:=f.Size;
     LineNrsIndex:=s div 4;

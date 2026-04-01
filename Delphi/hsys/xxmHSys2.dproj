@@ -101,11 +101,11 @@
         <DelphiCompile Include="$(MainSource)">
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
-        <RcCompile Include="..\common\xxmData.rc">
-            <Form>xxmData.res</Form>
-        </RcCompile>
         <RcCompile Include="xxmHSys2_ver.rc">
             <Form>xxmHSys2_ver.res</Form>
+        </RcCompile>
+        <RcCompile Include="..\common\xxmData.rc">
+            <Form>xxmData.res</Form>
         </RcCompile>
         <DCCReference Include="..\bin\public\xxm.pas"/>
         <DCCReference Include="xxmHSys2Run.pas"/>

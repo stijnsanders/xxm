@@ -124,6 +124,9 @@
         <DelphiCompile Include="$(MainSource)">
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
+        <RcCompile Include="xxmProject_ver.rc">
+            <Form>xxmProject_ver.res</Form>
+        </RcCompile>
         <DCCReference Include="xxmEditProject.pas">
             <Form>EditProjectMainForm</Form>
         </DCCReference>

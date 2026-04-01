@@ -13,7 +13,7 @@ type
     DataStartSize,DataStartSum:integer;
     DataFileName,FProjectName,FRootFolder,FSrcFolder,
     FHandlerPath,FProtoPathDef,FProtoPath:string;
-    Modified,DoLineMaps:boolean;
+    Modified,DoLineMaps,XxmpAnsi:boolean;
     Signatures:TStringList;
     FOnOutput:TXxmWebProjectOutput;
     FParserValues:TXxmPageParserValueList;
@@ -154,7 +154,9 @@ begin
         i:=Length(FRootFolder)-1;
         while (i<>0) and (FRootFolder[i]<>PathDelim) do dec(i);
         FProjectName:=Copy(FRootFolder,i+1,Length(FRootFolder)-i-1);
-        s:='{name:"'+AnsiString(FProjectName)+
+        s:=
+          #$EF#$BB#$BF+//Utf8ByteOrderMark+
+          '{name:"'+UTF8Encode(FProjectName)+
           '",compileCommand:"dcc32 -U[[HandlerPath]]public'+
           ' -Q [[ProjectName]].dpr"}';
         f:=TFileStream.Create(FRootFolder+DataFileName,fmCreate);
@@ -173,7 +175,7 @@ begin
   FProtoPathDef:=FHandlerPath+ProtoDirectory+PathDelim;
   FSrcFolder:=FRootFolder+SourceDirectory+PathDelim;
 
-  f:=TFileStream.Create(FRootFolder+DataFileName,fmOpenRead);
+  f:=TFileStream.Create(FRootFolder+DataFileName,fmOpenRead or fmShareDenyWrite);
   try
     i:=f.Size;
     DataStartSize:=i;
@@ -245,6 +247,10 @@ begin
       inc(pv);
      end;
    end;
+
+  //TRANSITIONAl
+  v:=Data['xxmpansi'];
+  XxmpAnsi:=not(VarIsNull(v)) and boolean(v);
 end;
 
 destructor TXxmWebProject.Destroy;
@@ -283,9 +289,13 @@ begin
         inc(ws,word(w[i]));
       DataStartSize:=wl;
       DataStartSum:=ws;
-      s:=
-        #$EF#$BB#$BF+//Utf8ByteOrderMark+
-        UTF8Encode(w);
+
+      if XxmpAnsi then //TRANSITIONAL
+        s:=AnsiString(w)
+      else
+        s:=
+          #$EF#$BB#$BF+//Utf8ByteOrderMark+
+          UTF8Encode(w);
       f:=TFileStream.Create(FRootFolder+DataFileName,fmCreate);
       try
         f.Write(s[1],Length(s));

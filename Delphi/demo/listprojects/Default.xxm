@@ -1,4 +1,13 @@
-[[@jsonDoc,Windows,Classes,Variants]][[!var
+[[@jsonDoc,Windows,Classes,Variants]][[:
+
+{$IF not Declared(UTF8ToWideString)}
+function UTF8ToWideString(const s: UTF8String): WideString;
+begin
+  Result:=UTF8Decode(s);
+end;
+{$IFEND}
+
+]][[!var
 i:integer;
 s,t:string;
 f:TFileStream;
@@ -18,7 +27,7 @@ XxmModName:array[0..XxmModNames-1] of string=(
   'xxmHttp.exe','xxmHttpAU.exe','xxmHttpDev.exe','xxmHttpSvc.exe','xxmHttpSvcAU.exe',
   'xxmSCGI.exe','xxmSCGIAU.exe','xxmSCGIDev.exe','xxmSCGISvc.exe','xxmSCGISvcAU.exe',
   'xxmSyna.exe','xxmSynaAU.exe','xxmSynaDev.exe','xxmSynaSvc.exe','xxmSynaSvcAU.exe');
-
+  
 <<!doctype html>
 <html>
 <head>
@@ -60,7 +69,7 @@ try
   SetLength(u,i);
   if i<>f.Read(u[1],i) then RaiseLastOSError;
   if (i>=3) and (u[1]=#$EF) and (u[2]=#$BB) and (u[3]=#$BF) then
-      d.Parse(UTF8Decode(Copy(u,4,i-3)))
+      d.Parse(UTF8ToWideString(Copy(u,4,i-3)))
   else
     if (i>=2) and (u[1]=#$FF) and (u[2]=#$FE) then
         d.Parse(PWideChar(@u[1]))

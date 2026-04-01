@@ -86,6 +86,9 @@
         <DelphiCompile Include="$(MainSource)">
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
+        <RcCompile Include="xxmIsapiEx_ver.rc">
+            <Form>xxmIsapiEx_ver.res</Form>
+        </RcCompile>
         <RcCompile Include="..\common\xxmData.rc">
             <Form>xxmData.res</Form>
         </RcCompile>
