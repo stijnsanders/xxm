@@ -2,7 +2,7 @@ unit xxmStores;
 
 interface
 
-uses Windows, SysUtils, Classes, xxmContext;
+uses Windows, SysUtils, Classes, xxmContext, xxmThreadPool;
 
 type
   TXxmSpoolingConnections=class(TThread)
@@ -33,7 +33,8 @@ type
     FQueueEvent:THandle;
     FContexts:array of record
       Context:TxxmContext;
-      MaxKeep:cardinal;
+      Resume:TxxmContextEvent;
+      MaxKeep,Reserved:cardinal;
     end;
     FContextIndex,FContextSize:integer;
     procedure DropContext(i:integer);
@@ -42,7 +43,8 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-    procedure Queue(Context: TxxmContext; MaxKeep: cardinal);
+    procedure Queue(Context: TxxmContext; Resume: TxxmContextEvent;
+      MaxKeep: cardinal);
   end;
 
   EXxmShuttingDown=class(Exception);
@@ -53,7 +55,7 @@ var
 
 implementation
 
-uses xxmThreadPool, xxmSock, WinSock2;
+uses xxmSock, WinSock2;
 
 type
   TFDSet = record
@@ -337,7 +339,8 @@ begin
   inherited;
 end;
 
-procedure TXxmKeptConnections.Queue(Context: TxxmContext; MaxKeep: cardinal);
+procedure TXxmKeptConnections.Queue(Context: TxxmContext;
+  Resume: TxxmContextEvent; MaxKeep: cardinal);
 var
   i:integer;
 begin
@@ -358,8 +361,10 @@ begin
       inc(FContextIndex);
      end;
     //timeout (see also t value below: 300x100ms~=30s)
-    FContexts[i].MaxKeep:=MaxKeep;
     FContexts[i].Context:=Context;
+    FContexts[i].Resume:=Resume;
+    FContexts[i].MaxKeep:=MaxKeep;
+    FContexts[i].Reserved:=0;
     SetEvent(FQueueEvent);
   finally
     LeaveCriticalSection(FLock);
@@ -377,6 +382,7 @@ begin
     ContextPool.Recycle(c);
   finally
     FContexts[i].Context:=nil;
+    FContexts[i].Resume:=nil;
   end;
 end;
 
@@ -461,9 +467,10 @@ begin
                 do inc(j);
               if j<FContextIndex then
                 try
-                  PageLoaderPool.Queue(FContexts[j].Context.SocketResume);
+                  PageLoaderPool.Queue(FContexts[j].Resume);
                 finally
                   FContexts[j].Context:=nil;
+                  FContexts[j].Resume:=nil;
                 end;
               //else raise?
              end;

@@ -52,7 +52,7 @@ type
     FSingleFileSent:string;
     FProgressCallback:CxxmProgress;
     FProgressRequestID,FProgressReportStep:NativeUInt;
-    FChunked,FAuthParsed:boolean;
+    FChunked,FAuthParsed,FNoBody:boolean;
     FAuthUserName,FAuthPassword:UTF8String;
     FAutoEncoding:TxxmAutoEncoding;
     FCookie:TKeyValues;
@@ -90,7 +90,7 @@ type
     constructor Create;
     destructor Destroy; override;
 
-    procedure Clear;
+    procedure Clear(KeepConnection:boolean);
     procedure Bind(Socket:TTcpSocket);
 
     procedure HandleRequest(Sender:TObject);
@@ -332,7 +332,7 @@ procedure TxxmContextPool.Recycle(Context: TxxmContext);
 var
   i:cardinal;
 begin
-  Context.Clear;
+  Context.Clear(false);
   EnterCriticalSection(FLock);
   try
     i:=0;
@@ -377,7 +377,7 @@ begin
   FCtxt.dwUpper:=nil;
   FCtxt.dwLower:=nil;
 
-  Clear;
+  Clear(false);
 end;
 
 destructor TxxmContext.Destroy;
@@ -387,13 +387,14 @@ begin
   inherited;
 end;
 
-procedure TxxmContext.Clear;
+procedure TxxmContext.Clear(KeepConnection:boolean);
 begin
-  try
-    FreeAndNil(FSocket);
-  except
-    FSocket:=nil;
-  end;
+  if not KeepConnection then
+    try
+      FreeAndNil(FSocket);
+    except
+      FSocket:=nil;
+    end;
 
   if (FCtxt.dwLower<>nil) or (FCtxt.dwUpper<>nil) then
     DeleteSecurityContext(@FCtxt);
@@ -449,6 +450,7 @@ begin
   FSingleFileSent:='';
   FProgressCallback:=nil;
   FChunked:=false;
+  FNoBody:=false;
   FAuthParsed:=false;
   FAuthUserName:='';
   FAuthPassword:='';
@@ -492,6 +494,7 @@ var
 begin
   //TODO: if FSocket.Secure then FSocket.Negotiate;
   tc:=GetTickCount;
+  FSuspended:=false;//see FlushFinal: KeptConnections.Queue(,HandleRequest)
   //assert FCacheIndex=1 (see Clear)
   Data:=@FCache[0].Data[0];
   dIndex:=0;
@@ -663,6 +666,7 @@ begin
       if FVerb='HEAD' then
        begin
         SetResponseHeader('Content-Length','0');
+        FNoBody:=true;
        end
       else
       if FVerb='OPTIONS' then
@@ -670,6 +674,7 @@ begin
         SetResponseHeader('Allow','OPTIONS, GET, HEAD, POST');
         SetResponseHeader('Public','OPTIONS, GET, HEAD, POST');
         SetResponseHeader('Content-Length','0');
+        FNoBody:=true;
        end;
 
       //load page
@@ -715,6 +720,7 @@ begin
                begin
                 FStatusCode:=304;
                 FStatusText:='Not Modified';
+                FNoBody:=true;
                 SendHeader;
                 CloseHandle(fh);
                end
@@ -815,6 +821,7 @@ begin
        begin
         FStatusCode:=204;
         FStatusText:='No Content';
+        FNoBody:=true;
        end;
       if (FStatusCode<>304) and not(FChunked) then
         SetResponseHeader('Content-Length',Store(IntToStr8(n)));
@@ -1381,22 +1388,16 @@ begin
   else
     Flush;
 
-  if FChunked and not(FSuspended) then
-    FSocket.SendBuf(Chunk0[0],5);
-
-  //TODO: perviously in
-  {
-  if (State<>ctSocketDisconnect) and (Chunked or (State=ctHeaderOnly) or
-     (FResHeaders['Content-Length']<>'')) then
+  if not FSuspended then
    begin
-    try
-      EndRequest;
-    except
-      //silent
-    end;
-    KeptConnections.Queue(Self,ctHeaderNotSent);
-  }
-
+    if FChunked then FSocket.SendBuf(Chunk0[0],5);
+    if FChunked or FNoBody or (GetResponseHeader('Content-Length')<>'') then
+     begin
+      Clear(true);
+      KeptConnections.Queue(Self,HandleRequest,30);
+      FSuspended:=true;
+     end;
+   end;
 end;
 
 procedure TxxmContext.AuthSChannel(const Package:UTF8String;var Cred:TCredHandle);
@@ -2197,7 +2198,7 @@ begin
   if c.FSuspended then
     raise EXxmContextAlreadySuspended.Create('Context has already been suspended');
   if (@c.FSocketResume<>nil) and (EventKey='XxmWebSocket') then
-    KeptConnections.Queue(c,864000) //TODO: WebSocket ping/pong (then lower this))
+    KeptConnections.Queue(c,c.SocketResume,864000) //TODO: WebSocket ping/pong (then lower this))
   else
     c.FProjectEntry.EventsController.SuspendContext(Context,EventKey);
   c.FSuspended:=true;
