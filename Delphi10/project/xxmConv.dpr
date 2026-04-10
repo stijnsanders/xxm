@@ -4,6 +4,8 @@ program xxmConv;
 
 {$R *.res}
 
+{$R 'xxmConv_ver.res' 'xxmConv_ver.rc'}
+
 uses
   jsonDoc in '..\common\jsonDoc.pas',
   xxmDefs in 'xxmDefs.pas',
