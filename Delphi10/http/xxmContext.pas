@@ -61,6 +61,7 @@ type
     FParamsIndex,FParamsSize:NativeUInt;
     FCredNTLM,FCredNego:TCredHandle;
     FCtxt:TCtxtHandle;
+    FSocketResume:CxxmSocketCheck;
     procedure SetBufferSize(ABufferSize:NativeUInt);
     function SendChunked(const Buf;Count: LongInt): LongInt;
     procedure HandleException(e:Exception);
@@ -93,6 +94,7 @@ type
     procedure Bind(Socket:TTcpSocket);
 
     procedure HandleRequest(Sender:TObject);
+    procedure SocketResume(Sender: TObject);
     procedure Include(Address:PUTF8Char;const Values:array of Variant;
       const Objects:array of pointer);
 
@@ -168,6 +170,8 @@ type
   EXxmPageRedirected=class(EXxmError);
   EXxmResponseHeaderOnly=class(EXxmError);
   EXxmProjectCheckFailed=class(EXxmError);
+  EXxmContextAlreadySuspended=class(ExxmError);
+  //include exceptions are structure, inherit from Exception, not EXxmError:
   EXxmIncludeNoFragmentHandler=class(Exception);
   EXxmIncludeOnlyOnBuild=class(Exception);
   EXxmIncludeStackFull=class(Exception);
@@ -454,6 +458,7 @@ begin
   FParamsIndex:=0;
   FProjectData:=nil;//TODO: free by project?
   FSuspended:=false;
+  FSocketResume:=nil;
 end;
 
 function TxxmContext.Context: CxxmContext;
@@ -879,7 +884,8 @@ begin
       ;
     Context.SendHTML(PUTF8Char(y));
    end;
-  FProjectEntry.ClearContext(Context);//?
+  if FProjectEntry<>nil then
+    FProjectEntry.ClearContext(Context);//?
   FlushFinal;
 end;
 
@@ -1079,7 +1085,8 @@ begin
   //chunked
   if (FBufferSize=0) and FAllowChunked and
     (GetResponseHeader('Content-Length')='') and
-    (GetResponseHeader('Transfer-Encoding')='') then
+    (GetResponseHeader('Transfer-Encoding')='') and
+    (FStatusCode<>101) then //(UTF8CmpI(GetResponseHeader('Connection'),'Upgrade')<>0) then
    begin
     FChunked:=true;
     FSend:=SendChunked;//see also SetBufferSize
@@ -1376,6 +1383,20 @@ begin
 
   if FChunked and not(FSuspended) then
     FSocket.SendBuf(Chunk0[0],5);
+
+  //TODO: perviously in
+  {
+  if (State<>ctSocketDisconnect) and (Chunked or (State=ctHeaderOnly) or
+     (FResHeaders['Content-Length']<>'')) then
+   begin
+    try
+      EndRequest;
+    except
+      //silent
+    end;
+    KeptConnections.Queue(Self,ctHeaderNotSent);
+  }
+
 end;
 
 procedure TxxmContext.AuthSChannel(const Package:UTF8String;var Cred:TCredHandle);
@@ -1790,6 +1811,15 @@ begin
     raise ERangeError.Create('GetParamByIdx: index out of range');
 end;
 
+procedure TxxmContext.SocketResume(Sender: TObject);
+begin
+  //assert FSuspended
+  FSuspended:=false;
+  if @FSocketResume=nil then
+    raise EXxmError.Create('SocketResume: no handler configured');
+  FSocketResume(Context);
+end;
+
 { xxm2 implementation }
 
 function Context_URL(Context:CxxmContext):PUTF8Char; stdcall;
@@ -1836,7 +1866,7 @@ end;
 
 function Context_Connected(Context:CxxmContext):boolean; stdcall;
 begin
-  Result:=TxxmContext(Context.__Context).FSocket.Connected;
+  Result:=TxxmContext(Context.__Context).Socket.Connected;
 end;
 
 procedure Context_Set_Status(Context:CxxmContext;Status:word;Text:PUTF8Char); stdcall;
@@ -2153,6 +2183,8 @@ begin
       pe:=XxmIntializingProjectEntry
   else
     pe:=c.FProjectEntry;
+  if @CheckHandler=nil then
+    raise EXxmError.Create('RegisterEvent: CheckHandler is required');
   pe.EventsController.RegisterEvent(EventKey,CheckHandler,
     CheckIntervalMS,MaxWaitTimeSec,ResumeFragment,ResumeValues,
     DropFragment,DropValues);
@@ -2162,7 +2194,12 @@ procedure Context_Suspend(Context:CxxmContext;EventKey:PUTF8Char); stdcall;
 var
   c:TxxmContext absolute Context.__Context;
 begin
-  c.FProjectEntry.EventsController.SuspendContext(Context,EventKey);
+  if c.FSuspended then
+    raise EXxmContextAlreadySuspended.Create('Context has already been suspended');
+  if (@c.FSocketResume<>nil) and (EventKey='XxmWebSocket') then
+    KeptConnections.Queue(c,864000) //TODO: WebSocket ping/pong (then lower this))
+  else
+    c.FProjectEntry.EventsController.SuspendContext(Context,EventKey);
   c.FSuspended:=true;
 end;
 
@@ -2184,9 +2221,20 @@ begin
    begin
     c.FProjectEntry.ClearContext(Context);
     c.FlushFinal;
-    c.FSocket.Disconnect;
+    c.Socket.Disconnect;
     ContextPool.Recycle(c);
    end;
+end;
+
+function Context_RawSocket(Context:CxxmContext;p:CxxmSocketCheck):PxxmRawSocket; stdcall;
+var
+  c:TxxmContext absolute Context.__Context;
+begin
+  //TODO: if Context.RequestHeader['Connection'] ~'upgrade'
+  //Context.RequestHeader['Upgrade']<>''?
+  c.FAutoEncoding:=aeContentDefined;
+  c.FSocketResume:=p;//see also xxmWebSocket.pas
+  Result:=TxxmContext(Context.__Context).Socket;//see RawSocket_* functions
 end;
 
 function Parameter_Origin(Parameter:CxxmParameter):PUTF8Char; stdcall; //'GET','POST','FILE'...
@@ -2309,6 +2357,28 @@ begin
   Result:=AsStream(Stream).CopyFrom(d,p.PostDataLen);//TODO: buffersize from config?
 end;
 
+function RawSocket_Read(RawSocket:PxxmRawSocket;p:pointer;s:NativeUInt):NativeUInt; stdcall;
+begin
+  Result:=TTcpSocket(RawSocket).ReceiveBuf(p^,s);
+end;
+
+function RawSocket_Write(RawSocket:PxxmRawSocket;p:pointer;s:NativeUInt):NativeUInt; stdcall;
+begin
+  Result:=TTcpSocket(RawSocket).SendBuf(p^,s);
+end;
+
+function RawSocket_DataReady(RawSocket:PxxmRawSocket;ms:NativeUInt):boolean; stdcall;
+begin
+  Result:=TTcpSocket(RawSocket).DataReady(ms);
+end;
+
+procedure RawSocket_Disconnect(RawSocket:PxxmRawSocket); stdcall;
+begin
+  TTcpSocket(RawSocket).Disconnect;
+end;
+
+{ xxm2 Setup }
+
 procedure CompatibilityGuard; stdcall;
 begin
   raise Exception.Create('This call is not yet available in this version');
@@ -2373,6 +2443,7 @@ begin
   xxmHttp.Context_Set_ProgressCallback:=@Context_Set_ProgressCallback;
   xxmHttp.Context_RegisterEvent:=@Context_RegisterEvent;
   xxmHttp.Context_Suspend:=@Context_Suspend;
+  xxmHttp.Context_RawSocket:=@Context_RawSocket;
 
   xxmHttp.Parameter_Origin:=@Parameter_Origin; //'GET','POST','FILE'...
   xxmHttp.Parameter_Name:=@Parameter_Name;
@@ -2383,6 +2454,12 @@ begin
   xxmHttp.Parameter_ContentType:=@Parameter_ContentType;
   xxmHttp.Parameter_SaveToFile:=@Parameter_SaveToFile;
   xxmHttp.Parameter_SaveToStream:=@Parameter_SaveToStream;
+
+  xxmHttp.RawSocket_Read:=@RawSocket_Read;
+  xxmHttp.RawSocket_Write:=@RawSocket_Write;
+  xxmHttp.RawSocket_DataReady:=@RawSocket_DataReady;
+  xxmHttp.RawSocket_Disconnect:=@RawSocket_Disconnect;
+
 
   p0:=xxmHttp;
   p1:=xxmHttp;

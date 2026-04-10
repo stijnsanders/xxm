@@ -3,8 +3,8 @@ unit xxm2;
 interface
 
 const
-  //$Date: 2025-05-07 23:46:23 +0200 (wo, 07 mei 2025) $
-  XxmRevision = '$Rev: 535 $';
+  //$Date: 2026-04-10 21:54:14 +0200 (vr, 10 apr 2026) $
+  XxmRevision = '$Rev: 545 $';
   XxmAPILevel = 2000;//v2.0
 
 type
@@ -40,6 +40,7 @@ type
   PxxmProject=type pointer; //opaque
   PxxmContext=type pointer; //opaque
   PxxmParameter=type pointer; //opaque
+  PxxmRawSocket=type pointer; //opaque
 
   CxxmParameter=record
     __Parameter:PxxmParameter;
@@ -132,6 +133,7 @@ type
   CxxmCheckEvent=function (Project: PxxmProject; EventKey: PUTF8Char;
     var CheckIntervalMS: NativeUInt): boolean; stdcall;
 
+  CxxmSocketCheck=procedure (Context: CxxmContext); stdcall;
 
 const
   xxmProgress_PostData   = 1;
@@ -192,6 +194,7 @@ type
     ResumeFragment:PUTF8Char;const ResumeValues:array of Variant;
     DropFragment:PUTF8Char;const DropValues:array of Variant); stdcall;
   TContext_Suspend = procedure (Context:CxxmContext;EventKey:PUTF8Char); stdcall;
+  TContext_RawSocket = function (Context:CxxmContext;p:CxxmSocketCheck):PxxmRawSocket; stdcall;
 
   TParameter_Origin = function (Parameter:CxxmParameter):PUTF8Char; stdcall; //'GET','POST','FILE'...
   TParameter_Name = function (Parameter:CxxmParameter):PUTF8Char; stdcall;
@@ -203,8 +206,15 @@ type
   TParameter_SaveToFile = function (Parameter:CxxmParameter;FilePath:PUTF8Char):NativeUInt; stdcall;
   TParameter_SaveToStream = function (Parameter:CxxmParameter;Stream:TObject):NativeUInt; stdcall;
 
+  TRawSocket_Read = function (RawSocket:PxxmRawSocket;p:pointer;s:NativeUInt):NativeUInt; stdcall;
+  TRawSocket_Write = function (RawSocket:PxxmRawSocket;p:pointer;s:NativeUInt):NativeUInt; stdcall;
+  TRawSocket_DataReady = function (RawSocket:PxxmRawSocket;ms:NativeUInt):boolean; stdcall;
+  TRawSocket_Disconnect = procedure (RawSocket:PxxmRawSocket); stdcall;
+
 
   Txxm2 = record
+
+    //Context_*
     Context_APILevel: NativeInt;
     Context_URL: TContext_URL;
     Context_SessionID: TContext_SessionID;
@@ -253,7 +263,9 @@ type
     Context_Set_ProgressCallback: TContext_Set_ProgressCallback;
     Context_RegisterEvent: TContext_RegisterEvent;
     Context_Suspend: TContext_Suspend;
+    Context_RawSocket: TContext_RawSocket;
 
+    //Parameter_*
     Parameter_Origin: TParameter_Origin;
     Parameter_Name: TParameter_Name;
     Parameter_Value: TParameter_Value;
@@ -264,7 +276,11 @@ type
     Parameter_SaveToFile: TParameter_SaveToFile;
     Parameter_SaveToStream: TParameter_SaveToStream;
 
-    //TODO: IxxmRawSocket
+    //RawSocket_*
+    RawSocket_Read: TRawSocket_Read;
+    RawSocket_Write: TRawSocket_Write;
+    RawSocket_DataReady: TRawSocket_DataReady;
+    RawSocket_Disconnect: TRawSocket_Disconnect;
 
   end;
 

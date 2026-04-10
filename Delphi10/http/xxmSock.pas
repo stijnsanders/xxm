@@ -32,8 +32,9 @@ type
     destructor Destroy; override;
     procedure Connect(const Address:AnsiString;Port:word); virtual;
     procedure Disconnect; virtual;
-    function ReceiveBuf(var Buf; Count: Integer): Integer; virtual;
+    function ReceiveBuf(var Buf; Count: LongInt): LongInt; virtual;
     function SendBuf(const Buf; Count: LongInt): LongInt; virtual;
+    function DataReady(ms: LongInt): boolean;
     property Handle:THandle read FSocket;
     property Connected:boolean read FConnected;
     property Port:word read GetPort;
@@ -169,7 +170,6 @@ begin
   Result:=TTcpSocket.Create(FFamily,WinSock2.accept(FSocket,@a,@l));
   Result.FAddr:=a;
 
-  //?
   i:=1;
   setsockopt(Result.Handle,SOL_SOCKET,SO_REUSEADDR,@i,4);
 end;
@@ -199,6 +199,24 @@ begin
   if setsockopt(FSocket,IPPROTO_TCP,TCP_NODELAY,@i,4)<>0 then
     RaiseLastWSAError;
   FConnected:=true;//?
+end;
+
+function TTcpSocket.DataReady(ms: LongInt): boolean;
+var
+  r,x:TFDSet;
+  t:TTimeVal;
+begin
+  r.fd_count:=1;
+  r.fd_array[0]:=FSocket;
+  x.fd_count:=1;
+  x.fd_array[0]:=FSocket;
+  t.tv_sec:=ms div 1000;
+  t.tv_usec:=(ms mod 1000)*1000;//microseconds
+  if WinSock2.select(0,@r,nil,@x,@t)=SOCKET_ERROR then
+    raise ETcpSocketError.Create(SysErrorMessage(WSAGetLastError));
+  if x.fd_count=1 then //if __WSAFDIsSet(FSocket,x) then
+    raise ETcpSocketError.Create('Socket in error state');//?
+  Result:=r.fd_count=1;//__WSAFDIsSet(FSocket,r)
 end;
 
 destructor TTcpSocket.Destroy;
@@ -271,7 +289,7 @@ begin
     Result:=string(e.h_name);
 end;
 
-function TTcpSocket.ReceiveBuf(var Buf; Count: Integer): Integer;
+function TTcpSocket.ReceiveBuf(var Buf; Count: LongInt): LongInt;
 begin
   Result:=recv(FSocket,Buf,Count,0);
   if Result=SOCKET_ERROR then
@@ -283,11 +301,8 @@ begin
 end;
 
 function TTcpSocket.SendBuf(const Buf; Count: LongInt): LongInt;
-var
-  p:pointer;
 begin
-  p:=@Buf;
-  Result:=send(FSocket,p^,Count,0);
+  Result:=send(FSocket,Buf,Count,0);
   if Result=SOCKET_ERROR then
     try
       RaiseLastWSAError;
