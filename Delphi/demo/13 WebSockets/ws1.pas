@@ -30,6 +30,7 @@ uses SysUtils, Windows, xxmFReg, xxmp;
 
 procedure TMyWebSocket.AfterConstruction;
 begin
+  inherited;
   FThread:=TDemoThread.Create(false);
   (FThread as TDemoThread).MyWebSocket:=Self;//TODO: via parameter or constructor
 end;
@@ -37,6 +38,7 @@ end;
 procedure TMyWebSocket.BeforeDestruction;
 begin
   FreeAndNil(FThread);
+  inherited;
 end;
 
 procedure TMyWebSocket.ReceiveText(const Data: UTF8String);
