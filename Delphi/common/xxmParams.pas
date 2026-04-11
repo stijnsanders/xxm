@@ -7,8 +7,7 @@ uses xxm, Classes, SysUtils, ActiveX, xxmHeaders;
 type
   TXxmReqPars=class(TObject)
   private
-    FParams: array of IXxmParameter;
-    FParamsSize,FParamsCount: integer;
+    FRoot, FFirst, FLast, FFound: pointer;
     FFilled: boolean;
   public
     DataProgressAgent, FileProgressAgent: IxxmUploadProgressAgent;
@@ -21,6 +20,7 @@ type
     function GetItem(Key:integer):IXxmParameter;
     function Count:integer;
     procedure Add(Par:IXxmParameter);
+    procedure Clear;
     property Filled: boolean read FFilled;
   end;
 
@@ -128,13 +128,190 @@ begin
    end;
 end;
 
+{ key value store }
+
+const
+  KeyValueNodeHashBits = 8;//bits
+  KeyValueNodeHashMask = (1 shl KeyValueNodeHashBits)-1;//$F
+  KeyValueItemMaxChain = 8;
+
+type
+  PPKeyValueNode = ^PKeyValueNode;
+  PKeyValueNode = ^TKeyValueNode;
+  TKeyValueNode = array[0..KeyValueNodeHashMask] of pointer;
+
+//strange! 'old' Delphi has NativeUInt=0..1; ??!!
+{$IF not(Declared(NativeUInt)) or (SizeOf(cardinal)=SizeOf(pointer))}
+  NativeUInt = cardinal;
+{$IFEND}
+
+  PKeyValueItem = ^TKeyValueItem;
+  TKeyValueItem = record
+    Hash: NativeUInt;
+    Param: IXxmParameter;
+    More, Next: PKeyValueItem;
+  end;
+
+function NewNode(var nn:PKeyValueNode):PKeyValueNode;
+const
+  ll=SizeOf(TKeyValueNode);
+begin
+  New(nn);//GetMem(nn,ll);
+  FillChar(nn^,ll,0);
+  Result:=nn;
+end;
+
+function NewItem(Hash:NativeUInt;var pp:PKeyValueItem):pointer;
+const
+  ll=SizeOf(TKeyValueItem);
+begin
+  New(pp);//GetMem(pp,ll);
+  FillChar(pp^,ll,0);
+  Result:=pointer(NativeUInt(pp) or 1);
+  //assert Hash=kvsHash(Key)
+  pp.Hash:=Hash;
+  //pp.Key:=Key;
+end;
+
+function IsItem(p:pointer;var pp:PKeyValueItem):boolean; //inline;
+begin
+  Result:=(NativeUInt(p) and 1)<>0;
+  if Result then pp:=PKeyValueItem(NativeUInt(p) xor 1);
+end;
+
+function AsItem(p:PKeyValueItem):pointer; //inline;
+begin
+  Result:=pointer(NativeUInt(p) or 1);
+end;
+
+function kvsHash(const Key: WideString): NativeUInt;
+const
+  seed = $11BB9955;
+var
+  i,l:NativeUInt;
+begin
+  Result:=seed;
+  l:=Length(Key);
+  for i:=1 to l do
+    Result:=(Result shl 1) + (word(Key[i]) * $0901);
+  inc(Result,l);
+end;
+
+function LookUpItem(Root: pointer; const Name: WideString;
+  var FoundLast: pointer): PKeyValueItem;
+var
+  h,h0,h1:NativeUInt;
+  n:PKeyValueNode;
+begin
+  h:=kvsHash(Name);
+  if (FoundLast<>nil) and (PKeyValueItem(FoundLast).Hash=h)
+    and (PKeyValueItem(FoundLast).Param.Name=Name) then
+   begin
+    Result:=FoundLast;
+    Exit;
+   end;
+  h1:=h;
+  n:=Root;
+  Result:=nil;
+  while n<>nil do
+    if IsItem(n,Result) then
+      n:=nil //end loop
+    else
+     begin
+      h0:=h1 and KeyValueNodeHashMask;
+      h1:=h1 shr KeyValueNodeHashBits;
+      n:=n[h0];
+     end;
+  while (Result<>nil) and not((Result.Hash=h) and (Result.Param<>nil)
+    and (Result.Param.Name=Name)) do Result:=Result.More;
+  if Result<>nil then FoundLast:=Result;
+end;
+
+function StoreItem(var Root: pointer; const Name: WideString;
+  var First, Last: pointer): PKeyValueItem;
+const
+  KeyValueNodeMaxLevel=(SizeOf(NativeUInt)*8+KeyValueNodeHashBits-1)
+    div KeyValueNodeHashBits;
+var
+  r:PPKeyValueNode;
+  h,h0,h1,c,l:NativeUInt;
+  n:PKeyValueNode;
+  p,p1,p2:PKeyValueItem;
+begin
+  h:=kvsHash(Name);
+  h1:=h;
+  l:=0;
+  c:=0;
+  r:=@Root;
+  p:=nil;
+  while p=nil do
+    if r^=nil then
+      r^:=NewItem(h,p)
+    else
+      if IsItem(r^,p) then
+       begin
+        p1:=p;
+        while (p<>nil) and not((p.Hash=h) and (p.Param=nil)) do
+         begin
+          p:=p.More;
+          inc(c);
+         end;
+        if p=nil then
+          if (c>=KeyValueItemMaxChain) and (l<KeyValueNodeMaxLevel) then
+           begin
+            //convert to node
+            n:=NewNode(r^);
+            h0:=h1 and KeyValueNodeHashMask;
+            n[h0]:=NewItem(h,p);
+            p2:=p1;
+            while p2<>nil do
+             begin
+              p1:=p2;
+              p2:=p2.More;
+              p1.More:=nil;
+              h0:=(p1.Hash shr (KeyValueNodeHashBits*l)) and KeyValueNodeHashMask;
+              if n[h0]<>nil then IsItem(n[h0],p1.More);//assume true since set in this loop
+              n[h0]:=AsItem(p1);
+             end;
+           end
+          else
+           begin
+            //add to chain
+            r^:=NewItem(h,p);
+            p.More:=p1;
+           end;
+       end
+      else
+       begin
+        h0:=h1 and KeyValueNodeHashMask;
+        h1:=h1 shr KeyValueNodeHashBits;
+        inc(l);
+        r:=@r^[h0];
+       end;
+  //p.Param:=//done by caller
+  p.Next:=nil;
+  if First=nil then
+   begin
+    First:=p;
+    Last:=p;
+   end
+  else
+   begin
+    PKeyValueItem(Last).Next:=p;
+    Last:=p;
+   end;
+  Result:=p;
+end;
+
 { TXxmReqPars }
 
 constructor TXxmReqPars.Create;
 begin
   inherited Create;
-  FParamsSize:=0;
-  FParamsCount:=0;
+  FRoot:=nil;
+  FFirst:=nil;
+  FLast:=nil;
+  FFound:=nil;
   FFilled:=false;
   //Fill(Context,PostData);
   DataProgressAgent:=nil;
@@ -143,18 +320,37 @@ begin
 end;
 
 destructor TXxmReqPars.Destroy;
-var
-  i:integer;
+   procedure ClearNode(n:PKeyValueNode);
+   var
+     i:NativeUInt;
+     p,q:PKeyValueItem;
+   begin
+     //assert n<>nil
+     if IsItem(n,p) then
+       while p<>nil do
+        begin
+         q:=p;
+         p:=p.More;
+         try
+           //q.Key:='';
+           q.Param:=nil;
+         except
+           //silent
+         end;
+         Dispose(q);//FreeMem(q);
+        end
+     else
+      begin
+       for i:=0 to KeyValueNodeHashMask do
+         if n[i]<>nil then
+           ClearNode(n[i]);
+       Dispose(n);//FreeMem(n);
+      end;
+   end;
 begin
   DataProgressAgent:=nil;
   FileProgressAgent:=nil;
-  for i:=0 to FParamsCount-1 do
-    try
-      FParams[i]._Release;
-      FParams[i]:=nil;
-    except
-      pointer(FParams[i]):=nil;//silent
-    end;
+  if FRoot<>nil then ClearNode(FRoot);
   inherited;
 end;
 
@@ -185,8 +381,8 @@ begin
     if (q<=l) and (pd[q]='=') then inc(r);
     while (r<=l) and (pd[r]<>'&') do inc(r);
     Add(TXxmReqParGet.Create(Self,
-      UTF8ToWideString(Copy(pd,p,q-p)),
-      URLDecode(AnsiString(UTF8ToWideString(Copy(pd,q+1,r-q-1))))));
+      UTF8Decode(Copy(pd,p,q-p)),
+      URLDecode(AnsiString(UTF8Decode(Copy(pd,q+1,r-q-1))))));
     inc(r);
    end;
 
@@ -263,12 +459,12 @@ begin
           //TODO: transfer encoding?
           if pm='' then
             Add(TXxmReqParPost.Create(Self,WideString(px),
-              UTF8ToWideString(sn.GetString)))
+              UTF8Decode(sn.GetString)))
           else
            begin
             sn.GetData(px,pf,p,q);
             Add(TXxmReqParPostFile.Create(Self,WideString(px),
-              UTF8ToWideString(pf),//TODO: encoding from header?
+              UTF8Decode(pf),//TODO: encoding from header?
               WideString(pm),ps,p,q));
            end;
         until sn.MultiPartDone;
@@ -299,61 +495,99 @@ begin
 end;
 
 procedure TXxmReqPars.Add(Par: IXxmParameter);
-const
-  GrowStep=$100;
 begin
-  if FParamsCount=FParamsSize then
-   begin
-    inc(FParamsSize,GrowStep);
-    SetLength(FParams,FParamsSize);
-   end;
-  Par._AddRef;
-  FParams[FParamsCount]:=Par;
-  inc(FParamsCount);
+  StoreItem(FRoot,Par.Name,FFirst,FLast).Param:=Par;
 end;
 
 function TXxmReqPars.Get(const Key: WideString): IXxmParameter;
 var
-  i:integer;
+  n:PKeyValueItem;
   p:TXxmReqPar;
 begin
-  i:=0;
-  //case sensitive?
-  while (i<FParamsCount) and (FParams[i].Name<>Key) do inc(i);
-  if (i<FParamsCount) then Result:=FParams[i] else
+  n:=LookUpItem(FRoot,Key,FFound);
+  if (n=nil) or (n.Param=nil) then
    begin
     p:=TXxmReqPar.Create(Self,Key,'');
     p.FDummy:=true;
     Result:=p;
-   end;
+   end
+  else
+    Result:=n.Param;
 end;
 
 function TXxmReqPars.GetNext(Par: IXxmParameter): IXxmParameter;
 var
-  i:integer;
   Key:WideString;
+  n:PKeyValueItem;
 begin
-  i:=0;
-  while (i<FParamsCount) and (FParams[i]<>Par) do inc(i);
-  if (i<FParamsCount) then
-   begin
-    Key:=FParams[i].Name;//lower?
-    inc(i);
-    while (i<FParamsCount) and (FParams[i].Name<>Key) do inc(i);
-    if (i<FParamsCount) then Result:=FParams[i] else Result:=nil;
-   end
+  Key:=Par.Name;
+  n:=LookUpItem(FRoot,Key,FFound);
+  while (n<>nil) and (n.Param<>Par) do n:=n.More;
+  if (n<>nil) then n:=n.More;
+  while (n<>nil) and (n.Param.Name<>Key) do n:=n.More;
+  if n=nil then
+    Result:=nil
   else
-    Result:=nil;
+    Result:=n.Param;
 end;
 
 function TXxmReqPars.GetItem(Key: integer): IXxmParameter;
+var
+  i:integer;
+  n:PKeyValueItem;
 begin
-  Result:=FParams[Key];
+  i:=Key;
+  if i<0 then
+    raise ERangeError.Create('(TXxmReqPars.GetItem: Out of range');
+  n:=FFirst;
+  while (i<>0) and (n<>nil) do
+   begin
+    n:=n.Next;
+    dec(i);
+   end;
+  if n=nil then
+    raise ERangeError.Create('(TXxmReqPars.GetItem: Out of range');
+  Result:=n.Param;
 end;
 
 function TXxmReqPars.Count: integer;
+var
+  n:PKeyValueItem;
 begin
-  Result:=FParamsCount;
+  Result:=0;
+  n:=FFirst;
+  while n<>nil do
+   begin
+    inc(Result);
+    n:=n.Next;
+   end;
+end;
+
+procedure TXxmReqPars.Clear;
+var
+  p,q:PKeyValueItem;
+begin
+  try
+    p:=FFirst;
+    while p<>nil do
+     begin
+      q:=p.Next;
+      p.Next:=nil;
+      try
+        p.Param:=nil;//assert p.Param._Release=0
+      except
+        //silent
+        pointer(p.Param):=nil;
+      end;
+      p:=q;
+     end;
+  except
+    //silent
+  end;
+  FFirst:=nil;
+  FLast:=nil;
+  FFound:=nil;
+  FFilled:=false;
 end;
 
 { TXxmReqPar }

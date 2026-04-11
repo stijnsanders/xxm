@@ -230,6 +230,7 @@ var
 begin
   inherited;
   AuthStoreCache:=false;//default, see GetSessionID
+  FParams:=TXxmReqPars.Create;
 {$IFNDEF XXM_INLINE_PROJECT}
   FLocalCacheIndex1:=0;
   FLocalCacheIndex2:=0;
@@ -248,6 +249,7 @@ var
   i:integer;
 {$ENDIF}
 begin
+  FParams.Free;
 {$IFNDEF XXM_INLINE_PROJECT}
   for i:=0 to XxmProjectCacheLocalSize-1 do
    begin
@@ -264,7 +266,7 @@ begin
   FProjectEntry:=nil;
   FContentType:='text/html';//default (setting?)
   FAutoEncoding:=aeUtf8;//default (setting?)
-  FParams:=nil;//see GetParameter
+  FParams.Clear;//see GetParameter
   FPostData:=nil;
   FPostTempFile:='';
   FChunked:=false;
@@ -327,7 +329,7 @@ begin
   except
     //silent
   end;
-  FreeAndNil(FParams);
+  FParams.Clear;
   BufferStore.AddBuffer(FContentBuffer);
   //ContextPool.AddContext: see TXxmPageLoader.Execute
 end;
@@ -1070,7 +1072,6 @@ var
   iKey:integer;
 begin
   //parse parameters on first use
-  if FParams=nil then FParams:=TXxmReqPars.Create;
   if not FParams.Filled then
     if FParams.Fill(Self,FPostData) then
       FreeAndNil(FPostData);//redirect on post? invalidate postdata!
@@ -1090,7 +1091,6 @@ end;
 function TXxmGeneralContext.GetParameterCount: Integer;
 begin
   //parse parameters on first use
-  if FParams=nil then FParams:=TXxmReqPars.Create;
   if not FParams.Filled then
     if FParams.Fill(Self,FPostData) then
       FreeAndNil(FPostData);//redirect on post? invalidate postdata!
@@ -1099,7 +1099,6 @@ end;
 
 procedure TXxmGeneralContext.AddParameter(Param: IInterface);
 begin
-  if FParams=nil then FParams:=TXxmReqPars.Create;//fill: postpone to first GetParameter call
   FParams.Add(Param as IXxmParameter);
 end;
 
@@ -1108,7 +1107,6 @@ procedure TXxmGeneralContext.AttachAgent(Agent: IxxmUploadProgressAgent;
 const
   DefaultProgressStep=$10000;
 begin
-  if FParams=nil then FParams:=TXxmReqPars.Create;//fill: postpone to first GetParameter call
   if FParams.Filled then
     raise EXxmParametersAlreadyParsed.Create(SXxmParametersAlreadyParsed);
   if (Flags and xxmUploadProgressAttach_PostData)<>0 then
