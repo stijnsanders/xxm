@@ -705,7 +705,7 @@ begin
               if GetFileInformationByHandle(fh,fd) then
                begin
                 FileTimeToSystemTime(fd.ftLastWriteTime,st);
-                y:=UTF8String(RFC822DateGMT(SystemTimeToDateTime(st)));
+                y:=UTF8String(RFC822DateUTC(SystemTimeToDateTime(st)));
                 fs:=fd.nFileSizeHigh shl 32 or fd.nFileSizeLow;
                end
               else
@@ -1409,7 +1409,7 @@ var
   d:array of TSecBuffer;
   n:TSecPkgContextNames;
 begin
-  s:=AuthParse('NTLM');
+  s:=AuthParse(Package);
   if s='' then
    begin
     FStatusCode:=401;
@@ -1929,7 +1929,7 @@ begin
     x:=x+'; Path='+CheckColon(Path);
   if KeepSeconds<>0 then
     x:=x+'; Max-Age='+IntToStr8(KeepSeconds)+
-      '; Expires='+UTF8String(RFC822DateGMT(Now+KeepSeconds/86400));
+      '; Expires='+UTF8String(RFC822DateUTC(UTCNow+KeepSeconds/86400));
   if Secure then
     x:=x+'; Secure';
   if HttpOnly then

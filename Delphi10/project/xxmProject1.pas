@@ -10,10 +10,10 @@ type
   TXxmProject=class(TObject)
   private
     Data:IJSONDocument;
-    DataStartSize:integer;
+    DataStartSize,DataStartSum:integer;
     DataFileName,FProjectName,FRootFolder,FSrcFolder,
     FHandlerPath,FProtoPathDef,FProtoPath:string;
-    Modified,DoLineMaps:boolean;
+    Modified,DoLineMaps,XxmpAnsi:boolean;
     Signatures:TStringList;
     FSubject:TObject;
     FOnOutput:TXxmProjectOutput;
@@ -107,35 +107,6 @@ type
     function GenerateCode:AnsiString;
   end;
 
-function LoadJSON(const FilePath:string):IJSONDocument;
-var
-  f:TFileStream;
-  i:integer;
-  s:AnsiString;
-  w:WideString;
-begin
-  Result:=JSON;
-  f:=TFileStream.Create(FilePath,fmOpenRead or fmShareDenyWrite);
-  try
-    i:=f.Size;
-    SetLength(s,i);
-    if f.Read(s[1],i)<>i then RaiseLastOSError;
-    if (i>=3) and (s[1]=#$EF) and (s[2]=#$BB) and (s[3]=#$BF) then
-      Result.Parse(UTF8ToWideString(Copy(s,4,i-3)))
-    else
-    if (i>=2) and (s[1]=#$FF) and (s[2]=#$FE) then
-     begin
-      SetLength(w,(i div 2)-1);
-      Move(s[3],w[1],(i*2)-1);
-      Result.Parse(w);
-     end
-    else
-      Result.Parse(WideString(s));
-  finally
-    f.Free;
-  end;
-end;
-
 function FragmentMapPrefix(const FileName:string):AnsiString;
 begin
   Result:='{'#13#10
@@ -166,6 +137,7 @@ constructor TXxmProject.Create(Subject: TObject; const SourcePath, HandlerPath,
 var
   v:OleVariant;
   i,j,l:integer;
+  w:WideString;
   s:AnsiString;
   d:IJSONDocument;
   pv:TXxmPageParserValues;
@@ -217,7 +189,8 @@ begin
         while (i<>0) and (FRootFolder[i]<>PathDelim) do dec(i);
         FProjectName:=Copy(FRootFolder,i+1,Length(FRootFolder)-i-1);
         WriteString(FRootFolder+DataFileName,
-          '{name:"'+AnsiString(FProjectName)+'",compileCommand:"'+DefaultCompileCommand+'"}');
+          #$EF#$BB#$BF+//Utf8ByteOrderMark+
+          '{name:"'+UTF8Encode(FProjectName)+'",compileCommand:"'+DefaultCompileCommand+'"}');
        end
       else
         raise EXxmProjectNotFound.Create('xxmProject File not found "'+
@@ -235,6 +208,12 @@ begin
   FSrcFolder:=FRootFolder+SourceDirectory+PathDelim;
 
   Data:=LoadJSON(FRootFolder+DataFileName);
+
+  w:=Data.AsString;
+  DataStartSize:=Length(w);
+  DataStartSum:=0;
+  for i:=1 to DataStartSize do inc(DataStartSum,word(w[i]));
+
   v:=Data['uuid'];
   if VarIsNull(v) then Data['uuid']:=CreateClassID;//other random info?
 
@@ -261,6 +240,10 @@ begin
     else
       FProtoPath:=FProtoPathDef;
 
+  v:=Data['srcpath'];
+  if not(VarIsNull(v)) then
+    FSrcFolder:=FRootFolder+VarToStr(v)+PathDelim;//TODO: detect absolute path?
+
   FParserValues:=DefaultParserValues;
   d:=JSON(Data['parserValues']);
   if d<>nil then
@@ -284,6 +267,11 @@ begin
       inc(pv);
      end;
    end;
+
+  //TRANSITIONAL
+  v:=Data['xxmpansi'];
+  XxmpAnsi:=not(VarIsNull(v)) and boolean(v);
+
 end;
 
 destructor TXxmProject.Destroy;
@@ -297,20 +285,30 @@ end;
 procedure TXxmProject.Update;
 var
   fn:string;
+  i,l,n:integer;
+  w:WideString;
   s:AnsiString;
 begin
   if Modified then
    begin
-    Data['lastModified']:=
-      FormatDateTime('yyyy-mm-dd"T"hh:nn:ss',Now);//timezone?
-    s:=AnsiString(Data.ToString);//TODO: UTF8
-    //TODO: if Data.Dirty
-    if DataStartSize<>Length(s) then
+    w:=Data.AsString;
+    l:=Length(w);
+    n:=0;
+    if l<>DataStartSize then
+      for i:=1 to l do inc(n,word(w[i]));
+    if (l<>DataStartSize) or (n<>DataStartSum) then
      begin
+      Data['lastModified']:=
+        FormatDateTime('yyyy-mm-dd"T"hh:nn:ss',Now);//timezone?
+      if XxmpAnsi then //TRANSITIONAL
+        s:=AnsiString(w)
+      else
+        s:=
+          #$EF#$BB#$BF+//UTF8ByteOrderMark+
+          UTF8Encode(w);
       WriteString(FRootFolder+DataFileName,s);
       Modified:=false;
      end;
-
     //save signatures
     try
       fn:=FSrcFolder+SignaturesFileName;
@@ -320,7 +318,6 @@ begin
     except
       //silent?
     end;
-
    end;
 end;
 
@@ -1060,7 +1057,8 @@ begin
           while (e<>nil) and (e.Next) do
            begin
             d:=JSON(e.Value);
-            if (VarToStr(d['unitName'])=t) then //and (VarToStr(d['unitPath'])=) then
+            //if VarToStr(d['unitPath'])+VarToStr(d['unitName'])=t then
+            if VarToStr(d['unitName'])=u then
              begin
               s:=VarToStr(d['path'])+
                 '['+map.GetXxmLines(StrToInt(Copy(s,i,j-i)))+

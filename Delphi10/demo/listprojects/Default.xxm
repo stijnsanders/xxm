@@ -1,0 +1,101 @@
+[[@jsonDoc,Windows,Classes,Variants]][[!var
+i:integer;
+s,t:string;
+f:TFileStream;
+u:UTF8String;
+d,d1:IJSONDocument;
+e:IJSONEnumerator;
+h:THandle;
+
+const
+XxmModNames=36;
+XxmModName:array[0..XxmModNames-1] of string=(
+  'xxmAhttpd.dll','xxmAhttpdAU.dll','xxmAhttpdDev.dll',
+  'xxmIsapiAU.dll','xxmIsapiDev.dll','xxmIsapiEx.dll',
+  'xxmHost.exe','xxmHostAU.exe','xxmHostDev.exe','xxmHostSvc.exe','xxmHostSvcAU.exe',
+  'xxmHSys1.exe','xxmHSys1AU.exe','xxmHSys1Dev.exe','xxmHSys1Svc.exe','xxmHSys1SvcAU.exe',
+  'xxmHSys2.exe','xxmHSys2AU.exe','xxmHSys2Dev.exe','xxmHSys2Svc.exe','xxmHSys2SvcAU.exe',
+  'xxmHttp.exe','xxmHttpAU.exe','xxmHttpDev.exe','xxmHttpSvc.exe','xxmHttpSvcAU.exe',
+  'xxmSCGI.exe','xxmSCGIAU.exe','xxmSCGIDev.exe','xxmSCGISvc.exe','xxmSCGISvcAU.exe',
+  'xxmSyna.exe','xxmSynaAU.exe','xxmSynaDev.exe','xxmSynaSvc.exe','xxmSynaSvcAU.exe');
+
+<<!doctype html>
+<html>
+<head>
+<style type="text/css">
+BODY {font-family: Calibri, Verdana, sans-serif;font-size:12pt;}
+</style>
+<body>
+<h1>xxm</h1>
+<p>Projects on this host:</p>
+<ul>>
+
+//TODO: find via context? via config?
+//TODO: list via context from handler?
+
+h:=0;
+i:=0;
+while (h=0) and (i<XxmModNames) do
+ begin
+  h:=GetModuleHandle(PChar(XxmModName[i]));
+  inc(i);
+ end;
+if h=0 then h:=HInstance;
+SetLength(s,MAX_PATH);
+SetLength(s,GetModuleFileName(h,PChar(s),MAX_PATH));
+
+i:=Length(s);
+while (i<>0) and (s[i]<>'\') do dec(i);
+while not((i=0) or FileExists(Copy(s,1,i)+'xxm2.json')) do
+ begin
+  dec(i);
+  while (i<>0) and (s[i]<>'\') do dec(i);
+ end;
+
+d:=JSON;
+
+f:=TFileStream.Create(Copy(s,1,i)+'xxm2.json',fmOpenRead or fmShareDenyWrite);
+try
+  i:=f.Size;
+  SetLength(u,i);
+  if i<>f.Read(u[1],i) then RaiseLastOSError;
+  if (i>=3) and (u[1]=#$EF) and (u[2]=#$BB) and (u[3]=#$BF) then
+      d.Parse(UTF8ToWideString(Copy(u,4,i-3)))
+  else
+    if (i>=2) and (u[1]=#$FF) and (u[2]=#$FE) then
+        d.Parse(PWideChar(@u[1]))
+    else
+        d.Parse(WideString(u));
+finally
+  f.Free;
+end;
+
+e:=JSONEnumSorted(d['projects']);
+while e.Next do
+ begin
+  d1:=JSON(e.Value);
+  if VarToStr(d1['alias'])='' then
+   begin
+    s:=e.Key;
+    if LowerCase(s)<>'xxm' then 
+     begin
+      <li><a href="../[[=s]]/">>=s<</a>
+      if not VarIsNull(d1['caption']) then
+       begin
+        ]]: [[=d1['caption']]][[
+       end;
+      if not VarIsNull(d1['about']) then
+       begin
+        t:=d1['about'];
+        if Copy(t,1,4)<>'http' then t:='../'+s+'/'+t;
+        ]] (<a href="[[=t]]">about...</a>)[[
+       end;
+      </li>
+     end;
+   end;
+ end;
+
+<</ul>
+<p>>=Context.ContextString(csVersion)]] | <a href="http://yoy.be/xxm/">about xxm...</a></p>
+</body>
+</html>

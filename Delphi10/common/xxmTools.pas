@@ -27,7 +27,8 @@ function GetFileSignature(const Path: string): string;
 function UTF8CmpI(a,b:PUTF8Char):NativeInt;
 function HTMLEncode(const Data:UTF8String):UTF8String;
 function Base64Encode(const x:UTF8String):UTF8String;
-function RFC822DateGMT(dd:TDateTime):string;
+function UTCNow:TDateTime;
+function RFC822DateUTC(dd:TDateTime):string;
 
 type
   TKeyValues=record
@@ -185,7 +186,17 @@ begin
   //SetLength(Result,j);
 end;
 
-function RFC822DateGMT(dd:TDateTime):string;
+function UTCNow:TDateTime;
+var
+  st:TSystemTime;
+begin
+  GetSystemTime(st);
+  Result:=
+    EncodeDate(st.wYear,st.wMonth,st.wDay)+
+    EncodeTime(st.wHour,st.wMinute,st.wSecond,st.wMilliseconds);
+end;
+
+function RFC822DateUTC(dd:TDateTime):string;
 const
   Days:array [1..7] of string=
     ('Sun','Mon','Tue','Wed','Thu','Fri','Sat');
@@ -201,11 +212,9 @@ begin
   dg:=dd+tz.Bias/1440;
   DecodeDateFully(dg,y,m,d,wd);
   DecodeTime(dg,th,tm,ts,tms);
-  FmtStr(Result, '%s, %d %s %d %.2d:%.2d:%.2d GMT',
+  FmtStr(Result, '%s, %d %s %d %.2d:%.2d:%.2d UTC',
     [Days[wd],d,Months[m],y,th,tm,ts]);
 end;
-
-
 
 { TOwningHandleStream }
 

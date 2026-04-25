@@ -28,7 +28,7 @@ const
   XxmProtoExtension='.proto.pas';
   DelphiExtension='.pas';
   ProjectLogExtension='.log';
-  SignaturesFileName='xxmp.~db';
+  SignaturesFileName='xxm2.~db';
   SignaturesUpdateReasonKey='::';
   SignatureFragmentMap='::FragmentMap::';
   LinesMapExtension='.~ln';

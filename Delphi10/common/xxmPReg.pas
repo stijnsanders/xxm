@@ -166,6 +166,8 @@ var
 threadvar
   XxmIntializingProjectEntry: TProjectEntry;
 
+function LoadJSON(const FilePath:string):IJSONDocument;
+
 implementation
 
 uses Variants, xxmTools, Registry, xxmThreadPool;
