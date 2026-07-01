@@ -11,8 +11,7 @@ function TerminateExtension(dwFlags: DWORD): BOOL; stdcall;
 
 type
   TXxmIsapiContext=class(TXxmQueueContext,
-    IXxmHttpHeaders,
-    IXxmContextSuspend)
+    IXxmHttpHeaders)
   private
     ecb: PEXTENSION_CONTROL_BLOCK;
     FIOState: integer;
@@ -23,8 +22,6 @@ type
     FCookieParsed: boolean;
     FCookie: AnsiString;
     FCookieIdx: TParamIndexes;
-    FResumeFragment,FDropFragment:WideString;
-    FResumeValue,FDropValue:OleVariant;
     procedure ServerFunction(HSERRequest: DWORD; Buffer: Pointer;
       Size, DataType: LPDWORD);
   protected
@@ -46,15 +43,11 @@ type
     { IxxmHttpHeaders }
     function GetRequestHeaders: IxxmDictionaryEx;
     function GetResponseHeaders: IxxmDictionaryEx;
-    { IXxmContextSuspend }
-    procedure Suspend(const EventKey: WideString;
-      CheckIntervalMS, MaxWaitTimeSec: cardinal;
-      const ResumeFragment: WideString; ResumeValue: OleVariant;
-      const DropFragment: WideString; DropValue: OleVariant);
 
     procedure FlushFinal; override;
     procedure FlushStream(AData: TStream; ADataSize: Int64); override;
     procedure Spool; override;
+    procedure CheckSuspendReady; override;
   public
     procedure AfterConstruction; override;
     destructor Destroy; override;
@@ -63,7 +56,6 @@ type
   end;
 
   EXxmContextStringUnknown=class(Exception);
-  EXxmContextAlreadySuspended=class(Exception);
 
 const
   PoolMaxThreads=$200;//TODO: from setting?
@@ -228,7 +220,7 @@ begin
     httpScheme[UpperCase(string(GetVar(ecb,'HTTPS')))='ON']+
     WideString(GetVar(ecb,'HTTP_HOST'))+FURI;//TODO: unicode?
   SendDirect:=SendData;
-  BeginRequest;
+  //BeginRequest; moved to TXxmQueueContext.Perform: ctHeaderNotSent
   PageLoaderPool.Queue(Self,ctHeaderNotSent);
 end;
 
@@ -613,22 +605,12 @@ begin
    end;
 end;
 
-procedure TXxmIsapiContext.Suspend(const EventKey: WideString;
-  CheckIntervalMS, MaxWaitTimeSec: cardinal;
-  const ResumeFragment: WideString; ResumeValue: OleVariant;
-  const DropFragment: WideString; DropValue: OleVariant);
+procedure TXxmIsapiContext.CheckSuspendReady;
 begin
-  if State=ctSuspended then
-    raise EXxmContextAlreadySuspended.Create(SXxmContextAlreadySuspended);
+  inherited;
   while (FIOState and 1)<>0 do SwitchToThread;
   if FIOState=IOState_Error then
     raise EXxmTransferError.Create(SysErrorMessage(DWORD(FIOStream)));
-  FResumeFragment:=ResumeFragment;
-  FResumeValue:=ResumeValue;
-  FDropFragment:=DropFragment;
-  FDropValue:=DropValue;
-  PageLoaderPool.EventsController.SuspendContext(Self,EventKey,
-    CheckIntervalMS,MaxWaitTimeSec);
 end;
 
 initialization

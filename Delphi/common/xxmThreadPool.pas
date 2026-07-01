@@ -21,6 +21,7 @@ type
 
     procedure BeginRequest; override;
     procedure EndRequest; override;
+    procedure CheckSuspendReady; virtual;
 
     { IXxmContextSuspend }
     procedure Suspend(const EventKey: WideString;
@@ -32,7 +33,7 @@ type
     procedure SuspendSocket(Handler: IXxmRawSocket); virtual;
 
   public
-    procedure Perform;  
+    procedure Perform;
   end;
 
   TXxmEventsController=class;//forward
@@ -601,6 +602,11 @@ begin
     end;
 end;
 
+procedure TXxmQueueContext.CheckSuspendReady;
+begin
+  //
+end;
+
 procedure TXxmQueueContext.Suspend(const EventKey: WideString;
   CheckIntervalMS, MaxWaitTimeSec: cardinal;
   const ResumeFragment: WideString; ResumeValue: OleVariant;
@@ -608,6 +614,7 @@ procedure TXxmQueueContext.Suspend(const EventKey: WideString;
 begin
   if State=ctSuspended then
     raise EXxmContextAlreadySuspended.Create(SXxmContextAlreadySuspended);
+  CheckSuspendReady;
   FResumeFragment:=ResumeFragment;
   FResumeValue:=ResumeValue;
   FDropFragment:=DropFragment;

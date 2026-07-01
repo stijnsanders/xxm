@@ -215,6 +215,12 @@ end;
 
 {  }
 
+function AStrCopy(const a:AnsiString;ai,al:integer):AnsiString; //inline;
+begin
+  SetLength(Result,al);
+  Move(a[ai],Result[1],al);
+end;
+
 const
   HeaderNameMap:array[byte] of byte=(
     00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,
@@ -234,7 +240,6 @@ const
     00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,
     00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00);
 
-
 function SplitHeaderValue(const Value:AnsiString;
   ValueStart,ValueLength:integer;var Params:TParamIndexes):AnsiString;
 var
@@ -246,7 +251,7 @@ begin
   if i=0 then inc(l) else while (i<=l) and (Value[i]<>';') do inc(i);
   if i<=l then
    begin
-    if i=0 then Result:='' else Result:=Copy(Value,ValueStart,i-ValueStart);
+    if i=0 then Result:='' else Result:=AStrCopy(Value,ValueStart,i-ValueStart);
     while i<=l do
      begin
       if Params.ParsIndex=Params.ParsSize then
@@ -290,7 +295,7 @@ begin
      end;
    end
   else
-    Result:=Copy(Value,ValueStart,ValueLength);
+    Result:=AStrCopy(Value,ValueStart,ValueLength);
 end;
 
 function GetParamValue(const Data:AnsiString;
@@ -304,7 +309,7 @@ begin
   if n=0 then i:=l else i:=0;
   while (i<l) and (Params.Pars[i].NameIndex<>n) do inc(i);
   if i<l then
-    Result:=Copy(Data,Params.Pars[i].ValueStart,Params.Pars[i].ValueLength)
+    Result:=AStrCopy(Data,Params.Pars[i].ValueStart,Params.Pars[i].ValueLength)
   else
     Result:='';
 end;
@@ -876,7 +881,7 @@ begin
   i:=0;
   while (i<FIdx.ParsIndex) and (FIdx.Pars[i].NameIndex<>n) do inc(i);
   if i<FIdx.ParsIndex then
-    Result:=Copy(Data,FIdx.Pars[i].ValueStart,FIdx.Pars[i].ValueLength)
+    Result:=AStrCopy(Data,FIdx.Pars[i].ValueStart,FIdx.Pars[i].ValueLength)
   else
     Result:='';
 end;

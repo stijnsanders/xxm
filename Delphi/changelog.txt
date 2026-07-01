@@ -1,8 +1,9 @@
-v1.?.?.?
+v1.2.9.?
 - deprecated: xxmSyna*
 - storage of Web.xxmp now in UTF-8
 - fixed bug with live removing a project from xxm.json
 - fixed bug with error line resolution on files in subfolders
+- fixed bug with xxmIsapi* and IXxmContextSuspend
 - key hash tree look-up of parameters
 
 v1.2.8.510
