@@ -39,7 +39,7 @@ begin
     Context.SendHTML('<br />---');
     //Context.PostData.ClassName ?
     Context.SendHTML('<br /><xmp style="border: 2px solid red;">');
-    Context.SendStream(xxm.Context_PostData(Context));
+    Context.SendStream(xxm.Context_PostData(Context),0);
     Context.SendHTML('</xmp>');
    end;
 

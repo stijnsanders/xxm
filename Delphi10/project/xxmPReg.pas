@@ -19,11 +19,12 @@ type
 var
   XxmProjectRegDataFilePath: string;
 
+function LoadJSON(const FilePath:string):IJSONDocument;
+
 implementation
 
 uses Classes;
 
-//TODO: deduplicate with xxmProject1
 function LoadJSON(const FilePath:string):IJSONDocument;
 var
   f:TFileStream;

@@ -1,0 +1,19 @@
+﻿{
+	"name": "demo",
+	"uuid": "{8D57AEC7-A87E-4155-8242-2C34F581AFFF}",
+	"compileCommand": "dcc32 -U[[HandlerPath]]public -Q [[ProjectName]].dpr",
+	"files": {
+		"default_xxm": {
+			"unitName": "default_xxm1",
+			"unitPath": "",
+			"path": "Default.xxm"
+		}
+	},
+	"units": {
+		"ws1": {}
+	},
+	"resources": {
+		"xxmp2.pas": {}
+	},
+	"lastModified": "2026-04-05T00:02:55"
+}

@@ -3,8 +3,8 @@ unit xxm2;
 interface
 
 const
-  //$Date: 2026-04-10 21:54:14 +0200 (vr, 10 apr 2026) $
-  XxmRevision = '$Rev: 545 $';
+  //$Date: 2026-07-01 22:46:05 +0200 (wo, 01 jul 2026) $
+  XxmRevision = '$Rev: 552 $';
   XxmAPILevel = 2000;//v2.0
 
 type
@@ -81,6 +81,7 @@ type
     property ContentType:UTF8String read GetContentType write SetContentType;
     function GetAutoEncoding:TxxmAutoEncoding; inline;
     procedure SetAutoEncoding(AutoEncoding:TxxmAutoEncoding); inline;
+    property AutoEncoding:TxxmAutoEncoding read GetAutoEncoding write SetAutoEncoding;
     procedure DispositionAttach(const FileName:UTF8String); inline;
 
     procedure Send(const Data:UTF8String); overload; inline;
@@ -90,7 +91,7 @@ type
     procedure SendHTML(const HTML:UTF8String); overload; inline;
     procedure SendHTML(const Values:array of Variant); overload;
     procedure SendFile(const FilePath:UTF8String); inline;
-    procedure SendStream(Stream:TObject); inline;
+    procedure SendStream(Stream:TObject;Length:NativeUInt); inline;
     procedure Flush; inline;
 
     function GetParameter(const Name:UTF8String):CxxmParameter; overload; inline;
@@ -165,7 +166,7 @@ type
   TContext_Send = procedure (Context:CxxmContext;Data:PUTF8Char); stdcall;
   TContext_SendHTML = procedure (Context:CxxmContext;HTML:PUTF8Char); stdcall;
   TContext_SendFile = procedure (Context:CxxmContext;FilePath:PUTF8Char); stdcall;
-  TContext_SendStream = procedure (Context:CxxmContext;Stream:TObject); stdcall;
+  TContext_SendStream = procedure (Context:CxxmContext;Stream:TObject;Length:NativeUInt); stdcall;
   TContext_Flush = procedure (Context:CxxmContext); stdcall;
 
   TContext_Parameter = function (Context:CxxmContext;Name:PUTF8Char):CxxmParameter; stdcall;
@@ -448,9 +449,9 @@ begin
   xxm.Context_SendFile(Self,PUTF8Char(FilePath));
 end;
 
-procedure CxxmContext.SendStream(Stream: TObject);
+procedure CxxmContext.SendStream(Stream: TObject; Length: NativeUInt);
 begin
-  xxm.Context_SendStream(Self,Stream);
+  xxm.Context_SendStream(Self,Stream,Length);
 end;
 
 procedure CxxmContext.Flush;

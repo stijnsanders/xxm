@@ -99,7 +99,7 @@ type
       const Objects:array of pointer);
 
     function Context:CxxmContext; inline;
-    procedure SendStream(s:TStream);
+    procedure SendStream(s:TStream;l:NativeUInt);
 
     procedure Redirect(URL:PUTF8Char;Relative:boolean);
     function ContextString(Value:integer):PUTF8Char;
@@ -742,7 +742,7 @@ begin
                  end
                 else
                   try
-                    SendStream(ds);
+                    SendStream(ds,0);
                   finally
                     ds.Free;
                   end;
@@ -1137,13 +1137,13 @@ begin
     end;
 end;
 
-procedure TxxmContext.SendStream(s: TStream);
+procedure TxxmContext.SendStream(s: TStream; l: NativeUInt);
 const
   dSize=$10000;
   hex:array[0..15] of AnsiChar='0123456789ABCDEF';
 var
   d:array[0..dSize-1] of byte;
-  i,k,l:integer;
+  i,k,m,n:integer;
 begin
   if not(FHeaderSent) and (GetResponseHeader('Content-Type')=nil) then
    begin
@@ -1152,35 +1152,43 @@ begin
    end;
   if not(FHeaderSent) then SendHeader;
   Flush;
+  n:=l;
   if FChunked then
     repeat
-      l:=dSize-12;
-      l:=s.Read(d[10],l);
-      if l<>0 then
+      m:=dSize-12;
+      if (l<>0) and (n<m) then m:=n;
+      m:=s.Read(d[10],m);
+      if m<>0 then
        begin
+        if l<>0 then dec(n,m);
         d[8]:=13;//CR
         d[9]:=10;//LF
         i:=8;
-        k:=l;
+        k:=m;
         repeat
           dec(i);
           d[i]:=byte(hex[k and $F]);
           k:=k shr 4;
         until k=0;
-        d[l+10]:=13;//CR
-        d[l+11]:=10;//LF
-        l:=l+12-i;
-        if FSocket.SendBuf(d[i],l)<>l then
+        d[m+10]:=13;//CR
+        d[m+11]:=10;//LF
+        m:=m+12-i;
+        if FSocket.SendBuf(d[i],m)<>m then
           raise EXxmTransferError.Create(SysErrorMessage(GetLastError));
        end;
-    until l=0
+    until (m=0) or ((l=0) and (n=0))
   else
     repeat
-      l:=s.Read(d[1],dSize);
-      if l<>0 then
-        if FSocket.SendBuf(d[1],l)<>l then
+      m:=dSize;
+      if (l<>0) and (n<m) then m:=n;
+      m:=s.Read(d[0],m);
+      if m<>0 then
+       begin
+        if l<>0 then dec(n,m);
+        if FSocket.SendBuf(d[0],m)<>m then
           raise EXxmTransferError.Create(SysErrorMessage(GetLastError));
-    until l=0;
+       end;
+    until m=0;
 end;
 
 type
@@ -2039,15 +2047,15 @@ begin
   //TODO: spooled delivery?
   f:=TFileStream.Create(string(FilePath),fmOpenRead or fmShareDenyWrite);
   try
-    TxxmContext(Context.__Context).SendStream(f);
+    TxxmContext(Context.__Context).SendStream(f,0);
   finally
     f.Free;
   end;
 end;
 
-procedure Context_SendStream(Context:CxxmContext;Stream:TObject); stdcall;
+procedure Context_SendStream(Context:CxxmContext;Stream:TObject;Length:NativeUInt); stdcall;
 begin
-  TxxmContext(Context.__Context).SendStream(AsStream(Stream));
+  TxxmContext(Context.__Context).SendStream(AsStream(Stream),Length);
 end;
 
 procedure Context_Flush(Context:CxxmContext); stdcall;
@@ -2256,17 +2264,21 @@ function Parameter_Name(Parameter:CxxmParameter):PUTF8Char; stdcall;
 var
   p:PParamInfo absolute Parameter.__Parameter;
 begin
-  //if Parameter=nil then raise?
-  if p<>@(p.Context as TxxmContext).FParams[p.Index] then
-    raise EInvalidPointer.Create('Invalid parameter');
-  Result:=p.Name;
+  if p=nil then
+    Result:=nil //default value
+  else
+   begin
+    if p<>@(p.Context as TxxmContext).FParams[p.Index] then
+      raise EInvalidPointer.Create('Invalid parameter');
+    Result:=p.Name;
+   end;
 end;
 
 function Parameter_Value(Parameter:CxxmParameter):PUTF8Char; stdcall;
 var
   p:PParamInfo absolute Parameter.__Parameter;
 begin
-  if Parameter.__Parameter=nil then
+  if p=nil then
     Result:=nil //default value
   else
    begin

@@ -3,6 +3,15 @@
         <ProjectGuid>{72D81C8E-0FCD-44E7-B79E-812D2FB57D8D}</ProjectGuid>
     </PropertyGroup>
     <ItemGroup>
+        <Projects Include="project\xxmConv.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="project\xxmProject.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="proto\xxmProto.dproj">
+            <Dependencies/>
+        </Projects>
         <Projects Include="http\xxmHttp.dproj">
             <Dependencies/>
         </Projects>
@@ -10,15 +19,6 @@
             <Dependencies/>
         </Projects>
         <Projects Include="http\xxmHttpDev.dproj">
-            <Dependencies/>
-        </Projects>
-        <Projects Include="proto\xxmProto.dproj">
-            <Dependencies/>
-        </Projects>
-        <Projects Include="project\xxmProject.dproj">
-            <Dependencies/>
-        </Projects>
-        <Projects Include="project\xxmConv.dproj">
             <Dependencies/>
         </Projects>
         <Projects Include="ctest\src\ctest.dproj">
@@ -32,6 +32,33 @@
             <Default.Personality/>
         </BorlandProject>
     </ProjectExtensions>
+    <Target Name="xxmConv">
+        <MSBuild Projects="project\xxmConv.dproj"/>
+    </Target>
+    <Target Name="xxmConv:Clean">
+        <MSBuild Projects="project\xxmConv.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="xxmConv:Make">
+        <MSBuild Projects="project\xxmConv.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="xxmProject">
+        <MSBuild Projects="project\xxmProject.dproj"/>
+    </Target>
+    <Target Name="xxmProject:Clean">
+        <MSBuild Projects="project\xxmProject.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="xxmProject:Make">
+        <MSBuild Projects="project\xxmProject.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="xxmProto">
+        <MSBuild Projects="proto\xxmProto.dproj"/>
+    </Target>
+    <Target Name="xxmProto:Clean">
+        <MSBuild Projects="proto\xxmProto.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="xxmProto:Make">
+        <MSBuild Projects="proto\xxmProto.dproj" Targets="Make"/>
+    </Target>
     <Target Name="xxmHttp">
         <MSBuild Projects="http\xxmHttp.dproj"/>
     </Target>
@@ -59,33 +86,6 @@
     <Target Name="xxmHttpDev:Make">
         <MSBuild Projects="http\xxmHttpDev.dproj" Targets="Make"/>
     </Target>
-    <Target Name="xxmProto">
-        <MSBuild Projects="proto\xxmProto.dproj"/>
-    </Target>
-    <Target Name="xxmProto:Clean">
-        <MSBuild Projects="proto\xxmProto.dproj" Targets="Clean"/>
-    </Target>
-    <Target Name="xxmProto:Make">
-        <MSBuild Projects="proto\xxmProto.dproj" Targets="Make"/>
-    </Target>
-    <Target Name="xxmProject">
-        <MSBuild Projects="project\xxmProject.dproj"/>
-    </Target>
-    <Target Name="xxmProject:Clean">
-        <MSBuild Projects="project\xxmProject.dproj" Targets="Clean"/>
-    </Target>
-    <Target Name="xxmProject:Make">
-        <MSBuild Projects="project\xxmProject.dproj" Targets="Make"/>
-    </Target>
-    <Target Name="xxmConv">
-        <MSBuild Projects="project\xxmConv.dproj"/>
-    </Target>
-    <Target Name="xxmConv:Clean">
-        <MSBuild Projects="project\xxmConv.dproj" Targets="Clean"/>
-    </Target>
-    <Target Name="xxmConv:Make">
-        <MSBuild Projects="project\xxmConv.dproj" Targets="Make"/>
-    </Target>
     <Target Name="ctest">
         <MSBuild Projects="ctest\src\ctest.dproj"/>
     </Target>
@@ -96,13 +96,13 @@
         <MSBuild Projects="ctest\src\ctest.dproj" Targets="Make"/>
     </Target>
     <Target Name="Build">
-        <CallTarget Targets="xxmHttp;xxmHttpAU;xxmHttpDev;xxmProto;xxmProject;xxmConv;ctest"/>
+        <CallTarget Targets="xxmConv;xxmProject;xxmProto;xxmHttp;xxmHttpAU;xxmHttpDev;ctest"/>
     </Target>
     <Target Name="Clean">
-        <CallTarget Targets="xxmHttp:Clean;xxmHttpAU:Clean;xxmHttpDev:Clean;xxmProto:Clean;xxmProject:Clean;xxmConv:Clean;ctest:Clean"/>
+        <CallTarget Targets="xxmConv:Clean;xxmProject:Clean;xxmProto:Clean;xxmHttp:Clean;xxmHttpAU:Clean;xxmHttpDev:Clean;ctest:Clean"/>
     </Target>
     <Target Name="Make">
-        <CallTarget Targets="xxmHttp:Make;xxmHttpAU:Make;xxmHttpDev:Make;xxmProto:Make;xxmProject:Make;xxmConv:Make;ctest:Make"/>
+        <CallTarget Targets="xxmConv:Make;xxmProject:Make;xxmProto:Make;xxmHttp:Make;xxmHttpAU:Make;xxmHttpDev:Make;ctest:Make"/>
     </Target>
     <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
 </Project>
