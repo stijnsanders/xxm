@@ -6,7 +6,7 @@ Copyright 2015-2026 Stijn Sanders
 Made available under terms described in file "LICENSE"
 https://github.com/stijnsanders/jsonDoc
 
-v1.3.0
+v1.3.1
 
 }
 unit jsonDoc;
@@ -3738,10 +3738,10 @@ begin
             m.ValueIndex:=b.json.DataIndex+1;
             m.ValueLength:=dl;
             b.json.Append(dd);
-            m.F1:=
-              (m.F1 and jfk_Mask)//assert jfkArrayIndex
-              or jfdRawJSON;
            end;
+          m.F1:=
+            (m.F1 and jfk_Mask)//assert jfkArrayIndex
+            or jfdRawJSON;
          end
         else raise EJSONEncodeException.Create(
           'JSONDocArray.Set_Item requires IJSONDocument instances');
@@ -3896,9 +3896,10 @@ begin
 
     if Doc=nil then
       raise EJSONException.Create('IJSONDocArray.LoadItem called without IJSONDocument instance');
+    Doc.Clear;
     case m.F1 and jfd_Mask of
       jfdNull:
-        Doc.Clear;//?
+        ;//?
       jfdObject:
         if Doc.QueryInterface(IID_IJSONMemBankLoadable,dl)=S_OK then
           dl.LoadBank(FMemBank,bi)

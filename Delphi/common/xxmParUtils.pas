@@ -475,7 +475,7 @@ var
 begin
   for i:=1 to Length(Value) do
     if AnsiChar(Value[i]) in [#0,#10,#13] then //more?
-
+      raise EXxmResponseHeaderInvalidChar.Create(SXxmResponseHeaderInvalidChar);
 end;
 
 function KnownHeaderIndex(KnownHeader:TKnownHeaderName):integer;
