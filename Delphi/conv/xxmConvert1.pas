@@ -2,13 +2,19 @@ unit xxmConvert1;
 
 interface
 
+uses Classes;
+
 procedure WelcomeMessage;
 procedure RegisterCompileOption;
-procedure DoWrite(const Msg:AnsiString);
+
+var
+  BuildOutput:TStringStream;
+
+procedure DoBuildOutput(const Msg:AnsiString);
 
 implementation
 
-uses Windows, SysUtils, Classes, Registry, xxmUtilities, xxmWebProject;
+uses Windows, SysUtils, Registry, xxmUtilities, xxmWebProject;
 
 procedure WelcomeMessage;
 const
@@ -59,9 +65,9 @@ begin
   Writeln('Compile option registered on xxmp filetype');
 end;
 
-procedure DoWrite(const Msg:AnsiString);
+procedure DoBuildOutput(const Msg:AnsiString);
 begin
-  Write(Msg);//stdout
+  BuildOutput.WriteString(string(Msg));
 end;
 
 end.
