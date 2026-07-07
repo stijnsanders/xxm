@@ -1,4 +1,4 @@
-v1.2.9.?
+v1.2.9.555
 - deprecated: xxmSyna*
 - storage of Web.xxmp now in UTF-8
 - fixed bug with live removing a project from xxm.json
