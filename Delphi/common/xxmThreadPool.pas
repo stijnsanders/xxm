@@ -76,6 +76,7 @@ type
       CheckInterval,CheckLast:cardinal;
     end;
     FEventsIndex,FEventsSize:cardinal;
+    procedure ReleaseProject(Sender: TObject);
   protected
     procedure Execute; override;
   public
@@ -137,6 +138,9 @@ end;
 
 destructor TXxmPageLoader.Destroy;
 begin
+  Terminate;
+  SetEvent(FNextJobEvent);
+  WaitFor;
   CloseHandle(FNextJobEvent);
   inherited;
 end;
@@ -353,6 +357,8 @@ end;
 
 destructor TXxmEventsController.Destroy;
 begin
+  Terminate;
+  WaitFor;
   DeleteCriticalSection(FLock);
   SetLength(FEvents,0);
   inherited;
@@ -388,6 +394,7 @@ begin
       FEvents[i].CheckLast:=tc;
       inc(FEventsIndex);
       c0.QueueIn:=nil;
+      pe.OnRelease:=ReleaseProject;
      end
     else
      begin
@@ -530,6 +537,34 @@ begin
     except
       //silent (log?)
     end;
+end;
+
+procedure TXxmEventsController.ReleaseProject(Sender: TObject);
+var
+  i:integer;
+  c,c1:TXxmQueueContext;
+begin
+  if FEventsIndex<>0 then
+   begin
+    EnterCriticalSection(FLock);
+    try
+      for i:=0 to FEventsIndex-1 do
+        if FEvents[i].ProjectEntry=Sender then
+         begin
+          c:=FEvents[i].Queue;
+          FEvents[i].Queue:=nil;
+          FEvents[i].ProjectEntry:=nil;
+          while c<>nil do
+           begin
+            c1:=c;
+            c:=c.QueueIn;
+            PageLoaderPool.Queue(c1,ctDropping);
+           end;
+         end;
+    finally
+      LeaveCriticalSection(FLock);
+    end;
+   end;
 end;
 
 { TXxmQueueContext }

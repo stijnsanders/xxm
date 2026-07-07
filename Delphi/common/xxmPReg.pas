@@ -5,6 +5,8 @@ interface
 uses xxm, SysUtils, Windows, jsonDoc;
 
 type
+  TXxmProjectEntryReleaseHandler=procedure(Sender: TObject) of object;
+
   TXxmProjectEntry=class(TObject)
   private
     FName:WideString;
@@ -17,6 +19,7 @@ type
 {$ENDIF}
     FFilePath,FLoadPath:WideString;
     FLoadCopy,FAllowInclude,FNTLM,FNegotiate:boolean;
+    FOnRelease:TXxmProjectEntryReleaseHandler;
   protected
     FSignature:string;
     FBufferSize:integer;
@@ -62,6 +65,8 @@ type
     property BufferSize: integer read FBufferSize;
     property Name: WideString read FName;
     property Project: IXxmProject read GetProject;
+    property OnRelease: TXxmProjectEntryReleaseHandler read FOnRelease
+      write FOnRelease;
   end;
 
   TXxmProjectCache=class(TObject)
@@ -198,6 +203,7 @@ begin
   FLoadCopy:=false;
   FSignature:='';//used for auto-build
   FLoadSignature:='';//used for auto-update
+  FOnRelease:=nil;//used by events controller
 {$IFNDEF XXM_INLINE_PROJECT}
   FCheckMutex:=0;
 {$ENDIF}  
@@ -273,6 +279,16 @@ begin
       //silent
     end;
     pe:=nil;
+   end;
+
+  if (@FOnRelease<>nil) then
+   begin
+    try
+      FOnRelease(Self);
+    except
+      //silent
+    end;
+    FOnRelease:=nil;
    end;
 
   //assert only one thread at once, use Lock/Unlock!

@@ -381,8 +381,8 @@ begin
     if (q<=l) and (pd[q]='=') then inc(r);
     while (r<=l) and (pd[r]<>'&') do inc(r);
     Add(TXxmReqParGet.Create(Self,
-      UTF8Decode(Copy(pd,p,q-p)),
-      URLDecode(AnsiString(UTF8Decode(Copy(pd,q+1,r-q-1))))));
+      UTF8ToWideString(Copy(pd,p,q-p)),
+      URLDecode(AnsiString(UTF8ToWideString(Copy(pd,q+1,r-q-1))))));
     inc(r);
    end;
 
@@ -459,12 +459,12 @@ begin
           //TODO: transfer encoding?
           if pm='' then
             Add(TXxmReqParPost.Create(Self,WideString(px),
-              UTF8Decode(sn.GetString)))
+              UTF8ToWideString(sn.GetString)))
           else
            begin
             sn.GetData(px,pf,p,q);
             Add(TXxmReqParPostFile.Create(Self,WideString(px),
-              UTF8Decode(pf),//TODO: encoding from header?
+              UTF8ToWideString(pf),//TODO: encoding from header?
               WideString(pm),ps,p,q));
            end;
         until sn.MultiPartDone;

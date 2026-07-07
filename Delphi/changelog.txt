@@ -3,8 +3,10 @@ v1.2.9.?
 - storage of Web.xxmp now in UTF-8
 - fixed bug with live removing a project from xxm.json
 - fixed bug with error line resolution on files in subfolders
-- fixed bug with xxmIsapi* and IXxmContextSuspend
+- fixed bug with IXxmContextSuspend and project shutdown
 - key hash tree look-up of parameters
+- xxmConv now resolves error lines
+- added /silent switch to xxmConv
 
 v1.2.8.510
 - fixed bug with TXxmWebSocket and ReleaseContexts
